@@ -285,6 +285,7 @@ class UserSettings(Base):
     grammar_languages: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: ["en"]
     pandoc_enabled: Mapped[int] = mapped_column(Integer, default=0)
     pandoc_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    ai_disabled: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class AIPrompt(Base):

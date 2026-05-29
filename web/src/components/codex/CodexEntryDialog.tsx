@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
-  Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue,
+  Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { CodexEntry, CodexRelationResolved } from "@/types";
@@ -335,6 +335,7 @@ export function CodexEntryDialog({
   const [suggSubtype, setSuggSubtype]       = useState(false);
 
   const { data: appSettings } = useSettings();
+  const aiDisabled = appSettings?.ai_disabled ?? false;
   const { t } = useLanguage();
   const isExisting = !!initial?.id;
   const entryId    = initial?.id ?? 0;
@@ -614,13 +615,13 @@ export function CodexEntryDialog({
                             ))}
                             {existingCustomTypes.length > 0 && (
                               <>
-                                <SelectSeparator />
+                                <div className="my-1 h-px bg-border/50" />
                                 {existingCustomTypes.map(ct => (
                                   <SelectItem key={ct} value={ct}>{ct}</SelectItem>
                                 ))}
                               </>
                             )}
-                            <SelectSeparator />
+                            <div className="my-1 h-px bg-border/50" />
                             <SelectItem value="__custom_new__">New type…</SelectItem>
                           </SelectContent>
                         </Select>
@@ -967,7 +968,8 @@ export function CodexEntryDialog({
                     {(() => {
                       const nativeRelicIds = new Set(nativeRelics.map(r => r.entry_id));
                       const addableRelics = allEntries.filter(e => e.entry_type === "relic" && !nativeRelicIds.has(e.id));
-                      return addableRelics.length > 0 ? (
+                      const none = addableRelics.length === 0;
+                      return (
                         <div className="flex gap-1.5 items-center pt-1 border-t border-border/40">
                           <span title="Relics — items special, typical or bound to this character">
                             <Gem className="h-3 w-3 shrink-0 text-violet-400" />
@@ -975,9 +977,10 @@ export function CodexEntryDialog({
                           <select
                             value={addRelicId}
                             onChange={e => setAddRelicId(e.target.value)}
-                            className="flex-1 h-6 text-xs rounded border border-border bg-background px-1 min-w-0"
+                            disabled={none}
+                            className="flex-1 h-6 text-xs rounded border border-border bg-background px-1 min-w-0 disabled:opacity-50"
                           >
-                            <option value="">Select relic…</option>
+                            <option value="">{none ? "No relics available" : "Select relic…"}</option>
                             {addableRelics.map(e => (
                               <option key={e.id} value={String(e.id)}>{e.name}</option>
                             ))}
@@ -987,7 +990,8 @@ export function CodexEntryDialog({
                             value={addRelicNotes}
                             onChange={e => setAddRelicNotes(e.target.value)}
                             placeholder="Notes…"
-                            className="flex-1 h-6 text-xs rounded border border-border bg-background px-1.5 min-w-0"
+                            disabled={none}
+                            className="flex-1 h-6 text-xs rounded border border-border bg-background px-1.5 min-w-0 disabled:opacity-50"
                           />
                           <button
                             type="button"
@@ -998,13 +1002,14 @@ export function CodexEntryDialog({
                               setAddRelicId("");
                               setAddRelicNotes("");
                             }}
-                            className="text-muted-foreground hover:text-foreground"
+                            disabled={none}
+                            className="text-muted-foreground hover:text-foreground disabled:opacity-30"
                             title="Add relic"
                           >
                             <Plus className="h-3.5 w-3.5" />
                           </button>
                         </div>
-                      ) : null;
+                      );
                     })()}
 
                     {/* Add native currency */}
@@ -1311,7 +1316,7 @@ export function CodexEntryDialog({
                       {structuring ? "Structuring…" : "Translating…"}
                     </span>
                   )}
-                  {!translateOpen && !structureOpen && !translating && !structuring && (
+                  {!aiDisabled && !translateOpen && !structureOpen && !translating && !structuring && (
                     <>
                       <button
                         type="button"
@@ -1334,7 +1339,7 @@ export function CodexEntryDialog({
                       </button>
                     </>
                   )}
-                  {structureOpen && !structuring && !translating && (
+                  {!aiDisabled && structureOpen && !structuring && !translating && (
                     <div className="flex items-center gap-1">
                       <select
                         value={structureLang}
@@ -1362,7 +1367,7 @@ export function CodexEntryDialog({
                       </button>
                     </div>
                   )}
-                  {translateOpen && !translating && !structuring && (
+                  {!aiDisabled && translateOpen && !translating && !structuring && (
                     <div className="flex items-center gap-1">
                       <select
                         value={translateLang}

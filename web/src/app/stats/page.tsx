@@ -11,7 +11,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { AchievementIcon } from "@/components/AchievementIcon";
-import { useGlobalWritingLog, useProjects, useProjectGhostTexts, useAchievements, useStatsTotals } from "@/store/queries";
+import { useGlobalWritingLog, useProjects, useProjectGhostTexts, useAchievements, useStatsTotals, useSettings } from "@/store/queries";
 import type { WritingLogEntry, Achievement, AchievementCategory } from "@/types";
 import type { StatsTotals } from "@/lib/api";
 import { statsApi } from "@/lib/api";
@@ -217,6 +217,8 @@ const METRIC_LABEL: Record<string, string> = {
   pandoc_enabled:   "Set up Pandoc export in settings",
   research_items:   "Research items saved",
   stats_views:      "Visits to the stats page",
+  all_human:        "AI features disabled — every word your own",
+  all_achievements: "All achievements earned",
 };
 
 function fmt(n: number): string {
@@ -520,7 +522,7 @@ function ChainCard({ chain, pinned, onPin, onUnpin }: {
 
 // ── Achievements section ──────────────────────────────────────────────────────
 
-function AchievementsSection({ achievements }: { achievements: Achievement[] }) {
+function AchievementsSection({ achievements, aiDisabled }: { achievements: Achievement[]; aiDisabled: boolean }) {
   const [activeCategory, setActiveCategory] = useState<AchievementCategory | "all">("all");
   const [sortMode, setSortMode] = useState<SortMode>("smart");
   const [pinned, setPinned] = useState<string[]>(() => {
@@ -541,20 +543,30 @@ function AchievementsSection({ achievements }: { achievements: Achievement[] }) 
     return next;
   });
 
+  // Separate the hidden achievement from the regular list
+  const hiddenAch = achievements.find((a) => a.chain === "all_achievements");
+
+  // Visible achievements: exclude hidden + exclude all_human when AI is on and not yet earned
+  const visibleAchs = useMemo(() => achievements.filter((a) => {
+    if (a.chain === "all_achievements") return false;
+    if (a.chain === "all_human" && !aiDisabled && !a.earned) return false;
+    return true;
+  }), [achievements, aiDisabled]);
+
   const filtered = useMemo(() =>
-    activeCategory === "all" ? achievements : achievements.filter((a) => a.category === activeCategory),
-  [achievements, activeCategory]);
+    activeCategory === "all" ? visibleAchs : visibleAchs.filter((a) => a.category === activeCategory),
+  [visibleAchs, activeCategory]);
 
   const chains = useMemo(() => sortChains(groupChains(filtered), sortMode), [filtered, sortMode]);
 
-  const earnedCount = achievements.filter((a) => a.earned).length;
+  const earnedCount = visibleAchs.filter((a) => a.earned).length;
 
   return (
     <section>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold">Achievements</h2>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground tabular-nums">{earnedCount} / {achievements.length}</span>
+          <span className="text-xs text-muted-foreground tabular-nums">{earnedCount} / {visibleAchs.length}</span>
           <button
             onClick={() => setSortMode((m) => m === "smart" ? "original" : "smart")}
             className="text-[10px] text-muted-foreground hover:text-foreground border border-border/50 rounded px-1.5 py-0.5 transition-colors"
@@ -564,13 +576,13 @@ function AchievementsSection({ achievements }: { achievements: Achievement[] }) 
         </div>
       </div>
 
-      <ShowcaseSection achievements={achievements} pinned={pinned} onUnpin={onUnpin} />
+      <ShowcaseSection achievements={visibleAchs} pinned={pinned} onUnpin={onUnpin} />
 
       <div className="flex flex-wrap gap-1.5 mb-5">
         {CATEGORIES.map(({ key, label, icon }) => {
           const count = key === "all"
-            ? achievements.filter((a) => a.earned).length
-            : achievements.filter((a) => a.category === key && a.earned).length;
+            ? visibleAchs.filter((a) => a.earned).length
+            : visibleAchs.filter((a) => a.category === key && a.earned).length;
           return (
             <button
               key={key}
@@ -595,6 +607,21 @@ function AchievementsSection({ achievements }: { achievements: Achievement[] }) 
           <ChainCard key={chain.chain} chain={chain} pinned={pinned} onPin={onPin} onUnpin={onUnpin} />
         ))}
       </div>
+
+      {/* Hidden challenge — only revealed once earned */}
+      {hiddenAch?.earned && (
+        <div className="mt-6">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <Trophy className="h-3 w-3 text-rose-400" /> Hidden Challenge
+          </p>
+          <ChainCard
+            chain={groupChains([hiddenAch])[0]}
+            pinned={pinned}
+            onPin={onPin}
+            onUnpin={onUnpin}
+          />
+        </div>
+      )}
     </section>
   );
 }
@@ -832,6 +859,8 @@ export default function StatsPage() {
   const { data: projects = [] } = useProjects();
   const { data: achievements = [] } = useAchievements();
   const { data: totals } = useStatsTotals();
+  const { data: settings } = useSettings();
+  const aiDisabled = settings?.ai_disabled ?? false;
 
   const firstProject = projects[0];
   const { data: ghostScenes = [] } = useProjectGhostTexts(firstProject?.id ?? 0);
@@ -964,7 +993,7 @@ export default function StatsPage() {
         )}
 
         {/* Achievements */}
-        {achievements.length > 0 && <AchievementsSection achievements={achievements} />}
+        {achievements.length > 0 && <AchievementsSection achievements={achievements} aiDisabled={aiDisabled} />}
 
         <p className="text-xs text-muted-foreground text-center pb-4">
           {totalWords.toLocaleString()} words tracked in total

@@ -304,7 +304,8 @@ export const useEntryAccess = (entryId: number) =>
 export const useSetEntryAccess = (entryId: number, projectId: number) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { project_ids: number[] }) => codexApi.setEntryAccess(entryId, data),
+    mutationFn: (data: { project_ids: number[] }) =>
+      entryId > 0 ? codexApi.setEntryAccess(entryId, data) : Promise.resolve({ project_ids: [] }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["codex-access", entryId] });
       qc.invalidateQueries({ queryKey: ["codex", projectId] });

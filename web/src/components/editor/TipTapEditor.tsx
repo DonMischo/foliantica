@@ -42,6 +42,7 @@ interface Props {
   onCodexEntryClick: (id: number) => void;
   sceneId: number;
   onOpenChat?: () => void;
+  aiDisabled?: boolean;
   onOpenTimeline?: () => void;
   onWordSelect?: (word: string | null) => void;
   onFlagsChange?: (flags: FlagItem[]) => void;
@@ -129,7 +130,7 @@ function applyTypewriterScroll(
   } catch { /* view not mounted */ }
 }
 
-export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, onPrefillEntry }: Props) {
+export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, onPrefillEntry, aiDisabled = false }: Props) {
   const showLineNumbers  = useUIStore((s) => s.showParagraphNumbers);
   const typewriterMode   = useUIStore((s) => s.typewriterMode);
   const typewriterOffset = useUIStore((s) => s.typewriterOffset);
@@ -160,6 +161,8 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
   const menuHandleRef = useRef<SlashMenuHandle | null>(null);
   const onOpenChatRef = useRef(onOpenChat);
   onOpenChatRef.current = onOpenChat;
+  const aiDisabledRef = useRef(aiDisabled);
+  aiDisabledRef.current = aiDisabled;
   const onOpenTimelineRef = useRef(onOpenTimeline);
   onOpenTimelineRef.current = onOpenTimeline;
   const onWordSelectRef  = useRef(onWordSelect);
@@ -193,13 +196,17 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
           startOfLine: false,
           items({ query }) {
             const q = query.toLowerCase();
+            const AI_IDS = new Set(["ki", "chat"]);
+            const base = aiDisabledRef.current
+              ? COMMANDS.filter((c) => !AI_IDS.has(c.id))
+              : COMMANDS;
             return q
-              ? COMMANDS.filter(
+              ? base.filter(
                   (c) =>
                     c.label.toLowerCase().startsWith(q) ||
                     c.keywords.some((k) => k.startsWith(q))
                 )
-              : [...COMMANDS];
+              : [...base];
           },
           render: () => ({
             onStart(props) {

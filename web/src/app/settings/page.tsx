@@ -81,6 +81,7 @@ export default function SettingsPage() {
     if (typeof window === "undefined") return true;
     return localStorage.getItem(ACH_POPUPS_KEY) !== "false";
   });
+  const [aiDisabled, setAiDisabled] = useState(false);
 
   const { data: prompts = [] } = usePrompts();
   const createPrompt  = useCreatePrompt();
@@ -198,6 +199,7 @@ export default function SettingsPage() {
       setGrammarLanguages(settings.grammar_languages ?? ["en"]);
       setPandocEnabled(settings.pandoc_enabled ?? false);
       setPandocUrl(settings.pandoc_url ?? "http://localhost:8082");
+      setAiDisabled(settings.ai_disabled ?? false);
     }
   }, [settings]);
 
@@ -300,7 +302,44 @@ export default function SettingsPage() {
             <h2 className="text-base font-semibold">{t("settings_ai_config")}</h2>
           </div>
 
-          {/* API Key */}
+          {/* AI features toggle */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className={cn("h-3.5 w-3.5", aiDisabled ? "text-muted-foreground/40" : "text-primary")} />
+              <div>
+                <p className="text-sm font-medium">AI features</p>
+                <p className="text-xs text-muted-foreground">Enable AI writing assistant, synopsis generation, and codex distillation</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={!aiDisabled}
+              onClick={() => {
+                const next = !aiDisabled;
+                setAiDisabled(next);
+                updateSettings.mutate({ ai_disabled: next });
+              }}
+              className={cn(
+                "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                !aiDisabled ? "bg-primary" : "bg-input"
+              )}
+            >
+              <span className={cn(
+                "pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
+                !aiDisabled ? "translate-x-4" : "translate-x-0"
+              )} />
+            </button>
+          </div>
+
+          {aiDisabled && (
+            <p className="text-xs text-muted-foreground/60 italic pl-5 border-l-2 border-border/40">
+              AI features are disabled. Enable them above to configure models and the API key.
+              The "All Human" achievement is available when AI is off.
+            </p>
+          )}
+
+          {!aiDisabled && (<>
           <div className="space-y-1.5">
             <Label htmlFor="api-key" className="flex items-center gap-1.5">
               <Key className="h-3.5 w-3.5" />
@@ -461,8 +500,10 @@ export default function SettingsPage() {
               </>
             )}
           </div>
+          </>)}
         </section>
 
+        {!aiDisabled && (<>
         <div className="border-t border-border" />
 
         {/* AI Prompts */}
@@ -605,6 +646,7 @@ export default function SettingsPage() {
             </div>
           )}
         </section>
+        </>)}
 
         <div className="border-t border-border" />
 

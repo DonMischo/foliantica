@@ -169,6 +169,10 @@ ACHIEVEMENTS = [
 _seen: set[str] = set()
 ACHIEVEMENTS = [a for a in ACHIEVEMENTS if not (a["key"] in _seen or _seen.add(a["key"]))]  # type: ignore[func-returns-value]
 
+# Achievement keys that are only earnable through AI feature usage.
+# Extend this set when AI-usage tracking is added to the app.
+AI_ACHIEVEMENT_KEYS: frozenset[str] = frozenset()
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -259,16 +263,17 @@ def _compute_metrics(db: Session) -> dict[str, int]:
     time_system_used  = min(1, _safe(db, "SELECT COUNT(*) FROM projects WHERE time_config IS NOT NULL AND time_config NOT IN ('{}','null','')"))
 
     # Settings from user_settings (first row)
-    grammar_enabled = pandoc_enabled = export_count = stats_views = 0
+    grammar_enabled = pandoc_enabled = export_count = stats_views = ai_disabled = 0
     try:
         row = db.execute(text(
-            "SELECT grammar_check_enabled, pandoc_enabled, export_count, stats_views FROM user_settings LIMIT 1"
+            "SELECT grammar_check_enabled, pandoc_enabled, export_count, stats_views, ai_disabled FROM user_settings LIMIT 1"
         )).fetchone()
         if row:
             grammar_enabled = int(row[0] or 0)
             pandoc_enabled  = int(row[1] or 0)
             export_count    = int(row[2] or 0)
             stats_views     = int(row[3] or 0)
+            ai_disabled     = int(row[4] or 0)
     except Exception:
         pass
 
@@ -321,6 +326,7 @@ def _compute_metrics(db: Session) -> dict[str, int]:
         "stats_views":       stats_views,
         "project_info_set":  project_info_set,
         "project_info_full": project_info_full,
+        "ai_disabled":       ai_disabled,
     }
 
 
@@ -334,7 +340,13 @@ def get_achievements(db: Session = Depends(get_db)):
     newly_earned = []
     now          = datetime.now(UTC).replace(tzinfo=None)
 
+    ai_disabled = bool(metrics.get("ai_disabled", 0))
+
     for ach in ACHIEVEMENTS:
+        # When AI is disabled, skip AI-specific achievements entirely
+        if ai_disabled and ach["key"] in AI_ACHIEVEMENT_KEYS:
+            continue
+
         val    = metrics.get(ach["metric"], 0)
         earned = val >= ach["threshold"]
 
@@ -357,6 +369,61 @@ def get_achievements(db: Session = Depends(get_db)):
             "progress":     min(val, ach["threshold"]),
             "progress_max": ach["threshold"],
         })
+
+    # ── Special: All Human ────────────────────────────────────────────────────
+    # Earned when AI features are disabled AND no AI achievement has ever been unlocked.
+    no_ai_unlocked   = not any(k in unlocks for k in AI_ACHIEVEMENT_KEYS)
+    all_human_earned = ai_disabled and no_ai_unlocked
+
+    if all_human_earned and "all_human" not in unlocks:
+        newly_earned.append(AchievementUnlock(key="all_human", unlocked_at=now))
+        unlocks["all_human"] = now
+
+    all_human_ts = unlocks.get("all_human")
+    results.append({
+        "key":          "all_human",
+        "chain":        "all_human",
+        "name":         "The Pen & Nothing Else",
+        "description":  "'The scariest moment is always just before you start.' — King. You started, and finished, without a single algorithmic word.",
+        "category":     "words",
+        "tier":         3,
+        "metric":       "all_human",
+        "threshold":    1,
+        "earned":       all_human_earned,
+        "unlocked_at":  all_human_ts.isoformat() if all_human_ts and all_human_earned else None,
+        "progress":     1 if all_human_earned else 0,
+        "progress_max": 1,
+    })
+
+    # ── Hidden: The Complete Works ────────────────────────────────────────────
+    # Requires every regular achievement + either path:
+    #   Human path: all non-AI achievements + all_human earned (AI was always off)
+    #   AI path:    all achievements incl. AI (when defined) + all_human NOT earned
+    # Together this simplifies to: all applicable achievements earned.
+    all_regular_earned = all(r["earned"] for r in results if r["key"] != "all_human")
+    all_human_path     = all_regular_earned and all_human_earned
+    all_ai_path        = all_regular_earned and not all_human_earned
+    complete_earned    = all_human_path or all_ai_path
+
+    if complete_earned and "all_achievements" not in unlocks:
+        newly_earned.append(AchievementUnlock(key="all_achievements", unlocked_at=now))
+        unlocks["all_achievements"] = now
+
+    complete_ts = unlocks.get("all_achievements")
+    results.append({
+        "key":          "all_achievements",
+        "chain":        "all_achievements",
+        "name":         "The Complete Works",
+        "description":  "'A writer is someone for whom writing is more difficult than it is for other people.' — Thomas Mann. You made it look easy.",
+        "category":     "story",
+        "tier":         5,
+        "metric":       "all_achievements",
+        "threshold":    1,
+        "earned":       complete_earned,
+        "unlocked_at":  complete_ts.isoformat() if complete_ts and complete_earned else None,
+        "progress":     1 if complete_earned else 0,
+        "progress_max": 1,
+    })
 
     if newly_earned:
         db.add_all(newly_earned)

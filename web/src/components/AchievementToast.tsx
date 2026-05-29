@@ -80,6 +80,8 @@ const METRIC_LABEL: Record<string, string> = {
   pandoc_enabled:   "Pandoc export",
   research_items:   "Research items saved",
   stats_views:      "Stats page visits",
+  all_human:        "AI features disabled",
+  all_achievements: "All achievements earned",
 };
 
 // ── Keyframe CSS ─────────────────────────────────────────────────────────────

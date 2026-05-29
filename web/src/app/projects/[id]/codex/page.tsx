@@ -242,6 +242,17 @@ export default function CodexPage() {
   const [editing, setEditing]         = useState<CodexEntry | null>(null);
   const [bulkOpen, setBulkOpen]       = useState(false);
 
+  // ── Custom categories (localStorage-persisted, per project) ───────────────
+  const [newCatInput, setNewCatInput] = useState<string | null>(null);
+  const [customCategories, setCustomCategories] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem(`codex-categories-${projectId}`) ?? "[]"); } catch { return []; }
+  });
+  const updateCustomCategories = (cats: string[]) => {
+    setCustomCategories(cats);
+    localStorage.setItem(`codex-categories-${projectId}`, JSON.stringify(cats));
+  };
+
   // ── Selection state ───────────────────────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
@@ -256,6 +267,8 @@ export default function CodexPage() {
   const uniqueTags     = [...new Set(entries.flatMap(e => e.tags))].sort();
   const BUILT_IN_FILTER = ["character", "location", "item", "relic", "lore", "custom"];
   const uniqueCustomTypes = [...new Set(entries.map(e => e.entry_type).filter(t => !BUILT_IN_FILTER.includes(t)))].sort();
+  // Merge explicit (localStorage) + implicit (entry-derived) custom categories
+  const allCustomTypes = [...new Set([...customCategories, ...uniqueCustomTypes])].sort();
   const hasExtraFilters = uniqueGroups.length > 0 || uniqueSpecies.length > 0 || uniqueSubtypes.length > 0 || uniqueColors.length > 1 || uniqueTags.length > 0;
 
   // ── Filtering ────────────────────────────────────────────────────────────
@@ -421,7 +434,7 @@ export default function CodexPage() {
           />
 
           {/* Type chips */}
-          <div className="flex gap-1 flex-wrap">
+          <div className="flex gap-1 flex-wrap items-center">
             {(["all", "character", "location", "item", "relic", "lore", "custom"] as const).map(tp => (
               <button
                 key={tp}
@@ -436,20 +449,71 @@ export default function CodexPage() {
                 {tp === "all" ? t("codex_all") : typeLabel(tp)}
               </button>
             ))}
-            {uniqueCustomTypes.map(ct => (
-              <button
+            {allCustomTypes.map(ct => (
+              <div
                 key={ct}
-                onClick={() => setTypeFilter(ct)}
                 className={cn(
-                  "text-xs px-2.5 py-1 rounded-full transition-colors",
+                  "group flex items-center text-xs rounded-full transition-colors",
                   typeFilter === ct
                     ? "bg-primary text-primary-foreground"
                     : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
                 )}
               >
-                {ct}
-              </button>
+                <button onClick={() => setTypeFilter(ct)} className="pl-2.5 pr-1.5 py-1 leading-none">
+                  {ct}
+                </button>
+                {customCategories.includes(ct) && (
+                  <button
+                    onClick={e => {
+                      e.stopPropagation();
+                      updateCustomCategories(customCategories.filter(c => c !== ct));
+                      if (typeFilter === ct) setTypeFilter("all");
+                    }}
+                    className="pr-1.5 py-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
+                    title="Remove category"
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                )}
+              </div>
             ))}
+
+            {/* Add custom category */}
+            {newCatInput === null ? (
+              <button
+                onClick={() => setNewCatInput("")}
+                className="text-xs px-1.5 py-1 rounded-full bg-secondary text-muted-foreground hover:bg-secondary/80 hover:text-foreground transition-colors"
+                title="Add custom category"
+              >
+                <Plus className="h-3 w-3" />
+              </button>
+            ) : (
+              <form
+                className="flex items-center gap-1"
+                onSubmit={e => {
+                  e.preventDefault();
+                  const name = newCatInput.trim();
+                  if (name && !BUILT_IN_FILTER.includes(name) && !customCategories.includes(name)) {
+                    updateCustomCategories([...customCategories, name]);
+                  }
+                  setNewCatInput(null);
+                }}
+              >
+                <input
+                  autoFocus
+                  value={newCatInput}
+                  onChange={e => setNewCatInput(e.target.value)}
+                  placeholder="Category name…"
+                  className="h-6 text-xs rounded-full border border-border bg-background px-2.5 w-28 focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <button type="submit" className="text-muted-foreground hover:text-foreground" title="Create">
+                  <Plus className="h-3 w-3" />
+                </button>
+                <button type="button" onClick={() => setNewCatInput(null)} className="text-muted-foreground hover:text-foreground" title="Cancel">
+                  <X className="h-3 w-3" />
+                </button>
+              </form>
+            )}
           </div>
 
           {/* Extra filters toggle */}

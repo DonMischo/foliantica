@@ -74,6 +74,7 @@ def _settings_out(s: UserSettings) -> SettingsOut:
         grammar_languages=grammar_langs,
         pandoc_enabled=bool(s.pandoc_enabled),
         pandoc_url=s.pandoc_url or "http://localhost:8082",
+        ai_disabled=bool(s.ai_disabled) if s.ai_disabled is not None else False,
     )
 
 
@@ -119,6 +120,8 @@ def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
         s.pandoc_enabled = int(body.pandoc_enabled)
     if body.pandoc_url is not None:
         s.pandoc_url = body.pandoc_url
+    if body.ai_disabled is not None:
+        s.ai_disabled = int(body.ai_disabled)
     db.commit()
     db.refresh(s)
     return _settings_out(s)

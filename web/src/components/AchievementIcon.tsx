@@ -1067,6 +1067,31 @@ const RelicArtifact = ({ className }: P) => (
   </svg>
 );
 
+// ── SPECIAL ──────────────────────────────────────────────────────────────────
+
+// All Human: a quill pen — the pure human writer
+const AllHuman = ({ className }: P) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path fill="currentColor" fillOpacity=".15" stroke="none" d="M19 3 C14 3 8 7 6 14 L10 18 C17 16 21 10 21 5 Z" />
+    <path d="M19 3 C14 3 8 7 6 14 L10 18 C17 16 21 10 21 5 Z" />
+    <line x1="6" y1="14" x2="3" y2="21" />
+    <line x1="6" y1="14" x2="10" y2="18" />
+    <line x1="12" y1="9" x2="16" y2="13" />
+  </svg>
+);
+
+// All Achievements: a crown — the complete collection
+const AllAchievements = ({ className }: P) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path fill="currentColor" fillOpacity=".15" stroke="none" d="M3 19 L3 9 L7 14 L12 5 L17 14 L21 9 L21 19 Z" />
+    <path d="M3 19 L3 9 L7 14 L12 5 L17 14 L21 9 L21 19 Z" />
+    <line x1="3" y1="22" x2="21" y2="22" />
+    <circle cx="12" cy="5" r="1.2" fill="currentColor" stroke="none" />
+    <circle cx="3" cy="9" r="1" fill="currentColor" stroke="none" />
+    <circle cx="21" cy="9" r="1" fill="currentColor" stroke="none" />
+  </svg>
+);
+
 // ── ICON MAP ─────────────────────────────────────────────────────────────────
 
 const ICON_MAP: Record<string, (p: P) => React.JSX.Element> = {
@@ -1209,6 +1234,10 @@ const ICON_MAP: Record<string, (p: P) => React.JSX.Element> = {
   relic_1:  RelicGem,
   relic_5:  RelicAmulet,
   relic_20: RelicArtifact,
+
+  // Special
+  all_human:        AllHuman,
+  all_achievements: AllAchievements,
 
   // Stats engagement
   stats_view:    ChartEye,

@@ -327,6 +327,7 @@ export interface Settings {
   grammar_languages: string[];
   pandoc_enabled: boolean;
   pandoc_url: string;
+  ai_disabled: boolean;
 }
 
 // ── Fragments ─────────────────────────────────────────────────────────────────

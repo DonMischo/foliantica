@@ -398,6 +398,7 @@ class SettingsUpdate(BaseModel):
     grammar_languages: Optional[list[str]] = None
     pandoc_enabled: Optional[bool] = None
     pandoc_url: Optional[str] = None
+    ai_disabled: Optional[bool] = None
 
 
 class SettingsOut(BaseModel):
@@ -419,6 +420,7 @@ class SettingsOut(BaseModel):
     grammar_languages: list[str]
     pandoc_enabled: bool
     pandoc_url: str
+    ai_disabled: bool = False
 
     model_config = {"from_attributes": True}
 

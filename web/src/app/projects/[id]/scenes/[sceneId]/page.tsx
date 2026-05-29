@@ -77,6 +77,7 @@ export default function ScenePage() {
   const qc = useQueryClient();
 
   const timeConfig = timeConfigData ?? DEFAULT_TIME_CONFIG;
+  const aiDisabled = appSettings?.ai_disabled ?? false;
 
   const [content, setContent] = useState("");
   const [title, setTitle] = useState("");
@@ -446,6 +447,7 @@ export default function ScenePage() {
                 Time
                 {hasTime && <span className="ml-auto text-[10px] text-primary">set</span>}
               </button>
+              {!aiDisabled && (
               <button
                 onClick={() => { setChatPanelOpen(!chatPanelOpen); if (timePanelOpen) setTimePanelOpen(false); setMenuOpen(false); }}
                 className={cn("w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2", chatPanelOpen && "text-primary")}
@@ -454,6 +456,7 @@ export default function ScenePage() {
                 Chat
                 {chatPanelOpen && <Check className="ml-auto h-3 w-3 text-primary" />}
               </button>
+              )}
 
               <div className="border-t border-border my-1" />
 
@@ -625,7 +628,8 @@ export default function ScenePage() {
             codexEntries={codexEntries}
             onCodexEntryClick={handleCodexEntryClick}
             sceneId={sceneIdNum}
-            onOpenChat={() => setChatPanelOpen(true)}
+            aiDisabled={aiDisabled}
+            onOpenChat={aiDisabled ? undefined : () => setChatPanelOpen(true)}
             onOpenTimeline={() => setTimelineCommandOpen(true)}
             onWordSelect={(w) => { if (w) setSelectedWord(w); }}
             onFlagsChange={setFlags}
@@ -671,7 +675,7 @@ export default function ScenePage() {
         )}
 
         {/* Scene chat panel */}
-        {chatPanelOpen && (
+        {!aiDisabled && chatPanelOpen && (
           <ChatPanel
             sceneId={sceneIdNum}
             onClose={() => setChatPanelOpen(false)}
