@@ -1,4 +1,5 @@
 import json
+from calendar import monthrange
 from datetime import date, datetime, UTC, timedelta
 
 from fastapi import APIRouter, Depends
@@ -296,6 +297,79 @@ def _compute_metrics(db: Session) -> dict[str, int]:
     except Exception:
         pass
 
+    # ── Hidden achievement metrics ─────────────────────────────────────────────
+    # Comeback gap: largest gap (days) between consecutive writing days
+    comeback_gap = 0
+    if len(active_dates) >= 2:
+        sorted_writing = sorted(date.fromisoformat(d) for d in active_dates)
+        for i in range(1, len(sorted_writing)):
+            gap = (sorted_writing[i] - sorted_writing[i - 1]).days
+            if gap > comeback_gap:
+                comeback_gap = gap
+
+    # Perfect month: wrote every day of at least one calendar month
+    perfect_month = 0
+    if active_dates:
+        by_month: dict = {}
+        for d in active_dates:
+            dt = date.fromisoformat(d)
+            key = (dt.year, dt.month)
+            if key not in by_month:
+                by_month[key] = set()
+            by_month[key].add(dt.day)
+        for (year, month), days_written in by_month.items():
+            if len(days_written) == monthrange(year, month)[1]:
+                perfect_month = 1
+                break
+
+    max_scene_words = _safe(db, "SELECT COALESCE(MAX(word_count), 0) FROM scenes")
+
+    # Lore bomb: max scenes a single codex entry appears in
+    lore_bomb = 0
+    try:
+        rows = (
+            db.query(MentionStat.codex_id,
+                     func.count(distinct(MentionStat.scene_id)).label("cnt"))
+            .filter(MentionStat.count > 0, MentionStat.scene_id.isnot(None))
+            .group_by(MentionStat.codex_id)
+            .all()
+        )
+        lore_bomb = max((r.cnt for r in rows), default=0)
+    except Exception:
+        pass
+
+    all_codex_types = _safe(db,
+        "SELECT COUNT(DISTINCT entry_type) FROM codex_entries "
+        "WHERE entry_type IN ('character','location','item','relic','lore')")
+
+    custom_type_count = _safe(db,
+        "SELECT COUNT(DISTINCT entry_type) FROM codex_entries "
+        "WHERE entry_type NOT IN ('character','location','item','relic','lore','custom')")
+
+    phantom_project = min(1, _safe(db, """
+        SELECT COUNT(*) FROM projects p
+        WHERE (SELECT COUNT(*) FROM codex_entries ce WHERE ce.project_id = p.id) >= 10
+        AND (SELECT COUNT(*) FROM scenes s
+             JOIN chapters c ON s.chapter_id = c.id
+             JOIN acts a ON c.act_id = a.id
+             WHERE a.project_id = p.id) = 0"""))
+
+    dual_projects = _safe(db, """
+        SELECT COUNT(*) FROM (
+            SELECT a.project_id
+            FROM scenes s
+            JOIN chapters c ON s.chapter_id = c.id
+            JOIN acts a ON c.act_id = a.id
+            GROUP BY a.project_id
+            HAVING SUM(s.word_count) >= 20000) AS sub""")
+
+    # Derived conditions
+    pantser_condition     = 1 if total_words >= 10000 and codex_entries == 0 else 0
+    mirror_condition      = 1 if abs(scene_count - codex_entries) <= 1 and scene_count > 10 and codex_entries > 0 else 0
+    planner_condition     = 1 if corkboard_scenes * 2 > scene_count and scene_count >= 10 else 0
+    bibliophile_condition = 1 if research_items >= 50 and fragment_count >= 50 else 0
+    iceberg_count         = max(0, codex_entries - codex_mentioned)
+
     return {
         "current_streak":   current_streak,
         "longest_streak":   longest_streak,
@@ -327,6 +401,20 @@ def _compute_metrics(db: Session) -> dict[str, int]:
         "project_info_set":  project_info_set,
         "project_info_full": project_info_full,
         "ai_disabled":       ai_disabled,
+        # Hidden achievement metrics
+        "comeback_gap":         comeback_gap,
+        "perfect_month":        perfect_month,
+        "max_scene_words":      max_scene_words,
+        "lore_bomb":            lore_bomb,
+        "all_codex_types":      all_codex_types,
+        "custom_type_count":    custom_type_count,
+        "phantom_project":      phantom_project,
+        "dual_projects":        dual_projects,
+        "pantser_condition":    pantser_condition,
+        "mirror_condition":     mirror_condition,
+        "planner_condition":    planner_condition,
+        "bibliophile_condition": bibliophile_condition,
+        "iceberg_count":        iceberg_count,
     }
 
 
@@ -423,7 +511,41 @@ def get_achievements(db: Session = Depends(get_db)):
         "unlocked_at":  complete_ts.isoformat() if complete_ts and complete_earned else None,
         "progress":     1 if complete_earned else 0,
         "progress_max": 1,
+        "hidden":       True,
     })
+
+    # ── Hidden achievements ───────────────────────────────────────────────────
+    # These do NOT count toward all_achievements — appended after that check.
+    def _h(key, chain, name, desc, cat, tier, metric, threshold):
+        val    = metrics.get(metric, 0)
+        earned = val >= threshold
+        if earned and key not in unlocks:
+            newly_earned.append(AchievementUnlock(key=key, unlocked_at=now))
+            unlocks[key] = now
+        ts = unlocks.get(key)
+        results.append({
+            "key": key, "chain": chain, "name": name, "description": desc,
+            "category": cat, "tier": tier, "metric": metric,
+            "threshold": threshold, "earned": earned,
+            "unlocked_at": ts.isoformat() if ts and earned else None,
+            "progress": min(val, threshold), "progress_max": threshold,
+            "hidden": True,
+        })
+
+    _h("pantser",      "pantser",      "The Pantser",    "10,000 words written and not a single codex entry. Pure, unplanned, beautiful chaos.",                                   "story",   2, "pantser_condition",     1)
+    _h("mirror",       "mirror",       "Mirror",         "Your scene count and codex entry count are nearly identical. Structure and world-building in perfect balance.",           "codex",   2, "mirror_condition",      1)
+    _h("comeback_kid", "comeback_kid", "Comeback Kid",   "A gap of 30 days or more — then you came back. The page waited. So did the story.",                                      "streaks", 2, "comeback_gap",          30)
+    _h("perfect_month","perfect_month","Perfect Month",  "You wrote every single day of a calendar month. Even Trollope took Sundays off.",                                        "streaks", 4, "perfect_month",         1)
+    _h("omnivore",     "omnivore",     "The Omnivore",   "All five built-in codex types in use: character, location, item, relic, lore. A world fully rounded.",                   "codex",   2, "all_codex_types",       5)
+    _h("dense_prose",  "dense_prose",  "Dense Prose",    "A single scene with 5,000 words or more. Tolstoy would nod approvingly.",                                                "words",   3, "max_scene_words",       5_000)
+    _h("lore_bomb",    "lore_bomb",    "Lore Bomb",      "One codex entry woven into 10 or more scenes. This character (or place, or thing) runs through everything.",             "codex",   3, "lore_bomb",             10)
+    _h("the_planner",  "the_planner",  "The Planner",    "More than half your scenes are on the corkboard, and you have at least 10. You outline first, draft second.",            "story",   2, "planner_condition",     1)
+    _h("iceberg",      "iceberg",      "Iceberg",        "30 codex entries that never appear in the prose. The world is nine-tenths below the surface — as it should be.",         "codex",   3, "iceberg_count",         30)
+    _h("the_phantom",  "the_phantom",  "The Phantom",    "A project with 10+ codex entries and zero scenes. Pure world-building, pure intent. The story is waiting.",              "codex",   2, "phantom_project",       1)
+    _h("double_feature","double_feature","Double Feature","Two separate projects, each with 20,000 words or more. You're not a writer — you're a writing factory.",                 "words",   3, "dual_projects",         2)
+    _h("the_naturalist","the_naturalist","The Naturalist","5 or more custom codex types created. Your world has categories that no one has named before.",                          "codex",   2, "custom_type_count",     5)
+    _h("bibliophile",  "bibliophile",  "Bibliophile",    "50+ research items and 50+ fragments. You collect almost as much as you create.",                                        "research",3, "bibliophile_condition", 1)
+    _h("navel_gazer",  "navel_gazer",  "Navel Gazer",    "100 visits to the stats page. 'What gets measured gets managed.' — or, in your case, obsessed over.",                   "research",3, "stats_views",           100)
 
     if newly_earned:
         db.add_all(newly_earned)

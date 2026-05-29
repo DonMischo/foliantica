@@ -219,6 +219,20 @@ const METRIC_LABEL: Record<string, string> = {
   stats_views:      "Visits to the stats page",
   all_human:        "AI features disabled — every word your own",
   all_achievements: "All achievements earned",
+  // Hidden achievement metrics
+  comeback_gap:         "Largest gap between writing sessions (days)",
+  perfect_month:        "Wrote every day of a calendar month",
+  max_scene_words:      "Longest single scene (words)",
+  lore_bomb:            "Most scenes a single codex entry appears in",
+  all_codex_types:      "Built-in codex types used",
+  custom_type_count:    "Custom codex types created",
+  phantom_project:      "Project with 10+ codex entries and no scenes",
+  dual_projects:        "Projects with 20,000+ words each",
+  pantser_condition:    "10,000 words written with zero codex entries",
+  mirror_condition:     "Scene count matches codex entry count",
+  planner_condition:    "Over half your scenes are on the corkboard",
+  bibliophile_condition:"50+ research items and 50+ fragments",
+  iceberg_count:        "Codex entries never mentioned in prose",
 };
 
 function fmt(n: number): string {
@@ -543,12 +557,12 @@ function AchievementsSection({ achievements, aiDisabled }: { achievements: Achie
     return next;
   });
 
-  // Separate the hidden achievement from the regular list
-  const hiddenAch = achievements.find((a) => a.chain === "all_achievements");
+  // Hidden achievements — revealed only when earned
+  const hiddenAchs = achievements.filter((a) => a.hidden);
 
-  // Visible achievements: exclude hidden + exclude all_human when AI is on and not yet earned
+  // Visible achievements: exclude all hidden + exclude all_human when AI is on and not yet earned
   const visibleAchs = useMemo(() => achievements.filter((a) => {
-    if (a.chain === "all_achievements") return false;
+    if (a.hidden) return false;
     if (a.chain === "all_human" && !aiDisabled && !a.earned) return false;
     return true;
   }), [achievements, aiDisabled]);
@@ -608,18 +622,23 @@ function AchievementsSection({ achievements, aiDisabled }: { achievements: Achie
         ))}
       </div>
 
-      {/* Hidden challenge — only revealed once earned */}
-      {hiddenAch?.earned && (
+      {/* Hidden challenges — revealed only once earned */}
+      {hiddenAchs.some((a) => a.earned) && (
         <div className="mt-6">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-            <Trophy className="h-3 w-3 text-rose-400" /> Hidden Challenge
+            <Trophy className="h-3 w-3 text-rose-400" /> Hidden Challenges
           </p>
-          <ChainCard
-            chain={groupChains([hiddenAch])[0]}
-            pinned={pinned}
-            onPin={onPin}
-            onUnpin={onUnpin}
-          />
+          <div className="space-y-1.5">
+            {hiddenAchs.filter((a) => a.earned).map((ach) => (
+              <ChainCard
+                key={ach.chain}
+                chain={groupChains([ach])[0]}
+                pinned={pinned}
+                onPin={onPin}
+                onUnpin={onUnpin}
+              />
+            ))}
+          </div>
         </div>
       )}
     </section>

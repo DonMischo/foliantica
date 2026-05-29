@@ -1239,6 +1239,22 @@ const ICON_MAP: Record<string, (p: P) => React.JSX.Element> = {
   all_human:        AllHuman,
   all_achievements: AllAchievements,
 
+  // Hidden achievements
+  pantser:       QuillInk,
+  mirror:        TwoFigures,
+  comeback_kid:  FlameM,
+  perfect_month: FlameCrown,
+  omnivore:      Palette5Icon,
+  dense_prose:   BookThick,
+  lore_bomb:     CosmicNet,
+  the_planner:   SceneBoard,
+  iceberg:       TomeStars,
+  the_phantom:   ShadowFigure,
+  double_feature:FolderDouble,
+  the_naturalist:RelicArtifact,
+  bibliophile:   Librarian,
+  navel_gazer:   ChartAnalyst,
+
   // Stats engagement
   stats_view:    ChartEye,
   stats_addict:  ChartPulse,

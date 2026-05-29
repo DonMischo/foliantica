@@ -444,6 +444,7 @@ export interface Achievement {
   unlocked_at: string | null;
   progress: number;
   progress_max: number;
+  hidden?: boolean;
 }
 
 // ── Writing log / streaks ─────────────────────────────────────────────────────
