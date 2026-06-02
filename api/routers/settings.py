@@ -75,6 +75,8 @@ def _settings_out(s: UserSettings) -> SettingsOut:
         pandoc_enabled=bool(s.pandoc_enabled),
         pandoc_url=s.pandoc_url or "http://localhost:8082",
         ai_disabled=bool(s.ai_disabled) if s.ai_disabled is not None else False,
+        sync_mirror_enabled=bool(s.sync_mirror_enabled) if s.sync_mirror_enabled is not None else False,
+        sync_local_dir=s.sync_local_dir or None,
     )
 
 
@@ -122,8 +124,18 @@ def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
         s.pandoc_url = body.pandoc_url
     if body.ai_disabled is not None:
         s.ai_disabled = int(body.ai_disabled)
+    sync_changed = False
+    if body.sync_mirror_enabled is not None:
+        s.sync_mirror_enabled = int(body.sync_mirror_enabled)
+        sync_changed = True
+    if body.sync_local_dir is not None:
+        s.sync_local_dir = body.sync_local_dir or None
+        sync_changed = True
     db.commit()
     db.refresh(s)
+    if sync_changed:
+        from routers import sync as _sync
+        _sync.init(bool(s.sync_mirror_enabled), s.sync_local_dir)
     return _settings_out(s)
 
 

@@ -1070,6 +1070,28 @@ def migrate_achievements():
         """))
 
 
+def migrate_ai_disabled():
+    """Add ai_disabled column to user_settings if not present."""
+    with engine.begin() as conn:
+        try:
+            conn.execute(text("ALTER TABLE user_settings ADD COLUMN ai_disabled INTEGER NOT NULL DEFAULT 0"))
+        except Exception:
+            pass  # column already exists
+
+
+def migrate_sync_mirror():
+    """Add sync_mirror_enabled and sync_local_dir columns to user_settings."""
+    with engine.begin() as conn:
+        for stmt in [
+            "ALTER TABLE user_settings ADD COLUMN sync_mirror_enabled INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE user_settings ADD COLUMN sync_local_dir TEXT",
+        ]:
+            try:
+                conn.execute(text(stmt))
+            except Exception:
+                pass  # column already exists
+
+
 def migrate_backfill_word_counts():
     """Backfill scenes.word_count for rows where it is 0 but content exists."""
     import re as _re

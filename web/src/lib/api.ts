@@ -722,6 +722,23 @@ export const exportProfilesApi = {
   delete: (id: number) => req<void>(`/export-profiles/${id}`, { method: "DELETE" }),
 };
 
+// ── Sync mirror ───────────────────────────────────────────────────────────────
+
+export interface SyncStatus {
+  enabled:           boolean;
+  mode:              "online" | "offline" | "disabled";
+  mirror_dir:        string | null;
+  datadir_available: boolean | null;
+  last_sync_at:      string | null;
+  drive_restored_at: string | null;
+  error:             string | null;
+}
+
+export const syncApi = {
+  status:  () => req<SyncStatus>("/sync/status"),
+  trigger: () => req<{ ok: boolean }>("/sync/trigger", { method: "POST" }),
+};
+
 // ── Achievements ──────────────────────────────────────────────────────────────
 
 export const achievementsApi = {

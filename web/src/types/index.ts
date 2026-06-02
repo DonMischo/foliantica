@@ -328,6 +328,8 @@ export interface Settings {
   pandoc_enabled: boolean;
   pandoc_url: string;
   ai_disabled: boolean;
+  sync_mirror_enabled: boolean;
+  sync_local_dir: string | null;
 }
 
 // ── Fragments ─────────────────────────────────────────────────────────────────

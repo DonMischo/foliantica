@@ -1,12 +1,15 @@
 import os
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 
-from database import engine, migrate_to_four_level, migrate_new_columns, migrate_indexes, migrate_entry_groups, migrate_ai_prompts, migrate_scene_versions, migrate_mention_stats, migrate_writing_log, migrate_timeline_tables, migrate_codex_entry_sharing, migrate_research, migrate_publishing, migrate_publisher_profiles, migrate_achievements, migrate_backfill_word_counts
+from database import engine, migrate_to_four_level, migrate_new_columns, migrate_indexes, migrate_entry_groups, migrate_ai_prompts, migrate_scene_versions, migrate_mention_stats, migrate_writing_log, migrate_timeline_tables, migrate_codex_entry_sharing, migrate_research, migrate_publishing, migrate_publisher_profiles, migrate_achievements, migrate_backfill_word_counts, migrate_ai_disabled, migrate_sync_mirror
 from models import Base
 from routers import projects, acts, chapters, scenes, codex, settings, ai, export, imports, graph, time, fragments, images, scene_commands, grammar, analytics, research, submissions, achievements
+from routers import sync as sync_router
 
 # ── Run migrations BEFORE create_all so table renames happen first ────────────
 migrate_to_four_level()
@@ -26,10 +29,34 @@ migrate_publishing()
 migrate_publisher_profiles()
 migrate_achievements()
 migrate_backfill_word_counts()
+migrate_ai_disabled()
+migrate_sync_mirror()
 
 os.makedirs("uploads", exist_ok=True)
 
-app = FastAPI(title="Foliantica API", version="0.1.0")
+# ── Init sync mirror from stored settings ─────────────────────────────────────
+def _init_sync() -> None:
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(text(
+                "SELECT sync_mirror_enabled, sync_local_dir FROM user_settings LIMIT 1"
+            )).fetchone()
+            if row:
+                sync_router.init(bool(row[0]), row[1])
+    except Exception:
+        pass
+
+
+_init_sync()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    sync_router.shutdown_backup()
+
+
+app = FastAPI(title="Foliantica API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -61,6 +88,7 @@ app.include_router(analytics.router)
 app.include_router(research.router)
 app.include_router(submissions.router)
 app.include_router(achievements.router)
+app.include_router(sync_router.router)
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 

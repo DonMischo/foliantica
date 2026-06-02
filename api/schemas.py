@@ -399,6 +399,8 @@ class SettingsUpdate(BaseModel):
     pandoc_enabled: Optional[bool] = None
     pandoc_url: Optional[str] = None
     ai_disabled: Optional[bool] = None
+    sync_mirror_enabled: Optional[bool] = None
+    sync_local_dir: Optional[str] = None
 
 
 class SettingsOut(BaseModel):
@@ -421,6 +423,8 @@ class SettingsOut(BaseModel):
     pandoc_enabled: bool
     pandoc_url: str
     ai_disabled: bool = False
+    sync_mirror_enabled: bool = False
+    sync_local_dir: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

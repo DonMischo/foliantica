@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy } from "lucide-react";
+import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useSettings, useUpdateSettings, useOpenRouterModels, usePrompts, useCreatePrompt, useUpdatePrompt, useDeletePrompt, useRevertPrompt, useServiceStatus } from "@/store/queries";
-import { dataDirApi, settingsApi } from "@/lib/api";
+import { useSettings, useUpdateSettings, useOpenRouterModels, usePrompts, useCreatePrompt, useUpdatePrompt, useDeletePrompt, useRevertPrompt, useServiceStatus, useSyncStatus } from "@/store/queries";
+import { dataDirApi, settingsApi, syncApi } from "@/lib/api";
 import { ACH_POPUPS_KEY } from "@/components/AchievementToast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useUIStore } from "@/store/ui";
@@ -82,6 +82,12 @@ export default function SettingsPage() {
     return localStorage.getItem(ACH_POPUPS_KEY) !== "false";
   });
   const [aiDisabled, setAiDisabled] = useState(false);
+
+  // ── Sync mirror ───────────────────────────────────────────────────────────
+  const { data: syncStatus } = useSyncStatus();
+  const [syncEnabled, setSyncEnabled]     = useState(false);
+  const [syncLocalDir, setSyncLocalDir]   = useState("");
+  const [syncSaving, setSyncSaving]       = useState(false);
 
   const { data: prompts = [] } = usePrompts();
   const createPrompt  = useCreatePrompt();
@@ -200,8 +206,30 @@ export default function SettingsPage() {
       setPandocEnabled(settings.pandoc_enabled ?? false);
       setPandocUrl(settings.pandoc_url ?? "http://localhost:8082");
       setAiDisabled(settings.ai_disabled ?? false);
+      setSyncEnabled(settings.sync_mirror_enabled ?? false);
+      setSyncLocalDir(settings.sync_local_dir ?? "");
     }
   }, [settings]);
+
+  const handleSyncToggle = async (enabled: boolean) => {
+    setSyncEnabled(enabled);
+    setSyncSaving(true);
+    try {
+      await updateSettings.mutateAsync({ sync_mirror_enabled: enabled, sync_local_dir: syncLocalDir || null } as any);
+    } finally {
+      setSyncSaving(false);
+    }
+  };
+
+  const handleSyncDirSave = async () => {
+    setSyncSaving(true);
+    try {
+      await updateSettings.mutateAsync({ sync_local_dir: syncLocalDir || null } as any);
+      if (syncEnabled) syncApi.trigger().catch(() => {});
+    } finally {
+      setSyncSaving(false);
+    }
+  };
 
   const toggleModel = (id: string) => {
     setEnabledModels(prev =>
@@ -908,6 +936,97 @@ export default function SettingsPage() {
               >
                 Reset to default
               </Button>
+            )}
+          </div>
+        </section>
+
+        <div className="border-t border-border" />
+
+        {/* Data Mirror */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Database className="h-4 w-4 text-primary" />
+            <h2 className="text-base font-semibold">Data Mirror</h2>
+          </div>
+
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Keep a local mirror copy</p>
+                <p className="text-xs text-muted-foreground">
+                  Maintains an up-to-date backup at a local path, synced every 5 minutes.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={syncEnabled}
+                disabled={syncSaving}
+                onClick={() => handleSyncToggle(!syncEnabled)}
+                className={cn(
+                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors disabled:opacity-50",
+                  syncEnabled ? "bg-primary" : "bg-input"
+                )}
+              >
+                <span className={cn(
+                  "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-background shadow-lg ring-0 transition-transform",
+                  syncEnabled ? "translate-x-4" : "translate-x-0"
+                )} />
+              </button>
+            </div>
+
+            {syncEnabled && (
+              <>
+                <p className="text-xs text-muted-foreground bg-muted/40 rounded-md px-3 py-2 leading-relaxed">
+                  If your sync drive (OneDrive, NAS, etc.) is temporarily unavailable, your data is always
+                  safe in the local copy. When the drive comes back online, Foliantica notifies you and
+                  updates the mirror. Only the database file is mirrored — uploads are not included.
+                </p>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Mirror location</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={syncLocalDir}
+                      onChange={(e) => setSyncLocalDir(e.target.value)}
+                      placeholder={`${typeof window !== "undefined" ? "~" : ""}/.foliantica/mirror  (default)`}
+                      className="text-xs h-8 flex-1 font-mono"
+                    />
+                    <Button size="sm" variant="outline" className="h-8 shrink-0" onClick={handleSyncDirSave} disabled={syncSaving}>
+                      Apply
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className={cn(
+                      "h-1.5 w-1.5 rounded-full",
+                      syncStatus?.mode === "online"  ? "bg-emerald-400" :
+                      syncStatus?.mode === "offline" ? "bg-amber-400"   : "bg-muted-foreground/40"
+                    )} />
+                    {syncStatus?.mode === "online"  ? "Online" :
+                     syncStatus?.mode === "offline" ? "Sync drive offline" : "Initialising…"}
+                    {syncStatus?.last_sync_at && (
+                      <span className="text-muted-foreground/50">
+                        · Last synced {new Date(syncStatus.last_sync_at).toLocaleTimeString()}
+                      </span>
+                    )}
+                  </div>
+                  <Button
+                    size="sm" variant="ghost"
+                    className="h-7 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+                    onClick={() => syncApi.trigger().catch(() => {})}
+                    disabled={syncStatus?.mode !== "online"}
+                  >
+                    <RefreshCw className="h-3 w-3" /> Sync now
+                  </Button>
+                </div>
+
+                {syncStatus?.error && (
+                  <p className="text-xs text-destructive">{syncStatus.error}</p>
+                )}
+              </>
             )}
           </div>
         </section>
