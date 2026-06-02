@@ -37,7 +37,8 @@ _trigger = threading.Event()   # set to wake the sleeping thread early
 _stop    = threading.Event()   # set to shut the thread down
 _thread: threading.Thread | None = None
 
-_INTERVAL = 300  # seconds between automatic syncs
+_INTERVAL = 300          # fallback interval (seconds) — commit hook fires first
+_hook_registered = False  # ensure we only register the SQLAlchemy hook once
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -124,9 +125,32 @@ def init(enabled: bool, local_dir: str | None) -> None:
         _thread.start()
         # Trigger an immediate first sync
         _trigger.set()
+        # Hook into every SQLAlchemy commit for near-real-time mirroring
+        _register_commit_hook()
     elif not enabled:
         _stop.set()
         _trigger.set()
+
+
+def _register_commit_hook() -> None:
+    """Register a SQLAlchemy after_commit hook so every DB write triggers a sync.
+
+    This gives near-real-time mirroring (milliseconds after each commit) rather
+    than waiting for the 5-minute poll interval. Safe to call multiple times —
+    the hook is only registered once.
+    """
+    global _hook_registered
+    if _hook_registered:
+        return
+    from sqlalchemy import event as _sa_event
+    from sqlalchemy.orm import Session as _SASession
+
+    @_sa_event.listens_for(_SASession, "after_commit")
+    def _after_commit(session):          # noqa: F811
+        if _enabled and _mirror_dir:
+            _trigger.set()               # wake background thread immediately
+
+    _hook_registered = True
 
 
 def trigger_now() -> None:
