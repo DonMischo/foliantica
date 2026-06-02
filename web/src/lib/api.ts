@@ -474,6 +474,9 @@ export const settingsApi = {
     grammar_languages?: string[];
     pandoc_enabled?: boolean;
     pandoc_url?: string;
+    ai_disabled?: boolean;
+    sync_mirror_enabled?: boolean;
+    sync_local_dir?: string | null;
   }) => req<Settings>("/settings", { method: "POST", body: JSON.stringify(data) }),
   getModels: () => req<OpenRouterModel[]>("/settings/models"),
   serviceStatus: () => req<{ languagetool: "ok" | "error" | "offline"; pandoc: "ok" | "error" | "offline" }>("/settings/service-status"),

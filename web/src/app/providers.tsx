@@ -5,6 +5,7 @@ import { useState } from "react";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { UIStoreSync } from "@/components/UIStoreSync";
+import { SyncNotification } from "@/components/SyncNotification";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -21,6 +22,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ThemeProvider>
         <LanguageProvider>
           <UIStoreSync />
+          <SyncNotification />
           {children}
         </LanguageProvider>
       </ThemeProvider>

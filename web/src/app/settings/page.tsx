@@ -215,7 +215,7 @@ export default function SettingsPage() {
     setSyncEnabled(enabled);
     setSyncSaving(true);
     try {
-      await updateSettings.mutateAsync({ sync_mirror_enabled: enabled, sync_local_dir: syncLocalDir || null } as any);
+      await updateSettings.mutateAsync({ sync_mirror_enabled: enabled, sync_local_dir: syncLocalDir || null });
     } finally {
       setSyncSaving(false);
     }
@@ -224,7 +224,7 @@ export default function SettingsPage() {
   const handleSyncDirSave = async () => {
     setSyncSaving(true);
     try {
-      await updateSettings.mutateAsync({ sync_local_dir: syncLocalDir || null } as any);
+      await updateSettings.mutateAsync({ sync_local_dir: syncLocalDir || null });
       if (syncEnabled) syncApi.trigger().catch(() => {});
     } finally {
       setSyncSaving(false);
