@@ -354,14 +354,23 @@ def _compute_metrics(db: Session) -> dict[str, int]:
              JOIN acts a ON c.act_id = a.id
              WHERE a.project_id = p.id) = 0"""))
 
-    dual_projects = _safe(db, """
-        SELECT COUNT(*) FROM (
-            SELECT a.project_id
-            FROM scenes s
-            JOIN chapters c ON s.chapter_id = c.id
-            JOIN acts a ON c.act_id = a.id
-            GROUP BY a.project_id
-            HAVING SUM(s.word_count) >= 20000) AS sub""")
+    # Largest series: most books sharing the same series name in book_meta
+    largest_series = 0
+    try:
+        bm_rows = db.execute(text(
+            "SELECT book_meta FROM projects WHERE book_meta IS NOT NULL AND book_meta NOT IN ('{}','null','')"
+        )).fetchall()
+        series_counts: dict[str, int] = {}
+        for (bm,) in bm_rows:
+            try:
+                s = json.loads(bm or "{}").get("series", "").strip()
+                if s:
+                    series_counts[s] = series_counts.get(s, 0) + 1
+            except Exception:
+                pass
+        largest_series = max(series_counts.values(), default=0)
+    except Exception:
+        pass
 
     # Derived conditions
     pantser_condition     = 1 if total_words >= 10000 and codex_entries == 0 else 0
@@ -409,7 +418,7 @@ def _compute_metrics(db: Session) -> dict[str, int]:
         "all_codex_types":      all_codex_types,
         "custom_type_count":    custom_type_count,
         "phantom_project":      phantom_project,
-        "projects_20k":         dual_projects,
+        "largest_series":       largest_series,
         "pantser_condition":    pantser_condition,
         "mirror_condition":     mirror_condition,
         "planner_condition":    planner_condition,
@@ -540,12 +549,15 @@ def get_achievements(db: Session = Depends(get_db)):
     _h("dense_prose",   "dense_prose",   "Dense Prose",          "A single scene with 5,000 words or more. Melville spent 135 pages on whale biology in Moby-Dick. Tolstoy's Battle of Borodino runs the length of a short story. You understand the impulse to stay in a moment until it is completely spent.",                                                               "words",    3, "max_scene_words",       5_000)
     _h("lore_bomb",     "lore_bomb",     "Lore Bomb",            "'God is in the details.' — attributed variously to Flaubert, Nabokov, and Mies van der Rohe; none of them could agree on who said it first. One codex entry woven through 10 or more scenes. That's not world-building — that's a thread.",                                                                  "codex",    3, "lore_bomb",             10)
     _h("the_planner",   "the_planner",   "The Planner",          "More than half your scenes mapped before you wrote them. Nabokov wrote his novels on index cards, shuffled into order. J.K. Rowling filled a napkin with the plot of Harry Potter before she owned a computer. The outline came first. As it should.",                                                        "story",    2, "planner_condition",     1)
-    _h("iceberg",       "iceberg",       "Iceberg",              "'The dignity of movement of an iceberg is due to only one-eighth of it being above water.' — Hemingway. Thirty entries your readers will never see. The prose is stronger for every single one of them.",                                                                                                     "codex",    3, "iceberg_count",         30)
+    _h("iceberg",        "iceberg",       "Iceberg",              "'The dignity of movement of an iceberg is due to only one-eighth of it being above water.' — Hemingway. Thirty entries your readers will never see. The prose is stronger for every single one of them.",                                                                                                     "codex",    3, "iceberg_count",         30)
+    _h("iceberg_100",   "iceberg",       "The Deep",             "100 entries below the surface. Tolkien's unpublished notes on Middle-earth fill twelve volumes — more words than all his published fiction combined. The foundation always outweighs the building.",                                                                                                              "codex",    4, "iceberg_count",         100)
+    _h("iceberg_200",   "iceberg",       "Mariana",              "200 codex entries your readers will never encounter. 'Every book is the wreck of a perfect idea.' — Iris Murdoch. The wreckage below the waterline is magnificent.",                                                                                                                                            "codex",    4, "iceberg_count",         200)
+    _h("iceberg_500",   "iceberg",       "The Abyss",            "500 entries in permanent shadow. You have built a world as wide as the one on the page — and kept it entirely to yourself. This is not world-building. This is geology.",                                                                                                                                       "codex",    5, "iceberg_count",         500)
     _h("the_phantom",   "the_phantom",   "The Phantom",          "A project with 10+ codex entries and zero scenes. Tolkien spent fourteen years building Middle-earth before he wrote a word of The Hobbit. 'In a hole in the ground there lived a hobbit' arrived last. Everything else was already there.",                                                                   "codex",    2, "phantom_project",       1)
-    _h("double_feature","double_feature","Double Feature",       "'A science-fiction double feature.' — Rocky Horror Picture Show. Two worlds, 20,000 words each. The show is only just beginning.",                                                                                                                                                                            "words",    3, "projects_20k",          2)
-    _h("trilogy",       "double_feature","Trilogy",              "Dante had Inferno, Purgatorio, and Paradiso. Tolkien had three volumes. Three is the smallest number that contains a beginning, a middle, and an end — and you have three of those, each 20,000 words strong.",                                                                                                "words",    4, "projects_20k",          3)
-    _h("quatrology",    "double_feature","Quatrology",           "Ursula K. Le Guin's Earthsea grew across four volumes before she thought she was finished — then she wrote three more. You have four worlds of your own. She needed a lifetime. You're ahead of schedule.",                                                                                                    "words",    4, "projects_20k",          4)
-    _h("trilogy_in_five","double_feature","Trilogy in Five Parts","'A trilogy in five parts.' — Douglas Adams, who admitted he was never very good at numbers. Five worlds, each 20,000 words strong. Don't panic.",                                                                                                                                                            "words",    5, "projects_20k",          5)
+    _h("double_feature","double_feature","Double Feature",       "'A science-fiction double feature.' — Rocky Horror Picture Show. Two books in the same series. The story was never going to fit in one volume.",                                                                                                                                                               "story",    3, "largest_series",        2)
+    _h("trilogy",       "double_feature","Trilogy",              "Three books, one series. Dante needed three canticles to map the afterlife. Tolkien needed three volumes to tell his one story. So did you.",                                                                                                                                                                  "story",    4, "largest_series",        3)
+    _h("quatrology",    "double_feature","Quatrology",           "Four books in one series. Ursula K. Le Guin's Earthsea grew to four volumes before she thought she was done — then she wrote three more. You have four. She needed a lifetime.",                                                                                                                               "story",    4, "largest_series",        4)
+    _h("trilogy_in_five","double_feature","Trilogy in Five Parts","'A trilogy in five parts.' — Douglas Adams, who admitted he was never very good at numbers. Five books, one series. Don't panic.",                                                                                                                                                                           "story",    5, "largest_series",        5)
     _h("the_naturalist","the_naturalist","The Naturalist",       "'Name a thing and you own it.' — Terry Pratchett. You've created five codex types that didn't exist before you made them. They're yours now.",                                                                                                                                                                 "codex",    2, "custom_type_count",     5)
     _h("bibliophile",   "bibliophile",   "Bibliophile",          "50 research items and 50 fragments. Umberto Eco owned 30,000 books and called the unread ones his 'anti-library' — the knowledge he hadn't acquired yet was the most important part. You understand the principle.",                                                                                           "research", 3, "bibliophile_condition", 1)
     _h("navel_gazer",   "navel_gazer",   "Navel Gazer",          "100 visits to the stats page. 'What gets measured gets managed.' — Peter Drucker. What gets stared at until midnight eventually gets written. Probably.",                                                                                                                                                      "research", 3, "stats_views",           100)
