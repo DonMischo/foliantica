@@ -622,25 +622,23 @@ function AchievementsSection({ achievements, aiDisabled }: { achievements: Achie
         ))}
       </div>
 
-      {/* Hidden challenges — revealed only once earned */}
-      {hiddenAchs.some((a) => a.earned) && (
-        <div className="mt-6">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-            <Trophy className="h-3 w-3 text-rose-400" /> Hidden Challenges
-          </p>
-          <div className="space-y-1.5">
-            {hiddenAchs.filter((a) => a.earned).map((ach) => (
-              <ChainCard
-                key={ach.chain}
-                chain={groupChains([ach])[0]}
-                pinned={pinned}
-                onPin={onPin}
-                onUnpin={onUnpin}
-              />
-            ))}
+      {/* Hidden challenges — chain revealed once any tier is earned */}
+      {(() => {
+        const hiddenChains = groupChains(hiddenAchs).filter((c) => c.earnedCount > 0);
+        if (!hiddenChains.length) return null;
+        return (
+          <div className="mt-6">
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <Trophy className="h-3 w-3 text-rose-400" /> Hidden Challenges
+            </p>
+            <div className="space-y-1.5">
+              {hiddenChains.map((chain) => (
+                <ChainCard key={chain.chain} chain={chain} pinned={pinned} onPin={onPin} onUnpin={onUnpin} />
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </section>
   );
 }
