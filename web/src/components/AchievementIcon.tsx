@@ -1250,8 +1250,11 @@ const ICON_MAP: Record<string, (p: P) => React.JSX.Element> = {
   the_planner:   SceneBoard,
   iceberg:       TomeStars,
   the_phantom:   ShadowFigure,
-  double_feature:FolderDouble,
-  the_naturalist:RelicArtifact,
+  double_feature:   FolderDouble,
+  trilogy:          Bookshelf,
+  quatrology:       BookStack,
+  trilogy_in_five:  TomeNova,
+  the_naturalist:   RelicArtifact,
   bibliophile:   Librarian,
   navel_gazer:   ChartAnalyst,
 

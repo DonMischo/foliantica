@@ -227,7 +227,7 @@ const METRIC_LABEL: Record<string, string> = {
   all_codex_types:      "Built-in codex types used",
   custom_type_count:    "Custom codex types created",
   phantom_project:      "Project with 10+ codex entries and no scenes",
-  dual_projects:        "Projects with 20,000+ words each",
+  projects_20k:         "Projects with 20,000+ words each",
   pantser_condition:    "10,000 words written with zero codex entries",
   mirror_condition:     "Scene count matches codex entry count",
   planner_condition:    "Over half your scenes are on the corkboard",
