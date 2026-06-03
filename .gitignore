@@ -1,3 +1,6 @@
+# ── Local data (contains database + API keys — never commit) ─────────────────
+data/
+
 # ── Python / Backend ──────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
