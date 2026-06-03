@@ -1,17 +1,20 @@
 """
-DB mirror sync — keeps a local copy of the database in sync with the primary
-dataDir (which may live on a sync drive / NAS / cloud folder).
+DB mirror sync — keeps a local copy of the database AND uploads in sync with
+the primary dataDir (which may live on a sync drive / NAS / cloud folder).
 
 Architecture:
   - Backend always runs from dataDir (unchanged).
   - This module maintains a mirror copy at sync_local_dir.
-  - A background thread wakes every 5 minutes and copies dataDir/app.db
-    → sync_local_dir/app.db using SQLite's online backup API (safe while
-    the DB is open by SQLAlchemy).
+  - A background thread wakes every 5 minutes and:
+      1. Copies dataDir/foliantica.db using SQLite's online backup API
+         (safe while the DB is open by SQLAlchemy).
+      2. Mirrors dataDir/uploads/ → sync_local_dir/uploads/, copying only
+         files that are new or have a newer mtime (no unnecessary I/O).
   - When the drive becomes unavailable the copy is skipped; mode → "offline".
   - When the drive comes back online, mode → "online", drive_restored_at is
     set so the frontend can surface a notification.
 """
+import shutil
 import sqlite3
 import threading
 from datetime import datetime, UTC
@@ -44,7 +47,11 @@ _hook_registered = False  # ensure we only register the SQLAlchemy hook once
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _db_path() -> Path:
-    return (Path.cwd() / "app.db").resolve()
+    return (Path.cwd() / "foliantica.db").resolve()
+
+
+def _uploads_path() -> Path:
+    return (Path.cwd() / "uploads").resolve()
 
 
 def _datadir_available() -> bool:
@@ -65,6 +72,19 @@ def _do_backup(src: Path, dst: Path) -> None:
     finally:
         src_conn.close()
         dst_conn.close()
+
+
+def _sync_uploads(src_dir: Path, dst_dir: Path) -> None:
+    """Mirror src_dir → dst_dir, copying only new or changed files (by mtime)."""
+    if not src_dir.exists():
+        return
+    for src_file in src_dir.rglob("*"):
+        if not src_file.is_file():
+            continue
+        dst_file = dst_dir / src_file.relative_to(src_dir)
+        dst_file.parent.mkdir(parents=True, exist_ok=True)
+        if not dst_file.exists() or src_file.stat().st_mtime > dst_file.stat().st_mtime:
+            shutil.copy2(str(src_file), str(dst_file))
 
 
 # ── Background thread ─────────────────────────────────────────────────────────
@@ -90,7 +110,8 @@ def _bg_loop() -> None:
 
             if available:
                 try:
-                    _do_backup(_db_path(), mirror / "app.db")
+                    _do_backup(_db_path(), mirror / "foliantica.db")
+                    _sync_uploads(_uploads_path(), mirror / "uploads")
                     with _lock:
                         _last_sync_at = datetime.now(UTC).replace(tzinfo=None)
                         _last_error   = None
@@ -166,7 +187,8 @@ def shutdown_backup() -> None:
 
     if enabled and mirror and _datadir_available():
         try:
-            _do_backup(_db_path(), mirror / "app.db")
+            _do_backup(_db_path(), mirror / "foliantica.db")
+            _sync_uploads(_uploads_path(), mirror / "uploads")
         except Exception:
             pass
 
