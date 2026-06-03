@@ -40,9 +40,14 @@ if __name__ == "__main__":
     data_dir = os.environ.get("LW_DATA_DIR") or _read_config().get("dataDir")
 
     if data_dir:
-        os.makedirs(data_dir, exist_ok=True)
-        os.makedirs(os.path.join(data_dir, "uploads"), exist_ok=True)
-        os.chdir(data_dir)
+        try:
+            os.makedirs(data_dir, exist_ok=True)
+            os.makedirs(os.path.join(data_dir, "uploads"), exist_ok=True)
+            os.chdir(data_dir)
+        except OSError as e:
+            print(f"WARNING: configured data directory '{data_dir}' is not available ({e}).")
+            print("         Starting in current directory. Check that the drive is mounted.")
+            # data_dir stays set so config is preserved; we just don't chdir
 
     # ── Start server ──────────────────────────────────────────────────────────
     import uvicorn  # noqa: E402
