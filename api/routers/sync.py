@@ -22,7 +22,7 @@ import threading
 from datetime import datetime, UTC
 from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from database import USE_SQLITE
 
 router = APIRouter(prefix="/api/sync", tags=["sync"])
@@ -170,7 +170,29 @@ def _bg_loop() -> None:
             enabled = _enabled
             mirror  = _mirror_dir
 
-        if enabled and mirror:
+        if not USE_SQLITE:
+            # ── PostgreSQL mode ──────────────────────────────────────────────
+            # Always dump to CWD (= dataDir, e.g. Google Drive) so the SQL
+            # file lives alongside uploads just like foliantica.db used to.
+            # If Data Mirror is also enabled, copy the result to sync_local_dir.
+            try:
+                cwd = Path.cwd()
+                _do_pg_dump(cwd)          # writes cwd/foliantica.sql
+                if enabled and mirror:
+                    mirror.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(str(cwd / "foliantica.sql"),
+                                 str(mirror / "foliantica.sql"))
+                    _sync_uploads(_uploads_path(), mirror / "uploads")
+                with _lock:
+                    _last_sync_at = datetime.now(UTC).replace(tzinfo=None)
+                    _last_error   = None
+                    _mode         = "online"
+            except Exception as exc:
+                with _lock:
+                    _last_error = str(exc)
+
+        elif enabled and mirror:
+            # ── SQLite mode (legacy) ─────────────────────────────────────────
             available = _datadir_available()
 
             with _lock:
@@ -183,10 +205,7 @@ def _bg_loop() -> None:
 
             if available:
                 try:
-                    if USE_SQLITE:
-                        _do_backup(_db_path(), mirror / "foliantica.db")
-                    else:
-                        _do_pg_dump(mirror)
+                    _do_backup(_db_path(), mirror / "foliantica.db")
                     _sync_uploads(_uploads_path(), mirror / "uploads")
                     with _lock:
                         _last_sync_at = datetime.now(UTC).replace(tzinfo=None)
@@ -213,18 +232,26 @@ def init(enabled: bool, local_dir: str | None) -> None:
     default = Path.home() / ".foliantica" / "mirror"
     with _lock:
         _enabled    = enabled
-        _mirror_dir = Path(local_dir) if local_dir else (default if enabled else None)
-        _mode       = "online" if enabled else "disabled"
+        # Active mirror path: only meaningful when enabled (or PG-mode always-dump).
+        # Set to None when explicitly disabled so endpoints can't reference stale paths.
+        _mirror_dir = (Path(local_dir) if local_dir else default) if enabled else None
+        # PG mode is always "online" — CWD dump runs unconditionally.
+        # SQLite mode follows the mirror-enabled flag.
+        _mode = "online" if (enabled or not USE_SQLITE) else "disabled"
 
-    if enabled and (_thread is None or not _thread.is_alive()):
+    # PG mode: always run the background thread (dumps to dataDir regardless of
+    # whether the local Data Mirror copy is enabled).
+    # SQLite mode: only run if Data Mirror is explicitly enabled.
+    should_run = (not USE_SQLITE) or enabled
+    if should_run and (_thread is None or not _thread.is_alive()):
         _stop.clear()
         _thread = threading.Thread(target=_bg_loop, name="sync-mirror", daemon=True)
         _thread.start()
         # Trigger an immediate first sync
         _trigger.set()
-        # Hook into every SQLAlchemy commit for near-real-time mirroring
+        # Hook into every SQLAlchemy commit for near-real-time syncing
         _register_commit_hook()
-    elif not enabled:
+    elif USE_SQLITE and not enabled:
         _stop.set()
         _trigger.set()
 
@@ -244,7 +271,9 @@ def _register_commit_hook() -> None:
 
     @_sa_event.listens_for(_SASession, "after_commit")
     def _after_commit(session):          # noqa: F811
-        if _enabled and _mirror_dir:
+        # PG mode: always trigger (dump to CWD is unconditional).
+        # SQLite mode: only trigger when mirror is enabled.
+        if not USE_SQLITE or (_enabled and _mirror_dir):
             _trigger.set()               # wake background thread immediately
 
     _hook_registered = True
@@ -261,15 +290,20 @@ def shutdown_backup() -> None:
         enabled = _enabled
         mirror  = _mirror_dir
 
-    if enabled and mirror and _datadir_available():
-        try:
-            if USE_SQLITE:
-                _do_backup(_db_path(), mirror / "foliantica.db")
-            else:
-                _do_pg_dump(mirror)
+    try:
+        if not USE_SQLITE:
+            cwd = Path.cwd()
+            _do_pg_dump(cwd)
+            if enabled and mirror:
+                mirror.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(str(cwd / "foliantica.sql"),
+                             str(mirror / "foliantica.sql"))
+                _sync_uploads(_uploads_path(), mirror / "uploads")
+        elif enabled and mirror and _datadir_available():
+            _do_backup(_db_path(), mirror / "foliantica.db")
             _sync_uploads(_uploads_path(), mirror / "uploads")
-        except Exception:
-            pass
+    except Exception:
+        pass
 
     _stop.set()
     _trigger.set()
@@ -295,3 +329,83 @@ def get_status():
 def trigger_sync():
     trigger_now()
     return {"ok": True}
+
+
+@router.post("/dump")
+def dump_to_datadir():
+    """Dump the PostgreSQL database to foliantica.sql in the current dataDir immediately.
+
+    Writes synchronously to the API's working directory (= the configured Sync Dir,
+    typically a cloud folder). Does not require Data Mirror to be enabled.
+    Use this when you need the file to exist right now (e.g. after changing the
+    Sync Dir path, or as a manual checkpoint before a transfer).
+    """
+    if USE_SQLITE:
+        raise HTTPException(status_code=400,
+                            detail="Explicit dump requires PostgreSQL mode")
+    cwd = Path.cwd()
+    try:
+        _do_pg_dump(cwd)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    dump_path = cwd / "foliantica.sql"
+    mtime = datetime.fromtimestamp(
+        dump_path.stat().st_mtime, UTC
+    ).replace(tzinfo=None).isoformat()
+    return {"ok": True, "dump": str(dump_path), "dump_time": mtime}
+
+
+@router.post("/restore")
+def restore_from_dump():
+    """Restore the database from foliantica.sql in the configured mirror directory.
+
+    Executes each statement from the dump against the live PostgreSQL engine.
+    The dump is produced by _do_pg_dump() — pure SQL with one statement per line,
+    so splitting on ';\\n' is safe for the format we generate.
+    """
+    if USE_SQLITE:
+        raise HTTPException(status_code=400,
+                            detail="Restore from dump requires PostgreSQL mode")
+
+    with _lock:
+        mirror = _mirror_dir
+
+    if not mirror:
+        raise HTTPException(status_code=400,
+                            detail="No mirror directory configured. Enable Data Mirror first.")
+
+    dump_path = Path(mirror) / "foliantica.sql"
+    if not dump_path.exists():
+        raise HTTPException(status_code=404,
+                            detail=f"No dump found at {dump_path}. Trigger a sync first.")
+
+    sql_text = dump_path.read_text("utf-8")
+
+    from sqlalchemy import text
+    from database import engine
+
+    stmts = 0
+    try:
+        with engine.connect() as conn:
+            for raw_chunk in sql_text.split(";\n"):
+                chunk = raw_chunk.strip()
+                if not chunk:
+                    continue
+                # Strip comment-only lines (e.g. "-- tablename" headers)
+                sql_lines = [
+                    line for line in chunk.splitlines()
+                    if line.strip() and not line.strip().startswith("--")
+                ]
+                clean = "\n".join(sql_lines).strip()
+                if clean:
+                    conn.execute(text(clean))
+                    stmts += 1
+            conn.commit()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    mtime = datetime.fromtimestamp(
+        dump_path.stat().st_mtime, UTC
+    ).replace(tzinfo=None).isoformat()
+    return {"ok": True, "dump": str(dump_path), "dump_time": mtime, "statements": stmts}

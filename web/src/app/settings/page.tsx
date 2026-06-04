@@ -185,16 +185,31 @@ export default function SettingsPage() {
     }
   };
 
+  const handleLoadDump = async () => {
+    setRestoreState("busy");
+    setRestoreMsg("");
+    try {
+      const res = await syncApi.restore();
+      setRestoreState("ok");
+      const dt = res.dump_time
+        ? new Date(res.dump_time + "Z").toLocaleString()
+        : "";
+      setRestoreMsg(`Loaded ${res.statements} statements${dt ? ` (dump from ${dt})` : ""}.`);
+    } catch (e: any) {
+      setRestoreState("error");
+      setRestoreMsg(e.message ?? "Restore failed");
+    }
+  };
+
   // ── Data directory ────────────────────────────────────────────────────────
   const isElectron = typeof window !== "undefined" && !!(window as any).electron;
   const [dataDir, setDataDir]               = useState<string>("");
   const [dataDirConfigured, setDataDirConfigured] = useState<string | null>(null);
   const [dataDirPending, setDataDirPending]   = useState(false);
-  const [dataDirMigrate, setDataDirMigrate]   = useState(true);
   const [dataDirBrowseErr, setDataDirBrowseErr] = useState<string | null>(null);
   const [dataDirRestarting, setDataDirRestarting] = useState(false);
-  const [hasDbConflict, setHasDbConflict] = useState(false);
-  const [confirmOverwrite, setConfirmOverwrite] = useState(false);
+  const [restoreState,  setRestoreState]  = useState<"idle"|"busy"|"ok"|"error">("idle");
+  const [restoreMsg,    setRestoreMsg]    = useState("");
 
   useEffect(() => {
     dataDirApi.get().then((res) => {
@@ -202,14 +217,6 @@ export default function SettingsPage() {
       setDataDirConfigured(res.configured);
     }).catch(() => {});
   }, []);
-
-  // Check if target directory already has a DB when migrate is on and path changed
-  useEffect(() => {
-    setHasDbConflict(false);
-    setConfirmOverwrite(false);
-    if (!dataDirMigrate || !dataDir || dataDir === dataDirConfigured) return;
-    dataDirApi.check(dataDir).then((r) => setHasDbConflict(r.has_db)).catch(() => {});
-  }, [dataDir, dataDirMigrate, dataDirConfigured]);
 
   const [selectedPromptId, setSelectedPromptId] = useState<number | null>(null);
   const [editName, setEditName]                 = useState("");
@@ -900,16 +907,28 @@ export default function SettingsPage() {
 
         <div className="border-t border-border" />
 
-        {/* Data Directory */}
+        {/* Sync Dir */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2 mb-4">
-            <FolderOpen className="h-4 w-4 text-primary" />
-            <h2 className="text-base font-semibold">Data Folder</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <FolderOpen className="h-4 w-4 text-primary" />
+              <h2 className="text-base font-semibold">Sync Dir</h2>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+              onClick={restartAndReload}
+            >
+              <RotateCw className="h-3.5 w-3.5" />
+              Restart Backend
+            </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Where Foliantica stores its database and uploads. Point this to a
-            Dropbox, Google Drive, or OneDrive folder to sync across devices.
-            Restart the app after applying a change.
+            Where Foliantica stores uploaded resources and database dumps.
+            Point this to a Dropbox, Google Drive, or OneDrive folder to sync
+            files across devices. The PostgreSQL cluster is always stored
+            locally and is unaffected by this setting.
           </p>
           <div className="flex items-center gap-2">
             <input
@@ -941,42 +960,17 @@ export default function SettingsPage() {
           {dataDirBrowseErr && (
             <p className="text-xs text-destructive">{dataDirBrowseErr}</p>
           )}
-          {dataDir && dataDir !== dataDirConfigured && (
-            <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={dataDirMigrate}
-                onChange={e => setDataDirMigrate(e.target.checked)}
-                className="accent-primary"
-              />
-              Copy existing database &amp; uploads to new folder
-            </label>
-          )}
-          {hasDbConflict && dataDirMigrate && (
-            <div className="rounded border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive space-y-2">
-              <p className="font-medium">⚠ The target folder already contains a database.</p>
-              <p className="text-destructive/80">Continuing will permanently overwrite it with your current data.</p>
-              <label className="flex items-center gap-2 cursor-pointer select-none font-medium">
-                <input
-                  type="checkbox"
-                  checked={confirmOverwrite}
-                  onChange={e => setConfirmOverwrite(e.target.checked)}
-                  className="accent-destructive"
-                />
-                I understand — overwrite the existing database
-              </label>
-            </div>
-          )}
           <div className="flex items-center gap-2 flex-wrap">
             <Button
               size="sm"
-              disabled={dataDirPending || (hasDbConflict && dataDirMigrate && !confirmOverwrite)}
+              disabled={dataDirPending}
               onClick={async () => {
                 setDataDirPending(true);
                 try {
-                  const shouldMigrate = dataDirMigrate && !!dataDir && dataDir !== dataDirConfigured;
-                  await dataDirApi.set(dataDir || null, shouldMigrate);
-                  await restartAndReload();
+                  await dataDirApi.set(dataDir || null, false);
+                  setDataDirConfigured(dataDir || null);
+                  // Synchronous dump so foliantica.sql appears in the new dir immediately.
+                  syncApi.dump().catch(() => {});
                 } finally {
                   setDataDirPending(false);
                 }
@@ -984,7 +978,7 @@ export default function SettingsPage() {
             >
               {dataDirPending
                 ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                : <><RotateCw className="h-3.5 w-3.5 mr-1.5" />Apply &amp; Restart</>}
+                : <><RefreshCw className="h-3.5 w-3.5 mr-1.5" />Apply &amp; Sync</>}
             </Button>
             {dataDirConfigured && (
               <Button
@@ -994,8 +988,10 @@ export default function SettingsPage() {
                 onClick={async () => {
                   setDataDirPending(true);
                   try {
-                    await dataDirApi.set(null);
-                    await restartAndReload();
+                    await dataDirApi.set(null, false);
+                    setDataDirConfigured(null);
+                    setDataDir("");
+                    syncApi.trigger().catch(() => {});
                   } finally {
                     setDataDirPending(false);
                   }
@@ -1004,6 +1000,29 @@ export default function SettingsPage() {
                 Reset to default
               </Button>
             )}
+          </div>
+
+          <div className="border-t border-border/50 pt-3 space-y-2">
+            <p className="text-xs font-medium">Load dump from Sync Dir</p>
+            <p className="text-[11px] text-muted-foreground">
+              Restore the database from the{" "}
+              <code className="text-primary font-mono text-[11px]">foliantica.sql</code>{" "}
+              dump in the Data Mirror location. Requires Data Mirror to be enabled
+              and synced at least once.
+            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                size="sm" variant="outline" className="h-7 text-xs"
+                disabled={restoreState === "busy"}
+                onClick={handleLoadDump}
+              >
+                {restoreState === "busy"
+                  ? <><Loader2 className="h-3 w-3 animate-spin mr-1" />Loading…</>
+                  : "Load dump"}
+              </Button>
+              {restoreState === "ok"    && <p className="text-xs text-emerald-500">{restoreMsg}</p>}
+              {restoreState === "error" && <p className="text-xs text-destructive">{restoreMsg}</p>}
+            </div>
           </div>
         </section>
 
@@ -1045,9 +1064,10 @@ export default function SettingsPage() {
             {syncEnabled && (
               <>
                 <p className="text-xs text-muted-foreground bg-muted/40 rounded-md px-3 py-2 leading-relaxed">
-                  If your sync drive (OneDrive, NAS, etc.) is temporarily unavailable, your data is always
-                  safe in the local copy. When the drive comes back online, Foliantica notifies you and
-                  updates the mirror. Only the database file is mirrored — uploads are not included.
+                  Keeps a local backup of the database dump (<code className="text-primary font-mono text-[11px]">foliantica.sql</code>)
+                  and uploaded files, updated after every save. Useful as a second copy on a
+                  local drive when your primary sync dir is on a cloud folder that may be
+                  temporarily unavailable.
                 </p>
 
                 <div className="space-y-1.5">

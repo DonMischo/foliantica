@@ -85,8 +85,12 @@ def _init_sync() -> None:
             row = conn.execute(text(
                 "SELECT sync_mirror_enabled, sync_local_dir FROM user_settings LIMIT 1"
             )).fetchone()
-            if row:
-                sync_router.init(bool(row[0]), row[1])
+        # Always call init — in PG mode it starts the background dump thread
+        # unconditionally (regardless of the Data Mirror toggle).
+        if row:
+            sync_router.init(bool(row[0]), row[1])
+        else:
+            sync_router.init(False, None)   # no settings row yet; use defaults
     except Exception:
         pass
 

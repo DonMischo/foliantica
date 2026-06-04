@@ -98,6 +98,10 @@ $apiDir    = Join-Path $ROOT "api"
 Remove-Item $apiLog    -ErrorAction SilentlyContinue
 Remove-Item $apiErrLog -ErrorAction SilentlyContinue
 
+# Isolated data dir so dumps go here, not to the user's real sync dir
+$testDataDir = "$env:TEMP\foliantica-test-data"
+New-Item -ItemType Directory -Force $testDataDir | Out-Null
+
 # Set env vars for child process
 $envBackup = @{}
 $envVars = @{
@@ -107,6 +111,7 @@ $envVars = @{
     LW_PG_PASS         = "foliantica"
     LW_PG_DB           = "foliantica"
     PYTHONIOENCODING   = "utf-8"
+    LW_DATA_DIR        = $testDataDir
 }
 foreach ($k in $envVars.Keys) {
     $envBackup[$k] = [Environment]::GetEnvironmentVariable($k)
@@ -335,10 +340,11 @@ try {
     }
 
     # ── Sync ──────────────────────────────────────────────────────────────────
-    T "GET  /api/sync/status (disabled)" {
+    T "GET  /api/sync/status (online in PG mode - bg dump always active)" {
         $s = Invoke-RestMethod "$base/api/sync/status"
-        # Should start disabled — mirror hasn't been configured yet
-        if ($s.mode -ne "disabled") { throw "Expected mode=disabled, got $($s.mode)" }
+        # In PG mode the background thread always runs (unconditional CWD dump),
+        # so mode is "online" even before Data Mirror is explicitly enabled.
+        if ($s.mode -ne "online") { throw "Expected mode=online in PG mode, got $($s.mode)" }
     }
 
     # Enable sync to a temp mirror dir
@@ -384,6 +390,64 @@ try {
     Invoke-RestMethod "$base/api/settings" -Method Post -Headers $h `
         -Body '{"sync_mirror_enabled": false}' | Out-Null
     Remove-Item -Recurse -Force $mirrorDir -ErrorAction SilentlyContinue
+
+    # ── Sync dump endpoint ────────────────────────────────────────────────────
+    T "POST /api/sync/dump (returns ok + dump_time + path)" {
+        $r = Invoke-RestMethod "$base/api/sync/dump" -Method Post -Headers $h
+        if (-not $r.ok)        { throw "Expected ok=true" }
+        if (-not $r.dump_time) { throw "dump_time missing from response" }
+        if (-not $r.dump)      { throw "dump path missing from response" }
+    }
+    T "POST /api/sync/dump (foliantica.sql created in data dir)" {
+        $d = Invoke-RestMethod "$base/api/sync/dump" -Method Post -Headers $h
+        if (-not (Test-Path $d.dump)) { throw "foliantica.sql not found at $($d.dump)" }
+    }
+    T "POST /api/sync/dump (dump file contains INSERT statements)" {
+        $d = Invoke-RestMethod "$base/api/sync/dump" -Method Post -Headers $h
+        $content = Get-Content $d.dump -Raw
+        if ($content -notmatch "INSERT INTO") { throw "No INSERT statements in dump" }
+    }
+    T "POST /api/sync/dump (status last_sync_at is recent)" {
+        Invoke-RestMethod "$base/api/sync/dump" -Method Post -Headers $h | Out-Null
+        Start-Sleep 1
+        $s = Invoke-RestMethod "$base/api/sync/status"
+        if (-not $s.last_sync_at) { throw "last_sync_at not set after dump" }
+    }
+
+    # ── Sync restore endpoint ─────────────────────────────────────────────────
+    T "POST /api/sync/restore (returns ok + statement count)" {
+        # Ensure a dump exists and set up a mirror dir so restore can find it
+        $d = Invoke-RestMethod "$base/api/sync/dump" -Method Post -Headers $h
+        # Verify the dump contains test project data
+        $dumpContent = Get-Content $d.dump -Raw
+        if ($dumpContent -notmatch "PG Test Project") {
+            throw "Dump at $($d.dump) does not contain test project data"
+        }
+        $restoreDir = "$env:TEMP\foliantica-restore-test"
+        New-Item -ItemType Directory -Force $restoreDir | Out-Null
+        try {
+            Copy-Item $d.dump (Join-Path $restoreDir "foliantica.sql")
+            Invoke-RestMethod "$base/api/settings" -Method Post -Headers $h `
+                -Body (@{ sync_mirror_enabled=$true; sync_local_dir=$restoreDir } | ConvertTo-Json) | Out-Null
+            Start-Sleep 1
+            $r = Invoke-RestMethod "$base/api/sync/restore" -Method Post -Headers $h
+            if (-not $r.ok)           { throw "Expected ok=true" }
+            if ($r.statements -lt 10) { throw "Expected >= 10 statements, got $($r.statements). Restore may not have run all INSERTs." }
+        } finally {
+            Invoke-RestMethod "$base/api/settings" -Method Post -Headers $h `
+                -Body '{"sync_mirror_enabled": false}' | Out-Null
+            Remove-Item -Recurse -Force $restoreDir -ErrorAction SilentlyContinue
+        }
+    }
+    T "POST /api/sync/restore (no mirror dir returns 400)" {
+        try {
+            Invoke-RestMethod "$base/api/sync/restore" -Method Post -Headers $h
+            throw "Expected 400 but got success"
+        } catch {
+            $code = $_.Exception.Response.StatusCode.value__
+            if ($code -ne 400) { throw "Expected HTTP 400, got $code" }
+        }
+    }
 
     # ── PG config (GET / POST / restore) ──────────────────────────────────────
     # Save original so we don't pollute ~/.foliantica/config.json
@@ -536,6 +600,9 @@ try {
 
     # Stop the PG helper process; embedded-postgres shuts down the cluster on SIGTERM
     Stop-Process $pgProc.Id -Force -ErrorAction SilentlyContinue
+
+    # Remove isolated test data dir
+    Remove-Item -Recurse -Force $testDataDir -ErrorAction SilentlyContinue
 
     # Belt-and-suspenders: kill any stray postgres.exe workers
     Get-Process -Name postgres -ErrorAction SilentlyContinue |

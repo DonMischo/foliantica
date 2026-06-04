@@ -740,6 +740,13 @@ export interface SyncStatus {
 export const syncApi = {
   status:  () => req<SyncStatus>("/sync/status"),
   trigger: () => req<{ ok: boolean }>("/sync/trigger", { method: "POST" }),
+  /** Synchronous dump to dataDir (CWD). Works regardless of Data Mirror setting. */
+  dump:    () => req<{ ok: boolean; dump: string; dump_time: string }>(
+    "/sync/dump", { method: "POST" }
+  ),
+  restore: () => req<{ ok: boolean; dump: string; dump_time: string; statements: number }>(
+    "/sync/restore", { method: "POST" }
+  ),
 };
 
 export interface PgConfig {
