@@ -335,9 +335,55 @@ try {
     }
 
     # ── Sync ──────────────────────────────────────────────────────────────────
-    T "GET  /api/sync/status" {
-        Invoke-RestMethod "$base/api/sync/status"
+    T "GET  /api/sync/status (disabled)" {
+        $s = Invoke-RestMethod "$base/api/sync/status"
+        # Should start disabled — mirror hasn't been configured yet
+        if ($s.mode -ne "disabled") { throw "Expected mode=disabled, got $($s.mode)" }
     }
+
+    # Enable sync to a temp mirror dir
+    $mirrorDir = "$env:TEMP\foliantica-sync-test"
+    New-Item -ItemType Directory -Force $mirrorDir | Out-Null
+    $syncBody = @{ sync_mirror_enabled = $true; sync_local_dir = $mirrorDir } | ConvertTo-Json
+    T "POST /api/settings (enable sync)" {
+        Invoke-RestMethod "$base/api/settings" -Method Post -Headers $h -Body $syncBody
+    }
+
+    # Trigger immediate dump and wait up to 10 s for the file to appear
+    T "POST /api/sync/trigger" {
+        Invoke-RestMethod "$base/api/sync/trigger" -Method Post
+    }
+    $dumpFile = "$mirrorDir\foliantica.sql"
+    $dumpReady = $false
+    for ($i = 0; $i -lt 10; $i++) {
+        Start-Sleep 1
+        if (Test-Path $dumpFile) { $dumpReady = $true; break }
+    }
+    T "dump file created after trigger" {
+        if (-not $dumpReady) { throw "foliantica.sql not found in mirror dir after 10s" }
+    }
+    T "dump file contains INSERT statements" {
+        $content = Get-Content $dumpFile -Raw -ErrorAction Stop
+        if ($content -notmatch "INSERT INTO") { throw "No INSERT statements found in dump" }
+    }
+    T "dump file contains projects table" {
+        $content = Get-Content $dumpFile -Raw
+        if ($content -notmatch '"projects"') { throw "projects table missing from dump" }
+    }
+    T "dump file contains scenes table" {
+        $content = Get-Content $dumpFile -Raw
+        if ($content -notmatch '"scenes"') { throw "scenes table missing from dump" }
+    }
+    T "GET  /api/sync/status (online + last_sync_at set)" {
+        $s = Invoke-RestMethod "$base/api/sync/status"
+        if ($s.mode -ne "online") { throw "Expected mode=online, got $($s.mode)" }
+        if (-not $s.last_sync_at) { throw "last_sync_at not set after sync" }
+    }
+
+    # Disable sync and clean up
+    Invoke-RestMethod "$base/api/settings" -Method Post -Headers $h `
+        -Body '{"sync_mirror_enabled": false}' | Out-Null
+    Remove-Item -Recurse -Force $mirrorDir -ErrorAction SilentlyContinue
 
     # ── Timeline ──────────────────────────────────────────────────────────────
     $tt   = Invoke-RestMethod "$base/api/projects/$projId/timeline-tracks" -Method Post -Headers $h `

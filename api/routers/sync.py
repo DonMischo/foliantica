@@ -99,23 +99,36 @@ def _do_pg_dump(mirror: Path) -> None:
     Uses pure Python / SQLAlchemy — no pg_dump binary required.
     The output file can be replayed with psql or the /api/sync/restore endpoint.
     """
-    from sqlalchemy import inspect as sa_inspect, text
+    from sqlalchemy import text
     from database import engine
 
     mirror.mkdir(parents=True, exist_ok=True)
     dst = mirror / "foliantica.sql"
 
-    insp   = sa_inspect(engine)
-    tables = [t for t in insp.get_table_names() if t != "sqlite_sequence"]
-
     with engine.connect() as conn, open(dst, "w", encoding="utf-8") as f:
+        # Use information_schema directly — avoids SQLAlchemy reflection which
+        # breaks on PG 17 domain introspection with some SQLAlchemy versions.
+        tables = [
+            row[0] for row in conn.execute(text(
+                "SELECT table_name FROM information_schema.tables "
+                "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "
+                "ORDER BY table_name"
+            ))
+        ]
+
         f.write(f"-- Foliantica PostgreSQL backup {datetime.now(UTC).replace(tzinfo=None).isoformat()}\n")
         f.write("SET session_replication_role = replica;\n\n")
 
         for table in tables:
-            cols     = [c["name"] for c in insp.get_columns(table)]
-            rows     = conn.execute(text(f'SELECT * FROM "{table}"')).fetchall()
-            col_sql  = ", ".join(f'"{c}"' for c in cols)
+            cols = [
+                row[0] for row in conn.execute(text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema = 'public' AND table_name = :t "
+                    "ORDER BY ordinal_position"
+                ), {"t": table})
+            ]
+            rows    = conn.execute(text(f'SELECT * FROM "{table}"')).fetchall()
+            col_sql = ", ".join(f'"{c}"' for c in cols)
 
             f.write(f"-- {table}\n")
             f.write(f'DELETE FROM "{table}";\n')
