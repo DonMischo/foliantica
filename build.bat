@@ -233,6 +233,10 @@ echo OK  Local app built
 echo.
 echo   ^> dist\win-unpacked\Foliantica.exe
 echo.
+if defined CI (
+    echo [CI] Skipping interactive test step.
+    goto :build_installer
+)
 set /p _TEST="Test the app now, then press Enter to continue with installer — or type N to stop: "
 if /i "%_TEST%"=="N" (
     echo.
@@ -241,6 +245,7 @@ if /i "%_TEST%"=="N" (
     echo.
     pause & exit /b 0
 )
+:build_installer
 
 
 :: ═══════════════════════════════════════════════════════════════════════════
