@@ -385,6 +385,63 @@ try {
         -Body '{"sync_mirror_enabled": false}' | Out-Null
     Remove-Item -Recurse -Force $mirrorDir -ErrorAction SilentlyContinue
 
+    # ── PG config (GET / POST / restore) ──────────────────────────────────────
+    # Save original so we don't pollute ~/.foliantica/config.json
+    $lwConfigPath = "$env:USERPROFILE\.foliantica\config.json"
+    $lwConfigOrig = Get-Content $lwConfigPath -Raw -ErrorAction SilentlyContinue
+
+    T "GET  /api/settings/pg-config (defaults)" {
+        $c = Invoke-RestMethod "$base/api/settings/pg-config"
+        if (-not $c.PSObject.Properties["useDocker"]) { throw "useDocker field missing" }
+        if (-not $c.PSObject.Properties["port"])      { throw "port field missing" }
+    }
+    T "POST /api/settings/pg-config (save Docker config)" {
+        $body = @{ useDocker=$true; host="127.0.0.1"; port=5434; user="foliantica"; pass="foliantica"; db="foliantica" } | ConvertTo-Json
+        $saved = Invoke-RestMethod "$base/api/settings/pg-config" -Method Post -Headers $h -Body $body
+        if (-not $saved.useDocker) { throw "useDocker should be true after save" }
+        if ($saved.port -ne 5434)  { throw "Expected port 5434, got $($saved.port)" }
+    }
+    T "GET  /api/settings/pg-config (reads saved Docker config)" {
+        $c = Invoke-RestMethod "$base/api/settings/pg-config"
+        if (-not $c.useDocker) { throw "Expected useDocker=true after save" }
+        if ($c.port -ne 5434)  { throw "Expected port 5434" }
+    }
+    # Restore original lw-config
+    if ($lwConfigOrig) { Set-Content -Path $lwConfigPath -Value $lwConfigOrig -Encoding UTF8 }
+    else { Remove-Item $lwConfigPath -ErrorAction SilentlyContinue }
+
+    # ── PG transfer (self-transfer: source = target = embedded) ───────────────
+    $transferBody = @{
+        source = @{ host="127.0.0.1"; port=5433; user="foliantica"; pass="foliantica"; db="foliantica" }
+        target = @{ host="127.0.0.1"; port=5433; user="foliantica"; pass="foliantica"; db="foliantica" }
+    } | ConvertTo-Json -Depth 4
+
+    T "POST /api/settings/pg-transfer (self-transfer returns counts)" {
+        $r = Invoke-RestMethod "$base/api/settings/pg-transfer" -Method Post -Headers $h -Body $transferBody
+        if ($r.tables_copied -lt 1)  { throw "Expected at least 1 table, got $($r.tables_copied)" }
+        if ($r.rows_copied   -lt 1)  { throw "Expected at least 1 row, got $($r.rows_copied)" }
+        if (-not $r.tables)          { throw "tables list missing" }
+    }
+    T "POST /api/settings/pg-transfer (tables include projects and scenes)" {
+        $r = Invoke-RestMethod "$base/api/settings/pg-transfer" -Method Post -Headers $h -Body $transferBody
+        if ($r.tables -notcontains "projects") { throw "'projects' not in transferred tables" }
+        if ($r.tables -notcontains "scenes")   { throw "'scenes' not in transferred tables" }
+    }
+    T "POST /api/settings/pg-transfer (bad target returns 500)" {
+        $badBody = @{
+            source = @{ host="127.0.0.1"; port=5433; user="foliantica"; pass="foliantica"; db="foliantica" }
+            target = @{ host="127.0.0.1"; port=9999; user="foliantica"; pass="foliantica"; db="foliantica" }
+        } | ConvertTo-Json -Depth 4
+        try {
+            Invoke-RestMethod "$base/api/settings/pg-transfer" -Method Post -Headers $h -Body $badBody
+            throw "Expected 500 but got success"
+        } catch {
+            if ($_.Exception.Response.StatusCode.value__ -ne 500) {
+                throw "Expected HTTP 500, got $($_.Exception.Response.StatusCode.value__)"
+            }
+        }
+    }
+
     # ── Timeline ──────────────────────────────────────────────────────────────
     $tt   = Invoke-RestMethod "$base/api/projects/$projId/timeline-tracks" -Method Post -Headers $h `
                 -Body '{"name":"Main Timeline","color":"#6b7280","track_type":"parallel"}'
