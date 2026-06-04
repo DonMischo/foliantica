@@ -452,6 +452,113 @@ def set_pg_config(body: dict):
     return clean
 
 
+# ── Default connection values for the embedded cluster ────────────────────────
+_EMBEDDED_PG = {"host": "127.0.0.1", "port": 5433,
+                "user": "foliantica",  "pass": "foliantica", "db": "foliantica"}
+
+
+def _pg_engine_for(conn: dict):
+    """Create a throw-away SQLAlchemy engine for a PG connection dict."""
+    from sqlalchemy import create_engine as _ce
+    host = conn.get("host", "127.0.0.1")
+    port = conn.get("port", 5433)
+    user = conn.get("user", "foliantica")
+    pw   = conn.get("pass", "foliantica")
+    db   = conn.get("db",   "foliantica")
+    url  = f"postgresql+psycopg2://{user}:{pw}@{host}:{port}/{db}"
+    return _ce(url, connect_args={"options": "-c client_encoding=UTF8"})
+
+
+@router.post("/pg-transfer")
+def transfer_pg(body: dict):
+    """Copy all data from one PostgreSQL instance to another.
+
+    Body: { "source": {host, port, user, pass, db},
+            "target": {host, port, user, pass, db} }
+
+    The target schema is created from models if it doesn't exist.
+    All existing rows in the target are replaced (DELETE then INSERT).
+    SERIAL sequences are reset after the copy.
+    Returns { tables_copied, rows_copied, tables }.
+    """
+    from sqlalchemy import text as _text
+    from models import Base
+
+    src_cfg = {**_EMBEDDED_PG, **body.get("source", {})}
+    dst_cfg = {**_EMBEDDED_PG, **body.get("target", {})}
+
+    src_engine = _pg_engine_for(src_cfg)
+    dst_engine = _pg_engine_for(dst_cfg)
+
+    try:
+        # Ensure target schema exists
+        Base.metadata.create_all(bind=dst_engine)
+
+        # Get ordered table list from source via information_schema
+        with src_engine.connect() as src_conn:
+            tables = [r[0] for r in src_conn.execute(_text(
+                "SELECT table_name FROM information_schema.tables "
+                "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "
+                "ORDER BY table_name"
+            ))]
+
+        tables_copied: list[str] = []
+        rows_copied = 0
+
+        with src_engine.connect() as src_conn, dst_engine.begin() as dst_conn:
+            dst_conn.execute(_text("SET session_replication_role = replica"))
+
+            for table in tables:
+                cols = [r[0] for r in src_conn.execute(_text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema = 'public' AND table_name = :t "
+                    "ORDER BY ordinal_position"
+                ), {"t": table})]
+
+                rows = src_conn.execute(_text(f'SELECT * FROM "{table}"')).fetchall()
+
+                # Always replace target contents (this is an explicit transfer)
+                dst_conn.execute(_text(f'DELETE FROM "{table}"'))
+                if not rows:
+                    continue
+
+                col_sql   = ", ".join(f'"{c}"' for c in cols)
+                ph_sql    = ", ".join(f":{c}" for c in cols)
+                row_dicts = [dict(zip(cols, r)) for r in rows]
+                dst_conn.execute(_text(
+                    f'INSERT INTO "{table}" ({col_sql}) VALUES ({ph_sql})'
+                ), row_dicts)
+
+                tables_copied.append(table)
+                rows_copied += len(rows)
+
+            dst_conn.execute(_text("SET session_replication_role = DEFAULT"))
+
+            # Reset SERIAL sequences so new inserts don't collide
+            for table in tables_copied:
+                try:
+                    seq = dst_conn.execute(_text(
+                        "SELECT pg_get_serial_sequence(:t, 'id')"
+                    ), {"t": table}).scalar()
+                    if seq:
+                        dst_conn.execute(_text(
+                            f"SELECT setval('{seq}', "
+                            f"COALESCE((SELECT MAX(id) FROM \"{table}\"), 0) + 1, false)"
+                        ))
+                except Exception:
+                    pass
+
+        return {"tables_copied": len(tables_copied),
+                "rows_copied":   rows_copied,
+                "tables":        tables_copied}
+
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    finally:
+        src_engine.dispose()
+        dst_engine.dispose()
+
+
 @router.get("/models")
 def get_available_models(db: Session = Depends(get_db)):
     """Proxy the OpenRouter model list so the API key stays server-side."""

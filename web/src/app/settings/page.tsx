@@ -140,6 +140,31 @@ export default function SettingsPage() {
     }
   };
 
+  // Transfer state
+  type TransferDir = "toDocker" | "toEmbedded";
+  const [transferDir,    setTransferDir]    = useState<TransferDir>("toDocker");
+  const [transferState,  setTransferState]  = useState<"idle"|"busy"|"ok"|"error">("idle");
+  const [transferResult, setTransferResult] = useState<string>("");
+
+  const embeddedConn = { host: "127.0.0.1", port: 5433, user: "foliantica", pass: "foliantica", db: "foliantica" };
+  const dockerConn   = { host: pgCfg.host,  port: pgCfg.port, user: pgCfg.user, pass: pgCfg.pass, db: pgCfg.db };
+
+  const handleTransfer = async () => {
+    const [src, dst] = transferDir === "toDocker"
+      ? [embeddedConn, dockerConn]
+      : [dockerConn,   embeddedConn];
+    setTransferState("busy");
+    setTransferResult("");
+    try {
+      const res = await pgConfigApi.transfer(src, dst);
+      setTransferState("ok");
+      setTransferResult(`Copied ${res.rows_copied} rows across ${res.tables_copied} tables.`);
+    } catch (e: any) {
+      setTransferState("error");
+      setTransferResult(e.message ?? "Transfer failed");
+    }
+  };
+
   // ── Data directory ────────────────────────────────────────────────────────
   const isElectron = typeof window !== "undefined" && !!(window as any).electron;
   const [dataDir, setDataDir]               = useState<string>("");
@@ -1238,6 +1263,58 @@ export default function SettingsPage() {
                 <p className="text-[11px] text-muted-foreground">
                   Backups work the same way — the sync mirror writes <code className="font-mono bg-muted px-1 rounded">foliantica.sql</code> to your local mirror directory regardless of whether PG runs in Docker or embedded.
                 </p>
+
+                {/* ── Transfer data between instances ── */}
+                <div className="border-t border-border/50 pt-3 space-y-2">
+                  <p className="text-xs font-medium">Transfer data between instances</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Copies all rows from one database to the other. Both instances must be running.
+                    Existing data in the target is replaced.
+                  </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setTransferDir("toDocker")}
+                      className={cn(
+                        "text-xs px-2.5 py-1 rounded border transition-colors",
+                        transferDir === "toDocker"
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:border-foreground"
+                      )}
+                    >
+                      Embedded → Docker
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTransferDir("toEmbedded")}
+                      className={cn(
+                        "text-xs px-2.5 py-1 rounded border transition-colors",
+                        transferDir === "toEmbedded"
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground hover:border-foreground"
+                      )}
+                    >
+                      Docker → Embedded
+                    </button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      disabled={transferState === "busy"}
+                      onClick={handleTransfer}
+                    >
+                      {transferState === "busy"
+                        ? <><Loader2 className="h-3 w-3 animate-spin mr-1" />Transferring…</>
+                        : "Transfer now"}
+                    </Button>
+                  </div>
+                  {transferState === "ok" && (
+                    <p className="text-xs text-emerald-500">{transferResult}</p>
+                  )}
+                  {transferState === "error" && (
+                    <p className="text-xs text-destructive">{transferResult}</p>
+                  )}
+                </div>
               </div>
             )}
           </div>

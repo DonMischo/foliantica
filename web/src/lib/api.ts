@@ -751,13 +751,22 @@ export interface PgConfig {
   db:        string;
 }
 
+export interface PgTransferResult {
+  tables_copied: number;
+  rows_copied:   number;
+  tables:        string[];
+}
+
 export const pgConfigApi = {
-  get:  ()                => req<PgConfig>("/settings/pg-config"),
-  save: (body: PgConfig)  => req<PgConfig>("/settings/pg-config", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+  get:      ()                                              => req<PgConfig>("/settings/pg-config"),
+  save:     (body: PgConfig)                               => req<PgConfig>("/settings/pg-config", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
   }),
+  transfer: (source: Omit<PgConfig,"useDocker">, target: Omit<PgConfig,"useDocker">) =>
+    req<PgTransferResult>("/settings/pg-transfer", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source, target }),
+    }),
 };
 
 // ── Achievements ──────────────────────────────────────────────────────────────
