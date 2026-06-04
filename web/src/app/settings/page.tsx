@@ -1241,13 +1241,13 @@ export default function SettingsPage() {
                 variant="outline"
                 className="h-7 text-xs shrink-0"
                 disabled={pgSwitching}
-                onClick={() => handleSwitch(!savedIsDocker)}
+                onClick={() => handleSwitch(!activeIsDocker)}
                 title="Saves config and requires backend restart"
               >
                 {pgSwitching
                   ? <Loader2 className="h-3 w-3 animate-spin mr-1" />
                   : null}
-                Switch to {savedIsDocker ? "Embedded" : "Docker"}
+                Switch to {activeIsDocker ? "Embedded" : "Docker"}
               </Button>
             </div>
 
