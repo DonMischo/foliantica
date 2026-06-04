@@ -1,5 +1,29 @@
 services:
 
+  # ── PostgreSQL database (optional — alternative to the embedded PG) ───────────
+  # Enable in Settings → External Services → PostgreSQL Database.
+  # Runs on port 5434 (not 5433) so it can coexist with the embedded PG cluster.
+  # Data persists in the named volume below; survives app reinstalls.
+  postgres:
+    image: postgres:17-alpine
+    container_name: foliantica-postgres
+    restart: unless-stopped
+    profiles:
+      - postgres          # only started when explicitly requested
+    ports:
+      - "127.0.0.1:5434:5432"
+    environment:
+      POSTGRES_USER:     foliantica
+      POSTGRES_PASSWORD: foliantica
+      POSTGRES_DB:       foliantica
+    volumes:
+      - foliantica-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U foliantica"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   # ── QEMU binfmt registration ─────────────────────────────────────────────────
   # meyay/languagetool is x86_64-only. On ARM hosts (Windows on ARM, Apple
   # Silicon) Docker runs it via QEMU emulation, but the binfmt handlers must be
@@ -76,3 +100,4 @@ services:
 volumes:
   foliantica-lt-ngrams:
   foliantica-lt-fasttext:
+  foliantica-pg-data:

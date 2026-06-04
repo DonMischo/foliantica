@@ -244,6 +244,21 @@ const PG_DB   = "foliantica";
  * Subsequent launches: ~1 s (PG starts from the existing cluster directory).
  */
 async function startPostgres() {
+  // If the user has configured Docker PG in ~/.foliantica/config.json,
+  // skip the embedded cluster and return the custom connection details.
+  const lwCfgForPg = loadLwConfig();
+  if (lwCfgForPg.pg && lwCfgForPg.pg.useDocker) {
+    const pg = lwCfgForPg.pg;
+    log(`[pg] Docker PG mode — connecting to ${pg.host || "127.0.0.1"}:${pg.port || 5434}`);
+    return {
+      pgHost: pg.host || "127.0.0.1",
+      pgPort: String(pg.port || 5434),
+      pgUser: pg.user || "foliantica",
+      pgPass: pg.pass || "foliantica",
+      pgDb:   pg.db   || "foliantica",
+    };
+  }
+
   // Lazy-require so non-prod builds that lack the package don't break.
   let EmbeddedPostgres;
   try {
@@ -341,7 +356,7 @@ async function startServers() {
 
   if (isProd) {
     // ── Embedded PostgreSQL ───────────────────────────────────────────────────
-    const { pgDumpPath } = await startPostgres();
+    const pgResult = await startPostgres();
 
     // ── FastAPI sidecar ───────────────────────────────────────────────────────
     const apiExe = path.join(
@@ -357,12 +372,13 @@ async function startServers() {
         LW_API_HOST: "127.0.0.1",
         LW_DATA_DIR: dataDir,
         LW_RESOURCES_DIR: process.resourcesPath,
-        // PostgreSQL connection parameters for the API sidecar
-        LW_PG_PORT: String(PG_PORT),
-        LW_PG_USER: PG_USER,
-        LW_PG_PASS: PG_PASS,
-        LW_PG_DB:   PG_DB,
-        LW_PG_DUMP_PATH: pgDumpPath,
+        // PostgreSQL connection — use Docker PG values if provided, else defaults
+        LW_PG_HOST: pgResult.pgHost || "127.0.0.1",
+        LW_PG_PORT: pgResult.pgPort || String(PG_PORT),
+        LW_PG_USER: pgResult.pgUser || PG_USER,
+        LW_PG_PASS: pgResult.pgPass || PG_PASS,
+        LW_PG_DB:   pgResult.pgDb   || PG_DB,
+        LW_PG_DUMP_PATH: pgResult.pgDumpPath || "pg_dump",
       },
       stdio: ["ignore", "pipe", "pipe"],
     });

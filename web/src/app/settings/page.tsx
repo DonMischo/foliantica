@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings, useUpdateSettings, useOpenRouterModels, usePrompts, useCreatePrompt, useUpdatePrompt, useDeletePrompt, useRevertPrompt, useServiceStatus, useSyncStatus } from "@/store/queries";
-import { dataDirApi, settingsApi, syncApi } from "@/lib/api";
+import { dataDirApi, settingsApi, syncApi, pgConfigApi, type PgConfig } from "@/lib/api";
 import { ACH_POPUPS_KEY } from "@/components/AchievementToast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useUIStore } from "@/store/ui";
@@ -117,6 +117,28 @@ export default function SettingsPage() {
   const [dockerUpState, setDockerUpState] = useState<"idle" | "busy" | "ok" | "error">("idle");
   const [dockerUpMsg, setDockerUpMsg]     = useState("");
   const [helpOpen, setHelpOpen]           = useState(false);
+
+  // ── Docker PostgreSQL ─────────────────────────────────────────────────────
+  const defaultPgCfg: PgConfig = { useDocker: false, host: "127.0.0.1", port: 5434, user: "foliantica", pass: "foliantica", db: "foliantica" };
+  const [pgCfg, setPgCfg]         = useState<PgConfig>(defaultPgCfg);
+  const [pgSaving, setPgSaving]   = useState(false);
+  const [pgSaved, setPgSaved]     = useState(false);
+
+  useEffect(() => {
+    pgConfigApi.get().then(cfg => setPgCfg({ ...defaultPgCfg, ...cfg })).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSavePgConfig = async () => {
+    setPgSaving(true);
+    try {
+      await pgConfigApi.save(pgCfg);
+      setPgSaved(true);
+      setTimeout(() => setPgSaved(false), 3000);
+    } finally {
+      setPgSaving(false);
+    }
+  };
 
   // ── Data directory ────────────────────────────────────────────────────────
   const isElectron = typeof window !== "undefined" && !!(window as any).electron;
@@ -1146,6 +1168,76 @@ export default function SettingsPage() {
                   placeholder="http://localhost:8082"
                   className="h-8 text-xs font-mono"
                 />
+              </div>
+            )}
+          </div>
+
+          {/* PostgreSQL via Docker */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium flex items-center gap-1.5">
+                  <Database className="h-3.5 w-3.5 text-primary" />
+                  PostgreSQL Database
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Use a Docker-managed PostgreSQL instead of the built-in embedded database
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={pgCfg.useDocker}
+                onClick={() => setPgCfg(c => ({ ...c, useDocker: !c.useDocker }))}
+                className={cn(
+                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                  pgCfg.useDocker ? "bg-primary" : "bg-input"
+                )}
+              >
+                <span className={cn(
+                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
+                  pgCfg.useDocker ? "translate-x-4" : "translate-x-0"
+                )} />
+              </button>
+            </div>
+
+            {pgCfg.useDocker && (
+              <div className="space-y-3">
+                <p className="text-[11px] text-amber-500 dark:text-amber-400 leading-relaxed">
+                  ⚠ Changes take effect after restarting the backend. Include <code className="font-mono bg-muted px-1 rounded">postgres</code> when clicking Start Services below.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Host</Label>
+                    <Input value={pgCfg.host}  onChange={e => setPgCfg(c => ({ ...c, host: e.target.value }))}  className="h-8 text-xs font-mono" placeholder="127.0.0.1" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Port</Label>
+                    <Input value={pgCfg.port}  onChange={e => setPgCfg(c => ({ ...c, port: Number(e.target.value) }))}  className="h-8 text-xs font-mono" placeholder="5434" type="number" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">User</Label>
+                    <Input value={pgCfg.user}  onChange={e => setPgCfg(c => ({ ...c, user: e.target.value }))}  className="h-8 text-xs font-mono" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Password</Label>
+                    <Input value={pgCfg.pass}  onChange={e => setPgCfg(c => ({ ...c, pass: e.target.value }))}  className="h-8 text-xs font-mono" type="password" />
+                  </div>
+                  <div className="space-y-1 col-span-2">
+                    <Label className="text-xs">Database</Label>
+                    <Input value={pgCfg.db}    onChange={e => setPgCfg(c => ({ ...c, db: e.target.value }))}    className="h-8 text-xs font-mono" />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleSavePgConfig} disabled={pgSaving}>
+                    {pgSaving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                    Save connection
+                  </Button>
+                  {pgSaved && <span className="text-xs text-emerald-500">Saved — restart backend to connect</span>}
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Backups work the same way — the sync mirror writes <code className="font-mono bg-muted px-1 rounded">foliantica.sql</code> to your local mirror directory regardless of whether PG runs in Docker or embedded.
+                </p>
               </div>
             )}
           </div>

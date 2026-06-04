@@ -419,6 +419,39 @@ def set_data_dir(body: DataDirUpdate):
     return {"current": os.getcwd(), "configured": body.path or None}
 
 
+# ── PostgreSQL connection config (stored in ~/.foliantica/config.json) ────────
+# Must live in the file config rather than the DB because it must be readable
+# before the database engine is created.
+
+@router.get("/pg-config")
+def get_pg_config():
+    """Return the current PG connection config from the shared lw-config file."""
+    cfg = _read_lw_config()
+    return cfg.get("pg", {
+        "useDocker": False,
+        "host":      "127.0.0.1",
+        "port":      5434,
+        "user":      "foliantica",
+        "pass":      "foliantica",
+        "db":        "foliantica",
+    })
+
+
+@router.post("/pg-config")
+def set_pg_config(body: dict):
+    """Persist PG connection config to ~/.foliantica/config.json.
+
+    Takes effect after the backend restarts (connection is created at startup).
+    Allowed keys: useDocker (bool), host, port (int), user, pass, db.
+    """
+    allowed = {"useDocker", "host", "port", "user", "pass", "db"}
+    clean = {k: v for k, v in body.items() if k in allowed}
+    cfg = _read_lw_config()
+    cfg["pg"] = clean
+    _write_lw_config(cfg)
+    return clean
+
+
 @router.get("/models")
 def get_available_models(db: Session = Depends(get_db)):
     """Proxy the OpenRouter model list so the API key stays server-side."""

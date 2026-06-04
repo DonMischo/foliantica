@@ -742,6 +742,24 @@ export const syncApi = {
   trigger: () => req<{ ok: boolean }>("/sync/trigger", { method: "POST" }),
 };
 
+export interface PgConfig {
+  useDocker: boolean;
+  host:      string;
+  port:      number;
+  user:      string;
+  pass:      string;
+  db:        string;
+}
+
+export const pgConfigApi = {
+  get:  ()                => req<PgConfig>("/settings/pg-config"),
+  save: (body: PgConfig)  => req<PgConfig>("/settings/pg-config", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }),
+};
+
 // ── Achievements ──────────────────────────────────────────────────────────────
 
 export const achievementsApi = {
