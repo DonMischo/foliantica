@@ -32,17 +32,15 @@ Download the latest installer from [Releases](../../releases) and run it — no 
 
 ### Run from Source
 
-Open two terminals from the `foliantica/` directory:
+Double-click **`LaunchFoliantica.bat`** (Windows) — it starts the backend, frontend, and the Docker sidecars (LanguageTool + Pandoc) in one step.
 
 ```powershell
-# Terminal 1 — Backend (Python / FastAPI)
-.\start-backend.ps1
-
-# Terminal 2 — Frontend (Next.js)
-.\start-frontend.ps1
+.\LaunchFoliantica.bat
 ```
 
 Then open **http://localhost:3000** in your browser.
+
+> Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and Docker Desktop (for grammar check and PDF/EPUB/DOCX export).
 
 ### Build the Desktop App
 
@@ -51,7 +49,7 @@ Then open **http://localhost:3000** in your browser.
 ./build.sh        # macOS / Linux
 ```
 
-Requires Node.js 20+, Python 3.11+, and [uv](https://github.com/astral-sh/uv). Produces an installer in `dist/`.
+Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and Docker Desktop. Produces an installer in `dist/`.
 
 ---
 
@@ -151,7 +149,11 @@ Requires Node.js 20+, Python 3.11+, and [uv](https://github.com/astral-sh/uv). P
 
 ### 🔬 Research Board
 
-- Clip **URLs** (auto-fetches title, description, and preview image), **text notes**, and **images**
+- Clip **URLs** (auto-fetches title, description, and preview image), **text notes**, **images**, and **PDFs**
+- **Drag-and-drop** or **Ctrl+V** paste to attach an image to any clip — works even with a text field focused
+- **PDF upload** — attach a document to a clip and preview it inline (canvas-based, works in Electron and browser)
+- **Image lightbox** — click the expand button on hover to view the full image; press Esc to close
+- Cards displayed in a 3:4 portrait grid; edit dialog shows text fields alongside a media preview
 - Tag freely; filter by tag in the sidebar
 - Link any clip to a specific scene or codex entry
 - Open the original URL in one click
@@ -279,6 +281,10 @@ Requires Node.js 20+, Python 3.11+, and [uv](https://github.com/astral-sh/uv). P
 | Generate text inline with AI | Type `/ki`, configure the node, click **Generate** |
 | Set the language for AI output | Project → Book Metadata → Language field (e.g. `de`) |
 | Clip a research URL | Research tab → paste URL → Enter |
+| Attach an image to a clip | Drag onto the card, or Ctrl+V while hovering |
+| Attach a PDF to a clip | Open the clip → PDF upload button |
+| Preview an attached image full-size | Hover the image → click ↗ |
+| Preview an attached PDF | Click the PDF button on the card |
 | Move cut prose to Fragments | Fragments tab → Snippets or Archive |
 
 ---
