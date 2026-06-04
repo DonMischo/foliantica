@@ -253,7 +253,8 @@ async function startPostgres() {
     return { pgDumpPath: "pg_dump" };
   }
 
-  const pgDataDir = path.join(dataDir, "pgdata");
+  // pgdata must always be on a local drive — never in a cloud-synced dataDir.
+  const pgDataDir = path.join(app.getPath("userData"), "pgdata");
   const isFirstRun = !fs.existsSync(pgDataDir);
 
   if (isFirstRun && splashWin) {
@@ -306,6 +307,7 @@ async function startPostgres() {
         "--pg-user",  PG_USER,
         "--pg-pass",  PG_PASS,
         "--pg-db",    PG_DB,
+        "--keep-original",
       ], { stdio: ["ignore", "pipe", "pipe"] });
       pipeToLog(migProc, "migrate");
       migProc.on("exit", (code) => {

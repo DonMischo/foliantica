@@ -1,14 +1,22 @@
 /**
- * Start an embedded PostgreSQL instance for testing.
- * Writes "READY" to stdout when PG is accepting connections.
- * Keep this process alive while running tests; Ctrl-C to stop.
+ * Start a PERSISTENT embedded PostgreSQL cluster for the one-time migration.
+ * Unlike start-test-pg.mjs (persistent: false, temp dir), this keeps the
+ * cluster so Electron can reuse it on next launch.
+ *
+ * Usage:
+ *   node scripts/start-migration-pg.mjs <pgdata-dir>
+ *
+ * Writes "READY" to stdout when PG accepts connections.
+ * Send SIGINT or SIGTERM to shut down cleanly.
  */
 import EmbeddedPostgres from 'embedded-postgres';
 import { mkdirSync, existsSync } from 'fs';
-import { tmpdir } from 'os';
 import path from 'path';
+import os from 'os';
 
-const DATA_DIR = path.join(tmpdir(), 'foliantica-pg-test');
+const DATA_DIR = process.argv[2]
+  || path.join(os.homedir(), 'AppData', 'Roaming', 'Foliantica', 'pgdata');
+
 mkdirSync(DATA_DIR, { recursive: true });
 
 const pg = new EmbeddedPostgres({
@@ -16,10 +24,9 @@ const pg = new EmbeddedPostgres({
   user: 'foliantica',
   password: 'foliantica',
   port: 5433,
-  persistent: false,   // wipe cluster on stop so tests are repeatable
-  // Force UTF-8 cluster so Unicode characters in seed data don't fail
+  persistent: true,   // cluster survives process exit — Electron reuses it
   initdbFlags: ['--encoding=UTF8', '--locale=C'],
-  onLog: (msg) => process.stderr.write('[pg] ' + msg + '\n'),
+  onLog:   (msg) => process.stderr.write('[pg] '     + msg + '\n'),
   onError: (msg) => process.stderr.write('[pg-err] ' + msg + '\n'),
 });
 
@@ -34,4 +41,4 @@ if (!alreadyInitialised) {
 await pg.start();
 await pg.createDatabase('foliantica').catch(() => {});
 process.stdout.write('READY\n');
-// Block forever — caller kills us when done
+// Block — caller sends SIGTERM when done

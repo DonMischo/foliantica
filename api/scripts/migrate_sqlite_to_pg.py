@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 
 
-def migrate(sqlite_path: str, pg_port: str, pg_user: str, pg_pass: str, pg_db: str) -> None:
+def migrate(sqlite_path: str, pg_port: str, pg_user: str, pg_pass: str, pg_db: str, keep_original: bool = False) -> None:
     from sqlalchemy import create_engine, inspect, text
 
     sqlite_url = f"sqlite:///{sqlite_path}"
@@ -93,23 +93,29 @@ def migrate(sqlite_path: str, pg_port: str, pg_user: str, pg_pass: str, pg_db: s
 
     print(f"\nMigration complete. {len(migrated)} table(s) copied.")
 
-    # Rename the source SQLite DB to .bak — keep it as a safety net.
-    bak = Path(sqlite_path).with_suffix(".db.bak")
-    Path(sqlite_path).rename(bak)
-    print(f"SQLite database backed up to: {bak}")
+    if not keep_original:
+        # Rename the source SQLite DB to .bak — keep it as a safety net.
+        bak = Path(sqlite_path).with_suffix(".db.bak")
+        Path(sqlite_path).rename(bak)
+        print(f"SQLite database backed up to: {bak}")
+    else:
+        print(f"SQLite database kept at: {sqlite_path}")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Migrate Foliantica data from SQLite to PostgreSQL")
     parser.add_argument("--sqlite-path", required=True,  help="Absolute path to foliantica.db")
     parser.add_argument("--pg-port",     default="5433", help="PostgreSQL port (default: 5433)")
-    parser.add_argument("--pg-user",     default="foliantica")
-    parser.add_argument("--pg-pass",     default="foliantica")
-    parser.add_argument("--pg-db",       default="foliantica")
+    parser.add_argument("--pg-user",       default="foliantica")
+    parser.add_argument("--pg-pass",       default="foliantica")
+    parser.add_argument("--pg-db",         default="foliantica")
+    parser.add_argument("--keep-original", action="store_true",
+                        help="Keep the SQLite .db file instead of renaming it to .db.bak")
     args = parser.parse_args()
 
     if not Path(args.sqlite_path).exists():
         print(f"ERROR: SQLite database not found: {args.sqlite_path}", file=sys.stderr)
         sys.exit(1)
 
-    migrate(args.sqlite_path, args.pg_port, args.pg_user, args.pg_pass, args.pg_db)
+    migrate(args.sqlite_path, args.pg_port, args.pg_user, args.pg_pass, args.pg_db,
+            keep_original=args.keep_original)

@@ -114,7 +114,8 @@ $webDir = Join-Path $Root "web"
 
 Start-Process powershell -ArgumentList @(
     "-NoProfile", "-ExecutionPolicy", "Bypass",
-    "-Command", "& { `$host.UI.RawUI.WindowTitle = 'Foliantica [backend]'; `$env:LW_USE_SQLITE = '1'; Set-Location '$Root\api'; & '.\.venv\Scripts\python.exe' run.py --dev; Read-Host 'Stopped - press Enter to close' }"
+    "-File", "$Root\scripts\dev-backend.ps1",
+    "-Root", $Root
 )
 
 Start-Sleep -Seconds 1
