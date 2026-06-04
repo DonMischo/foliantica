@@ -116,13 +116,13 @@ class TestPgConfig:
 # ---------------------------------------------------------------------------
 
 class TestPgTransferSelf:
-    """Transfer from embedded to itself — full code path, deterministic counts."""
+    """Transfer from live engine to itself — full code path, deterministic counts."""
 
     @pytest.fixture(scope="class")
     def result(self, embedded_conn):
         from routers.settings import transfer_pg
-        body = {"source": embedded_conn, "target": embedded_conn}
-        # Call the FastAPI endpoint function directly (bypass HTTP)
+        # Source is always the live engine; only target is specified
+        body = {"target": embedded_conn}
         return transfer_pg(body)
 
     def test_returns_tables_copied_count(self, result):
@@ -142,7 +142,7 @@ class TestPgTransferSelf:
     def test_transfer_is_idempotent(self, embedded_conn):
         """Running the transfer twice returns the same counts both times."""
         from routers.settings import transfer_pg
-        body = {"source": embedded_conn, "target": embedded_conn}
+        body = {"target": embedded_conn}
         r1 = transfer_pg(body)
         r2 = transfer_pg(body)
         assert r1["rows_copied"] == r2["rows_copied"]
@@ -155,25 +155,12 @@ class TestPgTransferSelf:
 
 class TestPgTransferErrors:
 
-    def test_bad_target_raises_http_500(self, embedded_conn):
+    def test_bad_target_raises_http_500(self):
         from fastapi import HTTPException
         from routers.settings import transfer_pg
         body = {
-            "source": embedded_conn,
             "target": {"host": "127.0.0.1", "port": 9999,
                        "user": "foliantica", "pass": "foliantica", "db": "foliantica"},
-        }
-        with pytest.raises(HTTPException) as exc_info:
-            transfer_pg(body)
-        assert exc_info.value.status_code == 500
-
-    def test_bad_source_raises_http_500(self, embedded_conn):
-        from fastapi import HTTPException
-        from routers.settings import transfer_pg
-        body = {
-            "source": {"host": "127.0.0.1", "port": 9998,
-                       "user": "foliantica", "pass": "foliantica", "db": "foliantica"},
-            "target": embedded_conn,
         }
         with pytest.raises(HTTPException) as exc_info:
             transfer_pg(body)

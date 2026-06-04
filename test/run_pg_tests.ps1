@@ -410,9 +410,9 @@ try {
     if ($lwConfigOrig) { Set-Content -Path $lwConfigPath -Value $lwConfigOrig -Encoding UTF8 }
     else { Remove-Item $lwConfigPath -ErrorAction SilentlyContinue }
 
-    # ── PG transfer (self-transfer: source = target = embedded) ───────────────
+    # ── PG transfer (live engine -> self: target = live embedded) ────────────
+    # Source is always the live engine; only target is specified
     $transferBody = @{
-        source = @{ host="127.0.0.1"; port=5433; user="foliantica"; pass="foliantica"; db="foliantica" }
         target = @{ host="127.0.0.1"; port=5433; user="foliantica"; pass="foliantica"; db="foliantica" }
     } | ConvertTo-Json -Depth 4
 
@@ -429,7 +429,6 @@ try {
     }
     T "POST /api/settings/pg-transfer (bad target returns 500)" {
         $badBody = @{
-            source = @{ host="127.0.0.1"; port=5433; user="foliantica"; pass="foliantica"; db="foliantica" }
             target = @{ host="127.0.0.1"; port=9999; user="foliantica"; pass="foliantica"; db="foliantica" }
         } | ConvertTo-Json -Depth 4
         try {

@@ -571,10 +571,14 @@ def _pg_engine_for(conn: dict):
 
 @router.post("/pg-transfer")
 def transfer_pg(body: dict):
-    """Copy all data from one PostgreSQL instance to another.
+    """Copy all data from the LIVE database to a target PostgreSQL instance.
 
-    Body: { "source": {host, port, user, pass, db},
-            "target": {host, port, user, pass, db} }
+    The source is always the engine the API is currently connected to — it is
+    guaranteed to be reachable.  Only the target needs to be specified.
+
+    Body: { "target": {host, port, user, pass, db} }
+
+    For backward-compat a "source" key is accepted but silently ignored.
 
     The target schema is created from models if it doesn't exist.
     All existing rows in the target are replaced (DELETE then INSERT).
@@ -582,20 +586,18 @@ def transfer_pg(body: dict):
     Returns { tables_copied, rows_copied, tables }.
     """
     from sqlalchemy import text as _text
+    from database import engine as _live_engine  # always the running DB
     from models import Base
 
-    src_cfg = {**_EMBEDDED_PG, **body.get("source", {})}
-    dst_cfg = {**_EMBEDDED_PG, **body.get("target", {})}
-
-    src_engine = _pg_engine_for(src_cfg)
+    dst_cfg    = {**_EMBEDDED_PG, **body.get("target", {})}
     dst_engine = _pg_engine_for(dst_cfg)
 
     try:
         # Ensure target schema exists
         Base.metadata.create_all(bind=dst_engine)
 
-        # Get ordered table list from source via information_schema
-        with src_engine.connect() as src_conn:
+        # Get table list from the live source
+        with _live_engine.connect() as src_conn:
             tables = [r[0] for r in src_conn.execute(_text(
                 "SELECT table_name FROM information_schema.tables "
                 "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "
@@ -605,7 +607,7 @@ def transfer_pg(body: dict):
         tables_copied: list[str] = []
         rows_copied = 0
 
-        with src_engine.connect() as src_conn, dst_engine.begin() as dst_conn:
+        with _live_engine.connect() as src_conn, dst_engine.begin() as dst_conn:
             dst_conn.execute(_text("SET session_replication_role = replica"))
 
             for table in tables:
@@ -655,7 +657,6 @@ def transfer_pg(body: dict):
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     finally:
-        src_engine.dispose()
         dst_engine.dispose()
 
 

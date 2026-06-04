@@ -758,14 +758,15 @@ export interface PgTransferResult {
 }
 
 export const pgConfigApi = {
-  get:      ()                                              => req<PgConfig>("/settings/pg-config"),
-  save:     (body: PgConfig)                               => req<PgConfig>("/settings/pg-config", {
+  get:  ()               => req<PgConfig>("/settings/pg-config"),
+  save: (body: PgConfig) => req<PgConfig>("/settings/pg-config", {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
   }),
-  transfer: (source: Omit<PgConfig,"useDocker">, target: Omit<PgConfig,"useDocker">) =>
+  /** Copy the live DB (whatever the API is currently connected to) → target. */
+  transfer: (target: Omit<PgConfig, "useDocker">) =>
     req<PgTransferResult>("/settings/pg-transfer", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source, target }),
+      body: JSON.stringify({ target }),
     }),
 };
 

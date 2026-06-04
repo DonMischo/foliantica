@@ -147,17 +147,16 @@ export default function SettingsPage() {
   const [transferState,  setTransferState]  = useState<"idle"|"busy"|"ok"|"error">("idle");
   const [transferResult, setTransferResult] = useState<string>("");
 
+  // The source is always the live DB (API handles this); we only specify the target.
   const embeddedConn = { host: "127.0.0.1", port: 5433, user: "foliantica", pass: "foliantica", db: "foliantica" };
   const dockerConn   = { host: pgCfg.host,  port: pgCfg.port, user: pgCfg.user, pass: pgCfg.pass, db: pgCfg.db };
 
   const handleTransfer = async () => {
-    const [src, dst] = transferDir === "toDocker"
-      ? [embeddedConn, dockerConn]
-      : [dockerConn,   embeddedConn];
+    const target = transferDir === "toDocker" ? dockerConn : embeddedConn;
     setTransferState("busy");
     setTransferResult("");
     try {
-      const res = await pgConfigApi.transfer(src, dst);
+      const res = await pgConfigApi.transfer(target);
       setTransferState("ok");
       setTransferResult(`Copied ${res.rows_copied} rows across ${res.tables_copied} tables.`);
     } catch (e: any) {
@@ -1269,8 +1268,8 @@ export default function SettingsPage() {
                 <div className="border-t border-border/50 pt-3 space-y-2">
                   <p className="text-xs font-medium">Transfer data between instances</p>
                   <p className="text-[11px] text-muted-foreground">
-                    Copies all rows from one database to the other. Both instances must be running.
-                    Existing data in the target is replaced.
+                    Copies all rows from the <strong className="text-foreground">current live database</strong> to the target.
+                    The target must be running. Existing data in the target is replaced.
                   </p>
                   <div className="flex items-center gap-2 flex-wrap">
                     <button
@@ -1283,7 +1282,7 @@ export default function SettingsPage() {
                           : "border-border text-muted-foreground hover:border-foreground"
                       )}
                     >
-                      Embedded → Docker
+                      Copy to Docker
                     </button>
                     <button
                       type="button"
@@ -1295,7 +1294,7 @@ export default function SettingsPage() {
                           : "border-border text-muted-foreground hover:border-foreground"
                       )}
                     >
-                      Docker → Embedded
+                      Copy to Embedded
                     </button>
                     <Button
                       size="sm"
