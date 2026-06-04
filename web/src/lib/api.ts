@@ -240,14 +240,10 @@ export const imagesApi = {
     upload<{ image_path: string }>(`/codex/${entryId}/image`, file),
   deleteCodexImage: (entryId: number) =>
     deleteImage(`/codex/${entryId}/image`),
-  uploadResearchImage: (itemId: number, file: File) =>
-    upload<{ image_path: string }>(`/research/${itemId}/image`, file),
-  uploadResearchPdf: (itemId: number, file: File) =>
-    upload<{ pdf_path: string }>(`/research/${itemId}/pdf`, file),
-  deleteResearchPdf: (itemId: number) =>
-    deleteImage(`/research/${itemId}/pdf`),
-  deleteResearchImage: (itemId: number) =>
-    deleteImage(`/research/${itemId}/image`),
+  uploadResearchMedia: (itemId: number, file: File) =>
+    upload<{ id: number; kind: string; path: string; order_index: number }>(`/research/${itemId}/media`, file),
+  deleteResearchMedia: (mediaId: number) =>
+    deleteImage(`/research/media/${mediaId}`),
   /** Convert a stored relative path to an absolute URL for <img src> */
   url: (path: string) => `/${path}`,
 };

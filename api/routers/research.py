@@ -7,7 +7,7 @@ from typing import Optional
 from datetime import datetime, UTC
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
 from models import Project, ResearchItem
@@ -63,7 +63,9 @@ def list_research(project_id: int, db: Session = Depends(get_db)):
     project = db.get(Project, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    return db.query(ResearchItem).filter_by(project_id=project_id)\
+    return db.query(ResearchItem)\
+             .options(selectinload(ResearchItem.media))\
+             .filter_by(project_id=project_id)\
              .order_by(ResearchItem.created_at.desc()).all()
 
 
@@ -92,6 +94,8 @@ async def create_research(project_id: int, data: ResearchItemCreate, db: Session
     db.add(item)
     db.commit()
     db.refresh(item)
+    # Eagerly load media so Pydantic can serialise it after the session flushes.
+    db.query(ResearchItem).options(selectinload(ResearchItem.media)).filter_by(id=item.id).one()
     return item
 
 

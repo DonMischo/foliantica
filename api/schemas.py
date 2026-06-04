@@ -813,6 +813,15 @@ class ResearchItemUpdate(BaseModel):
     tags: Optional[list[str]] = None
 
 
+class ResearchMediaOut(BaseModel):
+    id: int
+    kind: str          # "image" | "pdf"
+    path: str
+    order_index: int
+
+    model_config = {"from_attributes": True}
+
+
 class ResearchItemOut(BaseModel):
     id: int
     project_id: int
@@ -822,8 +831,7 @@ class ResearchItemOut(BaseModel):
     url_description: Optional[str]
     url_image: Optional[str]
     text_content: Optional[str]
-    image_path: Optional[str]
-    pdf_path: Optional[str]
+    media: list[ResearchMediaOut] = []
     linked_scene_id: Optional[int]
     linked_codex_id: Optional[int]
     tags: list[str]

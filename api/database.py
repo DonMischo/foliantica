@@ -1088,6 +1088,43 @@ def migrate_research_pdf():
             pass  # column already exists
 
 
+def migrate_research_media():
+    """Create research_media table and migrate legacy image_path / pdf_path rows into it."""
+    with engine.begin() as conn:
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS research_media (
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                research_item_id INTEGER NOT NULL REFERENCES research_items(id) ON DELETE CASCADE,
+                kind             TEXT    NOT NULL,
+                path             TEXT    NOT NULL,
+                order_index      INTEGER NOT NULL DEFAULT 0,
+                created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """))
+
+        # Move any pre-existing image_path / pdf_path values into the new table.
+        # Idempotent: skip if an identical path already exists for that item.
+        rows = conn.execute(text(
+            "SELECT id, image_path, pdf_path FROM research_items "
+            "WHERE image_path IS NOT NULL OR pdf_path IS NOT NULL"
+        )).fetchall()
+
+        for row in rows:
+            for kind, path in (("image", row[1]), ("pdf", row[2])):
+                if not path:
+                    continue
+                already = conn.execute(text(
+                    "SELECT 1 FROM research_media "
+                    "WHERE research_item_id = :rid AND path = :path"
+                ), {"rid": row[0], "path": path}).fetchone()
+                if not already:
+                    conn.execute(text(
+                        "INSERT INTO research_media "
+                        "(research_item_id, kind, path, order_index, created_at) "
+                        "VALUES (:rid, :kind, :path, 0, CURRENT_TIMESTAMP)"
+                    ), {"rid": row[0], "kind": kind, "path": path})
+
+
 def migrate_sync_mirror():
     """Add sync_mirror_enabled and sync_local_dir columns to user_settings."""
     with engine.begin() as conn:

@@ -360,6 +360,7 @@ class ResearchItem(Base):
     url_description:  Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     url_image:        Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     text_content:     Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Legacy single-file columns — kept for the migration; use ResearchMedia going forward.
     image_path:       Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     pdf_path:         Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     linked_scene_id:  Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
@@ -369,12 +370,31 @@ class ResearchItem(Base):
     updated_at:       Mapped[datetime]      = mapped_column(DateTime, default=_now, onupdate=_now)
 
     project: Mapped["Project"] = relationship("Project", back_populates="research_items")
+    media:   Mapped[list["ResearchMedia"]] = relationship(
+        "ResearchMedia", back_populates="item",
+        cascade="all, delete-orphan",
+        order_by="ResearchMedia.order_index",
+    )
 
     def get_tags(self) -> list[str]:
         try:
             return json.loads(self.tags or "[]")
         except (json.JSONDecodeError, TypeError):
             return []
+
+
+class ResearchMedia(Base):
+    """One image or PDF attached to a ResearchItem (supports multiple per item)."""
+    __tablename__ = "research_media"
+
+    id:               Mapped[int]      = mapped_column(Integer, primary_key=True, index=True)
+    research_item_id: Mapped[int]      = mapped_column(Integer, ForeignKey("research_items.id", ondelete="CASCADE"), index=True)
+    kind:             Mapped[str]      = mapped_column(String(10), nullable=False)   # "image" | "pdf"
+    path:             Mapped[str]      = mapped_column(String(500), nullable=False)
+    order_index:      Mapped[int]      = mapped_column(Integer, default=0)
+    created_at:       Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+    item: Mapped["ResearchItem"] = relationship("ResearchItem", back_populates="media")
 
 
 class QuerySubmission(Base):
