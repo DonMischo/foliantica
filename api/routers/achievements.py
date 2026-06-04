@@ -203,6 +203,9 @@ def _safe(db: Session, query: str, default=0):
     try:
         return db.execute(text(query)).scalar() or default
     except Exception:
+        # On PostgreSQL a failed statement poisons the whole transaction.
+        # Roll back so subsequent queries in the same request still work.
+        db.rollback()
         return default
 
 

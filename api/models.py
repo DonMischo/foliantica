@@ -288,6 +288,11 @@ class UserSettings(Base):
     ai_disabled: Mapped[int] = mapped_column(Integer, default=0)
     sync_mirror_enabled: Mapped[int] = mapped_column(Integer, default=0)
     sync_local_dir: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # Counters — incremented by raw SQL in analytics.py / export.py.
+    # Kept out of migrate_new_columns() for SQLite compat; must live in the
+    # model so create_all() creates them on PostgreSQL.
+    stats_views: Mapped[int] = mapped_column(Integer, default=0)
+    export_count: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class AIPrompt(Base):

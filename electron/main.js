@@ -268,6 +268,10 @@ async function startPostgres() {
     password: PG_PASS,
     port: PG_PORT,
     persistent: true,
+    // Force a UTF-8 cluster regardless of the OS locale.  Without this,
+    // Windows initialises with WIN1252 and Unicode chars (e.g. ≤ in seed
+    // descriptions) cause UntranslatableCharacter errors at runtime.
+    initdbFlags: ["--encoding=UTF8", "--locale=C"],
   });
 
   log(`[pg] initialising cluster at ${pgDataDir} (first run: ${isFirstRun})`);

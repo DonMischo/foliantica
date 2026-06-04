@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "electron-updater": "^6.3.4",
-    "embedded-postgres": "^1.0.6"
+    "embedded-postgres": "^17.7.0-beta.16"
   },
   "devDependencies": {
     "electron": "^42.1.0",

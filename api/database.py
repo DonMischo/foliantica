@@ -40,7 +40,23 @@ else:
         f"postgresql+psycopg2://{_PG_USER}:{_PG_PASS}"
         f"@127.0.0.1:{_PG_PORT}/{_PG_DB}"
     )
-    engine = create_engine(DATABASE_URL, pool_size=5, max_overflow=10)
+    engine = create_engine(
+        DATABASE_URL,
+        pool_size=5,
+        max_overflow=10,
+        # Force UTF-8 client encoding so Unicode characters in seed data
+        # (e.g. ≤ in publisher descriptions) don't hit Windows cp1252 limits.
+        connect_args={"options": "-c client_encoding=UTF8"},
+    )
+    # PostgreSQL distinguishes BOOLEAN from INTEGER.  Many existing model columns
+    # are declared as Integer but receive Python bool values (True/False).
+    # psycopg2's default adapter would send those as PostgreSQL booleans, causing
+    # a DatatypeMismatch error.  Override it to send plain integer literals.
+    try:
+        import psycopg2.extensions as _pg_ext
+        _pg_ext.register_adapter(bool, lambda b: _pg_ext.AsIs(int(b)))
+    except ImportError:
+        pass
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -1251,11 +1267,13 @@ def seed_publisher_profiles():
                     INSERT INTO publisher_profiles
                         (short_name, name, category, description,
                          word_count_min, word_count_max, accepts_unagented,
-                         submission_url, options_json, is_active)
+                         submission_url, options_json, is_active,
+                         created_at, updated_at)
                     VALUES
                         (:sn, :name, :cat, :desc,
                          :wmin, :wmax, :unag,
-                         :url, :opts, 1)
+                         :url, :opts, 1,
+                         CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """), params)
             else:
                 conn.execute(text("""
@@ -1280,8 +1298,10 @@ def seed_export_profiles():
                 conn.execute(
                     text("""
                         INSERT INTO export_profiles
-                            (project_id, name, description, is_builtin, options_json)
-                        VALUES (NULL, :name, :desc, 1, :opts)
+                            (project_id, name, description, is_builtin, options_json,
+                             created_at, updated_at)
+                        VALUES (NULL, :name, :desc, 1, :opts,
+                                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     """),
                     {"name": p["name"], "desc": p["description"],
                      "opts": json.dumps(p["options"])},
