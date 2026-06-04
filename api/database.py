@@ -1079,6 +1079,15 @@ def migrate_ai_disabled():
             pass  # column already exists
 
 
+def migrate_research_pdf():
+    """Add pdf_path column to research_items."""
+    with engine.begin() as conn:
+        try:
+            conn.execute(text("ALTER TABLE research_items ADD COLUMN pdf_path TEXT"))
+        except Exception:
+            pass  # column already exists
+
+
 def migrate_sync_mirror():
     """Add sync_mirror_enabled and sync_local_dir columns to user_settings."""
     with engine.begin() as conn:

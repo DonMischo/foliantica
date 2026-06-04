@@ -15,6 +15,7 @@ const TYPE_ICONS: Record<EntryType, React.ElementType> = {
   item: Package,
   lore: Scroll,
   custom: Tag,
+  relic: Coins,
 };
 
 const TYPE_LABELS: Record<EntryType, string> = {
@@ -23,6 +24,7 @@ const TYPE_LABELS: Record<EntryType, string> = {
   item: "Item",
   lore: "Lore",
   custom: "Custom",
+  relic: "Relic",
 };
 
 interface Props {

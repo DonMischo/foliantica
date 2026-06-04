@@ -1,6 +1,6 @@
 @echo off
 set "SELF=%~f0"
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$s=(gc -LiteralPath $env:SELF -Raw) -replace '(?s)^.*?rem __PS__\r?\n',''; & ([scriptblock]::Create($s)) @args" %*
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$s=(gc -LiteralPath $env:SELF -Raw -Encoding UTF8) -replace '(?s)^.*?rem __PS__\r?\n',''; & ([scriptblock]::Create($s)) @args" %*
 exit /b
 rem __PS__
 param([switch]$Help)
@@ -77,6 +77,29 @@ Write-Host "  $(white "Checking npm packages...")"
 Push-Location (Join-Path $Root "web")
 npm install
 Pop-Location
+Write-Host ""
+
+# -- Clear Next.js cache -------------------------------------------------------
+$nextCache = Join-Path $Root "web\.next"
+if (Test-Path $nextCache) {
+    Write-Host "  $(white "Clearing Next.js cache...")"
+    Remove-Item -Recurse -Force $nextCache
+    Write-Host ""
+}
+
+# -- Docker services (LanguageTool + Pandoc) -----------------------------------
+Write-Host "  $(white "Starting Docker services...")"
+if (Get-Command docker -ErrorAction SilentlyContinue) {
+    Push-Location $Root
+    docker compose up --build -d
+    Pop-Location
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  $(yellow "[WARN]") Docker services failed to start - grammar check and export may be unavailable."
+    }
+} else {
+    Write-Host "  $(yellow "[WARN]") Docker not found - LanguageTool and Pandoc skipped."
+    Write-Host "         Install Docker Desktop: $(cyan "https://www.docker.com/products/docker-desktop/")"
+}
 Write-Host ""
 
 # -- Launch --------------------------------------------------------------------

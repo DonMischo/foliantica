@@ -139,6 +139,7 @@ export interface ResearchItem {
   url_image: string | null;
   text_content: string | null;
   image_path: string | null;
+  pdf_path: string | null;
   linked_scene_id: number | null;
   linked_codex_id: number | null;
   tags: string[];

@@ -874,6 +874,23 @@ export const useDeleteResearchImage = (projectId: number) => {
   });
 };
 
+export const useUploadResearchPdf = (projectId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: number; file: File }) =>
+      imagesApi.uploadResearchPdf(id, file),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["research", projectId] }),
+  });
+};
+
+export const useDeleteResearchPdf = (projectId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => imagesApi.deleteResearchPdf(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["research", projectId] }),
+  });
+};
+
 // ── Query / Submission tracker ────────────────────────────────────────────────
 
 export const useSubmissions = (projectId: number) =>

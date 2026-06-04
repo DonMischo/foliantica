@@ -361,6 +361,7 @@ class ResearchItem(Base):
     url_image:        Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     text_content:     Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     image_path:       Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    pdf_path:         Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     linked_scene_id:  Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     linked_codex_id:  Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     tags:             Mapped[str]           = mapped_column(Text, nullable=False, default="[]")

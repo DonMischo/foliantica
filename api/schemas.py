@@ -823,6 +823,7 @@ class ResearchItemOut(BaseModel):
     url_image: Optional[str]
     text_content: Optional[str]
     image_path: Optional[str]
+    pdf_path: Optional[str]
     linked_scene_id: Optional[int]
     linked_codex_id: Optional[int]
     tags: list[str]
