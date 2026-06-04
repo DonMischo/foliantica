@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings, useUpdateSettings, useOpenRouterModels, usePrompts, useCreatePrompt, useUpdatePrompt, useDeletePrompt, useRevertPrompt, useServiceStatus, useSyncStatus } from "@/store/queries";
-import { dataDirApi, settingsApi, syncApi, pgConfigApi, type PgConfig } from "@/lib/api";
+import { dataDirApi, settingsApi, syncApi, pgConfigApi, type PgConfig, type PgActive } from "@/lib/api";
 import { ACH_POPUPS_KEY } from "@/components/AchievementToast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useUIStore } from "@/store/ui";
@@ -121,16 +121,25 @@ export default function SettingsPage() {
 
   // ── Docker PostgreSQL ─────────────────────────────────────────────────────
   const defaultPgCfg: PgConfig = { useDocker: false, host: "127.0.0.1", port: 5434, user: "foliantica", pass: "foliantica", db: "foliantica" };
-  const [pgCfg, setPgCfg]         = useState<PgConfig>(defaultPgCfg);
-  const [pgSaving, setPgSaving]   = useState(false);
-  const [pgSaved, setPgSaved]     = useState(false);
+  const [pgCfg,    setPgCfg]    = useState<PgConfig>(defaultPgCfg);
+  const [pgActive, setPgActive] = useState<PgActive | null>(null);
+  const [pgSaving, setPgSaving] = useState(false);
+  const [pgSaved,  setPgSaved]  = useState(false);
+  const [pgSwitching, setPgSwitching] = useState(false);
 
   useEffect(() => {
     pgConfigApi.get().then(cfg => setPgCfg({ ...defaultPgCfg, ...cfg })).catch(() => {});
+    pgConfigApi.getActive().then(setPgActive).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleSavePgConfig = async () => {
+  // activeIsDocker: what the API is actually running on right now
+  const activeIsDocker = pgActive?.mode === "pg" && (pgActive.port ?? 5433) !== 5433;
+  // savedIsDocker: what lw-config says (takes effect after restart)
+  const savedIsDocker  = pgCfg.useDocker;
+  const restartNeeded  = activeIsDocker !== savedIsDocker;
+
+  const handleSavePgConn = async () => {
     setPgSaving(true);
     try {
       await pgConfigApi.save(pgCfg);
@@ -141,22 +150,33 @@ export default function SettingsPage() {
     }
   };
 
-  // Transfer state
-  type TransferDir = "toDocker" | "toEmbedded";
-  const [transferDir,    setTransferDir]    = useState<TransferDir>("toDocker");
+  const handleSwitch = async (toDocker: boolean) => {
+    setPgSwitching(true);
+    try {
+      const saved = await pgConfigApi.save({ ...pgCfg, useDocker: toDocker });
+      setPgCfg(saved);
+    } finally {
+      setPgSwitching(false);
+    }
+  };
+
+  // Transfer state — target is always the INACTIVE db (other than what's running now)
+  const embeddedConn = { host: "127.0.0.1", port: 5433, user: "foliantica", pass: "foliantica", db: "foliantica" };
+  const dockerConn   = { host: pgCfg.host, port: pgCfg.port, user: pgCfg.user, pass: pgCfg.pass, db: pgCfg.db };
+  // Copy TO whichever db is NOT currently active
+  const transferTarget   = activeIsDocker ? embeddedConn : dockerConn;
+  const transferTargetLabel = activeIsDocker
+    ? "Embedded (port 5433)"
+    : `Docker (${pgCfg.host}:${pgCfg.port})`;
+
   const [transferState,  setTransferState]  = useState<"idle"|"busy"|"ok"|"error">("idle");
   const [transferResult, setTransferResult] = useState<string>("");
 
-  // The source is always the live DB (API handles this); we only specify the target.
-  const embeddedConn = { host: "127.0.0.1", port: 5433, user: "foliantica", pass: "foliantica", db: "foliantica" };
-  const dockerConn   = { host: pgCfg.host,  port: pgCfg.port, user: pgCfg.user, pass: pgCfg.pass, db: pgCfg.db };
-
   const handleTransfer = async () => {
-    const target = transferDir === "toDocker" ? dockerConn : embeddedConn;
     setTransferState("busy");
     setTransferResult("");
     try {
-      const res = await pgConfigApi.transfer(target);
+      const res = await pgConfigApi.transfer(transferTarget);
       setTransferState("ok");
       setTransferResult(`Copied ${res.rows_copied} rows across ${res.tables_copied} tables.`);
     } catch (e: any) {
@@ -1197,126 +1217,107 @@ export default function SettingsPage() {
             )}
           </div>
 
-          {/* PostgreSQL via Docker */}
-          <div className="rounded-lg border border-border p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium flex items-center gap-1.5">
-                  <Database className="h-3.5 w-3.5 text-primary" />
-                  PostgreSQL Database
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Use a Docker-managed PostgreSQL instead of the built-in embedded database
+          {/* PostgreSQL Database */}
+          <div className="rounded-lg border border-border p-4 space-y-4">
+
+            {/* Header */}
+            <p className="text-sm font-medium flex items-center gap-1.5">
+              <Database className="h-3.5 w-3.5 text-primary" />
+              PostgreSQL Database
+            </p>
+
+            {/* ── Active database indicator + switch ── */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <p className="text-xs text-muted-foreground">Active database</p>
+                <p className="text-xs font-medium">
+                  {activeIsDocker
+                    ? <><span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 mr-1.5 align-middle" />Docker ({pgActive?.host}:{pgActive?.port})</>
+                    : <><span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400 mr-1.5 align-middle" />Embedded (port 5433)</>}
                 </p>
               </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={pgCfg.useDocker}
-                onClick={() => setPgCfg(c => ({ ...c, useDocker: !c.useDocker }))}
-                className={cn(
-                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-                  pgCfg.useDocker ? "bg-primary" : "bg-input"
-                )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs shrink-0"
+                disabled={pgSwitching}
+                onClick={() => handleSwitch(!savedIsDocker)}
+                title="Saves config and requires backend restart"
               >
-                <span className={cn(
-                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
-                  pgCfg.useDocker ? "translate-x-4" : "translate-x-0"
-                )} />
-              </button>
+                {pgSwitching
+                  ? <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                  : null}
+                Switch to {savedIsDocker ? "Embedded" : "Docker"}
+              </Button>
             </div>
 
-            {pgCfg.useDocker && (
-              <div className="space-y-3">
-                <p className="text-[11px] text-amber-500 dark:text-amber-400 leading-relaxed">
-                  ⚠ Changes take effect after restarting the backend. Include <code className="font-mono bg-muted px-1 rounded">postgres</code> when clicking Start Services below.
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Host</Label>
-                    <Input value={pgCfg.host}  onChange={e => setPgCfg(c => ({ ...c, host: e.target.value }))}  className="h-8 text-xs font-mono" placeholder="127.0.0.1" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Port</Label>
-                    <Input value={pgCfg.port}  onChange={e => setPgCfg(c => ({ ...c, port: Number(e.target.value) }))}  className="h-8 text-xs font-mono" placeholder="5434" type="number" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">User</Label>
-                    <Input value={pgCfg.user}  onChange={e => setPgCfg(c => ({ ...c, user: e.target.value }))}  className="h-8 text-xs font-mono" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Password</Label>
-                    <Input value={pgCfg.pass}  onChange={e => setPgCfg(c => ({ ...c, pass: e.target.value }))}  className="h-8 text-xs font-mono" type="password" />
-                  </div>
-                  <div className="space-y-1 col-span-2">
-                    <Label className="text-xs">Database</Label>
-                    <Input value={pgCfg.db}    onChange={e => setPgCfg(c => ({ ...c, db: e.target.value }))}    className="h-8 text-xs font-mono" />
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleSavePgConfig} disabled={pgSaving}>
-                    {pgSaving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
-                    Save connection
-                  </Button>
-                  {pgSaved && <span className="text-xs text-emerald-500">Saved — restart backend to connect</span>}
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Backups work the same way — the sync mirror writes <code className="font-mono bg-muted px-1 rounded">foliantica.sql</code> to your local mirror directory regardless of whether PG runs in Docker or embedded.
-                </p>
+            {/* Pending restart banner */}
+            {restartNeeded && (
+              <p className="text-[11px] text-amber-500 dark:text-amber-400">
+                ⚠ Restart the backend to activate{" "}
+                <strong>{savedIsDocker ? "Docker" : "Embedded"}</strong> mode.
+                {savedIsDocker && " Include postgres in Start Services below."}
+              </p>
+            )}
 
-                {/* ── Transfer data between instances ── */}
-                <div className="border-t border-border/50 pt-3 space-y-2">
-                  <p className="text-xs font-medium">Transfer data between instances</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    Copies all rows from the <strong className="text-foreground">current live database</strong> to the target.
-                    The target must be running. Existing data in the target is replaced.
-                  </p>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => setTransferDir("toDocker")}
-                      className={cn(
-                        "text-xs px-2.5 py-1 rounded border transition-colors",
-                        transferDir === "toDocker"
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border text-muted-foreground hover:border-foreground"
-                      )}
-                    >
-                      Copy to Docker
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTransferDir("toEmbedded")}
-                      className={cn(
-                        "text-xs px-2.5 py-1 rounded border transition-colors",
-                        transferDir === "toEmbedded"
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border text-muted-foreground hover:border-foreground"
-                      )}
-                    >
-                      Copy to Embedded
-                    </button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs"
-                      disabled={transferState === "busy"}
-                      onClick={handleTransfer}
-                    >
-                      {transferState === "busy"
-                        ? <><Loader2 className="h-3 w-3 animate-spin mr-1" />Transferring…</>
-                        : "Transfer now"}
-                    </Button>
-                  </div>
-                  {transferState === "ok" && (
-                    <p className="text-xs text-emerald-500">{transferResult}</p>
-                  )}
-                  {transferState === "error" && (
-                    <p className="text-xs text-destructive">{transferResult}</p>
-                  )}
+            {/* ── Docker connection fields (always shown) ── */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Docker connection</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Host</Label>
+                  <Input value={pgCfg.host} onChange={e => setPgCfg(c => ({ ...c, host: e.target.value }))} className="h-8 text-xs font-mono" placeholder="127.0.0.1" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Port</Label>
+                  <Input value={pgCfg.port} onChange={e => setPgCfg(c => ({ ...c, port: Number(e.target.value) }))} className="h-8 text-xs font-mono" placeholder="5434" type="number" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">User</Label>
+                  <Input value={pgCfg.user} onChange={e => setPgCfg(c => ({ ...c, user: e.target.value }))} className="h-8 text-xs font-mono" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Password</Label>
+                  <Input value={pgCfg.pass} onChange={e => setPgCfg(c => ({ ...c, pass: e.target.value }))} className="h-8 text-xs font-mono" type="password" />
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <Label className="text-xs">Database</Label>
+                  <Input value={pgCfg.db} onChange={e => setPgCfg(c => ({ ...c, db: e.target.value }))} className="h-8 text-xs font-mono" />
                 </div>
               </div>
-            )}
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleSavePgConn} disabled={pgSaving}>
+                  {pgSaving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                  Save connection
+                </Button>
+                {pgSaved && <span className="text-xs text-emerald-500">Saved</span>}
+              </div>
+            </div>
+
+            {/* ── Copy to inactive DB (always shown) ── */}
+            <div className="border-t border-border/50 pt-3 space-y-2">
+              <p className="text-xs font-medium">
+                Copy to{" "}
+                <span className="text-foreground">{transferTargetLabel}</span>
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Copies all rows from the current live database to the target.
+                The target must be running. Existing data in the target is replaced.
+              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  size="sm" variant="outline" className="h-7 text-xs"
+                  disabled={transferState === "busy"}
+                  onClick={handleTransfer}
+                >
+                  {transferState === "busy"
+                    ? <><Loader2 className="h-3 w-3 animate-spin mr-1" />Transferring…</>
+                    : "Transfer now"}
+                </Button>
+                {transferState === "ok"    && <p className="text-xs text-emerald-500">{transferResult}</p>}
+                {transferState === "error" && <p className="text-xs text-destructive">{transferResult}</p>}
+              </div>
+            </div>
           </div>
 
           {/* Start + status row */}

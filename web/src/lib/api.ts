@@ -751,6 +751,14 @@ export interface PgConfig {
   db:        string;
 }
 
+export interface PgActive {
+  mode: "pg" | "sqlite";
+  host?: string;
+  port?: number;
+  user?: string;
+  db?:   string;
+}
+
 export interface PgTransferResult {
   tables_copied: number;
   rows_copied:   number;
@@ -758,8 +766,9 @@ export interface PgTransferResult {
 }
 
 export const pgConfigApi = {
-  get:  ()               => req<PgConfig>("/settings/pg-config"),
-  save: (body: PgConfig) => req<PgConfig>("/settings/pg-config", {
+  get:       ()               => req<PgConfig>("/settings/pg-config"),
+  getActive: ()               => req<PgActive>("/settings/pg-active"),
+  save:      (body: PgConfig) => req<PgConfig>("/settings/pg-config", {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
   }),
   /** Copy the live DB (whatever the API is currently connected to) → target. */

@@ -523,6 +523,25 @@ def set_data_dir(body: DataDirUpdate):
 # Must live in the file config rather than the DB because it must be readable
 # before the database engine is created.
 
+@router.get("/pg-active")
+def get_pg_active():
+    """Return the PG connection the API is *currently* running on (from env vars).
+
+    Distinct from /pg-config (the saved lw-config preference for next restart).
+    The frontend compares both to detect a pending-restart state.
+    """
+    from database import USE_SQLITE
+    if USE_SQLITE:
+        return {"mode": "sqlite", "port": None}
+    return {
+        "mode":   "pg",
+        "host":   os.getenv("LW_PG_HOST", "127.0.0.1"),
+        "port":   int(os.getenv("LW_PG_PORT", "5433")),
+        "user":   os.getenv("LW_PG_USER", "foliantica"),
+        "db":     os.getenv("LW_PG_DB",   "foliantica"),
+    }
+
+
 @router.get("/pg-config")
 def get_pg_config():
     """Return the current PG connection config from the shared lw-config file."""
