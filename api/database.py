@@ -4,26 +4,43 @@ from sqlalchemy import create_engine, event, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = "sqlite:///./foliantica.db"
+# ── Engine ────────────────────────────────────────────────────────────────────
+# Set LW_USE_SQLITE=1 in dev mode (LaunchFoliantica.bat) to keep SQLite.
+# In production Electron builds, leave unset — PostgreSQL is used via the
+# embedded-postgres sidecar started by electron/main.js.
 
-# One-time migration: rename loreweaver.db → foliantica.db for existing users
-if os.path.exists("loreweaver.db") and not os.path.exists("foliantica.db"):
-    os.rename("loreweaver.db", "foliantica.db")
+USE_SQLITE = os.getenv("LW_USE_SQLITE", "0") == "1"
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False, "timeout": 30},
-)
+if USE_SQLITE:
+    DATABASE_URL = "sqlite:///./foliantica.db"
 
+    # One-time migration: rename loreweaver.db → foliantica.db for existing users
+    if os.path.exists("loreweaver.db") and not os.path.exists("foliantica.db"):
+        os.rename("loreweaver.db", "foliantica.db")
 
-@event.listens_for(engine, "connect")
-def set_sqlite_pragma(dbapi_conn, _):
-    cursor = dbapi_conn.cursor()
-    cursor.execute("PRAGMA journal_mode=WAL")
-    cursor.execute("PRAGMA busy_timeout=30000")
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.close()
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False, "timeout": 30},
+    )
 
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_conn, _):
+        cursor = dbapi_conn.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA busy_timeout=30000")
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+else:
+    _PG_PORT = os.getenv("LW_PG_PORT", "5433")
+    _PG_USER = os.getenv("LW_PG_USER", "foliantica")
+    _PG_PASS = os.getenv("LW_PG_PASS", "foliantica")
+    _PG_DB   = os.getenv("LW_PG_DB",   "foliantica")
+    DATABASE_URL = (
+        f"postgresql+psycopg2://{_PG_USER}:{_PG_PASS}"
+        f"@127.0.0.1:{_PG_PORT}/{_PG_DB}"
+    )
+    engine = create_engine(DATABASE_URL, pool_size=5, max_overflow=10)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -1163,3 +1180,109 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+# ── PostgreSQL seed functions ─────────────────────────────────────────────────
+# Called by main.py when USE_SQLITE is False.  The schema has already been
+# created by Base.metadata.create_all(); these functions only seed static
+# reference data that would otherwise be inserted by the SQLite migrate_*
+# functions (which use SQLite-specific DDL and cannot run on PostgreSQL).
+
+def seed_ai_prompts():
+    """Seed built-in AI prompts for a fresh PostgreSQL database."""
+    with engine.begin() as conn:
+        for p in DEFAULT_AI_PROMPTS:
+            existing = conn.execute(
+                text("SELECT id FROM ai_prompts WHERE built_in_key = :key"),
+                {"key": p["built_in_key"]},
+            ).fetchone()
+            if not existing:
+                conn.execute(
+                    text("""
+                        INSERT INTO ai_prompts
+                            (name, description, system, user_template,
+                             is_built_in, built_in_key, word_count)
+                        VALUES
+                            (:name, :description, :system, :user_template,
+                             :is_built_in, :built_in_key, :word_count)
+                    """),
+                    {**p, "word_count": p.get("word_count", 400)},
+                )
+            else:
+                # Update system prompt text if expected placeholders are missing
+                _required = {
+                    "story_generate": ["{{LANGUAGE}}", "{{WORD_COUNT}}"],
+                    "lector_review":  ["{{LANGUAGE}}"],
+                    "codex_distill":  ["{{LANGUAGE}}"],
+                }
+                tokens = _required.get(p["built_in_key"], [])
+                row = conn.execute(
+                    text("SELECT id, system FROM ai_prompts WHERE built_in_key = :key"),
+                    {"key": p["built_in_key"]},
+                ).fetchone()
+                if row and any(t not in (row[1] or "") for t in tokens):
+                    conn.execute(
+                        text("UPDATE ai_prompts SET system = :system WHERE id = :id"),
+                        {"system": p["system"], "id": row[0]},
+                    )
+
+
+def seed_publisher_profiles():
+    """Seed publisher reference profiles for a fresh PostgreSQL database."""
+    with engine.begin() as conn:
+        for p in _PUBLISHER_PROFILES:
+            exists = conn.execute(
+                text("SELECT id FROM publisher_profiles WHERE short_name = :sn"),
+                {"sn": p["short_name"]},
+            ).fetchone()
+            params = {
+                "sn":   p["short_name"],
+                "name": p["name"],
+                "cat":  p["category"],
+                "desc": p["description"],
+                "wmin": p["word_count_min"],
+                "wmax": p["word_count_max"],
+                "unag": p["accepts_unagented"],
+                "url":  p["submission_url"],
+                "opts": json.dumps(p["options"]),
+            }
+            if not exists:
+                conn.execute(text("""
+                    INSERT INTO publisher_profiles
+                        (short_name, name, category, description,
+                         word_count_min, word_count_max, accepts_unagented,
+                         submission_url, options_json, is_active)
+                    VALUES
+                        (:sn, :name, :cat, :desc,
+                         :wmin, :wmax, :unag,
+                         :url, :opts, 1)
+                """), params)
+            else:
+                conn.execute(text("""
+                    UPDATE publisher_profiles
+                    SET name=:name, category=:cat, description=:desc,
+                        word_count_min=:wmin, word_count_max=:wmax,
+                        accepts_unagented=:unag, submission_url=:url,
+                        options_json=:opts
+                    WHERE short_name=:sn
+                """), params)
+
+
+def seed_export_profiles():
+    """Seed built-in export profiles for a fresh PostgreSQL database."""
+    with engine.begin() as conn:
+        for p in _BUILTIN_PROFILES:
+            exists = conn.execute(
+                text("SELECT id FROM export_profiles WHERE name = :name AND is_builtin = 1"),
+                {"name": p["name"]},
+            ).fetchone()
+            if not exists:
+                conn.execute(
+                    text("""
+                        INSERT INTO export_profiles
+                            (project_id, name, description, is_builtin, options_json)
+                        VALUES (NULL, :name, :desc, 1, :opts)
+                    """),
+                    {"name": p["name"], "desc": p["description"],
+                     "opts": json.dumps(p["options"])},
+                )

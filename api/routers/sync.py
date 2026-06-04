@@ -14,13 +14,16 @@ Architecture:
   - When the drive comes back online, mode → "online", drive_restored_at is
     set so the frontend can surface a notification.
 """
+import os
 import shutil
 import sqlite3
+import subprocess
 import threading
 from datetime import datetime, UTC
 from pathlib import Path
 
 from fastapi import APIRouter
+from database import USE_SQLITE
 
 router = APIRouter(prefix="/api/sync", tags=["sync"])
 
@@ -55,6 +58,8 @@ def _uploads_path() -> Path:
 
 
 def _datadir_available() -> bool:
+    if not USE_SQLITE:
+        return True  # PostgreSQL runs locally — always reachable
     try:
         _db_path().stat()
         return True
@@ -72,6 +77,23 @@ def _do_backup(src: Path, dst: Path) -> None:
     finally:
         src_conn.close()
         dst_conn.close()
+
+
+def _do_pg_dump(mirror: Path) -> None:
+    """Dump the PostgreSQL database to a plain-SQL file in the mirror directory."""
+    pg_dump = os.environ.get("LW_PG_DUMP_PATH", "pg_dump")
+    pg_port = os.environ.get("LW_PG_PORT", "5433")
+    pg_user = os.environ.get("LW_PG_USER", "foliantica")
+    pg_pass = os.environ.get("LW_PG_PASS", "foliantica")
+    pg_db   = os.environ.get("LW_PG_DB",   "foliantica")
+    dst = mirror / "foliantica.sql"
+    mirror.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        [pg_dump, "-h", "127.0.0.1", "-p", pg_port,
+         "-U", pg_user, "-d", pg_db, "-f", str(dst)],
+        env={**os.environ, "PGPASSWORD": pg_pass},
+        check=True,
+    )
 
 
 def _sync_uploads(src_dir: Path, dst_dir: Path) -> None:
@@ -110,7 +132,10 @@ def _bg_loop() -> None:
 
             if available:
                 try:
-                    _do_backup(_db_path(), mirror / "foliantica.db")
+                    if USE_SQLITE:
+                        _do_backup(_db_path(), mirror / "foliantica.db")
+                    else:
+                        _do_pg_dump(mirror)
                     _sync_uploads(_uploads_path(), mirror / "uploads")
                     with _lock:
                         _last_sync_at = datetime.now(UTC).replace(tzinfo=None)
@@ -187,7 +212,10 @@ def shutdown_backup() -> None:
 
     if enabled and mirror and _datadir_available():
         try:
-            _do_backup(_db_path(), mirror / "foliantica.db")
+            if USE_SQLITE:
+                _do_backup(_db_path(), mirror / "foliantica.db")
+            else:
+                _do_pg_dump(mirror)
             _sync_uploads(_uploads_path(), mirror / "uploads")
         except Exception:
             pass

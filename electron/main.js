@@ -92,11 +92,12 @@ function pipeToLog(proc, label) {
   proc.on("exit", code => log(`[${label}] exited with code ${code}`));
 }
 
-let mainWin = null;
+let mainWin   = null;
 let splashWin = null;
-let tray = null;
-let apiProc = null;
-let nextProc = null;
+let tray      = null;
+let apiProc   = null;
+let nextProc  = null;
+let pgInstance = null;   // embedded-postgres instance
 
 // ── Windows ───────────────────────────────────────────────────────────────────
 
@@ -228,6 +229,104 @@ function createTray(webPort) {
   tray.on("double-click", () => { mainWin?.show(); mainWin?.focus(); });
 }
 
+// ── PostgreSQL (embedded) ─────────────────────────────────────────────────────
+
+const PG_PORT = 5433;
+const PG_USER = "foliantica";
+const PG_PASS = "foliantica";
+const PG_DB   = "foliantica";
+
+/**
+ * Start the embedded PostgreSQL sidecar.
+ * Returns the pg_dump binary path so it can be forwarded to the API process.
+ *
+ * First run (~3 s for initdb): splash screen is updated to show progress.
+ * Subsequent launches: ~1 s (PG starts from the existing cluster directory).
+ */
+async function startPostgres() {
+  // Lazy-require so non-prod builds that lack the package don't break.
+  let EmbeddedPostgres;
+  try {
+    EmbeddedPostgres = require("embedded-postgres");
+  } catch {
+    log("[pg] embedded-postgres not installed — skipping PG startup");
+    return { pgDumpPath: "pg_dump" };
+  }
+
+  const pgDataDir = path.join(dataDir, "pgdata");
+  const isFirstRun = !fs.existsSync(pgDataDir);
+
+  if (isFirstRun && splashWin) {
+    splashWin.webContents
+      .executeJavaScript('document.querySelector(".status").textContent = "Preparing database…";')
+      .catch(() => {});
+  }
+
+  const pg = new EmbeddedPostgres({
+    databaseDir: pgDataDir,
+    user: PG_USER,
+    password: PG_PASS,
+    port: PG_PORT,
+    persistent: true,
+  });
+
+  log(`[pg] initialising cluster at ${pgDataDir} (first run: ${isFirstRun})`);
+  await pg.initialise();      // runs initdb only on first launch (~3 s)
+  await pg.start();           // starts postmaster (~1 s)
+  try { await pg.createDatabase(PG_DB); } catch {}  // no-op if already exists
+
+  pgInstance = pg;
+  log("[pg] PostgreSQL ready");
+
+  // ── One-time SQLite → PostgreSQL data migration ───────────────────────────
+  // Triggered only when pgdata was just created (first run) and an existing
+  // foliantica.db is present in the data directory.
+  const sqliteDb = path.join(dataDir, "foliantica.db");
+  if (isFirstRun && fs.existsSync(sqliteDb)) {
+    log("[pg] First PG run detected with existing SQLite DB — starting migration");
+    if (splashWin) {
+      splashWin.webContents
+        .executeJavaScript('document.querySelector(".status").textContent = "Migrating data…";')
+        .catch(() => {});
+    }
+    const migrateScript = path.join(process.resourcesPath, "api", "scripts", "migrate_sqlite_to_pg.py");
+    const pythonExe     = path.join(process.resourcesPath, "api",
+      process.platform === "win32" ? "foliantica-api.exe" : "foliantica-api");
+    // We spawn the migration script via the bundled Python interpreter.
+    // The script exits 0 on success; non-zero on error.
+    await new Promise((resolve) => {
+      const migProc = spawn(pythonExe, [
+        migrateScript,
+        "--sqlite-path", sqliteDb,
+        "--pg-port",  String(PG_PORT),
+        "--pg-user",  PG_USER,
+        "--pg-pass",  PG_PASS,
+        "--pg-db",    PG_DB,
+      ], { stdio: ["ignore", "pipe", "pipe"] });
+      pipeToLog(migProc, "migrate");
+      migProc.on("exit", (code) => {
+        if (code !== 0) log(`[migrate] WARNING: migration exited with code ${code}`);
+        resolve();
+      });
+      migProc.on("error", (err) => {
+        log(`[migrate] spawn error: ${err.message}`);
+        resolve();
+      });
+    });
+    log("[pg] Migration complete");
+  }
+
+  // Locate the pg_dump binary shipped with the embedded-postgres package.
+  const embeddedPgRoot = path.join(__dirname, "..", "node_modules", "embedded-postgres");
+  const binSubdir = process.platform === "win32" ? "bin/win32"
+                  : process.platform === "darwin" ? "bin/darwin"
+                  : "bin/linux";
+  const pgDumpName = process.platform === "win32" ? "pg_dump.exe" : "pg_dump";
+  const pgDumpPath = path.join(embeddedPgRoot, binSubdir, pgDumpName);
+
+  return { pgDumpPath: fs.existsSync(pgDumpPath) ? pgDumpPath : "pg_dump" };
+}
+
 // ── Server startup ────────────────────────────────────────────────────────────
 
 async function startServers() {
@@ -235,6 +334,9 @@ async function startServers() {
   const webPort = await findFreePort();
 
   if (isProd) {
+    // ── Embedded PostgreSQL ───────────────────────────────────────────────────
+    const { pgDumpPath } = await startPostgres();
+
     // ── FastAPI sidecar ───────────────────────────────────────────────────────
     const apiExe = path.join(
       process.resourcesPath, "api",
@@ -249,6 +351,12 @@ async function startServers() {
         LW_API_HOST: "127.0.0.1",
         LW_DATA_DIR: dataDir,
         LW_RESOURCES_DIR: process.resourcesPath,
+        // PostgreSQL connection parameters for the API sidecar
+        LW_PG_PORT: String(PG_PORT),
+        LW_PG_USER: PG_USER,
+        LW_PG_PASS: PG_PASS,
+        LW_PG_DB:   PG_DB,
+        LW_PG_DUMP_PATH: pgDumpPath,
       },
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -297,6 +405,9 @@ async function startServers() {
 function killServers() {
   try { apiProc?.kill(); } catch {}
   try { nextProc?.kill(); } catch {}
+  // pgInstance.stop() is async but fire-and-forget is fine here;
+  // the OS will reap the postgres child process either way.
+  try { pgInstance?.stop(); } catch {}
 }
 
 app.on("before-quit", killServers);
