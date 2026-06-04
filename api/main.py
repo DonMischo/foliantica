@@ -53,7 +53,25 @@ else:
     # PostgreSQL path: create_all() handles the full schema in one shot.
     # Then seed static reference data that would otherwise come from the
     # SQLite migrate_* functions (which use SQLite-specific DDL).
-    Base.metadata.create_all(bind=engine)
+    #
+    # Retry up to 60 s — Docker-managed PG may still be starting when the
+    # API launches (container healthcheck takes a few seconds after `up -d`).
+    import time as _time
+    _pg_ready = False
+    for _attempt in range(60):
+        try:
+            Base.metadata.create_all(bind=engine)
+            _pg_ready = True
+            break
+        except Exception as _e:
+            if _attempt == 0:
+                print(f"[startup] Waiting for PostgreSQL… ({_e.__class__.__name__})", flush=True)
+            _time.sleep(1)
+    if not _pg_ready:
+        raise RuntimeError(
+            "PostgreSQL did not become available within 60 seconds. "
+            "Check that the database is running and the connection settings are correct."
+        )
     seed_ai_prompts()
     seed_publisher_profiles()
     seed_export_profiles()
