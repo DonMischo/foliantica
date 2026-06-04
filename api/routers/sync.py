@@ -6,10 +6,11 @@ Architecture:
   - Backend always runs from dataDir (unchanged).
   - This module maintains a mirror copy at sync_local_dir.
   - A background thread wakes every 5 minutes and:
-      1. Copies dataDir/foliantica.db using SQLite's online backup API
-         (safe while the DB is open by SQLAlchemy).
-      2. Mirrors dataDir/uploads/ → sync_local_dir/uploads/, copying only
-         files that are new or have a newer mtime (no unnecessary I/O).
+      1. SQLite: copies foliantica.db via SQLite's online backup API.
+         PostgreSQL: writes foliantica.sql via a pure-Python dump (no
+         pg_dump binary required — embedded-postgres does not ship it).
+      2. Mirrors uploads/ → sync_local_dir/uploads/, copying only files
+         that are new or have a newer mtime (no unnecessary I/O).
   - When the drive becomes unavailable the copy is skipped; mode → "offline".
   - When the drive comes back online, mode → "online", drive_restored_at is
     set so the frontend can surface a notification.
@@ -17,7 +18,6 @@ Architecture:
 import os
 import shutil
 import sqlite3
-import subprocess
 import threading
 from datetime import datetime, UTC
 from pathlib import Path
@@ -79,21 +79,59 @@ def _do_backup(src: Path, dst: Path) -> None:
         dst_conn.close()
 
 
+def _pg_literal(v: object) -> str:
+    """Render a Python value as a PostgreSQL SQL literal (for INSERT statements)."""
+    if v is None:
+        return "NULL"
+    if isinstance(v, bool):
+        return "TRUE" if v else "FALSE"
+    if isinstance(v, int):
+        return str(v)
+    if isinstance(v, float):
+        return repr(v)
+    # datetime, date, str — cast to text and let PG coerce
+    return "'" + str(v).replace("\\", "\\\\").replace("'", "''") + "'"
+
+
 def _do_pg_dump(mirror: Path) -> None:
-    """Dump the PostgreSQL database to a plain-SQL file in the mirror directory."""
-    pg_dump = os.environ.get("LW_PG_DUMP_PATH", "pg_dump")
-    pg_port = os.environ.get("LW_PG_PORT", "5433")
-    pg_user = os.environ.get("LW_PG_USER", "foliantica")
-    pg_pass = os.environ.get("LW_PG_PASS", "foliantica")
-    pg_db   = os.environ.get("LW_PG_DB",   "foliantica")
-    dst = mirror / "foliantica.sql"
+    """Dump the PostgreSQL database to a plain-SQL file in the mirror directory.
+
+    Uses pure Python / SQLAlchemy — no pg_dump binary required.
+    The output file can be replayed with psql or the /api/sync/restore endpoint.
+    """
+    from sqlalchemy import inspect as sa_inspect, text
+    from database import engine
+
     mirror.mkdir(parents=True, exist_ok=True)
-    subprocess.run(
-        [pg_dump, "-h", "127.0.0.1", "-p", pg_port,
-         "-U", pg_user, "-d", pg_db, "-f", str(dst)],
-        env={**os.environ, "PGPASSWORD": pg_pass},
-        check=True,
-    )
+    dst = mirror / "foliantica.sql"
+
+    insp   = sa_inspect(engine)
+    tables = [t for t in insp.get_table_names() if t != "sqlite_sequence"]
+
+    with engine.connect() as conn, open(dst, "w", encoding="utf-8") as f:
+        f.write(f"-- Foliantica PostgreSQL backup {datetime.now(UTC).replace(tzinfo=None).isoformat()}\n")
+        f.write("SET session_replication_role = replica;\n\n")
+
+        for table in tables:
+            cols     = [c["name"] for c in insp.get_columns(table)]
+            rows     = conn.execute(text(f'SELECT * FROM "{table}"')).fetchall()
+            col_sql  = ", ".join(f'"{c}"' for c in cols)
+
+            f.write(f"-- {table}\n")
+            f.write(f'DELETE FROM "{table}";\n')
+            for row in rows:
+                vals = ", ".join(_pg_literal(v) for v in row)
+                f.write(f'INSERT INTO "{table}" ({col_sql}) VALUES ({vals});\n')
+
+            # Reset SERIAL sequence so new inserts don't collide with restored IDs
+            if rows and "id" in cols:
+                f.write(
+                    f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), "
+                    f"COALESCE((SELECT MAX(id) FROM \"{table}\"), 0) + 1, false);\n"
+                )
+            f.write("\n")
+
+        f.write("SET session_replication_role = DEFAULT;\n")
 
 
 def _sync_uploads(src_dir: Path, dst_dir: Path) -> None:
