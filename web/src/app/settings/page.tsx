@@ -116,6 +116,7 @@ export default function SettingsPage() {
     useServiceStatus(showServiceStatus);
   const [dockerUpState, setDockerUpState] = useState<"idle" | "busy" | "ok" | "error">("idle");
   const [dockerUpMsg, setDockerUpMsg]     = useState("");
+  const [dockerUpStep, setDockerUpStep]   = useState("");
   const [helpOpen, setHelpOpen]           = useState(false);
 
   // ── Docker PostgreSQL ─────────────────────────────────────────────────────
@@ -1329,6 +1330,7 @@ export default function SettingsPage() {
               onClick={async () => {
                 setDockerUpState("busy");
                 setDockerUpMsg("");
+                setDockerUpStep("Saving settings…");
                 try {
                   // Persist current service settings first so docker compose
                   // reads the latest language selection and URLs from the DB.
@@ -1339,12 +1341,15 @@ export default function SettingsPage() {
                     pandoc_enabled: pandocEnabled,
                     pandoc_url: pandocUrl,
                   });
+                  setDockerUpStep("Starting Docker… (may take up to 90 s if Docker Desktop was closed)");
                   const res = await settingsApi.dockerComposeUp();
+                  setDockerUpStep("");
                   setDockerUpState("ok");
                   setDockerUpMsg(res.output || "Services started.");
                   // auto-refresh status after startup
                   setTimeout(() => { setShowServiceStatus(true); refetchStatus(); }, 1500);
                 } catch (e: any) {
+                  setDockerUpStep("");
                   setDockerUpState("error");
                   const detail = e.message?.includes(": ") ? e.message.split(": ").slice(1).join(": ") : e.message;
                   setDockerUpMsg(detail ?? "Failed to start services.");
@@ -1357,6 +1362,9 @@ export default function SettingsPage() {
                 : <Play className="h-3.5 w-3.5" />}
               {dockerUpState === "busy" ? "Starting…" : "Start Services"}
             </Button>
+            {dockerUpState === "busy" && dockerUpStep && (
+              <span className="text-xs text-muted-foreground animate-pulse">{dockerUpStep}</span>
+            )}
 
             {/* Check status button */}
             <button
