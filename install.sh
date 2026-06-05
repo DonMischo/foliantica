@@ -10,7 +10,6 @@
 #   ./install.sh                   — interactive (prompts for PG mode)
 #   ./install.sh --pg=system       — system PostgreSQL (port 5432)
 #   ./install.sh --pg=docker       — Docker Compose PostgreSQL (port 5434)
-#   ./install.sh --pg=sqlite       — SQLite (dev-only, no PG needed)
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -52,12 +51,11 @@ for arg in "$@"; do
       echo
       echo -e "  ${BOLD}${CYAN}Foliantica${RESET}  —  First-time setup"
       echo
-      echo -e "  ${WHITE}Usage:${RESET}  ${YELLOW}./install.sh${RESET} ${GRAY}[--pg=system|docker|sqlite] [options]${RESET}"
+      echo -e "  ${WHITE}Usage:${RESET}  ${YELLOW}./install.sh${RESET} ${GRAY}[--pg=system|docker] [options]${RESET}"
       echo
       echo -e "  ${WHITE}PostgreSQL options:${RESET}"
       echo -e "    ${YELLOW}--pg=system${RESET}      Use installed system PostgreSQL  (default port 5432)"
       echo -e "    ${YELLOW}--pg=docker${RESET}      Use Docker Compose PostgreSQL    (port 5434)"
-      echo -e "    ${YELLOW}--pg=sqlite${RESET}      Use SQLite instead               (dev only)"
       echo
       echo -e "  ${WHITE}Connection overrides:${RESET}"
       echo -e "    ${YELLOW}--pg-port=5432${RESET}   PostgreSQL port"
@@ -133,7 +131,6 @@ if [[ -z "$PG_MODE" ]]; then
     echo -e "  Choose a PostgreSQL backend:\n"
     echo -e "    ${CYAN}1${RESET}  System PostgreSQL  ${GRAY}(use the PostgreSQL installed on this machine)${RESET}"
     echo -e "    ${CYAN}2${RESET}  Docker Compose     ${GRAY}(start a containerised PostgreSQL via docker compose)${RESET}"
-    echo -e "    ${CYAN}3${RESET}  SQLite             ${GRAY}(no PostgreSQL — dev / testing only)${RESET}"
     echo
     if [[ "$_sys_ready" -eq 1 ]]; then
       info "System PostgreSQL detected on port 5432."
@@ -143,12 +140,11 @@ if [[ -z "$PG_MODE" ]]; then
     fi
     echo
     while true; do
-      read -rp "  Enter choice [1/2/3]: " _choice
+      read -rp "  Enter choice [1/2]: " _choice
       case "$_choice" in
         1) PG_MODE="system"; break ;;
         2) PG_MODE="docker"; break ;;
-        3) PG_MODE="sqlite"; break ;;
-        *) echo -e "  ${YELLOW}Please enter 1, 2, or 3.${RESET}" ;;
+        *) echo -e "  ${YELLOW}Please enter 1 or 2.${RESET}" ;;
       esac
     done
   else
@@ -160,9 +156,9 @@ if [[ -z "$PG_MODE" ]]; then
       PG_MODE="docker"
       info "Auto-selected Docker PostgreSQL."
     else
-      PG_MODE="sqlite"
-      warn "No PostgreSQL or Docker found — falling back to SQLite."
-      info "Re-run with --pg=system or --pg=docker once PostgreSQL is available."
+      err "No PostgreSQL or Docker found."
+      info "Install PostgreSQL or Docker, then re-run: ./install.sh --pg=system  or  ./install.sh --pg=docker"
+      exit 1
     fi
   fi
 fi
@@ -279,15 +275,8 @@ case "$PG_MODE" in
     fi
     ;;
 
-  # ── SQLite ──────────────────────────────────────────────────────────────────
-  sqlite)
-    step "SQLite mode  (development only)"
-    warn "SQLite is not recommended for production use."
-    info "Switch to PostgreSQL later by re-running:  ./install.sh --pg=system"
-    ;;
-
   *)
-    err "Unknown --pg value: '${PG_MODE}'  (valid: system, docker, sqlite)"
+    err "Unknown --pg value: '${PG_MODE}'  (valid: system, docker)"
     exit 1
     ;;
 esac
@@ -306,9 +295,6 @@ case "$PG_MODE" in
     ;;
   docker)
     _pg_json="{\"useDocker\": true, \"host\": \"${PG_HOST}\", \"port\": ${PG_PORT}, \"user\": \"${PG_USER}\", \"pass\": \"${PG_PASS}\", \"db\": \"${PG_DB}\"}"
-    ;;
-  sqlite)
-    _pg_json="{\"useSQLite\": true}"
     ;;
 esac
 

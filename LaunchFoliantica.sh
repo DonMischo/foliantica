@@ -25,12 +25,11 @@ for arg in "$@"; do
       echo
       echo -e "  ${BOLD}${CYAN}Foliantica${RESET}  —  Dev launcher"
       echo
-      echo -e "  ${WHITE}Usage:${RESET}  ${YELLOW}./LaunchFoliantica.sh${RESET} ${GRAY}[--pg=system|docker|sqlite] [--help]${RESET}"
+      echo -e "  ${WHITE}Usage:${RESET}  ${YELLOW}./LaunchFoliantica.sh${RESET} ${GRAY}[--pg=system|docker] [--help]${RESET}"
       echo
       echo -e "  ${WHITE}PostgreSQL modes:${RESET}"
       echo -e "    ${YELLOW}--pg=system${RESET}   Use installed system PostgreSQL  (default port 5432)"
       echo -e "    ${YELLOW}--pg=docker${RESET}   Start PostgreSQL via Docker Compose  (port 5434)"
-      echo -e "    ${YELLOW}--pg=sqlite${RESET}   Use SQLite instead  (dev / no-PG fallback)"
       echo
       echo -e "  ${WHITE}Persist a preference:${RESET}  ${GRAY}~/.foliantica/config.json${RESET}"
       echo -e "    ${GRAY}{\"pg\":{\"useSystem\":true}}   — always use system PG${RESET}"
@@ -115,18 +114,17 @@ if [[ -z "$PG_MODE" ]]; then
   if command -v pg_isready &>/dev/null && pg_isready -h 127.0.0.1 -p 5432 -q 2>/dev/null; then
     PG_MODE="system"
     echo -e "  ${GRAY}Auto-detected system PostgreSQL on port 5432.${RESET}"
-    echo -e "  ${GRAY}Override with --pg=docker or --pg=sqlite.${RESET}"
+    echo -e "  ${GRAY}Override with --pg=docker.${RESET}"
     echo
   elif command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
     PG_MODE="docker"
     echo -e "  ${GRAY}No system PostgreSQL found — using Docker.${RESET}"
-    echo -e "  ${GRAY}Override with --pg=system or --pg=sqlite.${RESET}"
+    echo -e "  ${GRAY}Override with --pg=system.${RESET}"
     echo
   else
-    warn "No PostgreSQL found (system or Docker). Falling back to SQLite."
-    echo -e "         To use PostgreSQL: install it or Docker, then rerun with ${YELLOW}--pg=system${RESET} / ${YELLOW}--pg=docker${RESET}."
-    echo
-    PG_MODE="sqlite"
+    err "No PostgreSQL found. Install PostgreSQL or Docker, then rerun:"
+    echo -e "         ${GRAY}./install.sh --pg=system${RESET}  or  ${GRAY}./install.sh --pg=docker${RESET}" >&2
+    exit 1
   fi
 fi
 
@@ -134,11 +132,6 @@ fi
 PG_PID=""
 
 case "$PG_MODE" in
-
-  sqlite)
-    echo -e "  ${WHITE}SQLite${RESET}  ${GRAY}(dev mode — not for production)${RESET}"
-    export LW_USE_SQLITE=1
-    ;;
 
   system)
     PG_PORT="${PG_PORT:-5432}"
@@ -197,7 +190,7 @@ case "$PG_MODE" in
     ;;
 
   *)
-    err "Unknown --pg value: '${PG_MODE}'  (valid: system, docker, sqlite)"
+    err "Unknown --pg value: '${PG_MODE}'  (valid: system, docker)"
     exit 1
     ;;
 esac
