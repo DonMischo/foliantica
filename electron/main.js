@@ -97,7 +97,7 @@ let splashWin = null;
 let tray      = null;
 let apiProc   = null;
 let nextProc  = null;
-let pgInstance = null;   // embedded-postgres instance
+let pgInstance = null;   // LocalPgManager instance
 
 // ── Windows ───────────────────────────────────────────────────────────────────
 
@@ -231,6 +231,141 @@ function createTray(webPort) {
 
 // ── PostgreSQL (embedded) ─────────────────────────────────────────────────────
 
+/**
+ * Minimal embedded-PostgreSQL manager.
+ *
+ * The embedded-postgres npm package uses ESM import.meta.url to locate its
+ * binaries. Inside a packaged Electron app that URL resolves to an ASAR-
+ * internal path, and child_process.spawn() cannot execute files from inside
+ * an ASAR archive even when asarUnpack is configured.
+ *
+ * We bypass the library's binary resolution entirely and compute paths
+ * directly from process.resourcesPath + app.asar.unpacked, which is always
+ * a real filesystem location.
+ */
+class LocalPgManager {
+  constructor({ databaseDir, user, password, port, initdbFlags = [] }) {
+    const pkgName = process.platform === "win32" ? "windows-x64"
+                  : process.platform === "darwin"
+                      ? (process.arch === "arm64" ? "darwin-arm64" : "darwin-x64")
+                      : (process.arch === "arm64" ? "linux-arm64"
+                         : process.arch === "arm"  ? "linux-arm"
+                         : process.arch === "ia32" ? "linux-ia32"
+                         : "linux-x64");
+    const ext = process.platform === "win32" ? ".exe" : "";
+    const binDir = path.join(
+      process.resourcesPath, "app.asar.unpacked", "node_modules",
+      "@embedded-postgres", pkgName, "native", "bin"
+    );
+
+    this.initdbBin   = path.join(binDir, `initdb${ext}`);
+    this.postgresBin = path.join(binDir, `postgres${ext}`);
+    this.pgDumpBin   = path.join(binDir, `pg_dump${ext}`);
+    this.databaseDir = databaseDir;
+    this.user        = user;
+    this.password    = password;
+    this.port        = port;
+    this.initdbFlags = initdbFlags;
+    this.process     = null;
+  }
+
+  async initialise() {
+    // Ensure binaries are executable (no-op on Windows).
+    if (process.platform !== "win32") {
+      for (const bin of [this.initdbBin, this.postgresBin]) {
+        try { await fs.promises.chmod(bin, 0o755); } catch {}
+      }
+    }
+
+    // Write password to a temp file (initdb --pwfile requires a file path).
+    const passwordFile = path.join(app.getPath("temp"), `pg-pass-${Date.now()}`);
+    await fs.promises.writeFile(passwordFile, this.password + "\n");
+
+    await new Promise((resolve, reject) => {
+      const proc = spawn(this.initdbBin, [
+        `--pgdata=${this.databaseDir}`,
+        "--auth=password",
+        `--username=${this.user}`,
+        `--pwfile=${passwordFile}`,
+        "--lc-messages=en_US.UTF-8",
+        ...this.initdbFlags,
+      ], { env: { ...process.env, LC_MESSAGES: "en_US.UTF-8" } });
+
+      proc.stdout?.on("data", (d) => log(`[initdb] ${d.toString().trim()}`));
+      proc.stderr?.on("data", (d) => log(`[initdb] ${d.toString().trim()}`));
+      proc.on("exit", (code) => {
+        code === 0 ? resolve() : reject(new Error(`initdb exited with code ${code}`));
+      });
+      proc.on("error", (err) =>
+        reject(new Error(`initdb spawn failed: ${err.message} — path: ${this.initdbBin}`))
+      );
+    });
+
+    await fs.promises.unlink(passwordFile).catch(() => {});
+  }
+
+  async start() {
+    await new Promise((resolve, reject) => {
+      let resolved = false;
+
+      this.process = spawn(this.postgresBin, [
+        "-D", this.databaseDir,
+        "-p", String(this.port),
+      ], { env: { ...process.env, LC_MESSAGES: "en_US.UTF-8" } });
+
+      this.process.stderr?.on("data", (chunk) => {
+        const msg = chunk.toString("utf-8");
+        log(`[postgres] ${msg.trim()}`);
+        if (!resolved && msg.includes("database system is ready to accept connections")) {
+          resolved = true;
+          resolve();
+        }
+      });
+      this.process.stdout?.on("data", (chunk) => {
+        log(`[postgres] ${chunk.toString().trim()}`);
+      });
+      this.process.on("close", (code) => {
+        if (!resolved) reject(new Error(`postgres exited before ready (code ${code})`));
+      });
+      this.process.on("error", (err) => {
+        if (!resolved) reject(new Error(`postgres spawn failed: ${err.message} — path: ${this.postgresBin}`));
+      });
+    });
+  }
+
+  async createDatabase(name) {
+    const { Client } = require("pg");
+    const client = new Client({
+      host: "127.0.0.1",
+      port: this.port,
+      user: this.user,
+      password: this.password,
+      database: "postgres",
+    });
+    await client.connect();
+    try {
+      await client.query(`CREATE DATABASE "${name}"`);
+    } catch (e) {
+      if (!e.message.includes("already exists")) throw e;
+    } finally {
+      await client.end();
+    }
+  }
+
+  async stop() {
+    if (!this.process) return;
+    await new Promise((resolve) => {
+      this.process.on("exit", resolve);
+      if (process.platform === "win32") {
+        spawn("taskkill", ["/pid", String(this.process.pid), "/f", "/t"]);
+      } else {
+        this.process.kill("SIGINT");
+      }
+    }).catch(() => {});
+    this.process = null;
+  }
+}
+
 const PG_PORT = 5433;
 const PG_USER = "foliantica";
 const PG_PASS = "foliantica";
@@ -259,17 +394,6 @@ async function startPostgres() {
     };
   }
 
-  // Lazy-require so non-prod builds that lack the package don't break.
-  let EmbeddedPostgres;
-  try {
-    // embedded-postgres is an ES module; require() returns the namespace object,
-    // so the class lives on .default.
-    EmbeddedPostgres = require("embedded-postgres").default;
-  } catch {
-    log("[pg] embedded-postgres not installed — skipping PG startup");
-    return { pgDumpPath: "pg_dump" };
-  }
-
   // pgdata must always be on a local drive — never in a cloud-synced dataDir.
   const pgDataDir = path.join(app.getPath("userData"), "pgdata");
   const isFirstRun = !fs.existsSync(pgDataDir);
@@ -280,24 +404,26 @@ async function startPostgres() {
       .catch(() => {});
   }
 
-  const pg = new EmbeddedPostgres({
+  const localPg = new LocalPgManager({
     databaseDir: pgDataDir,
     user: PG_USER,
     password: PG_PASS,
     port: PG_PORT,
-    persistent: true,
-    // Force a UTF-8 cluster regardless of the OS locale.  Without this,
-    // Windows initialises with WIN1252 and Unicode chars (e.g. ≤ in seed
-    // descriptions) cause UntranslatableCharacter errors at runtime.
     initdbFlags: ["--encoding=UTF8", "--locale=C"],
   });
 
-  log(`[pg] initialising cluster at ${pgDataDir} (first run: ${isFirstRun})`);
-  await pg.initialise();      // runs initdb only on first launch (~3 s)
-  await pg.start();           // starts postmaster (~1 s)
-  try { await pg.createDatabase(PG_DB); } catch {}  // no-op if already exists
+  // In dev builds the embedded binaries don't exist — skip PG startup gracefully.
+  if (!fs.existsSync(localPg.initdbBin)) {
+    log("[pg] embedded-postgres binaries not found — skipping PG startup");
+    return { pgDumpPath: "pg_dump" };
+  }
 
-  pgInstance = pg;
+  log(`[pg] initialising cluster at ${pgDataDir} (first run: ${isFirstRun})`);
+  if (isFirstRun) await localPg.initialise();   // runs initdb only on first launch (~3 s)
+  await localPg.start();                          // starts postmaster (~1 s)
+  try { await localPg.createDatabase(PG_DB); } catch {}  // no-op if already exists
+
+  pgInstance = localPg;
   log("[pg] PostgreSQL ready");
 
   // ── One-time SQLite → PostgreSQL data migration ───────────────────────────
@@ -339,22 +465,8 @@ async function startPostgres() {
     log("[pg] Migration complete");
   }
 
-  // Locate the pg_dump binary from the unpacked @embedded-postgres platform package.
-  // The binaries live in app.asar.unpacked (asarUnpack in electron-builder.yml).
-  const pgPkgName = process.platform === "win32" ? "windows-x64"
-                  : process.platform === "darwin"
-                      ? (process.arch === "arm64" ? "darwin-arm64" : "darwin-x64")
-                      : (process.arch === "arm64" ? "linux-arm64"
-                         : process.arch === "arm"  ? "linux-arm"
-                         : process.arch === "ia32" ? "linux-ia32"
-                         : "linux-x64");
-  const pgDumpName = process.platform === "win32" ? "pg_dump.exe" : "pg_dump";
-  const pgDumpPath = path.join(
-    process.resourcesPath, "app.asar.unpacked", "node_modules",
-    "@embedded-postgres", pgPkgName, "native", "bin", pgDumpName
-  );
-
-  return { pgDumpPath: fs.existsSync(pgDumpPath) ? pgDumpPath : "pg_dump" };
+  // pg_dump lives alongside the other binaries — LocalPgManager already has the path.
+  return { pgDumpPath: fs.existsSync(localPg.pgDumpBin) ? localPg.pgDumpBin : "pg_dump" };
 }
 
 // ── Server startup ────────────────────────────────────────────────────────────
