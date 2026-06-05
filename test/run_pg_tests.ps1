@@ -7,11 +7,12 @@
     mode, exercises every REST endpoint, then tears everything down cleanly.
 
     Run from the project root:
-        .\test\run_pg_tests.ps1
+        .\test\run_pg_tests.ps1           (Windows PowerShell or pwsh)
+        pwsh -File test/run_pg_tests.ps1  (Linux / macOS with PowerShell Core)
 
     Requirements:
-        - npm install (embedded-postgres must be present in node_modules)
-        - api\.venv must exist (run `uv sync` inside api\)
+        - npm install  (embedded-postgres must be present in node_modules)
+        - api/.venv must exist  (run `uv sync` inside api/)
         - Node.js on PATH
         - psycopg2-binary installed in the venv
 
@@ -30,6 +31,14 @@ $h     = @{ "Content-Type" = "application/json" }
 $pass  = 0
 $fail  = 0
 $ROOT  = Split-Path $PSScriptRoot -Parent   # project root
+
+# ── Cross-platform helpers ────────────────────────────────────────────────────
+$IsWin    = ($IsWindows -or ($PSVersionTable.PSVersion.Major -lt 6))
+$Tmp      = [System.IO.Path]::GetTempPath().TrimEnd([IO.Path]::DirectorySeparatorChar)
+$HomeDir  = if ($env:HOME) { $env:HOME } else { $env:USERPROFILE }
+$python   = if ($IsWin) { Join-Path $ROOT "api" ".venv" "Scripts" "python.exe" }
+            else        { Join-Path $ROOT "api" ".venv" "bin"     "python" }
+$pgScript = Join-Path $ROOT "scripts" "start-test-pg.mjs"
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -61,9 +70,8 @@ Write-Host ""
 Write-Host "=== Foliantica PG Test Suite ===" -ForegroundColor Cyan
 Write-Host "Starting embedded PostgreSQL on port $PgPort..." -ForegroundColor Cyan
 
-$pgLog    = "$env:TEMP\foliantica-pg-test-stdout.log"
-$pgErrLog = "$env:TEMP\foliantica-pg-test-stderr.log"
-$pgScript = Join-Path $ROOT "scripts\start-test-pg.mjs"
+$pgLog    = Join-Path $Tmp "foliantica-pg-test-stdout.log"
+$pgErrLog = Join-Path $Tmp "foliantica-pg-test-stderr.log"
 
 Remove-Item $pgLog    -ErrorAction SilentlyContinue
 Remove-Item $pgErrLog -ErrorAction SilentlyContinue
@@ -90,16 +98,15 @@ Write-Host "PostgreSQL ready." -ForegroundColor Green
 
 Write-Host "Starting FastAPI on port $Port (PG mode)..." -ForegroundColor Cyan
 
-$apiLog    = "$env:TEMP\foliantica-api-pg-stdout.log"
-$apiErrLog = "$env:TEMP\foliantica-api-pg-stderr.log"
-$python    = Join-Path $ROOT "api\.venv\Scripts\python.exe"
+$apiLog    = Join-Path $Tmp "foliantica-api-pg-stdout.log"
+$apiErrLog = Join-Path $Tmp "foliantica-api-pg-stderr.log"
 $apiDir    = Join-Path $ROOT "api"
 
 Remove-Item $apiLog    -ErrorAction SilentlyContinue
 Remove-Item $apiErrLog -ErrorAction SilentlyContinue
 
 # Isolated data dir so dumps go here, not to the user's real sync dir
-$testDataDir = "$env:TEMP\foliantica-test-data"
+$testDataDir = Join-Path $Tmp "foliantica-test-data"
 New-Item -ItemType Directory -Force $testDataDir | Out-Null
 
 # Set env vars for child process
@@ -348,7 +355,7 @@ try {
     }
 
     # Enable sync to a temp mirror dir
-    $mirrorDir = "$env:TEMP\foliantica-sync-test"
+    $mirrorDir = Join-Path $Tmp "foliantica-sync-test"
     New-Item -ItemType Directory -Force $mirrorDir | Out-Null
     $syncBody = @{ sync_mirror_enabled = $true; sync_local_dir = $mirrorDir } | ConvertTo-Json
     T "POST /api/settings (enable sync)" {
@@ -423,7 +430,7 @@ try {
         if ($dumpContent -notmatch "PG Test Project") {
             throw "Dump at $($d.dump) does not contain test project data"
         }
-        $restoreDir = "$env:TEMP\foliantica-restore-test"
+        $restoreDir = Join-Path $Tmp "foliantica-restore-test"
         New-Item -ItemType Directory -Force $restoreDir | Out-Null
         try {
             Copy-Item $d.dump (Join-Path $restoreDir "foliantica.sql")
@@ -451,7 +458,7 @@ try {
 
     # ── PG config (GET / POST / restore) ──────────────────────────────────────
     # Save original so we don't pollute ~/.foliantica/config.json
-    $lwConfigPath = "$env:USERPROFILE\.foliantica\config.json"
+    $lwConfigPath = Join-Path $HomeDir ".foliantica" "config.json"
     $lwConfigOrig = Get-Content $lwConfigPath -Raw -ErrorAction SilentlyContinue
 
     T "GET  /api/settings/pg-config (defaults)" {
@@ -604,13 +611,14 @@ try {
     # Remove isolated test data dir
     Remove-Item -Recurse -Force $testDataDir -ErrorAction SilentlyContinue
 
-    # Belt-and-suspenders: kill any stray postgres.exe workers
-    Get-Process -Name postgres -ErrorAction SilentlyContinue |
-        Stop-Process -Force -ErrorAction SilentlyContinue
+    # Belt-and-suspenders: kill any stray postgres workers
+    # (process name is "postgres" on Linux/macOS, "postgres.exe" on Windows)
+    Get-Process -Name postgres    -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Get-Process -Name "postgres.exe" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 
     # Remove the ephemeral PG cluster (start-test-pg.mjs uses persistent: false,
     # but the directory may persist if the process was force-killed)
-    $pgDataDir = Join-Path $env:TEMP "foliantica-pg-test"
+    $pgDataDir = Join-Path $Tmp "foliantica-pg-test"
     Remove-Item -Recurse -Force $pgDataDir -ErrorAction SilentlyContinue
 
     Write-Host "Done." -ForegroundColor Cyan

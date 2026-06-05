@@ -24,6 +24,13 @@ $ErrorActionPreference = "Stop"
 $base  = "http://127.0.0.1:$Port"
 $ROOT  = Split-Path $PSScriptRoot -Parent
 
+# ── Cross-platform helpers ────────────────────────────────────────────────────
+$IsWin    = ($IsWindows -or ($PSVersionTable.PSVersion.Major -lt 6))
+$Tmp      = [System.IO.Path]::GetTempPath().TrimEnd([IO.Path]::DirectorySeparatorChar)
+$python   = if ($IsWin) { Join-Path $ROOT "api" ".venv" "Scripts" "python.exe" }
+            else        { Join-Path $ROOT "api" ".venv" "bin"     "python" }
+$pgScript = Join-Path $ROOT "scripts" "start-test-pg.mjs"
+
 function WaitFor {
     param([string]$Name, [scriptblock]$Check, [int]$TimeoutSec)
     for ($i = 0; $i -lt $TimeoutSec; $i++) {
@@ -35,13 +42,14 @@ function WaitFor {
 
 # ── Start PG ──────────────────────────────────────────────────────────────────
 Write-Host "Starting embedded PostgreSQL..." -ForegroundColor Cyan
-$pgLog = "$env:TEMP\foliantica-smoke-pg.log"
+$pgLog    = Join-Path $Tmp "foliantica-smoke-pg.log"
+$pgErrLog = Join-Path $Tmp "foliantica-smoke-pg-err.log"
 Remove-Item $pgLog -ErrorAction SilentlyContinue
 
 $pgProc = Start-Process node `
-    -ArgumentList (Join-Path $ROOT "scripts\start-test-pg.mjs") `
+    -ArgumentList $pgScript `
     -RedirectStandardOutput $pgLog `
-    -RedirectStandardError  "$env:TEMP\foliantica-smoke-pg-err.log" `
+    -RedirectStandardError  $pgErrLog `
     -PassThru -NoNewWindow
 
 if (-not (WaitFor "PG" { (Get-Content $pgLog -ErrorAction SilentlyContinue) -match "READY" } $PgStartTimeoutSec)) {
@@ -53,7 +61,8 @@ Write-Host "PG ready." -ForegroundColor Green
 
 # ── Start FastAPI ─────────────────────────────────────────────────────────────
 Write-Host "Starting FastAPI (PG mode)..." -ForegroundColor Cyan
-$apiLog = "$env:TEMP\foliantica-smoke-api.log"
+$apiLog    = Join-Path $Tmp "foliantica-smoke-api.log"
+$apiErrLog = Join-Path $Tmp "foliantica-smoke-api-err.log"
 Remove-Item $apiLog -ErrorAction SilentlyContinue
 
 $envVars = @{
@@ -67,11 +76,11 @@ foreach ($k in $envVars.Keys) {
     [Environment]::SetEnvironmentVariable($k, $envVars[$k])
 }
 
-$apiProc = Start-Process (Join-Path $ROOT "api\.venv\Scripts\python.exe") `
+$apiProc = Start-Process $python `
     -ArgumentList "run.py" `
     -WorkingDirectory (Join-Path $ROOT "api") `
     -RedirectStandardOutput $apiLog `
-    -RedirectStandardError  "$env:TEMP\foliantica-smoke-api-err.log" `
+    -RedirectStandardError  $apiErrLog `
     -PassThru -NoNewWindow
 
 $ok = $false
@@ -80,7 +89,7 @@ try {
             try { $null = Invoke-RestMethod "$base/api/health"; $true } catch { $false }
         } $ApiStartTimeoutSec)) {
         Write-Host "FAIL: FastAPI did not become ready in ${ApiStartTimeoutSec}s" -ForegroundColor Red
-        Write-Host (Get-Content "$env:TEMP\foliantica-smoke-api-err.log" -ErrorAction SilentlyContinue |
+        Write-Host (Get-Content $apiErrLog -ErrorAction SilentlyContinue |
             Select-Object -Last 30 | Out-String)
         exit 1
     }
@@ -100,9 +109,9 @@ try {
     foreach ($k in $envBackup.Keys) { [Environment]::SetEnvironmentVariable($k, $envBackup[$k]) }
     Stop-Process $apiProc.Id -Force -ErrorAction SilentlyContinue
     Stop-Process $pgProc.Id  -Force -ErrorAction SilentlyContinue
-    Get-Process -Name postgres -ErrorAction SilentlyContinue |
-        Stop-Process -Force -ErrorAction SilentlyContinue
-    Remove-Item -Recurse -Force "$env:TEMP\foliantica-pg-test" -ErrorAction SilentlyContinue
+    Get-Process -Name postgres       -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Get-Process -Name "postgres.exe" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force (Join-Path $Tmp "foliantica-pg-test") -ErrorAction SilentlyContinue
 }
 
 if (-not $ok) { exit 1 }
