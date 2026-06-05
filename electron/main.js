@@ -262,7 +262,9 @@ async function startPostgres() {
   // Lazy-require so non-prod builds that lack the package don't break.
   let EmbeddedPostgres;
   try {
-    EmbeddedPostgres = require("embedded-postgres");
+    // embedded-postgres is an ES module; require() returns the namespace object,
+    // so the class lives on .default.
+    EmbeddedPostgres = require("embedded-postgres").default;
   } catch {
     log("[pg] embedded-postgres not installed — skipping PG startup");
     return { pgDumpPath: "pg_dump" };
