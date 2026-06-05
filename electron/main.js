@@ -405,8 +405,11 @@ async function startPostgres() {
 
     // Bring the postgres profile up (no-op if already running).
     await new Promise((resolve, reject) => {
+      // Name the service explicitly so only `postgres` starts — without a
+      // service name, compose also starts all profile-less services (languagetool,
+      // pandoc, binfmt) which can fail for unrelated reasons.
       const proc = spawn("docker", [
-        "compose", "-f", composePath, "--profile", "postgres", "up", "-d",
+        "compose", "-f", composePath, "--profile", "postgres", "up", "-d", "postgres",
       ], { stdio: ["ignore", "pipe", "pipe"] });
       proc.stdout?.on("data", (d) => log(`[docker] ${d.toString().trim()}`));
       proc.stderr?.on("data", (d) => log(`[docker] ${d.toString().trim()}`));
