@@ -74,9 +74,14 @@ uv pip install --quiet --python "$ROOT/api/.venv/bin/python" -e "$ROOT/api"
 echo
 
 # ── npm packages ──────────────────────────────────────────────────────────────
-if [[ ! -d "$ROOT/web/node_modules" ]]; then
+if [[ ! -f "$ROOT/web/node_modules/.bin/next" ]]; then
   echo -e "  ${WHITE}Installing npm packages (first run — takes a minute)...${RESET}"
-  (cd "$ROOT/web" && npm install --silent)
+  (cd "$ROOT/web" && npm install)
+  if [[ ! -f "$ROOT/web/node_modules/.bin/next" ]]; then
+    err "npm install finished but 'next' was not installed."
+    echo -e "         Run manually:  ${GRAY}cd web && npm install${RESET}" >&2
+    exit 1
+  fi
   echo
 fi
 

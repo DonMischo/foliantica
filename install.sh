@@ -337,9 +337,14 @@ echo
 # ── npm packages ──────────────────────────────────────────────────────────────
 step "Frontend packages"
 
-if [[ ! -d "$ROOT/web/node_modules" ]]; then
-  info "Installing npm packages (first run — takes a moment)..."
-  (cd "$ROOT/web" && npm install --silent)
+if [[ ! -f "$ROOT/web/node_modules/.bin/next" ]]; then
+  info "Installing npm packages (this takes a moment on first run)..."
+  (cd "$ROOT/web" && npm install)
+fi
+if [[ ! -f "$ROOT/web/node_modules/.bin/next" ]]; then
+  err "npm install finished but 'next' was not found in node_modules."
+  info "Run manually:  cd web && npm install"
+  exit 1
 fi
 ok "npm packages installed."
 echo
