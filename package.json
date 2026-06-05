@@ -7,10 +7,10 @@
   "scripts": {
     "generate-icons": "cd scripts && npm install && node generate-icons.mjs",
     "electron:dev": "electron .",
-    "dist": "electron-builder",
-    "dist:win": "electron-builder --win",
-    "dist:mac": "electron-builder --mac",
-    "dist:linux": "electron-builder --linux"
+    "dist": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
+    "dist:win": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
+    "dist:mac": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac",
+    "dist:linux": "cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --linux"
   },
   "pnpm": {
     "ignoredBuiltDependencies": [
@@ -22,6 +22,7 @@
     "embedded-postgres": "^17.7.0-beta.16"
   },
   "devDependencies": {
+    "cross-env": "^10.1.0",
     "electron": "^42.3.3",
     "electron-builder": "^26.8.1"
   }
