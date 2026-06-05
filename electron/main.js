@@ -339,13 +339,20 @@ async function startPostgres() {
     log("[pg] Migration complete");
   }
 
-  // Locate the pg_dump binary shipped with the embedded-postgres package.
-  const embeddedPgRoot = path.join(__dirname, "..", "node_modules", "embedded-postgres");
-  const binSubdir = process.platform === "win32" ? "bin/win32"
-                  : process.platform === "darwin" ? "bin/darwin"
-                  : "bin/linux";
+  // Locate the pg_dump binary from the unpacked @embedded-postgres platform package.
+  // The binaries live in app.asar.unpacked (asarUnpack in electron-builder.yml).
+  const pgPkgName = process.platform === "win32" ? "windows-x64"
+                  : process.platform === "darwin"
+                      ? (process.arch === "arm64" ? "darwin-arm64" : "darwin-x64")
+                      : (process.arch === "arm64" ? "linux-arm64"
+                         : process.arch === "arm"  ? "linux-arm"
+                         : process.arch === "ia32" ? "linux-ia32"
+                         : "linux-x64");
   const pgDumpName = process.platform === "win32" ? "pg_dump.exe" : "pg_dump";
-  const pgDumpPath = path.join(embeddedPgRoot, binSubdir, pgDumpName);
+  const pgDumpPath = path.join(
+    process.resourcesPath, "app.asar.unpacked", "node_modules",
+    "@embedded-postgres", pgPkgName, "native", "bin", pgDumpName
+  );
 
   return { pgDumpPath: fs.existsSync(pgDumpPath) ? pgDumpPath : "pg_dump" };
 }
