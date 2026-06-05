@@ -380,18 +380,71 @@ const PG_DB   = "foliantica";
  */
 async function startPostgres() {
   // If the user has configured Docker PG in ~/.foliantica/config.json,
-  // skip the embedded cluster and return the custom connection details.
+  // start the container (if not already running) and wait for it to be ready.
   const lwCfgForPg = loadLwConfig();
   if (lwCfgForPg.pg && lwCfgForPg.pg.useDocker) {
-    const pg = lwCfgForPg.pg;
-    log(`[pg] Docker PG mode — connecting to ${pg.host || "127.0.0.1"}:${pg.port || 5434}`);
-    return {
-      pgHost: pg.host || "127.0.0.1",
-      pgPort: String(pg.port || 5434),
-      pgUser: pg.user || "foliantica",
-      pgPass: pg.pass || "foliantica",
-      pgDb:   pg.db   || "foliantica",
-    };
+    const pgCfg  = lwCfgForPg.pg;
+    const pgHost = pgCfg.host || "127.0.0.1";
+    const pgPort = pgCfg.port || 5434;
+    const pgUser = pgCfg.user || "foliantica";
+    const pgPass = pgCfg.pass || "foliantica";
+    const pgDb   = pgCfg.db   || "foliantica";
+
+    log(`[pg] Docker PG mode — ${pgHost}:${pgPort}`);
+
+    if (splashWin) {
+      splashWin.webContents
+        .executeJavaScript('document.querySelector(".status").textContent = "Starting database…";')
+        .catch(() => {});
+    }
+
+    // docker-compose.yml is in resources/ in prod, project root in dev.
+    const composePath = isProd
+      ? path.join(process.resourcesPath, "docker-compose.yml")
+      : path.join(__dirname, "..", "docker-compose.yml");
+
+    // Bring the postgres profile up (no-op if already running).
+    await new Promise((resolve, reject) => {
+      const proc = spawn("docker", [
+        "compose", "-f", composePath, "--profile", "postgres", "up", "-d",
+      ], { stdio: ["ignore", "pipe", "pipe"] });
+      proc.stdout?.on("data", (d) => log(`[docker] ${d.toString().trim()}`));
+      proc.stderr?.on("data", (d) => log(`[docker] ${d.toString().trim()}`));
+      proc.on("exit", (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`docker compose up exited with code ${code}`));
+      });
+      proc.on("error", (err) =>
+        reject(new Error(`docker not found: ${err.message} — install Docker Desktop or Docker Engine`))
+      );
+    });
+
+    // Poll until PostgreSQL accepts connections (up to 60 s).
+    log("[pg] Waiting for Docker PostgreSQL to be ready...");
+    const { Client } = require("pg");
+    const deadline = Date.now() + 60_000;
+    let ready = false;
+    while (Date.now() < deadline) {
+      const client = new Client({
+        host: pgHost, port: pgPort,
+        user: pgUser, password: pgPass, database: "postgres",
+        connectionTimeoutMillis: 1000,
+      });
+      try {
+        await client.connect();
+        await client.end();
+        ready = true;
+        break;
+      } catch {
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    }
+    if (!ready) {
+      throw new Error(`Docker PostgreSQL not ready after 60 s — check that Docker is running and port ${pgPort} is free`);
+    }
+    log("[pg] Docker PostgreSQL ready");
+
+    return { pgHost, pgPort: String(pgPort), pgUser, pgPass, pgDb };
   }
 
   // pgdata must always be on a local drive — never in a cloud-synced dataDir.
