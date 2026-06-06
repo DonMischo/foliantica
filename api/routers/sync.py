@@ -43,6 +43,10 @@ _trigger = threading.Event()   # set to wake the sleeping thread early
 _stop    = threading.Event()   # set to shut the thread down
 _thread: threading.Thread | None = None
 
+_auto_dump_written: bool = False  # True once auto-sync or the Dump button has written a dump
+                                  # this session; guards against silently overwriting a user-
+                                  # placed dump that may represent a different data state.
+
 _INTERVAL = 300          # fallback interval (seconds) — commit hook fires first
 _hook_registered = False  # ensure we only register the SQLAlchemy hook once
 
@@ -185,21 +189,34 @@ def _bg_loop() -> None:
             # Dump to CWD (= dataDir) and optionally copy to the mirror dir.
             # Only runs when Data Mirror is explicitly enabled — avoids
             # overwriting an existing foliantica.sql the user placed there.
-            try:
-                cwd = Path.cwd()
-                _do_pg_dump(cwd)          # writes cwd/foliantica.sql
-                if mirror:
-                    mirror.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(str(cwd / "foliantica.sql"),
-                                 str(mirror / "foliantica.sql"))
-                    _sync_uploads(_uploads_path(), mirror / "uploads")
+            global _auto_dump_written
+            cwd = Path.cwd()
+            dump_path = cwd / "foliantica.sql"
+            if dump_path.exists() and not _auto_dump_written:
+                # A dump exists that we did not write this session.  It may
+                # represent a different or older data state — protect it the
+                # same way the Dump button does (require explicit user action).
                 with _lock:
-                    _last_sync_at = datetime.now(UTC).replace(tzinfo=None)
-                    _last_error   = None
-                    _mode         = "online"
-            except Exception as exc:
-                with _lock:
-                    _last_error = str(exc)
+                    _last_error = (
+                        "Auto-sync skipped: a dump file already exists. "
+                        "Use the Dump button in Settings to confirm overwrite."
+                    )
+            else:
+                try:
+                    _do_pg_dump(cwd)      # writes cwd/foliantica.sql
+                    _auto_dump_written = True
+                    if mirror:
+                        mirror.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(str(cwd / "foliantica.sql"),
+                                     str(mirror / "foliantica.sql"))
+                        _sync_uploads(_uploads_path(), mirror / "uploads")
+                    with _lock:
+                        _last_sync_at = datetime.now(UTC).replace(tzinfo=None)
+                        _last_error   = None
+                        _mode         = "online"
+                except Exception as exc:
+                    with _lock:
+                        _last_error = str(exc)
 
         elif enabled and mirror:
             # ── SQLite mode (legacy) ─────────────────────────────────────────
@@ -300,7 +317,9 @@ def shutdown_backup() -> None:
     try:
         if not USE_SQLITE:
             cwd = Path.cwd()
-            _do_pg_dump(cwd)
+            # Only overwrite a dump that we wrote this session.
+            if _auto_dump_written or not (cwd / "foliantica.sql").exists():
+                _do_pg_dump(cwd)
             if enabled and mirror:
                 mirror.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(str(cwd / "foliantica.sql"),
@@ -367,6 +386,10 @@ def dump_to_datadir(force: bool = False):
 
     try:
         _do_pg_dump(cwd)
+        # Mark that we've now written a dump this session so auto-sync may
+        # overwrite it freely going forward.
+        global _auto_dump_written
+        _auto_dump_written = True
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
