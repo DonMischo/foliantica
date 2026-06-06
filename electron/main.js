@@ -405,11 +405,17 @@ async function startPostgres() {
 
     // Bring the postgres profile up (no-op if already running).
     await new Promise((resolve, reject) => {
-      // Name the service explicitly so only `postgres` starts — without a
-      // service name, compose also starts all profile-less services (languagetool,
-      // pandoc, binfmt) which can fail for unrelated reasons.
+      // --project-name pins the compose project to "foliantica" regardless of
+      // which directory the compose file lives in (resources/ in prod vs. the
+      // project root in dev). Without it, compose derives the name from the
+      // directory and treats the same containers as a different project, causing
+      // "container name already in use" conflicts on every restart.
+      // The explicit service name limits startup to postgres only.
       const proc = spawn("docker", [
-        "compose", "-f", composePath, "--profile", "postgres", "up", "-d", "postgres",
+        "compose", "-f", composePath,
+        "--project-name", "foliantica",
+        "--profile", "postgres",
+        "up", "-d", "postgres",
       ], { stdio: ["ignore", "pipe", "pipe"] });
       proc.stdout?.on("data", (d) => log(`[docker] ${d.toString().trim()}`));
       proc.stderr?.on("data", (d) => log(`[docker] ${d.toString().trim()}`));
