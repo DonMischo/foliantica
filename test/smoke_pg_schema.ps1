@@ -68,7 +68,7 @@ Remove-Item $apiLog -ErrorAction SilentlyContinue
 $envVars = @{
     LW_USE_SQLITE    = "0"; LW_PG_PORT = [string]$PgPort
     LW_PG_USER       = "foliantica"; LW_PG_PASS = "foliantica"
-    LW_PG_DB         = "foliantica"; PYTHONIOENCODING = "utf-8"
+    LW_PG_DB         = "foliantica_test"; PYTHONIOENCODING = "utf-8"
 }
 $envBackup = @{}
 foreach ($k in $envVars.Keys) {
