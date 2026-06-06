@@ -180,15 +180,15 @@ def _bg_loop() -> None:
             enabled = _enabled
             mirror  = _mirror_dir
 
-        if not USE_SQLITE:
-            # ── PostgreSQL mode ──────────────────────────────────────────────
-            # Always dump to CWD (= dataDir, e.g. Google Drive) so the SQL
-            # file lives alongside uploads just like foliantica.db used to.
-            # If Data Mirror is also enabled, copy the result to sync_local_dir.
+        if enabled and not USE_SQLITE:
+            # ── PostgreSQL + Data Mirror enabled ─────────────────────────────
+            # Dump to CWD (= dataDir) and optionally copy to the mirror dir.
+            # Only runs when Data Mirror is explicitly enabled — avoids
+            # overwriting an existing foliantica.sql the user placed there.
             try:
                 cwd = Path.cwd()
                 _do_pg_dump(cwd)          # writes cwd/foliantica.sql
-                if enabled and mirror:
+                if mirror:
                     mirror.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(str(cwd / "foliantica.sql"),
                                  str(mirror / "foliantica.sql"))
@@ -245,14 +245,12 @@ def init(enabled: bool, local_dir: str | None) -> None:
         # Active mirror path: only meaningful when enabled (or PG-mode always-dump).
         # Set to None when explicitly disabled so endpoints can't reference stale paths.
         _mirror_dir = (Path(local_dir) if local_dir else default) if enabled else None
-        # PG mode is always "online" — CWD dump runs unconditionally.
-        # SQLite mode follows the mirror-enabled flag.
-        _mode = "online" if (enabled or not USE_SQLITE) else "disabled"
+        # Background sync only runs when Data Mirror is explicitly enabled.
+        _mode = "online" if enabled else "disabled"
 
-    # PG mode: always run the background thread (dumps to dataDir regardless of
-    # whether the local Data Mirror copy is enabled).
-    # SQLite mode: only run if Data Mirror is explicitly enabled.
-    should_run = (not USE_SQLITE) or enabled
+    # Run the background thread only when Data Mirror is enabled.
+    # In PG mode without Data Mirror, dumps are purely on-demand (Dump button).
+    should_run = enabled
     if should_run and (_thread is None or not _thread.is_alive()):
         _stop.clear()
         _thread = threading.Thread(target=_bg_loop, name="sync-mirror", daemon=True)
@@ -281,9 +279,8 @@ def _register_commit_hook() -> None:
 
     @_sa_event.listens_for(_SASession, "after_commit")
     def _after_commit(session):          # noqa: F811
-        # PG mode: always trigger (dump to CWD is unconditional).
-        # SQLite mode: only trigger when mirror is enabled.
-        if not USE_SQLITE or (_enabled and _mirror_dir):
+        # Only trigger when Data Mirror is enabled — avoids surprise overwrites.
+        if _enabled and _mirror_dir:
             _trigger.set()               # wake background thread immediately
 
     _hook_registered = True
