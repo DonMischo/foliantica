@@ -201,16 +201,28 @@ export default function SettingsPage() {
     }
   };
 
-  const handleDump = async () => {
+  const handleDump = async (force = false) => {
     setDumpState("busy");
     setDumpMsg("");
+    setDumpConflict(null);
     try {
-      await syncApi.dump();
+      await syncApi.dump(force);
       setDumpState("ok");
       setDumpMsg("Dumped to sync dir.");
     } catch (e: any) {
+      const msg: string = e.message ?? "";
+      // req() throws "409: <json body>" — detect and parse the conflict payload
+      if (msg.startsWith("409:")) {
+        try {
+          const body = JSON.parse(msg.slice(4).trim());
+          const detail = body.detail ?? body;
+          setDumpConflict({ dump_time: detail.dump_time ?? "" });
+          setDumpState("idle");
+          return;
+        } catch { /* fall through to generic error */ }
+      }
       setDumpState("error");
-      setDumpMsg(e.message ?? "Dump failed");
+      setDumpMsg(msg || "Dump failed");
     }
   };
 
@@ -225,6 +237,7 @@ export default function SettingsPage() {
   const [restoreMsg,    setRestoreMsg]    = useState("");
   const [dumpState,     setDumpState]     = useState<"idle"|"busy"|"ok"|"error">("idle");
   const [dumpMsg,       setDumpMsg]       = useState("");
+  const [dumpConflict,  setDumpConflict]  = useState<{ dump_time: string } | null>(null);
 
   useEffect(() => {
     dataDirApi.get().then((res) => {
@@ -990,15 +1003,29 @@ export default function SettingsPage() {
             >
               {dataDirPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Apply"}
             </Button>
-            <Button
-              size="sm" variant="outline"
-              disabled={dumpState === "busy"}
-              onClick={handleDump}
-            >
-              {dumpState === "busy"
-                ? <><Loader2 className="h-3 w-3 animate-spin mr-1" />Dumping…</>
-                : "Dump"}
-            </Button>
+            {dumpConflict ? (
+              <span className="flex items-center gap-1.5 text-xs text-amber-500">
+                Dump from {dumpConflict.dump_time ? new Date(dumpConflict.dump_time + "Z").toLocaleString() : "unknown"} exists — overwrite?
+                <button
+                  className="underline hover:text-amber-400"
+                  onClick={() => handleDump(true)}
+                >Yes</button>
+                <button
+                  className="underline hover:text-foreground text-muted-foreground"
+                  onClick={() => setDumpConflict(null)}
+                >No</button>
+              </span>
+            ) : (
+              <Button
+                size="sm" variant="outline"
+                disabled={dumpState === "busy"}
+                onClick={() => handleDump(false)}
+              >
+                {dumpState === "busy"
+                  ? <><Loader2 className="h-3 w-3 animate-spin mr-1" />Dumping…</>
+                  : "Dump"}
+              </Button>
+            )}
             <Button
               size="sm" variant="outline"
               disabled={restoreState === "busy"}

@@ -339,24 +339,37 @@ def trigger_sync():
 
 
 @router.post("/dump")
-def dump_to_datadir():
+def dump_to_datadir(force: bool = False):
     """Dump the PostgreSQL database to foliantica.sql in the current dataDir immediately.
 
     Writes synchronously to the API's working directory (= the configured Sync Dir,
     typically a cloud folder). Does not require Data Mirror to be enabled.
-    Use this when you need the file to exist right now (e.g. after changing the
-    Sync Dir path, or as a manual checkpoint before a transfer).
+
+    If an existing dump is found and force=false (default), returns HTTP 409 with
+    the existing file's timestamp so the caller can ask the user to confirm before
+    overwriting.  Pass force=true to overwrite unconditionally.
     """
     if USE_SQLITE:
         raise HTTPException(status_code=400,
                             detail="Explicit dump requires PostgreSQL mode")
     cwd = Path.cwd()
+    dump_path = cwd / "foliantica.sql"
+
+    if dump_path.exists() and not force:
+        existing_mtime = datetime.fromtimestamp(
+            dump_path.stat().st_mtime, UTC
+        ).replace(tzinfo=None).isoformat()
+        raise HTTPException(status_code=409, detail={
+            "exists": True,
+            "dump_time": existing_mtime,
+            "size": dump_path.stat().st_size,
+        })
+
     try:
         _do_pg_dump(cwd)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    dump_path = cwd / "foliantica.sql"
     mtime = datetime.fromtimestamp(
         dump_path.stat().st_mtime, UTC
     ).replace(tzinfo=None).isoformat()

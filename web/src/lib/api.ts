@@ -740,9 +740,10 @@ export interface SyncStatus {
 export const syncApi = {
   status:  () => req<SyncStatus>("/sync/status"),
   trigger: () => req<{ ok: boolean }>("/sync/trigger", { method: "POST" }),
-  /** Synchronous dump to dataDir (CWD). Works regardless of Data Mirror setting. */
-  dump:    () => req<{ ok: boolean; dump: string; dump_time: string }>(
-    "/sync/dump", { method: "POST" }
+  /** Synchronous dump to dataDir (CWD). Works regardless of Data Mirror setting.
+   *  Without force=true, returns 409 if a dump already exists so the UI can confirm. */
+  dump: (force = false) => req<{ ok: boolean; dump: string; dump_time: string }>(
+    `/sync/dump${force ? "?force=true" : ""}`, { method: "POST" }
   ),
   restore: () => req<{ ok: boolean; dump: string; dump_time: string; statements: number }>(
     "/sync/restore", { method: "POST" }
