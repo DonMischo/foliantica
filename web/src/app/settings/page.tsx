@@ -201,6 +201,19 @@ export default function SettingsPage() {
     }
   };
 
+  const handleDump = async () => {
+    setDumpState("busy");
+    setDumpMsg("");
+    try {
+      await syncApi.dump();
+      setDumpState("ok");
+      setDumpMsg("Dumped to sync dir.");
+    } catch (e: any) {
+      setDumpState("error");
+      setDumpMsg(e.message ?? "Dump failed");
+    }
+  };
+
   // ── Data directory ────────────────────────────────────────────────────────
   const isElectron = typeof window !== "undefined" && !!(window as any).electron;
   const [dataDir, setDataDir]               = useState<string>("");
@@ -210,6 +223,8 @@ export default function SettingsPage() {
   const [dataDirRestarting, setDataDirRestarting] = useState(false);
   const [restoreState,  setRestoreState]  = useState<"idle"|"busy"|"ok"|"error">("idle");
   const [restoreMsg,    setRestoreMsg]    = useState("");
+  const [dumpState,     setDumpState]     = useState<"idle"|"busy"|"ok"|"error">("idle");
+  const [dumpMsg,       setDumpMsg]       = useState("");
 
   useEffect(() => {
     dataDirApi.get().then((res) => {
@@ -299,7 +314,6 @@ export default function SettingsPage() {
     setSyncSaving(true);
     try {
       await updateSettings.mutateAsync({ sync_local_dir: syncLocalDir || null });
-      if (syncEnabled) syncApi.trigger().catch(() => {});
     } finally {
       setSyncSaving(false);
     }
@@ -969,16 +983,30 @@ export default function SettingsPage() {
                 try {
                   await dataDirApi.set(dataDir || null, false);
                   setDataDirConfigured(dataDir || null);
-                  // Synchronous dump so foliantica.sql appears in the new dir immediately.
-                  syncApi.dump().catch(() => {});
                 } finally {
                   setDataDirPending(false);
                 }
               }}
             >
-              {dataDirPending
-                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                : <><RefreshCw className="h-3.5 w-3.5 mr-1.5" />Apply &amp; Sync</>}
+              {dataDirPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Apply"}
+            </Button>
+            <Button
+              size="sm" variant="outline"
+              disabled={dumpState === "busy"}
+              onClick={handleDump}
+            >
+              {dumpState === "busy"
+                ? <><Loader2 className="h-3 w-3 animate-spin mr-1" />Dumping…</>
+                : "Dump"}
+            </Button>
+            <Button
+              size="sm" variant="outline"
+              disabled={restoreState === "busy"}
+              onClick={handleLoadDump}
+            >
+              {restoreState === "busy"
+                ? <><Loader2 className="h-3 w-3 animate-spin mr-1" />Loading…</>
+                : "Load Dump"}
             </Button>
             {dataDirConfigured && (
               <Button
@@ -991,7 +1019,6 @@ export default function SettingsPage() {
                     await dataDirApi.set(null, false);
                     setDataDirConfigured(null);
                     setDataDir("");
-                    syncApi.trigger().catch(() => {});
                   } finally {
                     setDataDirPending(false);
                   }
@@ -1001,29 +1028,10 @@ export default function SettingsPage() {
               </Button>
             )}
           </div>
-
-          <div className="border-t border-border/50 pt-3 space-y-2">
-            <p className="text-xs font-medium">Load dump from Sync Dir</p>
-            <p className="text-[11px] text-muted-foreground">
-              Restore the database from the{" "}
-              <code className="text-primary font-mono text-[11px]">foliantica.sql</code>{" "}
-              dump in the Data Mirror location. Requires Data Mirror to be enabled
-              and synced at least once.
-            </p>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Button
-                size="sm" variant="outline" className="h-7 text-xs"
-                disabled={restoreState === "busy"}
-                onClick={handleLoadDump}
-              >
-                {restoreState === "busy"
-                  ? <><Loader2 className="h-3 w-3 animate-spin mr-1" />Loading…</>
-                  : "Load dump"}
-              </Button>
-              {restoreState === "ok"    && <p className="text-xs text-emerald-500">{restoreMsg}</p>}
-              {restoreState === "error" && <p className="text-xs text-destructive">{restoreMsg}</p>}
-            </div>
-          </div>
+          {dumpState    === "ok"    && <p className="text-xs text-emerald-500">{dumpMsg}</p>}
+          {dumpState    === "error" && <p className="text-xs text-destructive">{dumpMsg}</p>}
+          {restoreState === "ok"    && <p className="text-xs text-emerald-500">{restoreMsg}</p>}
+          {restoreState === "error" && <p className="text-xs text-destructive">{restoreMsg}</p>}
         </section>
 
         <div className="border-t border-border" />
