@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import {
   Plus, Trash2, X, Check, GripVertical,
   Lightbulb, Archive, Scissors, MoreHorizontal,
-  LayoutGrid, List, Microscope, Camera, ImageOff,
+  LayoutGrid, List, Microscope, Camera,
   Link as LinkIcon, ExternalLink, RefreshCw, Film, Tag, Loader2, FileText,
   FileUp, Maximize2,
 } from "lucide-react";
@@ -17,11 +17,10 @@ import {
   useFragmentTabs, useUpdateFragmentTabs,
   useFragments, useCreateFragment, useUpdateFragment, useDeleteFragment,
   useResearch, useCreateResearch, useUpdateResearch, useDeleteResearch,
-  useRefetchResearchUrl, useUploadResearchImage, useDeleteResearchImage,
-  useUploadResearchPdf, useDeleteResearchPdf,
+  useRefetchResearchUrl, useUploadResearchMedia, useDeleteResearchMedia,
 } from "@/store/queries";
 import { imagesApi } from "@/lib/api";
-import type { Fragment as FragmentItem, ResearchItem } from "@/types";
+import type { Fragment as FragmentItem, ResearchItem, ResearchMedia } from "@/types";
 import { BUILTIN_TABS } from "@/types";
 import { cn } from "@/lib/utils";
 import { FragmentImportButton } from "@/components/fragments/FragmentImportButton";
@@ -47,22 +46,21 @@ function ClippingDialog({
   const [tags, setTags]         = useState<string[]>(initial?.tags ?? []);
   const [saving, setSaving]     = useState(false);
 
-  // Image state
-  const [pendingImage, setPendingImage]     = useState<File | null>(null);
-  const [pendingPreview, setPendingPreview] = useState<string | null>(null);
-  // PDF state
-  const [pendingPdf, setPendingPdf]         = useState<File | null>(null);
-  const [removingPdf, setRemovingPdf]       = useState(false);
-  const [removingImage, setRemovingImage] = useState(false);
+  // Gallery state
+  // pending: new files to upload on save, with local preview URLs
+  const [pending, setPending]       = useState<Array<{ file: File; preview: string; kind: 'image' | 'pdf' }>>([]);
+  // ids of existing media items the user wants to remove on save
+  const [removingIds, setRemovingIds] = useState<number[]>([]);
+  // index within the combined (existing + pending) list
+  const [activeIdx, setActiveIdx]   = useState(0);
+  const [isDragOver, setIsDragOver] = useState(false);
 
-  const createResearch  = useCreateResearch(projectId);
-  const updateResearch  = useUpdateResearch(projectId);
-  const uploadImage     = useUploadResearchImage(projectId);
-  const deleteImage     = useDeleteResearchImage(projectId);
-  const uploadPdf       = useUploadResearchPdf(projectId);
-  const deletePdf       = useDeleteResearchPdf(projectId);
+  const createResearch = useCreateResearch(projectId);
+  const updateResearch = useUpdateResearch(projectId);
+  const uploadMedia    = useUploadResearchMedia(projectId);
+  const deleteMedia    = useDeleteResearchMedia(projectId);
 
-  // Reset all fields when dialog opens or switches item
+  // Reset when dialog opens or switches item
   useEffect(() => {
     if (open) {
       setTitle(initial?.title ?? "");
@@ -70,81 +68,74 @@ function ClippingDialog({
       setText(initial?.text_content ?? "");
       setTags(initial?.tags ?? []);
       setTagInput("");
-      if (pendingPreview) URL.revokeObjectURL(pendingPreview);
-      setPendingImage(null);
-      setPendingPreview(null);
-      setRemovingImage(false);
-      setPendingPdf(null);
-      setRemovingPdf(false);
+      pending.forEach(p => URL.revokeObjectURL(p.preview));
+      setPending([]);
+      setRemovingIds([]);
+      setActiveIdx(0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial]);
 
-  // Revoke blob URL on unmount
+  // Cleanup blob URLs on unmount
   useEffect(() => {
-    return () => { if (pendingPreview) URL.revokeObjectURL(pendingPreview); };
+    return () => pending.forEach(p => URL.revokeObjectURL(p.preview));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // The image currently shown in the preview area
-  const dialogPreview = pendingPreview
-    ?? (!removingImage && initial?.image_path ? imagesApi.url(initial.image_path) : null)
-    ?? (!removingImage ? (initial?.url_image ?? null) : null);
+  // Combined gallery: existing (not removed) + pending
+  const existingMedia = (initial?.media ?? []).filter(m => !removingIds.includes(m.id));
+  const totalCount    = existingMedia.length + pending.length;
+  const safeIdx       = Math.min(activeIdx, Math.max(0, totalCount - 1));
 
-  const [isDragOver, setIsDragOver] = useState(false);
-
-  const setImageFile = (file: File) => {
-    if (!file.type.startsWith("image/")) return;
-    if (pendingPreview) URL.revokeObjectURL(pendingPreview);
-    setPendingImage(file);
-    setPendingPreview(URL.createObjectURL(file));
-    setRemovingImage(false);
+  const addFile = (file: File) => {
+    const isImage = file.type.startsWith("image/") && file.type !== "image/svg+xml";
+    const isPdf   = file.type === "application/pdf";
+    if (!isImage && !isPdf) return;
+    const kind    = isPdf ? "pdf" : "image";
+    const preview = isImage ? URL.createObjectURL(file) : "";
+    setPending(prev => [...prev, { file, preview, kind }]);
+    setActiveIdx(existingMedia.length + pending.length); // point to the new item
   };
 
   const pickImage = () => {
     const input = document.createElement("input");
-    input.type  = "file";
-    input.accept = "image/jpeg,image/png,image/webp,image/gif";
-    input.onchange = () => { if (input.files?.[0]) setImageFile(input.files[0]); };
+    input.type = "file"; input.multiple = true;
+    input.accept = "image/jpeg,image/png,image/webp,image/gif,image/avif";
+    input.onchange = () => { Array.from(input.files ?? []).forEach(addFile); };
     input.click();
-  };
-
-  // Global paste listener — intercepts only when clipboard contains an image.
-  // Text-only pastes (e.g. into the title/url/tags fields) are unaffected.
-  useEffect(() => {
-    if (!open) return;
-    const onPaste = (e: ClipboardEvent) => {
-      const imageItem = Array.from(e.clipboardData?.items ?? [])
-        .find(i => i.type.startsWith("image/"));
-      if (!imageItem) return;          // no image → let normal text paste happen
-      const file = imageItem.getAsFile();
-      if (file) { e.preventDefault(); setImageFile(file); }
-    };
-    document.addEventListener("paste", onPaste);
-    return () => document.removeEventListener("paste", onPaste);
-  }, [open]);
-
-  const clearImage = () => {
-    if (pendingPreview) URL.revokeObjectURL(pendingPreview);
-    setPendingImage(null);
-    setPendingPreview(null);
-    if (initial?.image_path) setRemovingImage(true);
   };
 
   const pickPdf = () => {
     const input = document.createElement("input");
-    input.type = "file";
+    input.type = "file"; input.multiple = true;
     input.accept = "application/pdf";
-    input.onchange = () => {
-      const file = input.files?.[0];
-      if (file) { setPendingPdf(file); setRemovingPdf(false); }
-    };
+    input.onchange = () => { Array.from(input.files ?? []).forEach(addFile); };
     input.click();
   };
 
-  const clearPdf = () => {
-    setPendingPdf(null);
-    if (initial?.pdf_path) setRemovingPdf(true);
+  // Global paste listener — appends image to gallery, no text-paste interference
+  useEffect(() => {
+    if (!open) return;
+    const onPaste = (e: ClipboardEvent) => {
+      const item = Array.from(e.clipboardData?.items ?? []).find(i => i.type.startsWith("image/"));
+      if (!item) return;
+      const file = item.getAsFile();
+      if (file) { e.preventDefault(); addFile(file); }
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, existingMedia.length, pending.length]);
+
+  const removeAt = (idx: number) => {
+    if (idx < existingMedia.length) {
+      setRemovingIds(prev => [...prev, existingMedia[idx].id]);
+    } else {
+      const pi = idx - existingMedia.length;
+      URL.revokeObjectURL(pending[pi].preview);
+      setPending(prev => prev.filter((_, i) => i !== pi));
+    }
+    setActiveIdx(idx => Math.max(0, idx - 1));
   };
 
   const addTag = () => {
@@ -161,82 +152,116 @@ function ClippingDialog({
         text_content: text.trim() || undefined,
         tags,
       };
-
       let itemId: number;
       if (initial) {
         await updateResearch.mutateAsync({ id: initial.id, data: payload });
         itemId = initial.id;
-        // Remove existing uploaded image if user cleared it
-        if (removingImage && initial.image_path) {
-          await deleteImage.mutateAsync(initial.id);
-        }
+        for (const id of removingIds) await deleteMedia.mutateAsync(id);
       } else {
         const created = await createResearch.mutateAsync(payload);
         itemId = created.id;
       }
-
-      if (pendingImage) {
-        await uploadImage.mutateAsync({ id: itemId, file: pendingImage });
-      }
-      if (removingPdf && initial?.pdf_path) {
-        await deletePdf.mutateAsync(itemId);
-      }
-      if (pendingPdf) {
-        await uploadPdf.mutateAsync({ id: itemId, file: pendingPdf });
-      }
-
+      for (const p of pending) await uploadMedia.mutateAsync({ id: itemId, file: p.file });
       onClose();
     } finally {
       setSaving(false);
     }
   };
 
-  const canSave = !saving && (!!title.trim() || !!url.trim() || !!text.trim() || !!pendingImage || !!pendingPdf);
+  const canSave = !saving && (!!title.trim() || !!url.trim() || !!text.trim() || totalCount > 0);
 
-  const currentPdfName = pendingPdf?.name ?? (initial?.pdf_path ? initial.pdf_path.split("/").pop() : null);
-  const hasPdf = !!pendingPdf || (!removingPdf && !!initial?.pdf_path);
+  // Render the active item in the main preview area
+  const renderActivePreview = () => {
+    if (totalCount === 0) {
+      return (
+        <div
+          className={cn(
+            "h-[min(60vh,480px)] flex flex-col items-center justify-center gap-1.5 rounded-md border-2 border-dashed text-xs transition-colors cursor-pointer",
+            isDragOver ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground hover:border-primary/50 hover:text-primary",
+          )}
+          onClick={pickImage}
+          onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false); }}
+          onDrop={(e) => { e.preventDefault(); setIsDragOver(false); Array.from(e.dataTransfer.files).forEach(addFile); }}
+        >
+          <Camera className="h-5 w-5" />
+          <span className="text-center px-2 leading-tight">{isDragOver ? "Drop here" : "Click or drop"}</span>
+          <span className="text-[10px] opacity-50">Images or PDFs · Ctrl+V to paste</span>
+        </div>
+      );
+    }
+
+    let src: string | null = null;
+    let isPdf = false;
+    let pdfName = "";
+
+    if (safeIdx < existingMedia.length) {
+      const m = existingMedia[safeIdx];
+      isPdf = m.kind === "pdf";
+      if (isPdf) pdfName = m.path.split("/").pop() ?? "document.pdf";
+      else src = imagesApi.url(m.path);
+    } else {
+      const p = pending[safeIdx - existingMedia.length];
+      isPdf = p.kind === "pdf";
+      if (isPdf) pdfName = p.file.name;
+      else src = p.preview;
+    }
+
+    return (
+      <div className="relative h-[min(60vh,480px)] rounded-md overflow-hidden bg-secondary/30 group/prev">
+        {isPdf ? (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
+            <FileText className="h-8 w-8" />
+            <span className="text-xs text-center px-3 leading-tight break-all">{pdfName}</span>
+          </div>
+        ) : src ? (
+          <img src={src} alt="" className="w-full h-full object-cover" />
+        ) : null}
+        {/* Remove button */}
+        <button
+          type="button"
+          className="absolute top-1.5 right-1.5 p-1 rounded bg-black/60 text-white hover:bg-red-600/80 opacity-0 group-hover/prev:opacity-100 transition-opacity"
+          onClick={() => removeAt(safeIdx)}
+        >
+          <X className="h-3 w-3" />
+        </button>
+      </div>
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl" aria-describedby={undefined}>
+      <DialogContent className="w-[80vw] max-w-5xl" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{initial ? "Edit Clipping" : "Add Clipping"}</DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-[1fr_200px] gap-6">
+        <div className="grid grid-cols-[minmax(0,420px)_1fr] gap-6">
           {/* ── Left: text fields ── */}
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>Title (optional)</Label>
               <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Label this clipping…" />
             </div>
-
             <div className="space-y-1.5">
               <Label>URL (optional)</Label>
               <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://…" type="url" />
               <p className="text-xs text-muted-foreground">Title and preview will be auto-fetched from the page.</p>
             </div>
-
             <div className="space-y-1.5">
               <Label>Text excerpt (optional)</Label>
               <textarea
-                value={text}
-                onChange={e => setText(e.target.value)}
-                placeholder="Paste a passage, quote, or note…"
-                rows={5}
+                value={text} onChange={e => setText(e.target.value)}
+                placeholder="Paste a passage, quote, or note…" rows={5}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
-
             <div className="space-y-1.5">
               <Label>Tags</Label>
               <div className="flex gap-2">
-                <Input
-                  value={tagInput}
-                  onChange={e => setTagInput(e.target.value)}
+                <Input value={tagInput} onChange={e => setTagInput(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
-                  placeholder="Add tag…"
-                />
+                  placeholder="Add tag…" />
                 <Button type="button" variant="outline" size="sm" onClick={addTag}>Add</Button>
               </div>
               {tags.length > 0 && (
@@ -252,75 +277,68 @@ function ClippingDialog({
             </div>
           </div>
 
-          {/* ── Right: image + pdf + url preview ── */}
-          <div className="space-y-3">
-            {/* Image */}
-            <div className="space-y-1.5">
-              <Label>Image</Label>
-              {dialogPreview ? (
-                <div className="relative rounded-md overflow-hidden aspect-[3/4] bg-secondary/30 group/img">
-                  <img src={dialogPreview} alt="" className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover/img:opacity-100 bg-black/40 transition-opacity">
-                    <button type="button" className="p-1.5 rounded bg-black/60 text-white hover:bg-black/80" onClick={pickImage}>
-                      <Camera className="h-3.5 w-3.5" />
-                    </button>
-                    {(pendingImage || initial?.image_path) && (
-                      <button type="button" className="p-1.5 rounded bg-black/60 text-white hover:bg-red-600/80" onClick={clearImage}>
-                        <ImageOff className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div
-                  className={cn(
-                    "aspect-[3/4] flex flex-col items-center justify-center gap-1.5 rounded-md border-2 border-dashed text-xs transition-colors cursor-pointer",
-                    isDragOver ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground hover:border-primary/50 hover:text-primary",
-                  )}
-                  onClick={pickImage}
-                  onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
-                  onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false); }}
-                  onDrop={(e) => { e.preventDefault(); setIsDragOver(false); const f = e.dataTransfer.files[0]; if (f) setImageFile(f); }}
-                >
-                  <Camera className="h-4 w-4" />
-                  <span className="text-center px-2 leading-tight">
-                    {isDragOver ? "Drop image" : removingImage ? "Removed" : "Click or drop"}
-                  </span>
-                  {!isDragOver && !removingImage && <span className="text-[10px] opacity-50">Ctrl+V to paste</span>}
-                </div>
-              )}
-            </div>
+          {/* ── Right: media gallery ── */}
+          <div className="space-y-2">
+            <Label>Media</Label>
 
-            {/* PDF */}
-            <div className="space-y-1.5">
-              <Label>PDF</Label>
-              {hasPdf ? (
-                <div className="flex items-center gap-2 rounded-md border border-border bg-secondary/30 px-2 py-1.5">
-                  <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-xs text-muted-foreground truncate flex-1">{currentPdfName}</span>
-                  <button type="button" className="text-muted-foreground hover:text-destructive" onClick={clearPdf}><X className="h-3 w-3" /></button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={pickPdf}
-                  className="w-full flex items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-xs text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
-                >
-                  <FileUp className="h-3.5 w-3.5" />
-                  {removingPdf ? "Removed" : "Attach PDF"}
-                </button>
-              )}
-            </div>
+            {/* Main preview */}
+            {renderActivePreview()}
 
-            {/* URL preview image */}
-            {!dialogPreview && initial?.url_image && (
-              <div className="space-y-1.5">
-                <Label className="text-muted-foreground">Website preview</Label>
-                <div className="rounded-md overflow-hidden border border-border">
-                  <img src={initial.url_image} alt="" className="w-full object-cover" />
-                </div>
+            {/* URL image fallback (only when no uploaded media) */}
+            {totalCount === 0 && initial?.url_image && (
+              <div className="rounded-md overflow-hidden border border-border">
+                <img src={initial.url_image} alt="" className="w-full object-cover" />
               </div>
             )}
+
+            {/* Thumbnail strip */}
+            {totalCount > 1 && (
+              <div className="flex gap-1 overflow-x-auto pb-0.5">
+                {existingMedia.map((m, i) => (
+                  <button
+                    key={m.id} type="button"
+                    onClick={() => setActiveIdx(i)}
+                    className={cn(
+                      "relative shrink-0 w-10 h-14 rounded overflow-hidden border-2 transition-colors",
+                      safeIdx === i ? "border-primary" : "border-transparent opacity-60 hover:opacity-100",
+                    )}
+                  >
+                    {m.kind === "pdf"
+                      ? <div className="w-full h-full bg-secondary flex items-center justify-center"><FileText className="h-4 w-4 text-muted-foreground" /></div>
+                      : <img src={imagesApi.url(m.path)} alt="" className="w-full h-full object-cover" />}
+                  </button>
+                ))}
+                {pending.map((p, pi) => {
+                  const i = existingMedia.length + pi;
+                  return (
+                    <button
+                      key={`p${pi}`} type="button"
+                      onClick={() => setActiveIdx(i)}
+                      className={cn(
+                        "relative shrink-0 w-10 h-14 rounded overflow-hidden border-2 transition-colors",
+                        safeIdx === i ? "border-primary" : "border-transparent opacity-60 hover:opacity-100",
+                      )}
+                    >
+                      {p.kind === "pdf"
+                        ? <div className="w-full h-full bg-secondary flex items-center justify-center"><FileText className="h-4 w-4 text-muted-foreground" /></div>
+                        : <img src={p.preview} alt="" className="w-full h-full object-cover" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Add buttons */}
+            <div className="flex gap-1">
+              <button type="button" onClick={pickImage}
+                className="flex-1 flex items-center justify-center gap-1 rounded border border-dashed border-border py-1.5 text-xs text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors">
+                <Camera className="h-3 w-3" /> Image
+              </button>
+              <button type="button" onClick={pickPdf}
+                className="flex-1 flex items-center justify-center gap-1 rounded border border-dashed border-border py-1.5 text-xs text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors">
+                <FileUp className="h-3 w-3" /> PDF
+              </button>
+            </div>
           </div>
         </div>
 
@@ -414,55 +432,212 @@ function PdfPopup({ url, name, onClose }: { url: string; name: string; onClose: 
 function ClippingCard({
   item, projectId, onEdit,
 }: { item: ResearchItem; projectId: number; onEdit: (item: ResearchItem) => void }) {
-  const [isDragOver, setIsDragOver]   = useState(false);
-  const [isHovered, setIsHovered]     = useState(false);
-  const [lightbox, setLightbox]       = useState(false);
-  const [pdfOpen, setPdfOpen]         = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isHovered, setIsHovered]   = useState(false);
+  const [activeIdx, setActiveIdx]   = useState(0);
+  const [lightbox, setLightbox]     = useState(false);
+  const [pdfOpen, setPdfOpen]       = useState<number | null>(null); // media id
 
-  const deleteItem  = useDeleteResearch(projectId);
-  const refetchUrl  = useRefetchResearchUrl(projectId);
-  const uploadImage = useUploadResearchImage(projectId);
-  const deleteImage = useDeleteResearchImage(projectId);
+  const deleteItem   = useDeleteResearch(projectId);
+  const refetchUrl   = useRefetchResearchUrl(projectId);
+  const uploadMedia  = useUploadResearchMedia(projectId);
+  const deleteMedia  = useDeleteResearchMedia(projectId);
 
-  const displayTitle = item.title || item.url_title || item.url || "Untitled";
-  const previewImage = item.image_path ? imagesApi.url(item.image_path) : item.url_image ?? null;
+  const displayTitle  = item.title || item.url_title || item.url || "Untitled";
+  const uploadedMedia = item.media;
+  const count         = uploadedMedia.length;
+  // Keep activeIdx in bounds when media list changes (e.g. after delete)
+  const safeIdx       = count > 0 ? Math.min(activeIdx, count - 1) : 0;
+  const activeMedia   = uploadedMedia[safeIdx] ?? null;
+
+  // Fallback image from scraped URL when no uploaded media
+  const urlFallback   = !count && item.url_image ? item.url_image : null;
 
   const handleFile = (file: File) => {
-    if (file.type.startsWith("image/")) uploadImage.mutate({ id: item.id, file });
+    const isImage = file.type.startsWith("image/") && file.type !== "image/svg+xml";
+    const isPdf   = file.type === "application/pdf";
+    if (!isImage && !isPdf) return;
+    uploadMedia.mutate({ id: item.id, file }, {
+      onSuccess: () => setActiveIdx(count), // new item will be last
+    });
   };
 
-  const handleImageUpload = () => {
+  const handleAddFile = (accept: string) => {
     const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/jpeg,image/png,image/webp,image/gif";
-    input.onchange = () => { if (input.files?.[0]) handleFile(input.files[0]); };
+    input.type = "file"; input.multiple = true; input.accept = accept;
+    input.onchange = () => { Array.from(input.files ?? []).forEach(handleFile); };
     input.click();
   };
 
-  // Close lightbox / PDF popup on Escape
+  // Close lightbox / PDF on Escape
   useEffect(() => {
-    if (!lightbox && !pdfOpen) return;
+    if (!lightbox && pdfOpen === null) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { setLightbox(false); setPdfOpen(false); }
+      if (e.key === "Escape") { setLightbox(false); setPdfOpen(null); }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [lightbox, pdfOpen]);
 
-  // Paste listener active while card is hovered — no click-to-focus required.
-  // Only intercepts when clipboard contains an image; text pastes are unaffected.
+  // Paste — appends to gallery, only when card is hovered
   useEffect(() => {
     if (!isHovered) return;
     const onPaste = (e: ClipboardEvent) => {
-      const imageItem = Array.from(e.clipboardData?.items ?? [])
-        .find(i => i.type.startsWith("image/"));
-      if (!imageItem) return;
-      const file = imageItem.getAsFile();
+      const imgItem = Array.from(e.clipboardData?.items ?? []).find(i => i.type.startsWith("image/"));
+      if (!imgItem) return;
+      const file = imgItem.getAsFile();
       if (file) { e.preventDefault(); handleFile(file); }
     };
     document.addEventListener("paste", onPaste);
     return () => document.removeEventListener("paste", onPaste);
-  }, [isHovered, item.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHovered, item.id, count]);
+
+  const prev = () => setActiveIdx(i => Math.max(0, i - 1));
+  const next = () => setActiveIdx(i => Math.min(count - 1, i + 1));
+
+  // ── Media area ────────────────────────────────────────────────────────────────
+  const renderMediaArea = () => {
+    if (!activeMedia && !urlFallback) {
+      return (
+        <div
+          className="opacity-0 group-hover:opacity-100 transition-opacity aspect-[3/4] rounded-md border-2 border-dashed border-border/40 flex flex-col items-center justify-center gap-1 cursor-pointer"
+          onClick={() => handleAddFile("image/jpeg,image/png,image/webp,image/gif,image/avif")}
+        >
+          {uploadMedia.isPending
+            ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            : <Camera className="h-4 w-4 text-muted-foreground/50" />}
+          <span className="text-[10px] text-muted-foreground/50">Add image or PDF · Ctrl+V to paste</span>
+        </div>
+      );
+    }
+
+    const isActivePdf = activeMedia?.kind === "pdf";
+    const imgSrc = !isActivePdf && activeMedia ? imagesApi.url(activeMedia.path) : urlFallback;
+
+    return (
+      <>
+        <div className="relative rounded-md overflow-hidden bg-secondary/30 aspect-[3/4] group/media">
+          {isActivePdf ? (
+            <button
+              className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setPdfOpen(activeMedia!.id)}
+            >
+              <FileText className="h-8 w-8" />
+              <span className="text-[10px] text-center px-2 leading-tight break-all">
+                {activeMedia!.path.split("/").pop()}
+              </span>
+            </button>
+          ) : imgSrc ? (
+            <img src={imgSrc} alt="" className="w-full h-full object-contain" />
+          ) : null}
+
+          {/* Hover overlay */}
+          <div className="absolute inset-0 opacity-0 group-hover/media:opacity-100 transition-opacity pointer-events-none">
+            <div className="absolute inset-0 bg-black/40" />
+          </div>
+
+          {/* Top-right: enlarge + remove */}
+          <div className="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover/media:opacity-100 transition-opacity">
+            {!isActivePdf && imgSrc && (
+              <button
+                className="p-1.5 rounded bg-black/60 text-white hover:bg-black/80"
+                title="Enlarge"
+                onClick={() => setLightbox(true)}
+              >
+                <Maximize2 className="h-3 w-3" />
+              </button>
+            )}
+            {activeMedia && (
+              <button
+                className="p-1.5 rounded bg-black/60 text-white hover:bg-red-600/80"
+                title="Remove"
+                onClick={() => deleteMedia.mutate(activeMedia.id)}
+                disabled={deleteMedia.isPending}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+
+          {/* Left / right navigation arrows */}
+          {count > 1 && (
+            <>
+              <button
+                className="absolute left-1 top-1/2 -translate-y-1/2 p-1 rounded bg-black/50 text-white hover:bg-black/70 opacity-0 group-hover/media:opacity-100 transition-opacity disabled:opacity-0"
+                onClick={prev} disabled={safeIdx === 0}
+              >‹</button>
+              <button
+                className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded bg-black/50 text-white hover:bg-black/70 opacity-0 group-hover/media:opacity-100 transition-opacity disabled:opacity-0"
+                onClick={next} disabled={safeIdx === count - 1}
+              >›</button>
+            </>
+          )}
+
+          {/* Bottom-left: add more + paste hint */}
+          <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1 opacity-0 group-hover/media:opacity-100 transition-opacity">
+            <button
+              className="p-1.5 rounded bg-black/60 text-white hover:bg-black/80"
+              title="Add image"
+              onClick={() => handleAddFile("image/jpeg,image/png,image/webp,image/gif,image/avif")}
+            ><Camera className="h-3 w-3" /></button>
+            <button
+              className="p-1.5 rounded bg-black/60 text-white hover:bg-black/80"
+              title="Add PDF"
+              onClick={() => handleAddFile("application/pdf")}
+            ><FileUp className="h-3 w-3" /></button>
+            <span className="text-[9px] text-white/60 ml-0.5 select-none">Ctrl+V</span>
+          </div>
+        </div>
+
+        {/* Dot indicators */}
+        {count > 1 && (
+          <div className="flex items-center justify-center gap-1">
+            {uploadedMedia.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setActiveIdx(i)}
+                className={cn(
+                  "rounded-full transition-colors",
+                  i === safeIdx ? "w-2 h-2 bg-primary" : "w-1.5 h-1.5 bg-border hover:bg-muted-foreground",
+                )}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Lightbox for images */}
+        {lightbox && imgSrc && !isActivePdf && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+            onClick={() => setLightbox(false)}
+          >
+            <img
+              src={imgSrc} alt=""
+              className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            />
+            <button
+              className="absolute top-4 right-4 p-2 rounded-full bg-black/60 text-white hover:bg-black/80"
+              onClick={() => setLightbox(false)}
+            ><X className="h-5 w-5" /></button>
+          </div>
+        )}
+
+        {/* PDF popup */}
+        {pdfOpen !== null && (() => {
+          const m = uploadedMedia.find(x => x.id === pdfOpen);
+          return m ? (
+            <PdfPopup
+              url={imagesApi.url(m.path)}
+              name={m.path.split("/").pop() ?? "document.pdf"}
+              onClose={() => setPdfOpen(null)}
+            />
+          ) : null;
+        })()}
+      </>
+    );
+  };
 
   return (
     <div
@@ -474,78 +649,20 @@ function ClippingCard({
       onMouseLeave={() => setIsHovered(false)}
       onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragOver(false); }}
-      onDrop={(e) => { e.preventDefault(); setIsDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+      onDrop={(e) => { e.preventDefault(); setIsDragOver(false); Array.from(e.dataTransfer.files).forEach(handleFile); }}
     >
-      {/* Image preview */}
-      {previewImage ? (
-        <>
-          <div className="relative rounded-md overflow-hidden bg-secondary/30 aspect-[3/4]">
-            <img src={previewImage} alt="" className="w-full h-full object-contain" />
-            <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 bg-black/40 transition-opacity">
-              <button
-                className="p-1.5 rounded bg-black/60 text-white hover:bg-black/80"
-                title="Enlarge"
-                onClick={() => setLightbox(true)}
-              >
-                <Maximize2 className="h-3.5 w-3.5" />
-              </button>
-              <button
-                className="p-1.5 rounded bg-black/60 text-white hover:bg-black/80"
-                title="Replace image"
-                onClick={handleImageUpload}
-                disabled={uploadImage.isPending}
-              >
-                {uploadImage.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
-              </button>
-              {item.image_path && (
-                <button
-                  className="p-1.5 rounded bg-black/60 text-white hover:bg-red-600/80"
-                  title="Remove uploaded image"
-                  onClick={() => deleteImage.mutate(item.id)}
-                  disabled={deleteImage.isPending}
-                >
-                  <ImageOff className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
-          </div>
-          {/* Lightbox */}
-          {lightbox && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
-              onClick={() => setLightbox(false)}
-            >
-              <img
-                src={previewImage}
-                alt=""
-                className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
-              />
-              <button
-                className="absolute top-4 right-4 p-2 rounded-full bg-black/60 text-white hover:bg-black/80"
-                onClick={() => setLightbox(false)}
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="opacity-0 group-hover:opacity-100 transition-opacity aspect-[3/4] rounded-md border-2 border-dashed border-border/40 flex flex-col items-center justify-center gap-1 cursor-pointer" onClick={handleImageUpload}>
-          {uploadImage.isPending ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : <Camera className="h-4 w-4 text-muted-foreground/50" />}
-          <span className="text-[10px] text-muted-foreground/50">Add image</span>
-        </div>
-      )}
+      {renderMediaArea()}
 
       {/* Title + actions */}
       <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-sm leading-snug line-clamp-2">{displayTitle}</p>
+          <button
+            className="font-medium text-sm leading-snug line-clamp-2 text-left hover:text-primary transition-colors cursor-pointer"
+            onClick={() => onEdit(item)}
+          >{displayTitle}</button>
           {item.url && (
             <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={item.url} target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-[10px] text-primary/70 hover:text-primary mt-0.5 truncate max-w-full"
             >
               <LinkIcon className="h-2.5 w-2.5 shrink-0" />
@@ -554,7 +671,6 @@ function ClippingCard({
             </a>
           )}
         </div>
-
         <div className="opacity-0 group-hover:opacity-100 flex gap-1 shrink-0 transition-opacity">
           {item.url && (
             <button
@@ -566,10 +682,7 @@ function ClippingCard({
               <RefreshCw className={cn("h-3 w-3", refetchUrl.isPending && "animate-spin")} />
             </button>
           )}
-          <button
-            className="p-1 hover:text-primary text-muted-foreground rounded"
-            onClick={() => onEdit(item)}
-          >
+          <button className="p-1 hover:text-primary text-muted-foreground rounded" onClick={() => onEdit(item)}>
             <FileText className="h-3 w-3" />
           </button>
           <button
@@ -581,45 +694,20 @@ function ClippingCard({
         </div>
       </div>
 
-      {/* URL description */}
       {item.url_description && (
         <p className="text-xs text-muted-foreground line-clamp-2">{item.url_description}</p>
       )}
-
-      {/* Text excerpt */}
       {item.text_content && (
         <blockquote className="border-l-2 border-primary/30 pl-3 text-xs text-muted-foreground italic line-clamp-4">
           {item.text_content}
         </blockquote>
       )}
-
-      {/* Tags */}
       {item.tags.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {item.tags.map(t => (
             <span key={t} className="text-[10px] bg-primary/10 text-primary px-1.5 py-0 rounded-full">#{t}</span>
           ))}
         </div>
-      )}
-
-      {/* PDF attachment */}
-      {item.pdf_path && (
-        <>
-          <button
-            className="inline-flex items-center gap-1 text-[10px] text-primary/70 hover:text-primary"
-            onClick={() => setPdfOpen(true)}
-          >
-            <FileText className="h-2.5 w-2.5 shrink-0" />
-            <span className="truncate">{item.pdf_path.split("/").pop()}</span>
-          </button>
-          {pdfOpen && (
-            <PdfPopup
-              url={imagesApi.url(item.pdf_path)}
-              name={item.pdf_path.split("/").pop() ?? "document.pdf"}
-              onClose={() => setPdfOpen(false)}
-            />
-          )}
-        </>
       )}
 
       {/* Link chips */}

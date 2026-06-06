@@ -215,12 +215,18 @@ def get_stats_totals(db: Session = Depends(get_db)):
 
     # ── Day-of-week productivity (from writing_log) ──────────────────────────────
     try:
+        from datetime import date as _date
         DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-        dow_rows = db.execute(text(
-            "SELECT strftime('%w', date) AS dow, SUM(words_added) AS total "
-            "FROM writing_log GROUP BY dow ORDER BY dow"
+        # Fetch (date, words) and compute DOW in Python — avoids strftime('%w')
+        # which is SQLite-specific (PostgreSQL uses EXTRACT/TO_CHAR).
+        log_rows = db.execute(text(
+            "SELECT date, SUM(words_added) AS total FROM writing_log GROUP BY date"
         )).fetchall()
-        dow_map = {int(r[0]): int(r[1] or 0) for r in dow_rows if r[0] is not None}
+        dow_map: dict[int, int] = {}
+        for date_str, total in log_rows:
+            # Python weekday(): Mon=0…Sun=6 → convert to Sun=0, Mon=1…Sat=6
+            dow = (_date.fromisoformat(str(date_str)).weekday() + 1) % 7
+            dow_map[dow] = dow_map.get(dow, 0) + int(total or 0)
         day_of_week = [{"day": DOW[i], "words": dow_map.get(i, 0)} for i in range(7)]
     except Exception as exc:
         print(f"[stats/totals] day_of_week: {exc}")
@@ -240,7 +246,7 @@ def get_stats_totals(db: Session = Depends(get_db)):
                 END AS bucket,
                 COUNT(*) AS cnt
             FROM scenes WHERE word_count > 0
-            GROUP BY bucket ORDER BY MIN(word_count)
+            GROUP BY 1 ORDER BY MIN(word_count)
         """)).fetchall()
         scene_length_buckets = [{"range": r[0], "count": r[1]} for r in bucket_rows]
     except Exception as exc:

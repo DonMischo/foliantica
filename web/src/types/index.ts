@@ -129,6 +129,13 @@ export interface ProjectAnalytics {
 
 // ── Research ──────────────────────────────────────────────────────────────────
 
+export interface ResearchMedia {
+  id: number;
+  kind: 'image' | 'pdf';
+  path: string;
+  order_index: number;
+}
+
 export interface ResearchItem {
   id: number;
   project_id: number;
@@ -138,8 +145,7 @@ export interface ResearchItem {
   url_description: string | null;
   url_image: string | null;
   text_content: string | null;
-  image_path: string | null;
-  pdf_path: string | null;
+  media: ResearchMedia[];
   linked_scene_id: number | null;
   linked_codex_id: number | null;
   tags: string[];

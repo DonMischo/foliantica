@@ -857,36 +857,19 @@ export const useRefetchResearchUrl = (projectId: number) => {
   });
 };
 
-export const useUploadResearchImage = (projectId: number) => {
+export const useUploadResearchMedia = (projectId: number) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, file }: { id: number; file: File }) =>
-      imagesApi.uploadResearchImage(id, file),
+      imagesApi.uploadResearchMedia(id, file),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["research", projectId] }),
   });
 };
 
-export const useDeleteResearchImage = (projectId: number) => {
+export const useDeleteResearchMedia = (projectId: number) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => imagesApi.deleteResearchImage(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["research", projectId] }),
-  });
-};
-
-export const useUploadResearchPdf = (projectId: number) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, file }: { id: number; file: File }) =>
-      imagesApi.uploadResearchPdf(id, file),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["research", projectId] }),
-  });
-};
-
-export const useDeleteResearchPdf = (projectId: number) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => imagesApi.deleteResearchPdf(id),
+    mutationFn: (mediaId: number) => imagesApi.deleteResearchMedia(mediaId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["research", projectId] }),
   });
 };

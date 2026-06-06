@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import Project, CodexEntry, Scene, ResearchItem
+from models import Project, CodexEntry, Scene, ResearchItem, ResearchMedia
 
 router = APIRouter(tags=["images"])
 
@@ -107,61 +107,55 @@ def delete_codex_image(entry_id: int, db: Session = Depends(get_db)):
     db.commit()
 
 
-# ── Research item image ───────────────────────────────────────────────────────
+# ── Research item media (gallery — multiple images and/or PDFs per item) ──────
 
-@router.post("/api/research/{item_id}/image")
-def upload_research_image(
+@router.post("/api/research/{item_id}/media")
+def upload_research_media(
     item_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
+    """Append one image or PDF to a research item's media gallery."""
     item = db.get(ResearchItem, item_id)
     if not item:
         raise HTTPException(404, "Research item not found")
-    if not _is_allowed_image(file.content_type):
-        raise HTTPException(400, "Unsupported file type. Please upload an image (JPG, PNG, WebP, GIF, AVIF, …).")
-    _delete_file(item.image_path or "")
-    item.image_path = _save_upload(file, f"research/{item_id}", "image")
+
+    ct = (file.content_type or "").lower()
+    if ct == "application/pdf":
+        kind = "pdf"
+    elif ct.startswith("image/") and ct != "image/svg+xml":
+        kind = "image"
+    else:
+        raise HTTPException(400, "Only images (JPG, PNG, WebP, GIF, …) and PDFs are supported.")
+
+    # Append order: place after the last existing media item
+    max_order = db.query(ResearchMedia)\
+        .filter_by(research_item_id=item_id)\
+        .count()
+
+    stem = uuid.uuid4().hex[:12]
+    path = _save_upload(file, f"research/{item_id}", stem)
+
+    media = ResearchMedia(
+        research_item_id=item_id,
+        kind=kind,
+        path=path,
+        order_index=max_order,
+    )
+    db.add(media)
     db.commit()
-    return {"image_path": item.image_path}
+    db.refresh(media)
+    return {"id": media.id, "kind": media.kind, "path": media.path, "order_index": media.order_index}
 
 
-@router.delete("/api/research/{item_id}/image", status_code=204)
-def delete_research_image(item_id: int, db: Session = Depends(get_db)):
-    item = db.get(ResearchItem, item_id)
-    if not item:
-        raise HTTPException(404, "Research item not found")
-    _delete_file(item.image_path or "")
-    item.image_path = None
-    db.commit()
-
-
-# ── Research item PDF ─────────────────────────────────────────────────────────
-
-@router.post("/api/research/{item_id}/pdf")
-def upload_research_pdf(
-    item_id: int,
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-):
-    item = db.get(ResearchItem, item_id)
-    if not item:
-        raise HTTPException(404, "Research item not found")
-    if (file.content_type or "") != "application/pdf":
-        raise HTTPException(400, "Only PDF files are supported.")
-    _delete_file(item.pdf_path or "")
-    item.pdf_path = _save_upload(file, f"research/{item_id}", "document")
-    db.commit()
-    return {"pdf_path": item.pdf_path}
-
-
-@router.delete("/api/research/{item_id}/pdf", status_code=204)
-def delete_research_pdf(item_id: int, db: Session = Depends(get_db)):
-    item = db.get(ResearchItem, item_id)
-    if not item:
-        raise HTTPException(404, "Research item not found")
-    _delete_file(item.pdf_path or "")
-    item.pdf_path = None
+@router.delete("/api/research/media/{media_id}", status_code=204)
+def delete_research_media(media_id: int, db: Session = Depends(get_db)):
+    """Delete one specific media item from a research clipping."""
+    media = db.get(ResearchMedia, media_id)
+    if not media:
+        raise HTTPException(404, "Media not found")
+    _delete_file(media.path)
+    db.delete(media)
     db.commit()
 
 

@@ -1,5 +1,6 @@
 import json
 import os
+import platform
 import shutil
 import sqlite3
 import sys
@@ -139,9 +140,89 @@ def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
     return _settings_out(s)
 
 
+# ── Docker helpers ────────────────────────────────────────────────────────────
+
+def _docker_responsive() -> bool:
+    """Return True if the Docker daemon answers to `docker info`."""
+    try:
+        r = subprocess.run(
+            ["docker", "info"],
+            capture_output=True, timeout=6,
+        )
+        return r.returncode == 0
+    except Exception:
+        return False
+
+
+def _ensure_docker_running() -> None:
+    """If Docker is not running, try to start it; wait up to 90 s for it.
+
+    Raises HTTPException(503) if Docker cannot be found or doesn't come up.
+    """
+    if _docker_responsive():
+        return
+
+    system = platform.system()
+
+    if system == "Windows":
+        # Common Docker Desktop install locations on Windows
+        candidates = [
+            Path(os.environ.get("PROGRAMFILES",  r"C:\Program Files"))
+                / "Docker" / "Docker" / "Docker Desktop.exe",
+            Path(os.environ.get("LOCALAPPDATA", ""))
+                / "Programs" / "Docker" / "Docker" / "Docker Desktop.exe",
+        ]
+        exe = next((p for p in candidates if p.exists()), None)
+        if exe is None:
+            raise HTTPException(
+                503,
+                "Docker Desktop is not installed. "
+                "Download it from https://www.docker.com/products/docker-desktop/",
+            )
+        subprocess.Popen([str(exe)], close_fds=True)
+
+    elif system == "Linux":
+        # Try systemctl first (systemd), then SysV service
+        started = False
+        for cmd in (["systemctl", "start", "docker"],
+                    ["service",    "docker", "start"]):
+            try:
+                if subprocess.run(cmd, capture_output=True, timeout=30).returncode == 0:
+                    started = True
+                    break
+            except Exception:
+                pass
+        if not started:
+            raise HTTPException(
+                503,
+                "Could not start the Docker daemon. "
+                "Run: sudo systemctl start docker",
+            )
+
+    elif system == "Darwin":
+        subprocess.Popen(["open", "-a", "Docker"], close_fds=True)
+
+    else:
+        raise HTTPException(503, f"Unsupported platform: {system}")
+
+    # Poll until Docker responds or we time out
+    for _ in range(90):
+        time.sleep(1)
+        if _docker_responsive():
+            return
+
+    raise HTTPException(
+        503,
+        "Docker was launched but did not become ready within 90 seconds. "
+        "Please wait for Docker Desktop to finish starting, then try again.",
+    )
+
+
 @router.post("/docker/up")
 def docker_compose_up(db: Session = Depends(get_db)):
     """Run `docker compose up -d` for the bundled services.
+
+    Starts Docker Desktop / daemon automatically if it is not running.
 
     Location strategy:
     - Packaged Electron app: LW_RESOURCES_DIR env var points to the Electron
@@ -150,9 +231,22 @@ def docker_compose_up(db: Session = Depends(get_db)):
 
     Writes a .env file alongside docker-compose.yml so the compose file can
     read LT_LANGS (which languages LanguageTool should download n-gram data for).
+    Includes the 'postgres' Compose profile when Docker PG is configured.
     """
+    # ── Ensure Docker is running ──────────────────────────────────────────────
+    try:
+        _ensure_docker_running()
+    except FileNotFoundError:
+        raise HTTPException(
+            503,
+            "Docker CLI not found. "
+            "Please install Docker Desktop from https://www.docker.com/products/docker-desktop/",
+        )
+
+    # ── Locate docker-compose.yml ─────────────────────────────────────────────
     resources_env = os.environ.get("LW_RESOURCES_DIR")
-    compose_dir = Path(resources_env) if resources_env else Path(__file__).resolve().parent.parent.parent
+    compose_dir = (Path(resources_env) if resources_env
+                   else Path(__file__).resolve().parent.parent.parent)
     compose_file = compose_dir / "docker-compose.yml"
     if not compose_file.exists():
         raise HTTPException(
@@ -160,7 +254,7 @@ def docker_compose_up(db: Session = Depends(get_db)):
             "docker-compose.yml not found. Make sure the app was installed correctly.",
         )
 
-    # Write .env so docker compose picks up the selected languages
+    # ── Write .env (LanguageTool language selection) ──────────────────────────
     s = _get_or_create_settings(db)
     try:
         langs = json.loads(s.grammar_languages or '["en"]')
@@ -170,23 +264,29 @@ def docker_compose_up(db: Session = Depends(get_db)):
     env_file = compose_dir / ".env"
     env_file.write_text(f"LT_LANGS={lt_langs}\n", encoding="utf-8")
 
+    # ── Build compose command ─────────────────────────────────────────────────
+    # Include the 'postgres' profile when Docker PG is enabled in lw-config
+    lw_cfg   = _read_lw_config()
+    profiles = []
+    if lw_cfg.get("pg", {}).get("useDocker"):
+        profiles = ["--profile", "postgres"]
+
+    cmd = (["docker", "compose"]
+           + profiles
+           + ["up", "-d", "--pull", "missing"])
+
     try:
         result = subprocess.run(
-            ["docker", "compose", "up", "-d", "--pull", "missing", "--force-recreate"],
+            cmd,
             cwd=str(compose_dir),
             capture_output=True,
             text=True,
-            timeout=300,   # pulling images can take a while
+            timeout=300,
         )
         combined = (result.stdout + result.stderr).strip()
         if result.returncode != 0:
             raise HTTPException(500, combined[:600] or "docker compose failed")
         return {"status": "ok", "output": combined[:600]}
-    except FileNotFoundError:
-        raise HTTPException(
-            503,
-            "Docker not found. Please install Docker Desktop and make sure it is running.",
-        )
     except subprocess.TimeoutExpired:
         raise HTTPException(504, "docker compose timed out after 5 minutes.")
 
@@ -417,6 +517,166 @@ def set_data_dir(body: DataDirUpdate):
         cfg.pop("dataDir", None)
     _write_lw_config(cfg)
     return {"current": os.getcwd(), "configured": body.path or None}
+
+
+# ── PostgreSQL connection config (stored in ~/.foliantica/config.json) ────────
+# Must live in the file config rather than the DB because it must be readable
+# before the database engine is created.
+
+@router.get("/pg-active")
+def get_pg_active():
+    """Return the PG connection the API is *currently* running on (from env vars).
+
+    Distinct from /pg-config (the saved lw-config preference for next restart).
+    The frontend compares both to detect a pending-restart state.
+    """
+    from database import USE_SQLITE
+    if USE_SQLITE:
+        return {"mode": "sqlite", "port": None}
+    return {
+        "mode":   "pg",
+        "host":   os.getenv("LW_PG_HOST", "127.0.0.1"),
+        "port":   int(os.getenv("LW_PG_PORT", "5433")),
+        "user":   os.getenv("LW_PG_USER", "foliantica"),
+        "db":     os.getenv("LW_PG_DB",   "foliantica"),
+    }
+
+
+@router.get("/pg-config")
+def get_pg_config():
+    """Return the current PG connection config from the shared lw-config file."""
+    cfg = _read_lw_config()
+    return cfg.get("pg", {
+        "useDocker": False,
+        "host":      "127.0.0.1",
+        "port":      5434,
+        "user":      "foliantica",
+        "pass":      "foliantica",
+        "db":        "foliantica",
+    })
+
+
+@router.post("/pg-config")
+def set_pg_config(body: dict):
+    """Persist PG connection config to ~/.foliantica/config.json.
+
+    Takes effect after the backend restarts (connection is created at startup).
+    Allowed keys: useDocker (bool), host, port (int), user, pass, db.
+    """
+    allowed = {"useDocker", "host", "port", "user", "pass", "db"}
+    clean = {k: v for k, v in body.items() if k in allowed}
+    cfg = _read_lw_config()
+    cfg["pg"] = clean
+    _write_lw_config(cfg)
+    return clean
+
+
+# ── Default connection values for the embedded cluster ────────────────────────
+_EMBEDDED_PG = {"host": "127.0.0.1", "port": 5433,
+                "user": "foliantica",  "pass": "foliantica", "db": "foliantica"}
+
+
+def _pg_engine_for(conn: dict):
+    """Create a throw-away SQLAlchemy engine for a PG connection dict."""
+    from sqlalchemy import create_engine as _ce
+    host = conn.get("host", "127.0.0.1")
+    port = conn.get("port", 5433)
+    user = conn.get("user", "foliantica")
+    pw   = conn.get("pass", "foliantica")
+    db   = conn.get("db",   "foliantica")
+    url  = f"postgresql+psycopg2://{user}:{pw}@{host}:{port}/{db}"
+    return _ce(url, connect_args={"options": "-c client_encoding=UTF8"})
+
+
+@router.post("/pg-transfer")
+def transfer_pg(body: dict):
+    """Copy all data from the LIVE database to a target PostgreSQL instance.
+
+    The source is always the engine the API is currently connected to — it is
+    guaranteed to be reachable.  Only the target needs to be specified.
+
+    Body: { "target": {host, port, user, pass, db} }
+
+    For backward-compat a "source" key is accepted but silently ignored.
+
+    The target schema is created from models if it doesn't exist.
+    All existing rows in the target are replaced (DELETE then INSERT).
+    SERIAL sequences are reset after the copy.
+    Returns { tables_copied, rows_copied, tables }.
+    """
+    from sqlalchemy import text as _text
+    from database import engine as _live_engine  # always the running DB
+    from models import Base
+
+    dst_cfg    = {**_EMBEDDED_PG, **body.get("target", {})}
+    dst_engine = _pg_engine_for(dst_cfg)
+
+    try:
+        # Ensure target schema exists
+        Base.metadata.create_all(bind=dst_engine)
+
+        # Get table list from the live source
+        with _live_engine.connect() as src_conn:
+            tables = [r[0] for r in src_conn.execute(_text(
+                "SELECT table_name FROM information_schema.tables "
+                "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "
+                "ORDER BY table_name"
+            ))]
+
+        tables_copied: list[str] = []
+        rows_copied = 0
+
+        with _live_engine.connect() as src_conn, dst_engine.begin() as dst_conn:
+            dst_conn.execute(_text("SET session_replication_role = replica"))
+
+            for table in tables:
+                cols = [r[0] for r in src_conn.execute(_text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema = 'public' AND table_name = :t "
+                    "ORDER BY ordinal_position"
+                ), {"t": table})]
+
+                rows = src_conn.execute(_text(f'SELECT * FROM "{table}"')).fetchall()
+
+                # Always replace target contents (this is an explicit transfer)
+                dst_conn.execute(_text(f'DELETE FROM "{table}"'))
+                if not rows:
+                    continue
+
+                col_sql   = ", ".join(f'"{c}"' for c in cols)
+                ph_sql    = ", ".join(f":{c}" for c in cols)
+                row_dicts = [dict(zip(cols, r)) for r in rows]
+                dst_conn.execute(_text(
+                    f'INSERT INTO "{table}" ({col_sql}) VALUES ({ph_sql})'
+                ), row_dicts)
+
+                tables_copied.append(table)
+                rows_copied += len(rows)
+
+            dst_conn.execute(_text("SET session_replication_role = DEFAULT"))
+
+            # Reset SERIAL sequences so new inserts don't collide
+            for table in tables_copied:
+                try:
+                    seq = dst_conn.execute(_text(
+                        "SELECT pg_get_serial_sequence(:t, 'id')"
+                    ), {"t": table}).scalar()
+                    if seq:
+                        dst_conn.execute(_text(
+                            f"SELECT setval('{seq}', "
+                            f"COALESCE((SELECT MAX(id) FROM \"{table}\"), 0) + 1, false)"
+                        ))
+                except Exception:
+                    pass
+
+        return {"tables_copied": len(tables_copied),
+                "rows_copied":   rows_copied,
+                "tables":        tables_copied}
+
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    finally:
+        dst_engine.dispose()
 
 
 @router.get("/models")

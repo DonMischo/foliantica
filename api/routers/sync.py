@@ -6,21 +6,24 @@ Architecture:
   - Backend always runs from dataDir (unchanged).
   - This module maintains a mirror copy at sync_local_dir.
   - A background thread wakes every 5 minutes and:
-      1. Copies dataDir/foliantica.db using SQLite's online backup API
-         (safe while the DB is open by SQLAlchemy).
-      2. Mirrors dataDir/uploads/ → sync_local_dir/uploads/, copying only
-         files that are new or have a newer mtime (no unnecessary I/O).
+      1. SQLite: copies foliantica.db via SQLite's online backup API.
+         PostgreSQL: writes foliantica.sql via a pure-Python dump (no
+         pg_dump binary required — embedded-postgres does not ship it).
+      2. Mirrors uploads/ → sync_local_dir/uploads/, copying only files
+         that are new or have a newer mtime (no unnecessary I/O).
   - When the drive becomes unavailable the copy is skipped; mode → "offline".
   - When the drive comes back online, mode → "online", drive_restored_at is
     set so the frontend can surface a notification.
 """
+import os
 import shutil
 import sqlite3
 import threading
 from datetime import datetime, UTC
 from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from database import USE_SQLITE
 
 router = APIRouter(prefix="/api/sync", tags=["sync"])
 
@@ -40,6 +43,10 @@ _trigger = threading.Event()   # set to wake the sleeping thread early
 _stop    = threading.Event()   # set to shut the thread down
 _thread: threading.Thread | None = None
 
+_auto_dump_written: bool = False  # True once auto-sync or the Dump button has written a dump
+                                  # this session; guards against silently overwriting a user-
+                                  # placed dump that may represent a different data state.
+
 _INTERVAL = 300          # fallback interval (seconds) — commit hook fires first
 _hook_registered = False  # ensure we only register the SQLAlchemy hook once
 
@@ -55,6 +62,8 @@ def _uploads_path() -> Path:
 
 
 def _datadir_available() -> bool:
+    if not USE_SQLITE:
+        return True  # PostgreSQL runs locally — always reachable
     try:
         _db_path().stat()
         return True
@@ -72,6 +81,84 @@ def _do_backup(src: Path, dst: Path) -> None:
     finally:
         src_conn.close()
         dst_conn.close()
+
+
+def _pg_literal(v: object) -> str:
+    """Render a Python value as a PostgreSQL SQL literal (for INSERT statements).
+
+    Uses E'...' escape-string syntax so that newlines and other control chars
+    can be escaped as \\n / \\r / \\t, keeping every INSERT on a single line.
+    Single-line statements are safe to split on ';' during restore.
+    """
+    if v is None:
+        return "NULL"
+    if isinstance(v, bool):
+        return "TRUE" if v else "FALSE"
+    if isinstance(v, int):
+        return str(v)
+    if isinstance(v, float):
+        return repr(v)
+    s = str(v)
+    s = s.replace("\\", "\\\\")   # must be first — escape existing backslashes
+    s = s.replace("'",  "''")     # standard SQL quote escaping (valid in E'')
+    s = s.replace("\n", "\\n")    # newline → \n  (E'' interprets this)
+    s = s.replace("\r", "\\r")    # carriage return
+    s = s.replace("\t", "\\t")    # tab
+    return "E'" + s + "'"
+
+
+def _do_pg_dump(mirror: Path) -> None:
+    """Dump the PostgreSQL database to a plain-SQL file in the mirror directory.
+
+    Uses pure Python / SQLAlchemy — no pg_dump binary required.
+    The output file can be replayed with psql or the /api/sync/restore endpoint.
+    """
+    from sqlalchemy import text
+    from database import engine
+
+    mirror.mkdir(parents=True, exist_ok=True)
+    dst = mirror / "foliantica.sql"
+
+    with engine.connect() as conn, open(dst, "w", encoding="utf-8") as f:
+        # Use information_schema directly — avoids SQLAlchemy reflection which
+        # breaks on PG 17 domain introspection with some SQLAlchemy versions.
+        tables = [
+            row[0] for row in conn.execute(text(
+                "SELECT table_name FROM information_schema.tables "
+                "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "
+                "ORDER BY table_name"
+            ))
+        ]
+
+        f.write(f"-- Foliantica PostgreSQL backup {datetime.now(UTC).replace(tzinfo=None).isoformat()}\n")
+        f.write("SET session_replication_role = replica;\n\n")
+
+        for table in tables:
+            cols = [
+                row[0] for row in conn.execute(text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema = 'public' AND table_name = :t "
+                    "ORDER BY ordinal_position"
+                ), {"t": table})
+            ]
+            rows    = conn.execute(text(f'SELECT * FROM "{table}"')).fetchall()
+            col_sql = ", ".join(f'"{c}"' for c in cols)
+
+            f.write(f"-- {table}\n")
+            f.write(f'DELETE FROM "{table}";\n')
+            for row in rows:
+                vals = ", ".join(_pg_literal(v) for v in row)
+                f.write(f'INSERT INTO "{table}" ({col_sql}) VALUES ({vals});\n')
+
+            # Reset SERIAL sequence so new inserts don't collide with restored IDs
+            if rows and "id" in cols:
+                f.write(
+                    f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), "
+                    f"COALESCE((SELECT MAX(id) FROM \"{table}\"), 0) + 1, false);\n"
+                )
+            f.write("\n")
+
+        f.write("SET session_replication_role = DEFAULT;\n")
 
 
 def _sync_uploads(src_dir: Path, dst_dir: Path) -> None:
@@ -97,7 +184,42 @@ def _bg_loop() -> None:
             enabled = _enabled
             mirror  = _mirror_dir
 
-        if enabled and mirror:
+        if enabled and not USE_SQLITE:
+            # ── PostgreSQL + Data Mirror enabled ─────────────────────────────
+            # Dump to CWD (= dataDir) and optionally copy to the mirror dir.
+            # Only runs when Data Mirror is explicitly enabled — avoids
+            # overwriting an existing foliantica.sql the user placed there.
+            global _auto_dump_written
+            cwd = Path.cwd()
+            dump_path = cwd / "foliantica.sql"
+            if dump_path.exists() and not _auto_dump_written:
+                # A dump exists that we did not write this session.  It may
+                # represent a different or older data state — protect it the
+                # same way the Dump button does (require explicit user action).
+                with _lock:
+                    _last_error = (
+                        "Auto-sync skipped: a dump file already exists. "
+                        "Use the Dump button in Settings to confirm overwrite."
+                    )
+            else:
+                try:
+                    _do_pg_dump(cwd)      # writes cwd/foliantica.sql
+                    _auto_dump_written = True
+                    if mirror:
+                        mirror.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(str(cwd / "foliantica.sql"),
+                                     str(mirror / "foliantica.sql"))
+                        _sync_uploads(_uploads_path(), mirror / "uploads")
+                    with _lock:
+                        _last_sync_at = datetime.now(UTC).replace(tzinfo=None)
+                        _last_error   = None
+                        _mode         = "online"
+                except Exception as exc:
+                    with _lock:
+                        _last_error = str(exc)
+
+        elif enabled and mirror:
+            # ── SQLite mode (legacy) ─────────────────────────────────────────
             available = _datadir_available()
 
             with _lock:
@@ -137,18 +259,24 @@ def init(enabled: bool, local_dir: str | None) -> None:
     default = Path.home() / ".foliantica" / "mirror"
     with _lock:
         _enabled    = enabled
-        _mirror_dir = Path(local_dir) if local_dir else (default if enabled else None)
-        _mode       = "online" if enabled else "disabled"
+        # Active mirror path: only meaningful when enabled (or PG-mode always-dump).
+        # Set to None when explicitly disabled so endpoints can't reference stale paths.
+        _mirror_dir = (Path(local_dir) if local_dir else default) if enabled else None
+        # Background sync only runs when Data Mirror is explicitly enabled.
+        _mode = "online" if enabled else "disabled"
 
-    if enabled and (_thread is None or not _thread.is_alive()):
+    # Run the background thread only when Data Mirror is enabled.
+    # In PG mode without Data Mirror, dumps are purely on-demand (Dump button).
+    should_run = enabled
+    if should_run and (_thread is None or not _thread.is_alive()):
         _stop.clear()
         _thread = threading.Thread(target=_bg_loop, name="sync-mirror", daemon=True)
         _thread.start()
         # Trigger an immediate first sync
         _trigger.set()
-        # Hook into every SQLAlchemy commit for near-real-time mirroring
+        # Hook into every SQLAlchemy commit for near-real-time syncing
         _register_commit_hook()
-    elif not enabled:
+    elif USE_SQLITE and not enabled:
         _stop.set()
         _trigger.set()
 
@@ -168,6 +296,7 @@ def _register_commit_hook() -> None:
 
     @_sa_event.listens_for(_SASession, "after_commit")
     def _after_commit(session):          # noqa: F811
+        # Only trigger when Data Mirror is enabled — avoids surprise overwrites.
         if _enabled and _mirror_dir:
             _trigger.set()               # wake background thread immediately
 
@@ -185,12 +314,22 @@ def shutdown_backup() -> None:
         enabled = _enabled
         mirror  = _mirror_dir
 
-    if enabled and mirror and _datadir_available():
-        try:
+    try:
+        if not USE_SQLITE:
+            cwd = Path.cwd()
+            # Only overwrite a dump that we wrote this session.
+            if _auto_dump_written or not (cwd / "foliantica.sql").exists():
+                _do_pg_dump(cwd)
+            if enabled and mirror:
+                mirror.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(str(cwd / "foliantica.sql"),
+                             str(mirror / "foliantica.sql"))
+                _sync_uploads(_uploads_path(), mirror / "uploads")
+        elif enabled and mirror and _datadir_available():
             _do_backup(_db_path(), mirror / "foliantica.db")
             _sync_uploads(_uploads_path(), mirror / "uploads")
-        except Exception:
-            pass
+    except Exception:
+        pass
 
     _stop.set()
     _trigger.set()
@@ -216,3 +355,143 @@ def get_status():
 def trigger_sync():
     trigger_now()
     return {"ok": True}
+
+
+@router.post("/dump")
+def dump_to_datadir(force: bool = False):
+    """Dump the PostgreSQL database to foliantica.sql in the current dataDir immediately.
+
+    Writes synchronously to the API's working directory (= the configured Sync Dir,
+    typically a cloud folder). Does not require Data Mirror to be enabled.
+
+    If an existing dump is found and force=false (default), returns HTTP 409 with
+    the existing file's timestamp so the caller can ask the user to confirm before
+    overwriting.  Pass force=true to overwrite unconditionally.
+    """
+    if USE_SQLITE:
+        raise HTTPException(status_code=400,
+                            detail="Explicit dump requires PostgreSQL mode")
+    cwd = Path.cwd()
+    dump_path = cwd / "foliantica.sql"
+
+    if dump_path.exists() and not force:
+        existing_mtime = datetime.fromtimestamp(
+            dump_path.stat().st_mtime, UTC
+        ).replace(tzinfo=None).isoformat()
+        raise HTTPException(status_code=409, detail={
+            "exists": True,
+            "dump_time": existing_mtime,
+            "size": dump_path.stat().st_size,
+        })
+
+    try:
+        _do_pg_dump(cwd)
+        # Mark that we've now written a dump this session so auto-sync may
+        # overwrite it freely going forward.
+        global _auto_dump_written
+        _auto_dump_written = True
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    mtime = datetime.fromtimestamp(
+        dump_path.stat().st_mtime, UTC
+    ).replace(tzinfo=None).isoformat()
+    return {"ok": True, "dump": str(dump_path), "dump_time": mtime}
+
+
+def _iter_sql_statements(sql: str):
+    """Yield individual SQL statements from a dump string.
+
+    Handles both old-style dumps (literal newlines in strings) and new-style
+    dumps (E'...' with \\n escapes).  Correctly ignores -- comments and ';'
+    characters that appear inside single-quoted strings.
+    """
+    buf: list[str] = []
+    in_str = False
+    escape_next = False   # True after a backslash inside an E'' string
+    i = 0
+    n = len(sql)
+
+    while i < n:
+        ch = sql[i]
+
+        if escape_next:
+            buf.append(ch)
+            escape_next = False
+            i += 1
+            continue
+
+        if in_str:
+            buf.append(ch)
+            if ch == "\\":
+                escape_next = True          # E'' escape sequence — consume next char
+            elif ch == "'":
+                if i + 1 < n and sql[i + 1] == "'":
+                    buf.append("'")         # '' → escaped single quote
+                    i += 2
+                    continue
+                else:
+                    in_str = False          # end of quoted string
+        else:
+            if ch == "-" and i + 1 < n and sql[i + 1] == "-":
+                # SQL line comment — skip to end of line
+                while i < n and sql[i] != "\n":
+                    i += 1
+                continue
+            elif ch == ";":
+                stmt = "".join(buf).strip()
+                if stmt:
+                    yield stmt
+                buf = []
+                i += 1
+                continue
+            else:
+                if ch == "'":
+                    in_str = True
+                buf.append(ch)
+        i += 1
+
+    # Any trailing content without a final semicolon
+    stmt = "".join(buf).strip()
+    if stmt:
+        yield stmt
+
+
+@router.post("/restore")
+def restore_from_dump():
+    """Restore the database from foliantica.sql in the configured mirror directory.
+
+    Executes each statement from the dump against the live PostgreSQL engine.
+    The dump is produced by _do_pg_dump() — pure SQL with one statement per line,
+    so splitting on ';\\n' is safe for the format we generate.
+    """
+    if USE_SQLITE:
+        raise HTTPException(status_code=400,
+                            detail="Restore from dump requires PostgreSQL mode")
+
+    # Restore from the sync dir (cwd) — same location the /dump endpoint writes to.
+    # Data Mirror is a separate optional backup and is not required for restore.
+    dump_path = Path.cwd() / "foliantica.sql"
+    if not dump_path.exists():
+        raise HTTPException(status_code=404,
+                            detail=f"No dump found at {dump_path}. Trigger a sync first.")
+
+    sql_text = dump_path.read_text("utf-8")
+
+    from sqlalchemy import text
+    from database import engine
+
+    stmts = 0
+    try:
+        with engine.connect() as conn:
+            for stmt in _iter_sql_statements(sql_text):
+                conn.execute(text(stmt))
+                stmts += 1
+            conn.commit()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    mtime = datetime.fromtimestamp(
+        dump_path.stat().st_mtime, UTC
+    ).replace(tzinfo=None).isoformat()
+    return {"ok": True, "dump": str(dump_path), "dump_time": mtime, "statements": stmts}

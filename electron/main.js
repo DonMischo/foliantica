@@ -92,11 +92,12 @@ function pipeToLog(proc, label) {
   proc.on("exit", code => log(`[${label}] exited with code ${code}`));
 }
 
-let mainWin = null;
+let mainWin   = null;
 let splashWin = null;
-let tray = null;
-let apiProc = null;
-let nextProc = null;
+let tray      = null;
+let apiProc   = null;
+let nextProc  = null;
+let pgInstance = null;   // LocalPgManager instance
 
 // ── Windows ───────────────────────────────────────────────────────────────────
 
@@ -228,6 +229,308 @@ function createTray(webPort) {
   tray.on("double-click", () => { mainWin?.show(); mainWin?.focus(); });
 }
 
+// ── PostgreSQL (embedded) ─────────────────────────────────────────────────────
+
+/**
+ * Minimal embedded-PostgreSQL manager.
+ *
+ * The embedded-postgres npm package uses ESM import.meta.url to locate its
+ * binaries. Inside a packaged Electron app that URL resolves to an ASAR-
+ * internal path, and child_process.spawn() cannot execute files from inside
+ * an ASAR archive even when asarUnpack is configured.
+ *
+ * We bypass the library's binary resolution entirely and compute paths
+ * directly from process.resourcesPath + app.asar.unpacked, which is always
+ * a real filesystem location.
+ */
+class LocalPgManager {
+  constructor({ databaseDir, user, password, port, initdbFlags = [] }) {
+    const pkgName = process.platform === "win32" ? "windows-x64"
+                  : process.platform === "darwin"
+                      ? (process.arch === "arm64" ? "darwin-arm64" : "darwin-x64")
+                      : (process.arch === "arm64" ? "linux-arm64"
+                         : process.arch === "arm"  ? "linux-arm"
+                         : process.arch === "ia32" ? "linux-ia32"
+                         : "linux-x64");
+    const ext = process.platform === "win32" ? ".exe" : "";
+    const binDir = path.join(
+      process.resourcesPath, "app.asar.unpacked", "node_modules",
+      "@embedded-postgres", pkgName, "native", "bin"
+    );
+
+    this.initdbBin   = path.join(binDir, `initdb${ext}`);
+    this.postgresBin = path.join(binDir, `postgres${ext}`);
+    this.pgDumpBin   = path.join(binDir, `pg_dump${ext}`);
+    this.databaseDir = databaseDir;
+    this.user        = user;
+    this.password    = password;
+    this.port        = port;
+    this.initdbFlags = initdbFlags;
+    this.process     = null;
+  }
+
+  async initialise() {
+    // Ensure binaries are executable (no-op on Windows).
+    if (process.platform !== "win32") {
+      for (const bin of [this.initdbBin, this.postgresBin]) {
+        try { await fs.promises.chmod(bin, 0o755); } catch {}
+      }
+    }
+
+    // Write password to a temp file (initdb --pwfile requires a file path).
+    const passwordFile = path.join(app.getPath("temp"), `pg-pass-${Date.now()}`);
+    await fs.promises.writeFile(passwordFile, this.password + "\n");
+
+    await new Promise((resolve, reject) => {
+      const proc = spawn(this.initdbBin, [
+        `--pgdata=${this.databaseDir}`,
+        "--auth=password",
+        `--username=${this.user}`,
+        `--pwfile=${passwordFile}`,
+        "--lc-messages=en_US.UTF-8",
+        ...this.initdbFlags,
+      ], { env: { ...process.env, LC_MESSAGES: "en_US.UTF-8" } });
+
+      proc.stdout?.on("data", (d) => log(`[initdb] ${d.toString().trim()}`));
+      proc.stderr?.on("data", (d) => log(`[initdb] ${d.toString().trim()}`));
+      proc.on("exit", (code) => {
+        code === 0 ? resolve() : reject(new Error(`initdb exited with code ${code}`));
+      });
+      proc.on("error", (err) =>
+        reject(new Error(`initdb spawn failed: ${err.message} — path: ${this.initdbBin}`))
+      );
+    });
+
+    await fs.promises.unlink(passwordFile).catch(() => {});
+  }
+
+  async start() {
+    await new Promise((resolve, reject) => {
+      let resolved = false;
+
+      this.process = spawn(this.postgresBin, [
+        "-D", this.databaseDir,
+        "-p", String(this.port),
+      ], { env: { ...process.env, LC_MESSAGES: "en_US.UTF-8" } });
+
+      this.process.stderr?.on("data", (chunk) => {
+        const msg = chunk.toString("utf-8");
+        log(`[postgres] ${msg.trim()}`);
+        if (!resolved && msg.includes("database system is ready to accept connections")) {
+          resolved = true;
+          resolve();
+        }
+      });
+      this.process.stdout?.on("data", (chunk) => {
+        log(`[postgres] ${chunk.toString().trim()}`);
+      });
+      this.process.on("close", (code) => {
+        if (!resolved) reject(new Error(`postgres exited before ready (code ${code})`));
+      });
+      this.process.on("error", (err) => {
+        if (!resolved) reject(new Error(`postgres spawn failed: ${err.message} — path: ${this.postgresBin}`));
+      });
+    });
+  }
+
+  async createDatabase(name) {
+    const { Client } = require("pg");
+    const client = new Client({
+      host: "127.0.0.1",
+      port: this.port,
+      user: this.user,
+      password: this.password,
+      database: "postgres",
+    });
+    await client.connect();
+    try {
+      await client.query(`CREATE DATABASE "${name}"`);
+    } catch (e) {
+      if (!e.message.includes("already exists")) throw e;
+    } finally {
+      await client.end();
+    }
+  }
+
+  async stop() {
+    if (!this.process) return;
+    await new Promise((resolve) => {
+      this.process.on("exit", resolve);
+      if (process.platform === "win32") {
+        spawn("taskkill", ["/pid", String(this.process.pid), "/f", "/t"]);
+      } else {
+        this.process.kill("SIGINT");
+      }
+    }).catch(() => {});
+    this.process = null;
+  }
+}
+
+const PG_PORT = 5433;
+const PG_USER = "foliantica";
+const PG_PASS = "foliantica";
+const PG_DB   = "foliantica";
+
+/**
+ * Start the embedded PostgreSQL sidecar.
+ * Returns the pg_dump binary path so it can be forwarded to the API process.
+ *
+ * First run (~3 s for initdb): splash screen is updated to show progress.
+ * Subsequent launches: ~1 s (PG starts from the existing cluster directory).
+ */
+async function startPostgres() {
+  // If the user has configured Docker PG in ~/.foliantica/config.json,
+  // start the container (if not already running) and wait for it to be ready.
+  const lwCfgForPg = loadLwConfig();
+  if (lwCfgForPg.pg && lwCfgForPg.pg.useDocker) {
+    const pgCfg  = lwCfgForPg.pg;
+    const pgHost = pgCfg.host || "127.0.0.1";
+    const pgPort = pgCfg.port || 5434;
+    const pgUser = pgCfg.user || "foliantica";
+    const pgPass = pgCfg.pass || "foliantica";
+    const pgDb   = pgCfg.db   || "foliantica";
+
+    log(`[pg] Docker PG mode — ${pgHost}:${pgPort}`);
+
+    if (splashWin) {
+      splashWin.webContents
+        .executeJavaScript('document.querySelector(".status").textContent = "Starting database…";')
+        .catch(() => {});
+    }
+
+    // docker-compose.yml is in resources/ in prod, project root in dev.
+    const composePath = isProd
+      ? path.join(process.resourcesPath, "docker-compose.yml")
+      : path.join(__dirname, "..", "docker-compose.yml");
+
+    // Bring the postgres profile up (no-op if already running).
+    await new Promise((resolve, reject) => {
+      // --project-name pins the compose project to "foliantica" regardless of
+      // which directory the compose file lives in (resources/ in prod vs. the
+      // project root in dev). Without it, compose derives the name from the
+      // directory and treats the same containers as a different project, causing
+      // "container name already in use" conflicts on every restart.
+      // The explicit service name limits startup to postgres only.
+      const proc = spawn("docker", [
+        "compose", "-f", composePath,
+        "--project-name", "foliantica",
+        "--profile", "postgres",
+        "up", "-d", "postgres",
+      ], { stdio: ["ignore", "pipe", "pipe"] });
+      proc.stdout?.on("data", (d) => log(`[docker] ${d.toString().trim()}`));
+      proc.stderr?.on("data", (d) => log(`[docker] ${d.toString().trim()}`));
+      proc.on("exit", (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`docker compose up exited with code ${code}`));
+      });
+      proc.on("error", (err) =>
+        reject(new Error(`docker not found: ${err.message} — install Docker Desktop or Docker Engine`))
+      );
+    });
+
+    // Poll until PostgreSQL accepts connections (up to 60 s).
+    log("[pg] Waiting for Docker PostgreSQL to be ready...");
+    const { Client } = require("pg");
+    const deadline = Date.now() + 60_000;
+    let ready = false;
+    while (Date.now() < deadline) {
+      const client = new Client({
+        host: pgHost, port: pgPort,
+        user: pgUser, password: pgPass, database: "postgres",
+        connectionTimeoutMillis: 1000,
+      });
+      try {
+        await client.connect();
+        await client.end();
+        ready = true;
+        break;
+      } catch {
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    }
+    if (!ready) {
+      throw new Error(`Docker PostgreSQL not ready after 60 s — check that Docker is running and port ${pgPort} is free`);
+    }
+    log("[pg] Docker PostgreSQL ready");
+
+    return { pgHost, pgPort: String(pgPort), pgUser, pgPass, pgDb };
+  }
+
+  // pgdata must always be on a local drive — never in a cloud-synced dataDir.
+  const pgDataDir = path.join(app.getPath("userData"), "pgdata");
+  const isFirstRun = !fs.existsSync(pgDataDir);
+
+  if (isFirstRun && splashWin) {
+    splashWin.webContents
+      .executeJavaScript('document.querySelector(".status").textContent = "Preparing database…";')
+      .catch(() => {});
+  }
+
+  const localPg = new LocalPgManager({
+    databaseDir: pgDataDir,
+    user: PG_USER,
+    password: PG_PASS,
+    port: PG_PORT,
+    initdbFlags: ["--encoding=UTF8", "--locale=C"],
+  });
+
+  // In dev builds the embedded binaries don't exist — skip PG startup gracefully.
+  if (!fs.existsSync(localPg.initdbBin)) {
+    log("[pg] embedded-postgres binaries not found — skipping PG startup");
+    return { pgDumpPath: "pg_dump" };
+  }
+
+  log(`[pg] initialising cluster at ${pgDataDir} (first run: ${isFirstRun})`);
+  if (isFirstRun) await localPg.initialise();   // runs initdb only on first launch (~3 s)
+  await localPg.start();                          // starts postmaster (~1 s)
+  try { await localPg.createDatabase(PG_DB); } catch {}  // no-op if already exists
+
+  pgInstance = localPg;
+  log("[pg] PostgreSQL ready");
+
+  // ── One-time SQLite → PostgreSQL data migration ───────────────────────────
+  // Triggered only when pgdata was just created (first run) and an existing
+  // foliantica.db is present in the data directory.
+  const sqliteDb = path.join(dataDir, "foliantica.db");
+  if (isFirstRun && fs.existsSync(sqliteDb)) {
+    log("[pg] First PG run detected with existing SQLite DB — starting migration");
+    if (splashWin) {
+      splashWin.webContents
+        .executeJavaScript('document.querySelector(".status").textContent = "Migrating data…";')
+        .catch(() => {});
+    }
+    const migrateScript = path.join(process.resourcesPath, "api", "scripts", "migrate_sqlite_to_pg.py");
+    const pythonExe     = path.join(process.resourcesPath, "api",
+      process.platform === "win32" ? "foliantica-api.exe" : "foliantica-api");
+    // We spawn the migration script via the bundled Python interpreter.
+    // The script exits 0 on success; non-zero on error.
+    await new Promise((resolve) => {
+      const migProc = spawn(pythonExe, [
+        migrateScript,
+        "--sqlite-path", sqliteDb,
+        "--pg-port",  String(PG_PORT),
+        "--pg-user",  PG_USER,
+        "--pg-pass",  PG_PASS,
+        "--pg-db",    PG_DB,
+        "--keep-original",
+      ], { stdio: ["ignore", "pipe", "pipe"] });
+      pipeToLog(migProc, "migrate");
+      migProc.on("exit", (code) => {
+        if (code !== 0) log(`[migrate] WARNING: migration exited with code ${code}`);
+        resolve();
+      });
+      migProc.on("error", (err) => {
+        log(`[migrate] spawn error: ${err.message}`);
+        resolve();
+      });
+    });
+    log("[pg] Migration complete");
+  }
+
+  // pg_dump lives alongside the other binaries — LocalPgManager already has the path.
+  return { pgDumpPath: fs.existsSync(localPg.pgDumpBin) ? localPg.pgDumpBin : "pg_dump" };
+}
+
 // ── Server startup ────────────────────────────────────────────────────────────
 
 async function startServers() {
@@ -235,6 +538,9 @@ async function startServers() {
   const webPort = await findFreePort();
 
   if (isProd) {
+    // ── Embedded PostgreSQL ───────────────────────────────────────────────────
+    const pgResult = await startPostgres();
+
     // ── FastAPI sidecar ───────────────────────────────────────────────────────
     const apiExe = path.join(
       process.resourcesPath, "api",
@@ -249,6 +555,13 @@ async function startServers() {
         LW_API_HOST: "127.0.0.1",
         LW_DATA_DIR: dataDir,
         LW_RESOURCES_DIR: process.resourcesPath,
+        // PostgreSQL connection — use Docker PG values if provided, else defaults
+        LW_PG_HOST: pgResult.pgHost || "127.0.0.1",
+        LW_PG_PORT: pgResult.pgPort || String(PG_PORT),
+        LW_PG_USER: pgResult.pgUser || PG_USER,
+        LW_PG_PASS: pgResult.pgPass || PG_PASS,
+        LW_PG_DB:   pgResult.pgDb   || PG_DB,
+        LW_PG_DUMP_PATH: pgResult.pgDumpPath || "pg_dump",
       },
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -297,6 +610,9 @@ async function startServers() {
 function killServers() {
   try { apiProc?.kill(); } catch {}
   try { nextProc?.kill(); } catch {}
+  // pgInstance.stop() is async but fire-and-forget is fine here;
+  // the OS will reap the postgres child process either way.
+  try { pgInstance?.stop(); } catch {}
 }
 
 app.on("before-quit", killServers);

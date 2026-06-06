@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings, useUpdateSettings, useOpenRouterModels, usePrompts, useCreatePrompt, useUpdatePrompt, useDeletePrompt, useRevertPrompt, useServiceStatus, useSyncStatus } from "@/store/queries";
-import { dataDirApi, settingsApi, syncApi } from "@/lib/api";
+import { dataDirApi, settingsApi, syncApi, pgConfigApi, type PgConfig, type PgActive } from "@/lib/api";
 import { ACH_POPUPS_KEY } from "@/components/AchievementToast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useUIStore } from "@/store/ui";
@@ -116,18 +116,128 @@ export default function SettingsPage() {
     useServiceStatus(showServiceStatus);
   const [dockerUpState, setDockerUpState] = useState<"idle" | "busy" | "ok" | "error">("idle");
   const [dockerUpMsg, setDockerUpMsg]     = useState("");
+  const [dockerUpStep, setDockerUpStep]   = useState("");
   const [helpOpen, setHelpOpen]           = useState(false);
+
+  // ── Docker PostgreSQL ─────────────────────────────────────────────────────
+  const defaultPgCfg: PgConfig = { useDocker: false, host: "127.0.0.1", port: 5434, user: "foliantica", pass: "foliantica", db: "foliantica" };
+  const [pgCfg,    setPgCfg]    = useState<PgConfig>(defaultPgCfg);
+  const [pgActive, setPgActive] = useState<PgActive | null>(null);
+  const [pgSaving, setPgSaving] = useState(false);
+  const [pgSaved,  setPgSaved]  = useState(false);
+  const [pgSwitching, setPgSwitching] = useState(false);
+
+  useEffect(() => {
+    pgConfigApi.get().then(cfg => setPgCfg({ ...defaultPgCfg, ...cfg })).catch(() => {});
+    pgConfigApi.getActive().then(setPgActive).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // activeIsDocker: what the API is actually running on right now
+  const activeIsDocker = pgActive?.mode === "pg" && (pgActive.port ?? 5433) !== 5433;
+  // savedIsDocker: what lw-config says (takes effect after restart)
+  const savedIsDocker  = pgCfg.useDocker;
+  const restartNeeded  = activeIsDocker !== savedIsDocker;
+
+  const handleSavePgConn = async () => {
+    setPgSaving(true);
+    try {
+      await pgConfigApi.save(pgCfg);
+      setPgSaved(true);
+      setTimeout(() => setPgSaved(false), 3000);
+    } finally {
+      setPgSaving(false);
+    }
+  };
+
+  const handleSwitch = async (toDocker: boolean) => {
+    setPgSwitching(true);
+    try {
+      const saved = await pgConfigApi.save({ ...pgCfg, useDocker: toDocker });
+      setPgCfg(saved);
+    } finally {
+      setPgSwitching(false);
+    }
+  };
+
+  // Transfer state — target is always the INACTIVE db (other than what's running now)
+  const embeddedConn = { host: "127.0.0.1", port: 5433, user: "foliantica", pass: "foliantica", db: "foliantica" };
+  const dockerConn   = { host: pgCfg.host, port: pgCfg.port, user: pgCfg.user, pass: pgCfg.pass, db: pgCfg.db };
+  // Copy TO whichever db is NOT currently active
+  const transferTarget   = activeIsDocker ? embeddedConn : dockerConn;
+  const transferTargetLabel = activeIsDocker
+    ? "Embedded (port 5433)"
+    : `Docker (${pgCfg.host}:${pgCfg.port})`;
+
+  const [transferState,  setTransferState]  = useState<"idle"|"busy"|"ok"|"error">("idle");
+  const [transferResult, setTransferResult] = useState<string>("");
+
+  const handleTransfer = async () => {
+    setTransferState("busy");
+    setTransferResult("");
+    try {
+      const res = await pgConfigApi.transfer(transferTarget);
+      setTransferState("ok");
+      setTransferResult(`Copied ${res.rows_copied} rows across ${res.tables_copied} tables.`);
+    } catch (e: any) {
+      setTransferState("error");
+      setTransferResult(e.message ?? "Transfer failed");
+    }
+  };
+
+  const handleLoadDump = async () => {
+    setRestoreState("busy");
+    setRestoreMsg("");
+    try {
+      const res = await syncApi.restore();
+      setRestoreState("ok");
+      const dt = res.dump_time
+        ? new Date(res.dump_time + "Z").toLocaleString()
+        : "";
+      setRestoreMsg(`Loaded ${res.statements} statements${dt ? ` (dump from ${dt})` : ""}.`);
+    } catch (e: any) {
+      setRestoreState("error");
+      setRestoreMsg(e.message ?? "Restore failed");
+    }
+  };
+
+  const handleDump = async (force = false) => {
+    setDumpState("busy");
+    setDumpMsg("");
+    setDumpConflict(null);
+    try {
+      await syncApi.dump(force);
+      setDumpState("ok");
+      setDumpMsg("Dumped to sync dir.");
+    } catch (e: any) {
+      const msg: string = e.message ?? "";
+      // req() throws "409: <json body>" — detect and parse the conflict payload
+      if (msg.startsWith("409:")) {
+        try {
+          const body = JSON.parse(msg.slice(4).trim());
+          const detail = body.detail ?? body;
+          setDumpConflict({ dump_time: detail.dump_time ?? "" });
+          setDumpState("idle");
+          return;
+        } catch { /* fall through to generic error */ }
+      }
+      setDumpState("error");
+      setDumpMsg(msg || "Dump failed");
+    }
+  };
 
   // ── Data directory ────────────────────────────────────────────────────────
   const isElectron = typeof window !== "undefined" && !!(window as any).electron;
   const [dataDir, setDataDir]               = useState<string>("");
   const [dataDirConfigured, setDataDirConfigured] = useState<string | null>(null);
   const [dataDirPending, setDataDirPending]   = useState(false);
-  const [dataDirMigrate, setDataDirMigrate]   = useState(true);
   const [dataDirBrowseErr, setDataDirBrowseErr] = useState<string | null>(null);
   const [dataDirRestarting, setDataDirRestarting] = useState(false);
-  const [hasDbConflict, setHasDbConflict] = useState(false);
-  const [confirmOverwrite, setConfirmOverwrite] = useState(false);
+  const [restoreState,  setRestoreState]  = useState<"idle"|"busy"|"ok"|"error">("idle");
+  const [restoreMsg,    setRestoreMsg]    = useState("");
+  const [dumpState,     setDumpState]     = useState<"idle"|"busy"|"ok"|"error">("idle");
+  const [dumpMsg,       setDumpMsg]       = useState("");
+  const [dumpConflict,  setDumpConflict]  = useState<{ dump_time: string } | null>(null);
 
   useEffect(() => {
     dataDirApi.get().then((res) => {
@@ -135,14 +245,6 @@ export default function SettingsPage() {
       setDataDirConfigured(res.configured);
     }).catch(() => {});
   }, []);
-
-  // Check if target directory already has a DB when migrate is on and path changed
-  useEffect(() => {
-    setHasDbConflict(false);
-    setConfirmOverwrite(false);
-    if (!dataDirMigrate || !dataDir || dataDir === dataDirConfigured) return;
-    dataDirApi.check(dataDir).then((r) => setHasDbConflict(r.has_db)).catch(() => {});
-  }, [dataDir, dataDirMigrate, dataDirConfigured]);
 
   const [selectedPromptId, setSelectedPromptId] = useState<number | null>(null);
   const [editName, setEditName]                 = useState("");
@@ -225,7 +327,6 @@ export default function SettingsPage() {
     setSyncSaving(true);
     try {
       await updateSettings.mutateAsync({ sync_local_dir: syncLocalDir || null });
-      if (syncEnabled) syncApi.trigger().catch(() => {});
     } finally {
       setSyncSaving(false);
     }
@@ -833,16 +934,28 @@ export default function SettingsPage() {
 
         <div className="border-t border-border" />
 
-        {/* Data Directory */}
+        {/* Sync Dir */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2 mb-4">
-            <FolderOpen className="h-4 w-4 text-primary" />
-            <h2 className="text-base font-semibold">Data Folder</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <FolderOpen className="h-4 w-4 text-primary" />
+              <h2 className="text-base font-semibold">Sync Dir</h2>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+              onClick={restartAndReload}
+            >
+              <RotateCw className="h-3.5 w-3.5" />
+              Restart Backend
+            </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Where Foliantica stores its database and uploads. Point this to a
-            Dropbox, Google Drive, or OneDrive folder to sync across devices.
-            Restart the app after applying a change.
+            Where Foliantica stores uploaded resources and database dumps.
+            Point this to a Dropbox, Google Drive, or OneDrive folder to sync
+            files across devices. The PostgreSQL cluster is always stored
+            locally and is unaffected by this setting.
           </p>
           <div className="flex items-center gap-2">
             <input
@@ -874,50 +987,53 @@ export default function SettingsPage() {
           {dataDirBrowseErr && (
             <p className="text-xs text-destructive">{dataDirBrowseErr}</p>
           )}
-          {dataDir && dataDir !== dataDirConfigured && (
-            <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={dataDirMigrate}
-                onChange={e => setDataDirMigrate(e.target.checked)}
-                className="accent-primary"
-              />
-              Copy existing database &amp; uploads to new folder
-            </label>
-          )}
-          {hasDbConflict && dataDirMigrate && (
-            <div className="rounded border border-destructive/50 bg-destructive/10 px-3 py-2 text-xs text-destructive space-y-2">
-              <p className="font-medium">⚠ The target folder already contains a database.</p>
-              <p className="text-destructive/80">Continuing will permanently overwrite it with your current data.</p>
-              <label className="flex items-center gap-2 cursor-pointer select-none font-medium">
-                <input
-                  type="checkbox"
-                  checked={confirmOverwrite}
-                  onChange={e => setConfirmOverwrite(e.target.checked)}
-                  className="accent-destructive"
-                />
-                I understand — overwrite the existing database
-              </label>
-            </div>
-          )}
           <div className="flex items-center gap-2 flex-wrap">
             <Button
               size="sm"
-              disabled={dataDirPending || (hasDbConflict && dataDirMigrate && !confirmOverwrite)}
+              disabled={dataDirPending}
               onClick={async () => {
                 setDataDirPending(true);
                 try {
-                  const shouldMigrate = dataDirMigrate && !!dataDir && dataDir !== dataDirConfigured;
-                  await dataDirApi.set(dataDir || null, shouldMigrate);
-                  await restartAndReload();
+                  await dataDirApi.set(dataDir || null, false);
+                  setDataDirConfigured(dataDir || null);
                 } finally {
                   setDataDirPending(false);
                 }
               }}
             >
-              {dataDirPending
-                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                : <><RotateCw className="h-3.5 w-3.5 mr-1.5" />Apply &amp; Restart</>}
+              {dataDirPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Apply"}
+            </Button>
+            {dumpConflict ? (
+              <span className="flex items-center gap-1.5 text-xs text-amber-500">
+                Dump from {dumpConflict.dump_time ? new Date(dumpConflict.dump_time + "Z").toLocaleString() : "unknown"} exists — overwrite?
+                <button
+                  className="underline hover:text-amber-400"
+                  onClick={() => handleDump(true)}
+                >Yes</button>
+                <button
+                  className="underline hover:text-foreground text-muted-foreground"
+                  onClick={() => setDumpConflict(null)}
+                >No</button>
+              </span>
+            ) : (
+              <Button
+                size="sm" variant="outline"
+                disabled={dumpState === "busy"}
+                onClick={() => handleDump(false)}
+              >
+                {dumpState === "busy"
+                  ? <><Loader2 className="h-3 w-3 animate-spin mr-1" />Dumping…</>
+                  : "Dump"}
+              </Button>
+            )}
+            <Button
+              size="sm" variant="outline"
+              disabled={restoreState === "busy"}
+              onClick={handleLoadDump}
+            >
+              {restoreState === "busy"
+                ? <><Loader2 className="h-3 w-3 animate-spin mr-1" />Loading…</>
+                : "Load Dump"}
             </Button>
             {dataDirConfigured && (
               <Button
@@ -927,8 +1043,9 @@ export default function SettingsPage() {
                 onClick={async () => {
                   setDataDirPending(true);
                   try {
-                    await dataDirApi.set(null);
-                    await restartAndReload();
+                    await dataDirApi.set(null, false);
+                    setDataDirConfigured(null);
+                    setDataDir("");
                   } finally {
                     setDataDirPending(false);
                   }
@@ -938,6 +1055,10 @@ export default function SettingsPage() {
               </Button>
             )}
           </div>
+          {dumpState    === "ok"    && <p className="text-xs text-emerald-500">{dumpMsg}</p>}
+          {dumpState    === "error" && <p className="text-xs text-destructive">{dumpMsg}</p>}
+          {restoreState === "ok"    && <p className="text-xs text-emerald-500">{restoreMsg}</p>}
+          {restoreState === "error" && <p className="text-xs text-destructive">{restoreMsg}</p>}
         </section>
 
         <div className="border-t border-border" />
@@ -978,9 +1099,10 @@ export default function SettingsPage() {
             {syncEnabled && (
               <>
                 <p className="text-xs text-muted-foreground bg-muted/40 rounded-md px-3 py-2 leading-relaxed">
-                  If your sync drive (OneDrive, NAS, etc.) is temporarily unavailable, your data is always
-                  safe in the local copy. When the drive comes back online, Foliantica notifies you and
-                  updates the mirror. Only the database file is mirrored — uploads are not included.
+                  Keeps a local backup of the database dump (<code className="text-primary font-mono text-[11px]">foliantica.sql</code>)
+                  and uploaded files, updated after every save. Useful as a second copy on a
+                  local drive when your primary sync dir is on a cloud folder that may be
+                  temporarily unavailable.
                 </p>
 
                 <div className="space-y-1.5">
@@ -1150,6 +1272,109 @@ export default function SettingsPage() {
             )}
           </div>
 
+          {/* PostgreSQL Database */}
+          <div className="rounded-lg border border-border p-4 space-y-4">
+
+            {/* Header */}
+            <p className="text-sm font-medium flex items-center gap-1.5">
+              <Database className="h-3.5 w-3.5 text-primary" />
+              PostgreSQL Database
+            </p>
+
+            {/* ── Active database indicator + switch ── */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <p className="text-xs text-muted-foreground">Active database</p>
+                <p className="text-xs font-medium">
+                  {activeIsDocker
+                    ? <><span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 mr-1.5 align-middle" />Docker ({pgActive?.host}:{pgActive?.port})</>
+                    : <><span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400 mr-1.5 align-middle" />Embedded (port 5433)</>}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs shrink-0"
+                disabled={pgSwitching}
+                onClick={() => handleSwitch(!activeIsDocker)}
+                title="Saves config and requires backend restart"
+              >
+                {pgSwitching
+                  ? <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                  : null}
+                Switch to {activeIsDocker ? "Embedded" : "Docker"}
+              </Button>
+            </div>
+
+            {/* Pending restart banner */}
+            {restartNeeded && (
+              <p className="text-[11px] text-amber-500 dark:text-amber-400">
+                ⚠ Restart the backend to activate{" "}
+                <strong>{savedIsDocker ? "Docker" : "Embedded"}</strong> mode.
+                {savedIsDocker && " Include postgres in Start Services below."}
+              </p>
+            )}
+
+            {/* ── Docker connection fields (always shown) ── */}
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Docker connection</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Host</Label>
+                  <Input value={pgCfg.host} onChange={e => setPgCfg(c => ({ ...c, host: e.target.value }))} className="h-8 text-xs font-mono" placeholder="127.0.0.1" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Port</Label>
+                  <Input value={pgCfg.port} onChange={e => setPgCfg(c => ({ ...c, port: Number(e.target.value) }))} className="h-8 text-xs font-mono" placeholder="5434" type="number" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">User</Label>
+                  <Input value={pgCfg.user} onChange={e => setPgCfg(c => ({ ...c, user: e.target.value }))} className="h-8 text-xs font-mono" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Password</Label>
+                  <Input value={pgCfg.pass} onChange={e => setPgCfg(c => ({ ...c, pass: e.target.value }))} className="h-8 text-xs font-mono" type="password" />
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <Label className="text-xs">Database</Label>
+                  <Input value={pgCfg.db} onChange={e => setPgCfg(c => ({ ...c, db: e.target.value }))} className="h-8 text-xs font-mono" />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleSavePgConn} disabled={pgSaving}>
+                  {pgSaving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                  Save connection
+                </Button>
+                {pgSaved && <span className="text-xs text-emerald-500">Saved</span>}
+              </div>
+            </div>
+
+            {/* ── Copy to inactive DB (always shown) ── */}
+            <div className="border-t border-border/50 pt-3 space-y-2">
+              <p className="text-xs font-medium">
+                Copy to{" "}
+                <span className="text-foreground">{transferTargetLabel}</span>
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Copies all rows from the current live database to the target.
+                The target must be running. Existing data in the target is replaced.
+              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  size="sm" variant="outline" className="h-7 text-xs"
+                  disabled={transferState === "busy"}
+                  onClick={handleTransfer}
+                >
+                  {transferState === "busy"
+                    ? <><Loader2 className="h-3 w-3 animate-spin mr-1" />Transferring…</>
+                    : "Transfer now"}
+                </Button>
+                {transferState === "ok"    && <p className="text-xs text-emerald-500">{transferResult}</p>}
+                {transferState === "error" && <p className="text-xs text-destructive">{transferResult}</p>}
+              </div>
+            </div>
+          </div>
+
           {/* Start + status row */}
           <div className="flex flex-wrap items-center gap-3">
             {/* Start Services button */}
@@ -1160,6 +1385,7 @@ export default function SettingsPage() {
               onClick={async () => {
                 setDockerUpState("busy");
                 setDockerUpMsg("");
+                setDockerUpStep("Saving settings…");
                 try {
                   // Persist current service settings first so docker compose
                   // reads the latest language selection and URLs from the DB.
@@ -1170,12 +1396,15 @@ export default function SettingsPage() {
                     pandoc_enabled: pandocEnabled,
                     pandoc_url: pandocUrl,
                   });
+                  setDockerUpStep("Starting Docker… (may take up to 90 s if Docker Desktop was closed)");
                   const res = await settingsApi.dockerComposeUp();
+                  setDockerUpStep("");
                   setDockerUpState("ok");
                   setDockerUpMsg(res.output || "Services started.");
                   // auto-refresh status after startup
                   setTimeout(() => { setShowServiceStatus(true); refetchStatus(); }, 1500);
                 } catch (e: any) {
+                  setDockerUpStep("");
                   setDockerUpState("error");
                   const detail = e.message?.includes(": ") ? e.message.split(": ").slice(1).join(": ") : e.message;
                   setDockerUpMsg(detail ?? "Failed to start services.");
@@ -1188,6 +1417,9 @@ export default function SettingsPage() {
                 : <Play className="h-3.5 w-3.5" />}
               {dockerUpState === "busy" ? "Starting…" : "Start Services"}
             </Button>
+            {dockerUpState === "busy" && dockerUpStep && (
+              <span className="text-xs text-muted-foreground animate-pulse">{dockerUpStep}</span>
+            )}
 
             {/* Check status button */}
             <button

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   ChevronDown, ChevronRight, Plus, Trash2,
-  GripVertical, Settings, Book, Download, Network, Calendar, Clock, Scissors, Info, ListChecks, MoreHorizontal, LayoutGrid, Users, BarChart2, Mail, Layers2, User,
+  GripVertical, Settings, Book, Download, Network, Calendar, Clock, Scissors, Info, ListChecks, MoreHorizontal, LayoutGrid, Users, BarChart2, Mail, Layers2, User, RefreshCw,
 } from "lucide-react";
 import {
   DndContext, closestCenter, DragEndEvent,
@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScenePlanPopover } from "./ScenePlanPopover";
 import { useQueryClient } from "@tanstack/react-query";
-import { scenesApi } from "@/lib/api";
+import { scenesApi, syncApi } from "@/lib/api";
 import {
   useActs, useChapters,
   useCreateAct, useCreateChapter, useCreateScene,
@@ -31,6 +31,7 @@ import {
   useReorderScenesGlobal, useAllScenesForChapters,
   useUpdateAct, useUpdateChapter, useProject, useUpdateProject,
   useTimeConfig, useUpdateTimeConfig, useCodexEntries,
+  useSyncStatus,
 } from "@/store/queries";
 import { ImportButton } from "@/components/layout/ImportButton";
 import { TimeConfigDialog } from "@/components/time/TimeConfigDialog";
@@ -459,6 +460,16 @@ export function ProjectSidebar({ projectId }: Props) {
       subplotPaletteColor(scene.subplot)
     );
   }, [barMode, codexColorById, codexColorByName, project?.main_plot_color, storedColColors]);
+  const { data: syncStatus }  = useSyncStatus();
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSyncNow = async () => {
+    setSyncing(true);
+    try { await syncApi.trigger(); } catch {}
+    // Give the backend thread a moment, then let the poll refresh the status
+    setTimeout(() => setSyncing(false), 1500);
+  };
+
   const createAct = useCreateAct(projectId);
   const reorderActs = useReorderActs(projectId);
   const updateProject = useUpdateProject();
@@ -673,6 +684,30 @@ export function ProjectSidebar({ projectId }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Sync strip — only visible when mirror sync is enabled */}
+      {syncStatus && syncStatus.mode !== "disabled" && (
+        <div className="border-t border-border/50 px-3 py-1.5 flex items-center gap-2">
+          <div className={cn(
+            "h-1.5 w-1.5 rounded-full shrink-0",
+            syncStatus.mode === "online"  ? "bg-emerald-400" :
+            syncStatus.mode === "offline" ? "bg-amber-400"   : "bg-muted-foreground/40"
+          )} />
+          <span className="flex-1 text-[10px] text-muted-foreground truncate">
+            {syncStatus.last_sync_at
+              ? `Synced ${new Date(syncStatus.last_sync_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+              : syncStatus.mode === "offline" ? "Sync drive offline" : "Not yet synced"}
+          </span>
+          <button
+            onClick={handleSyncNow}
+            disabled={syncing || syncStatus.mode !== "online"}
+            title="Sync now"
+            className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
+          >
+            <RefreshCw className={cn("h-3 w-3", syncing && "animate-spin")} />
+          </button>
+        </div>
+      )}
 
       <TimeConfigDialog
         open={timeConfigOpen}

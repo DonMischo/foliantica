@@ -9,6 +9,13 @@ copyright: "© 2024 Foliantica"
 # (placed in resources/ outside the ASAR for direct filesystem access).
 asar: true
 
+# embedded-postgres uses import.meta.url to resolve binary paths at runtime.
+# Inside an ASAR the resulting path can't be spawn()'d; unpack both the JS
+# wrapper and the platform-specific binary package so the paths are real.
+asarUnpack:
+  - "node_modules/embedded-postgres/**/*"
+  - "node_modules/@embedded-postgres/**/*"
+
 directories:
   output: dist
   buildResources: electron/assets
