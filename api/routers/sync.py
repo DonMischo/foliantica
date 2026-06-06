@@ -80,7 +80,12 @@ def _do_backup(src: Path, dst: Path) -> None:
 
 
 def _pg_literal(v: object) -> str:
-    """Render a Python value as a PostgreSQL SQL literal (for INSERT statements)."""
+    """Render a Python value as a PostgreSQL SQL literal (for INSERT statements).
+
+    Uses E'...' escape-string syntax so that newlines and other control chars
+    can be escaped as \\n / \\r / \\t, keeping every INSERT on a single line.
+    Single-line statements are safe to split on ';' during restore.
+    """
     if v is None:
         return "NULL"
     if isinstance(v, bool):
@@ -89,8 +94,13 @@ def _pg_literal(v: object) -> str:
         return str(v)
     if isinstance(v, float):
         return repr(v)
-    # datetime, date, str — cast to text and let PG coerce
-    return "'" + str(v).replace("\\", "\\\\").replace("'", "''") + "'"
+    s = str(v)
+    s = s.replace("\\", "\\\\")   # must be first — escape existing backslashes
+    s = s.replace("'",  "''")     # standard SQL quote escaping (valid in E'')
+    s = s.replace("\n", "\\n")    # newline → \n  (E'' interprets this)
+    s = s.replace("\r", "\\r")    # carriage return
+    s = s.replace("\t", "\\t")    # tab
+    return "E'" + s + "'"
 
 
 def _do_pg_dump(mirror: Path) -> None:
@@ -356,6 +366,64 @@ def dump_to_datadir():
     return {"ok": True, "dump": str(dump_path), "dump_time": mtime}
 
 
+def _iter_sql_statements(sql: str):
+    """Yield individual SQL statements from a dump string.
+
+    Handles both old-style dumps (literal newlines in strings) and new-style
+    dumps (E'...' with \\n escapes).  Correctly ignores -- comments and ';'
+    characters that appear inside single-quoted strings.
+    """
+    buf: list[str] = []
+    in_str = False
+    escape_next = False   # True after a backslash inside an E'' string
+    i = 0
+    n = len(sql)
+
+    while i < n:
+        ch = sql[i]
+
+        if escape_next:
+            buf.append(ch)
+            escape_next = False
+            i += 1
+            continue
+
+        if in_str:
+            buf.append(ch)
+            if ch == "\\":
+                escape_next = True          # E'' escape sequence — consume next char
+            elif ch == "'":
+                if i + 1 < n and sql[i + 1] == "'":
+                    buf.append("'")         # '' → escaped single quote
+                    i += 2
+                    continue
+                else:
+                    in_str = False          # end of quoted string
+        else:
+            if ch == "-" and i + 1 < n and sql[i + 1] == "-":
+                # SQL line comment — skip to end of line
+                while i < n and sql[i] != "\n":
+                    i += 1
+                continue
+            elif ch == ";":
+                stmt = "".join(buf).strip()
+                if stmt:
+                    yield stmt
+                buf = []
+                i += 1
+                continue
+            else:
+                if ch == "'":
+                    in_str = True
+                buf.append(ch)
+        i += 1
+
+    # Any trailing content without a final semicolon
+    stmt = "".join(buf).strip()
+    if stmt:
+        yield stmt
+
+
 @router.post("/restore")
 def restore_from_dump():
     """Restore the database from foliantica.sql in the configured mirror directory.
@@ -383,19 +451,9 @@ def restore_from_dump():
     stmts = 0
     try:
         with engine.connect() as conn:
-            for raw_chunk in sql_text.split(";\n"):
-                chunk = raw_chunk.strip()
-                if not chunk:
-                    continue
-                # Strip comment-only lines (e.g. "-- tablename" headers)
-                sql_lines = [
-                    line for line in chunk.splitlines()
-                    if line.strip() and not line.strip().startswith("--")
-                ]
-                clean = "\n".join(sql_lines).strip()
-                if clean:
-                    conn.execute(text(clean))
-                    stmts += 1
+            for stmt in _iter_sql_statements(sql_text):
+                conn.execute(text(stmt))
+                stmts += 1
             conn.commit()
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
