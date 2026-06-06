@@ -368,14 +368,9 @@ def restore_from_dump():
         raise HTTPException(status_code=400,
                             detail="Restore from dump requires PostgreSQL mode")
 
-    with _lock:
-        mirror = _mirror_dir
-
-    if not mirror:
-        raise HTTPException(status_code=400,
-                            detail="No mirror directory configured. Enable Data Mirror first.")
-
-    dump_path = Path(mirror) / "foliantica.sql"
+    # Restore from the sync dir (cwd) — same location the /dump endpoint writes to.
+    # Data Mirror is a separate optional backup and is not required for restore.
+    dump_path = Path.cwd() / "foliantica.sql"
     if not dump_path.exists():
         raise HTTPException(status_code=404,
                             detail=f"No dump found at {dump_path}. Trigger a sync first.")
