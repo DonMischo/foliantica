@@ -453,6 +453,7 @@ export interface Achievement {
   unlocked_at: string | null;
   progress: number;
   progress_max: number;
+  show_toast: boolean;
   hidden?: boolean;
 }
 

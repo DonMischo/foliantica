@@ -1172,6 +1172,15 @@ def migrate_ai_providers():
                 pass  # column already exists
 
 
+def migrate_achievement_popup_shown():
+    """Add popup_shown_at column to achievement_unlocks if not present."""
+    with engine.begin() as conn:
+        try:
+            conn.execute(text("ALTER TABLE achievement_unlocks ADD COLUMN popup_shown_at DATETIME"))
+        except Exception:
+            pass  # column already exists
+
+
 def migrate_sync_mirror():
     """Add sync_mirror_enabled and sync_local_dir columns to user_settings."""
     with engine.begin() as conn:

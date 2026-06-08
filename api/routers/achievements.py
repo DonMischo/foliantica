@@ -2,7 +2,7 @@ import json
 from calendar import monthrange
 from datetime import date, datetime, UTC, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, distinct, text
 from sqlalchemy.orm import Session
 
@@ -435,7 +435,9 @@ def _compute_metrics(db: Session) -> dict[str, int]:
 @router.get("/achievements")
 def get_achievements(db: Session = Depends(get_db)):
     metrics      = _compute_metrics(db)
-    unlocks      = {u.key: u.unlocked_at for u in db.query(AchievementUnlock).all()}
+    unlock_rows  = db.query(AchievementUnlock).all()
+    unlocks      = {u.key: u.unlocked_at for u in unlock_rows}
+    popup_shown  = {u.key for u in unlock_rows if u.popup_shown_at is not None}
     results      = []
     newly_earned = []
     now          = datetime.now(UTC).replace(tzinfo=None)
@@ -468,6 +470,7 @@ def get_achievements(db: Session = Depends(get_db)):
             "unlocked_at":  ts.isoformat() if ts and earned else None,
             "progress":     min(val, ach["threshold"]),
             "progress_max": ach["threshold"],
+            "show_toast":   earned and ach["key"] in unlocks and ach["key"] not in popup_shown,
         })
 
     # ── Special: All Human ────────────────────────────────────────────────────
@@ -493,6 +496,7 @@ def get_achievements(db: Session = Depends(get_db)):
         "unlocked_at":  all_human_ts.isoformat() if all_human_ts and all_human_earned else None,
         "progress":     1 if all_human_earned else 0,
         "progress_max": 1,
+        "show_toast":   all_human_earned and "all_human" in unlocks and "all_human" not in popup_shown,
     })
 
     # ── Hidden: The Complete Works ────────────────────────────────────────────
@@ -524,6 +528,7 @@ def get_achievements(db: Session = Depends(get_db)):
         "progress":     1 if complete_earned else 0,
         "progress_max": 1,
         "hidden":       True,
+        "show_toast":   complete_earned and "all_achievements" in unlocks and "all_achievements" not in popup_shown,
     })
 
     # ── Hidden achievements ───────────────────────────────────────────────────
@@ -542,6 +547,7 @@ def get_achievements(db: Session = Depends(get_db)):
             "unlocked_at": ts.isoformat() if ts and earned else None,
             "progress": min(val, threshold), "progress_max": threshold,
             "hidden": True,
+            "show_toast": earned and key in unlocks and key not in popup_shown,
         })
 
     _h("pantser",       "pantser",       "The Pantser",          "10,000 words and not a single codex entry. Kerouac typed On the Road on a 120-foot scroll in three weeks — no outline, no notes, no index cards. He called it 'automatic writing.' You clearly understand.",                                                                           "story",    2, "pantser_condition",     1)
@@ -570,3 +576,18 @@ def get_achievements(db: Session = Depends(get_db)):
         db.commit()
 
     return results
+
+
+@router.post("/achievements/ack")
+def ack_achievements(body: dict, db: Session = Depends(get_db)):
+    """Mark achievement popups as shown so they never appear again."""
+    keys = body.get("keys", [])
+    if not keys:
+        return {"ok": True}
+    now = datetime.now(UTC).replace(tzinfo=None)
+    db.query(AchievementUnlock).filter(
+        AchievementUnlock.key.in_(keys),
+        AchievementUnlock.popup_shown_at == None,  # noqa: E711
+    ).update({"popup_shown_at": now}, synchronize_session=False)
+    db.commit()
+    return {"ok": True}

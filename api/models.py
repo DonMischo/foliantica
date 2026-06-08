@@ -462,9 +462,10 @@ class AchievementUnlock(Base):
     """Records the first time an achievement was earned. One row per achievement key."""
     __tablename__ = "achievement_unlocks"
 
-    id:          Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
-    key:         Mapped[str]      = mapped_column(String(100), nullable=False, unique=True)
-    unlocked_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    id:             Mapped[int]               = mapped_column(Integer, primary_key=True, autoincrement=True)
+    key:            Mapped[str]               = mapped_column(String(100), nullable=False, unique=True)
+    unlocked_at:    Mapped[datetime]          = mapped_column(DateTime, default=_now)
+    popup_shown_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
 
 class TimelineEvent(Base):
