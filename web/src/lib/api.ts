@@ -869,6 +869,16 @@ export interface UPnPOpenResult {
   ports_mapped: number[];
 }
 
+export interface CloudflareStatus {
+  active: boolean;
+  url:    string | null;
+}
+
+export interface CloudflareTunnelResult {
+  success: boolean;
+  url:     string;
+}
+
 export interface TeacherSession {
   session_id:      string;
   display_name:    string;
@@ -948,4 +958,13 @@ export const collabApi = {
 
   upnpClose: () =>
     req<{ active: false }>("/collab/upnp/close", { method: "POST" }),
+
+  cloudflareStatus: () =>
+    req<CloudflareStatus>("/collab/cloudflare/status"),
+
+  cloudflareOpen: () =>
+    req<CloudflareTunnelResult>("/collab/cloudflare/open", { method: "POST" }),
+
+  cloudflareClose: () =>
+    req<{ active: false }>("/collab/cloudflare/close", { method: "POST" }),
 };

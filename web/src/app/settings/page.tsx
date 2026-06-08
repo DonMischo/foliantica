@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings, useUpdateSettings, useOpenRouterModels, usePrompts, useCreatePrompt, useUpdatePrompt, useDeletePrompt, useRevertPrompt, useServiceStatus, useSyncStatus } from "@/store/queries";
-import { dataDirApi, settingsApi, syncApi, pgConfigApi, collabApi, type PgConfig, type PgActive, type Invitation, type TeacherSession, type UPnPStatus } from "@/lib/api";
+import { dataDirApi, settingsApi, syncApi, pgConfigApi, collabApi, type PgConfig, type PgActive, type Invitation, type TeacherSession, type UPnPStatus, type CloudflareStatus } from "@/lib/api";
 import { AssignmentPicker } from "@/components/collab/AssignmentPicker";
 import { ACH_POPUPS_KEY } from "@/components/AchievementToast";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -261,6 +261,11 @@ export default function SettingsPage() {
   const [upnpBusy,           setUpnpBusy]           = useState(false);
   const [upnpError,          setUpnpError]          = useState<string | null>(null);
 
+  // ── Cloudflare Tunnel state ───────────────────────────────────────────────
+  const [cfStatus,           setCfStatus]           = useState<CloudflareStatus | null>(null);
+  const [cfBusy,             setCfBusy]             = useState(false);
+  const [cfError,            setCfError]            = useState<string | null>(null);
+
   useEffect(() => {
     collabApi.info().then(d => {
       setCoworkEnabled(d.enabled);
@@ -268,6 +273,7 @@ export default function SettingsPage() {
     }).catch(() => {});
     collabApi.listInvitations().then(setInvitations).catch(() => {});
     collabApi.upnpStatus().then(setUpnpStatus).catch(() => {});
+    collabApi.cloudflareStatus().then(setCfStatus).catch(() => {});
   }, []);
 
   const handleUpnpAcceptDisclaimer = async () => {
@@ -304,6 +310,30 @@ export default function SettingsPage() {
       } : prev);
     } finally {
       setUpnpBusy(false);
+    }
+  };
+
+  const handleCfOpen = async () => {
+    setCfBusy(true);
+    setCfError(null);
+    try {
+      const result = await collabApi.cloudflareOpen();
+      setCfStatus(prev => prev ? { ...prev, active: true, url: result.url } : prev);
+    } catch (e: any) {
+      setCfError(e.message ?? "Failed to start Cloudflare tunnel");
+    } finally {
+      setCfBusy(false);
+    }
+  };
+
+  const handleCfClose = async () => {
+    setCfBusy(true);
+    setCfError(null);
+    try {
+      await collabApi.cloudflareClose();
+      setCfStatus(prev => prev ? { ...prev, active: false, url: null } : prev);
+    } finally {
+      setCfBusy(false);
     }
   };
 
@@ -1897,6 +1927,68 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Internet Access — Cloudflare Tunnel */}
+              <div className="rounded-lg border border-border p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                    <p className="text-sm font-medium">Cloudflare Tunnel</p>
+                    <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-full font-medium shrink-0">
+                      HTTPS · recommended
+                    </span>
+                  </div>
+                  {cfStatus?.active && (
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 shrink-0">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Active
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Creates an encrypted HTTPS tunnel via Cloudflare&apos;s network — no router
+                  configuration or port forwarding needed. Requires{" "}
+                  <a
+                    href="https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    cloudflared
+                  </a>{" "}
+                  to be installed. Traffic passes through Cloudflare servers.
+                </p>
+                {cfStatus?.active && cfStatus.url && (
+                  <div className="flex items-center gap-2 rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 px-3 py-2 text-xs">
+                    <span className="text-muted-foreground shrink-0">Tunnel URL:</span>
+                    <code className="flex-1 font-mono text-[11px] text-foreground truncate">
+                      {cfStatus.url}/join?token=…
+                    </code>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(cfStatus.url!).catch(() => {})}
+                      className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                      title="Copy base URL"
+                    >
+                      <Copy className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+                {cfError && (
+                  <p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1.5">{cfError}</p>
+                )}
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant={cfStatus?.active ? "destructive" : "outline"}
+                    onClick={cfStatus?.active ? handleCfClose : handleCfOpen}
+                    disabled={cfBusy || !cfStatus}
+                  >
+                    {cfBusy
+                      ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />{cfStatus?.active ? "Closing…" : "Starting…"}</>
+                      : cfStatus?.active ? "Close tunnel" : "Open tunnel"
+                    }
+                  </Button>
+                </div>
               </div>
 
               {/* Invitations list */}

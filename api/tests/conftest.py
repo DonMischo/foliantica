@@ -33,6 +33,9 @@ def isolated_state(tmp_path, monkeypatch):
     # Scalar state — set directly (monkeypatch not needed; teardown resets them)
     collab_mod._upnp_active = False
     collab_mod._upnp_external_ip = None
+    collab_mod._cf_active = False
+    collab_mod._cf_url = None
+    collab_mod._cf_process = None
 
     # Redirect config so production ~/.foliantica/config.json is never touched
     monkeypatch.setattr(collab_mod, "_CONFIG_PATH", tmp_path / "config.json")
@@ -48,6 +51,9 @@ def isolated_state(tmp_path, monkeypatch):
     collab_mod._upnp_mapped_ports.clear()
     collab_mod._upnp_active = False
     collab_mod._upnp_external_ip = None
+    collab_mod._cf_active = False
+    collab_mod._cf_url = None
+    collab_mod._cf_process = None
 
 
 # ── App / client fixtures ─────────────────────────────────────────────────────

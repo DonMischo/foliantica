@@ -28,8 +28,11 @@ Architecture
 import asyncio
 import json
 import os
+import re
 import secrets
 import socket
+import subprocess
+import threading
 import uuid
 from datetime import datetime, UTC, timedelta
 from pathlib import Path
@@ -248,6 +251,117 @@ def upnp_close() -> None:
 # keyboard interrupt before the ASGI app fully starts).
 import atexit as _atexit
 _atexit.register(upnp_close)
+
+
+# ── Phase 6 state — Cloudflare Tunnel ────────────────────────────────────────
+
+_cf_process: "subprocess.Popen[str] | None" = None
+_cf_url:     str | None = None
+_cf_active:  bool = False
+
+# Regex that matches the trycloudflare.com URL printed by cloudflared.
+# The URL always appears somewhere in a log line, e.g.:
+#   INF |  https://random-words.trycloudflare.com  |
+_CF_URL_RE = re.compile(r'https://[a-z0-9-]+\.trycloudflare\.com')
+
+
+def cloudflare_open() -> dict:
+    """Start a Cloudflare quick tunnel pointing at the local web port.
+
+    Spawns `cloudflared tunnel --url http://localhost:{port}` and reads its
+    merged stdout/stderr until the trycloudflare.com URL appears (≤ 30 s).
+
+    No Cloudflare account is needed — quick tunnels are free and ephemeral.
+    Traffic is encrypted end-to-end with a CA-signed HTTPS certificate.
+
+    Returns {success, url} or {success: False, error}.
+    Runs synchronously; call via asyncio.to_thread() from async handlers.
+    """
+    global _cf_process, _cf_url, _cf_active
+
+    web_port = int(os.environ.get("LW_WEB_PORT", "3000"))
+
+    try:
+        proc = subprocess.Popen(
+            ["cloudflared", "tunnel", "--url", f"http://localhost:{web_port}"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,  # merge stderr into stdout
+            text=True,
+            bufsize=1,                 # line-buffered so we see each line ASAP
+        )
+    except FileNotFoundError:
+        return {
+            "success": False,
+            "error": (
+                "cloudflared is not installed. "
+                "Download it from https://developers.cloudflare.com/"
+                "cloudflare-one/connections/connect-apps/install-and-setup/installation/"
+            ),
+        }
+
+    _cf_process = proc
+    found: list[str] = []  # mutable so the thread can write to it
+    ready = threading.Event()
+
+    def _reader() -> None:
+        for line in proc.stdout:  # type: ignore[union-attr]
+            m = _CF_URL_RE.search(line)
+            if m:
+                found.append(m.group(0))
+                ready.set()
+                return
+        ready.set()  # process exited without printing a URL
+
+    threading.Thread(target=_reader, daemon=True).start()
+
+    if not ready.wait(timeout=30):
+        proc.terminate()
+        _cf_process = None
+        return {"success": False, "error": "Timed out waiting for tunnel URL (30 s)."}
+
+    if not found:
+        proc.terminate()
+        _cf_process = None
+        return {
+            "success": False,
+            "error": (
+                "cloudflared exited without providing a tunnel URL. "
+                "Ensure cloudflared is up to date."
+            ),
+        }
+
+    _cf_url    = found[0]
+    _cf_active = True
+    return {"success": True, "url": _cf_url}
+
+
+def cloudflare_close() -> None:
+    """Terminate the cloudflared process and reset state.
+
+    Safe to call when no tunnel is active; idempotent.
+    Runs synchronously; call via asyncio.to_thread() from async handlers
+    or directly from atexit.
+    """
+    global _cf_process, _cf_url, _cf_active
+
+    proc        = _cf_process
+    _cf_process = None
+    _cf_url     = None
+    _cf_active  = False
+
+    if proc is None:
+        return
+    try:
+        proc.terminate()
+        proc.wait(timeout=5)
+    except Exception:
+        try:
+            proc.kill()
+        except Exception:
+            pass
+
+
+_atexit.register(cloudflare_close)
 
 
 class ConnectionManager:
@@ -865,6 +979,34 @@ async def upnp_open_endpoint():
 async def upnp_close_endpoint():
     """Remove all UPnP port mappings opened by this session."""
     await asyncio.to_thread(upnp_close)
+    return {"active": False}
+
+
+# ── Phase 6: Cloudflare Tunnel endpoints ─────────────────────────────────────
+
+@router.get("/cloudflare/status")
+def cloudflare_status_endpoint():
+    """Current Cloudflare Tunnel state."""
+    return {"active": _cf_active, "url": _cf_url}
+
+
+@router.post("/cloudflare/open")
+async def cloudflare_open_endpoint():
+    """Start a Cloudflare quick tunnel.
+
+    Blocks in a thread until cloudflared prints the tunnel URL (≤ 30 s).
+    Returns the HTTPS URL that guests can use to reach this Foliantica instance.
+    """
+    result = await asyncio.to_thread(cloudflare_open)
+    if not result.get("success"):
+        raise HTTPException(status_code=503, detail=result.get("error", "Tunnel failed"))
+    return result
+
+
+@router.post("/cloudflare/close")
+async def cloudflare_close_endpoint():
+    """Terminate the Cloudflare Tunnel process."""
+    await asyncio.to_thread(cloudflare_close)
     return {"active": False}
 
 
