@@ -20,6 +20,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useCollabStore } from "@/store/collabStore";
 import { ScenePlanPopover } from "./ScenePlanPopover";
 import { useQueryClient } from "@tanstack/react-query";
 import { scenesApi, syncApi } from "@/lib/api";
@@ -460,7 +461,8 @@ export function ProjectSidebar({ projectId }: Props) {
       subplotPaletteColor(scene.subplot)
     );
   }, [barMode, codexColorById, codexColorByName, project?.main_plot_color, storedColColors]);
-  const { data: syncStatus }  = useSyncStatus();
+  const { data: syncStatus }    = useSyncStatus();
+  const collabConnected         = useCollabStore((s) => s.connected);
   const [syncing, setSyncing] = useState(false);
 
   const handleSyncNow = async () => {
@@ -503,6 +505,16 @@ export function ProjectSidebar({ projectId }: Props) {
           <img src="/icon.svg" alt="" className="h-4 w-4" />
           Foliantica
         </Link>
+        {/* Live / Offline indicator — only shown when co-work WS is active */}
+        {collabConnected && (
+          <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-medium">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            </span>
+            Live
+          </span>
+        )}
       </div>
 
       <div className="flex items-center justify-between px-3 py-2 text-xs text-muted-foreground uppercase tracking-wider">

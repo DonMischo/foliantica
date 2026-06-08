@@ -18,6 +18,7 @@ import { SceneTimePanel } from "@/components/time/SceneTimePanel";
 import { TimeConfigDialog } from "@/components/time/TimeConfigDialog";
 import { TimelineCommandDialog } from "@/components/timeline/TimelineCommandDialog";
 import { useUIStore } from "@/store/ui";
+import { useCollabStore, getLockHolder } from "@/store/collabStore";
 import { useAutosave } from "@/hooks/useAutosave";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -90,6 +91,42 @@ export default function ScenePage() {
   const [timelineCommandOpen, setTimelineCommandOpen] = useState(false);
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
+
+  // ── Co-work soft lock ────────────────────────────────────────────────────
+  const locks          = useCollabStore((s) => s.locks);
+  const requestLock    = useCollabStore((s) => s.requestLock);
+  const releaseLock    = useCollabStore((s) => s.releaseLock);
+  const sendHeartbeat  = useCollabStore((s) => s.sendHeartbeat);
+  const collabConn     = useCollabStore((s) => s.connected);
+  const [lockDenied, setLockDenied] = useState<string | null>(null); // holder name if denied
+
+  const lockHolder = getLockHolder(locks, "scene", sceneIdNum,
+    typeof window !== "undefined" ? localStorage.getItem("cowork_session") : null);
+
+  // Request lock on mount; release on unmount (only when WS is active)
+  useEffect(() => {
+    if (!collabConn) return;
+    requestLock("scene", sceneIdNum);
+    const hb = setInterval(() => sendHeartbeat("scene", sceneIdNum), 20_000);
+    return () => {
+      clearInterval(hb);
+      releaseLock("scene", sceneIdNum);
+    };
+  }, [collabConn, sceneIdNum, requestLock, releaseLock, sendHeartbeat]);
+
+  // Listen for lock_denied custom events from the WS hook
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.item_type === "scene" && detail?.item_id === sceneIdNum) {
+        setLockDenied(detail.holder as string);
+      }
+    };
+    window.addEventListener("cowork:lock_denied", handler);
+    return () => window.removeEventListener("cowork:lock_denied", handler);
+  }, [sceneIdNum]);
+
+  const isReadOnly = !!(lockHolder || lockDenied);
 
   const codexSidebarOpen    = useUIStore((s) => s.codexSidebarOpen);
   const setCodexSidebarOpen = useUIStore((s) => s.setCodexSidebarOpen);
@@ -622,6 +659,15 @@ export default function ScenePage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Editor */}
         <div className="flex-1 overflow-hidden flex flex-col">
+          {/* Co-work lock banner */}
+          {isReadOnly && (
+            <div className="flex items-center gap-2 px-4 py-1.5 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900/40 text-xs text-amber-700 dark:text-amber-400 shrink-0">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
+              <span>
+                <strong>{lockHolder?.display_name ?? lockDenied}</strong> is editing this scene — read-only for now.
+              </span>
+            </div>
+          )}
           <TipTapEditor
             content={content}
             onChange={handleContentChange}
@@ -629,6 +675,7 @@ export default function ScenePage() {
             onCodexEntryClick={handleCodexEntryClick}
             sceneId={sceneIdNum}
             aiDisabled={aiDisabled}
+            readOnly={isReadOnly}
             onOpenChat={aiDisabled ? undefined : () => setChatPanelOpen(true)}
             onOpenTimeline={() => setTimelineCommandOpen(true)}
             onWordSelect={(w) => { if (w) setSelectedWord(w); }}

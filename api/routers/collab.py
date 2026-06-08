@@ -1,22 +1,33 @@
 """
-Co-Work collaboration module — Phase 1: Network foundation + auth.
+Co-Work collaboration module — Phase 1 + 2.
 
-Manages named invitations, guest authentication (token + optional PIN),
-JWT session issuance, active session tracking, and LAN IP discovery.
+Phase 1: Network foundation + auth
+  - Named invitation CRUD (stored in config.json)
+  - POST /api/collab/join  → JWT session
+  - Rate limiter: 1 failed attempt → 300 s IP ban
+
+Phase 2: Real-time event push + soft locks
+  - GET  /api/collab/ws-url  → WebSocket URL for the client to connect to
+  - WS   /ws/collab          → authenticated WebSocket endpoint
+  - ConnectionManager broadcasts JSON messages to all open sockets
+  - Soft lock table: scene:<id> → {session_id, display_name, expires_at}
+    Locks expire after 30 s without a heartbeat; auto-released on disconnect
+  - SQLAlchemy after_flush / after_commit hooks detect DB changes and
+    broadcast {type:"change", tables:[...]} to all connected clients
 
 Architecture
 ------------
-- Invitations stored in ~/.foliantica/config.json under "cowork.invitations".
-- Active sessions tracked in-memory (_sessions dict).
-- Auth middleware lives in main.py; it reads X-Client-IP forwarded by the
-  Next.js proxy and requires a Bearer JWT for non-localhost clients.
-- Host (127.0.0.1) is always trusted by the middleware — no JWT needed.
-- JWT secret is kept in-process (generated once per startup); guests must
-  re-join after the host restarts the API.
-- Rate limiter: 1 failed /join attempt → 300 s IP ban.
+- Auth middleware (main.py) reads X-Client-IP from the Next.js proxy and
+  requires Bearer JWT for non-localhost clients.
+- The WS endpoint reads the JWT from a query-string parameter (?token=...)
+  because browser WebSocket API doesn't support custom headers.
+- Host (127.0.0.1) is always trusted — no JWT needed for either HTTP or WS.
+- JWT secret is in-process only; guests re-join after API restart.
 """
 
+import asyncio
 import json
+import os
 import secrets
 import socket
 import uuid
@@ -24,9 +35,11 @@ from datetime import datetime, UTC, timedelta
 from pathlib import Path
 from typing import Optional
 
+from starlette.websockets import WebSocketDisconnect
+
 import bcrypt
 import jwt
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request, WebSocket
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/collab", tags=["collab"])
@@ -45,6 +58,54 @@ _sessions: dict[str, dict] = {}
 
 # Rate limiter: IP → ban_until (UTC datetime)
 _bans: dict[str, datetime] = {}
+
+# ── Phase 2 state ─────────────────────────────────────────────────────────────
+
+# Soft locks: item_key ("scene:42") → lock record
+_LOCK_TTL = 30  # seconds without heartbeat before lock expires
+_locks: dict[str, dict] = {}
+
+
+class ConnectionManager:
+    """Tracks all open WebSocket connections and broadcasts messages to them."""
+
+    def __init__(self) -> None:
+        # session_id → WebSocket  (host uses session_id "host")
+        self._connections: dict[str, WebSocket] = {}
+
+    async def connect(self, ws: WebSocket, session_id: str) -> None:
+        await ws.accept()
+        self._connections[session_id] = ws
+
+    def disconnect(self, session_id: str) -> None:
+        self._connections.pop(session_id, None)
+
+    @property
+    def connected_count(self) -> int:
+        return len(self._connections)
+
+    async def send(self, session_id: str, message: dict) -> None:
+        ws = self._connections.get(session_id)
+        if ws:
+            try:
+                await ws.send_json(message)
+            except Exception:
+                self.disconnect(session_id)
+
+    async def broadcast(self, message: dict, exclude: str | None = None) -> None:
+        dead: list[str] = []
+        for sid, ws in list(self._connections.items()):
+            if sid == exclude:
+                continue
+            try:
+                await ws.send_json(message)
+            except Exception:
+                dead.append(sid)
+        for sid in dead:
+            self.disconnect(sid)
+
+
+manager = ConnectionManager()
 
 
 # ── Config helpers ────────────────────────────────────────────────────────────
@@ -122,6 +183,59 @@ def seconds_until_unban(ip: str) -> int:
         return 0
     remaining = (until - datetime.now(UTC)).total_seconds()
     return max(0, int(remaining))
+
+
+# ── Soft lock helpers ─────────────────────────────────────────────────────────
+
+def _lock_key(item_type: str, item_id: int) -> str:
+    return f"{item_type}:{item_id}"
+
+
+def _prune_expired_locks() -> list[str]:
+    """Remove expired locks, return list of pruned keys."""
+    now = datetime.now(UTC)
+    expired = [k for k, v in _locks.items() if now > v["expires_at"]]
+    for k in expired:
+        del _locks[k]
+    return expired
+
+
+def _lock_snapshot() -> list[dict]:
+    _prune_expired_locks()
+    return [
+        {k: v for k, v in rec.items() if k != "expires_at"}
+        for rec in _locks.values()
+    ]
+
+
+def _display_name_for(session_id: str) -> str:
+    if session_id == "host":
+        return "Host"
+    s = _sessions.get(session_id)
+    return s["display_name"] if s else session_id
+
+
+# ── Broadcast scheduler (sync → async bridge) ─────────────────────────────────
+
+def _schedule_broadcast(message: dict) -> None:
+    """Schedule a WebSocket broadcast from a synchronous context.
+
+    Called from SQLAlchemy event hooks which fire synchronously inside async
+    FastAPI request handlers — but always in the event loop's thread, so
+    create_task() is safe as long as a loop is running.
+    """
+    if not manager.connected_count:
+        return  # nobody to notify — skip the overhead
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(manager.broadcast(message))
+    except RuntimeError:
+        pass  # no running loop (startup / test context)
+
+
+def broadcast_change(tables: list[str]) -> None:
+    """Public entry-point called by the SQLAlchemy after_commit hook in main.py."""
+    _schedule_broadcast({"type": "change", "tables": tables})
 
 
 # ── LAN IP detection ──────────────────────────────────────────────────────────
@@ -351,6 +465,136 @@ def kick_session(session_id: str):
     if session_id not in _sessions:
         raise HTTPException(status_code=404, detail="Session not found")
     _sessions.pop(session_id)
+
+
+# ── Phase 2: WebSocket ───────────────────────────────────────────────────────
+
+@router.get("/ws-url")
+def get_ws_url(request: Request):
+    """Return the port the FastAPI server is listening on so the frontend can
+    build the WebSocket URL: ws://<host>:<port>/ws/collab
+
+    The Next.js proxy cannot tunnel WebSocket upgrades, so the client connects
+    directly to FastAPI.  Both ports are accessible on the same host IP.
+    """
+    if not is_cowork_enabled():
+        return {"enabled": False, "ws_port": None}
+    port = int(os.environ.get("LW_API_PORT", "8765"))
+    return {"enabled": True, "ws_port": port}
+
+
+@router.websocket("/ws/collab")
+async def ws_collab(ws: WebSocket, token: str = Query(default="")):
+    """
+    WebSocket endpoint for real-time collaboration.
+
+    Auth:
+      - Connections from 127.0.0.1/::1 are treated as the host — no token needed.
+      - External connections must supply a valid session JWT as ?token=<jwt>.
+        (Browser WebSocket API doesn't support custom headers, so query param it is.)
+
+    Protocol (JSON messages):
+      Client → Server:
+        {type:"lock",      item_type, item_id}  acquire exclusive edit lock
+        {type:"unlock",    item_type, item_id}  release lock
+        {type:"heartbeat", item_type, item_id}  extend lock TTL by 30 s
+        {type:"ping"}                           keepalive
+
+      Server → Client:
+        {type:"state",   locks:[...], sessions:[...]}  initial snapshot on connect
+        {type:"change",  tables:[...]}                  DB rows changed
+        {type:"locks",   locks:[...]}                   lock table updated
+        {type:"lock_denied", item_type, item_id, holder}  lock request refused
+    """
+    client_host = ws.client.host if ws.client else "127.0.0.1"
+    is_local = client_host in ("127.0.0.1", "::1")
+
+    # ── Authenticate ──────────────────────────────────────────────────────────
+    if is_cowork_enabled() and not is_local:
+        if not token:
+            await ws.close(code=1008, reason="Authentication required")
+            return
+        try:
+            payload = verify_session_jwt(token)
+            session_id = payload["session_id"]
+        except jwt.InvalidTokenError:
+            await ws.close(code=1008, reason="Invalid or expired token")
+            return
+    else:
+        session_id = "host"
+
+    # ── Connect ───────────────────────────────────────────────────────────────
+    await manager.connect(ws, session_id)
+    try:
+        # Send initial state snapshot
+        await ws.send_json({
+            "type":     "state",
+            "locks":    _lock_snapshot(),
+            "sessions": list(_sessions.values()),
+        })
+
+        # ── Message loop ──────────────────────────────────────────────────────
+        while True:
+            try:
+                data = await ws.receive_json()
+            except WebSocketDisconnect:
+                break
+            except Exception:
+                break
+
+            msg_type = data.get("type")
+
+            if msg_type == "lock":
+                item_type = data.get("item_type", "scene")
+                item_id   = int(data.get("item_id", 0))
+                key       = _lock_key(item_type, item_id)
+                _prune_expired_locks()
+
+                existing = _locks.get(key)
+                if existing and existing["session_id"] != session_id:
+                    # Denied — locked by someone else
+                    await manager.send(session_id, {
+                        "type":      "lock_denied",
+                        "item_type": item_type,
+                        "item_id":   item_id,
+                        "holder":    existing["display_name"],
+                    })
+                else:
+                    _locks[key] = {
+                        "session_id":   session_id,
+                        "display_name": _display_name_for(session_id),
+                        "item_type":    item_type,
+                        "item_id":      item_id,
+                        "expires_at":   datetime.now(UTC) + timedelta(seconds=_LOCK_TTL),
+                    }
+                    await manager.broadcast({"type": "locks", "locks": _lock_snapshot()})
+
+            elif msg_type == "unlock":
+                key = _lock_key(data.get("item_type", "scene"), int(data.get("item_id", 0)))
+                if key in _locks and _locks[key]["session_id"] == session_id:
+                    del _locks[key]
+                await manager.broadcast({"type": "locks", "locks": _lock_snapshot()})
+
+            elif msg_type == "heartbeat":
+                key = _lock_key(data.get("item_type", "scene"), int(data.get("item_id", 0)))
+                if key in _locks and _locks[key]["session_id"] == session_id:
+                    _locks[key]["expires_at"] = (
+                        datetime.now(UTC) + timedelta(seconds=_LOCK_TTL)
+                    )
+
+            elif msg_type == "ping":
+                await manager.send(session_id, {"type": "pong"})
+
+    except WebSocketDisconnect:
+        pass
+    finally:
+        manager.disconnect(session_id)
+        # Release every lock this session held and notify others
+        held = [k for k, v in list(_locks.items()) if v["session_id"] == session_id]
+        for k in held:
+            del _locks[k]
+        if held:
+            await manager.broadcast({"type": "locks", "locks": _lock_snapshot()})
 
 
 # ── Co-work toggle ────────────────────────────────────────────────────────────

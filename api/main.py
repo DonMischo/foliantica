@@ -103,6 +103,38 @@ def _init_sync() -> None:
 _init_sync()
 
 
+# ── Co-work: SQLAlchemy change-detection hooks ───────────────────────────────
+# after_flush  captures which tables are dirty before the commit clears them.
+# after_commit fires after the transaction succeeds and triggers the broadcast.
+#
+# Both hooks run synchronously inside the async request handler's thread, so
+# collab_router.broadcast_change() uses asyncio.get_running_loop().create_task()
+# to schedule the coroutine on the already-running event loop.
+
+def _register_collab_hooks() -> None:
+    from sqlalchemy import event as _sa_event
+    from sqlalchemy.orm import Session as _SASession
+
+    @_sa_event.listens_for(_SASession, "after_flush")
+    def _capture(session, ctx):
+        tables: set[str] = set()
+        for obj in list(session.new) + list(session.dirty) + list(session.deleted):
+            tbl = getattr(obj.__class__, "__tablename__", None)
+            if tbl:
+                tables.add(tbl)
+        if tables:
+            session.info.setdefault("collab_tables", set()).update(tables)
+
+    @_sa_event.listens_for(_SASession, "after_commit")
+    def _broadcast(session):
+        tables = session.info.pop("collab_tables", set())
+        if tables:
+            collab_router.broadcast_change(list(tables))
+
+
+_register_collab_hooks()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield

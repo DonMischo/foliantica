@@ -51,6 +51,8 @@ interface Props {
   applyGrammarFixRef?: React.MutableRefObject<((matched: string, replacement: string, plainOffset: number) => void) | null>;
   jumpToGrammarMatchRef?: React.MutableRefObject<((matched: string, plainOffset: number) => void) | null>;
   onPrefillEntry?: (data: Partial<CodexEntry>) => void;
+  /** When true the editor is rendered read-only (co-work lock held by another user) */
+  readOnly?: boolean;
 }
 
 interface SlashState {
@@ -130,7 +132,7 @@ function applyTypewriterScroll(
   } catch { /* view not mounted */ }
 }
 
-export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, onPrefillEntry, aiDisabled = false }: Props) {
+export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, onPrefillEntry, aiDisabled = false, readOnly = false }: Props) {
   const showLineNumbers  = useUIStore((s) => s.showParagraphNumbers);
   const typewriterMode   = useUIStore((s) => s.typewriterMode);
   const typewriterOffset = useUIStore((s) => s.typewriterOffset);
@@ -249,6 +251,7 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
 
   const editor = useEditor({
     immediatelyRender: false,
+    editable: !readOnly,
     extensions: [
       StarterKit.configure({ underline: false }), // Underline added standalone below; exclude from StarterKit to avoid duplicate
       Placeholder.configure({ placeholder: "Start writing your scene… (type / to insert a command)" }),
@@ -293,6 +296,12 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
       },
     },
   });
+
+  // Sync readOnly prop → Tiptap editable flag (editor instance is created once)
+  useEffect(() => {
+    if (!editor) return;
+    editor.setEditable(!readOnly, false);
+  }, [editor, readOnly]);
 
   // Sync content from outside (initial load / scene switch)
   const prevSceneContent = useRef(content);
