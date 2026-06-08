@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database, Users, Copy, Link2, ShieldCheck, ListChecks } from "lucide-react";
+import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database, Users, Copy, Link2, ShieldCheck, ListChecks, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -257,6 +257,7 @@ export default function SettingsPage() {
 
   // ── UPnP state ────────────────────────────────────────────────────────────
   const [upnpStatus,         setUpnpStatus]         = useState<UPnPStatus | null>(null);
+  const [upnpExpanded,       setUpnpExpanded]       = useState(false);
   const [upnpRiskChecked,    setUpnpRiskChecked]    = useState(false);
   const [upnpBusy,           setUpnpBusy]           = useState(false);
   const [upnpError,          setUpnpError]          = useState<string | null>(null);
@@ -1808,8 +1809,12 @@ export default function SettingsPage() {
               )}
 
               {/* Internet Access — UPnP */}
-              <div className="rounded-lg border border-border p-3 space-y-3">
-                <div className="flex items-center justify-between">
+              <div className="rounded-lg border border-border">
+                <button
+                  type="button"
+                  onClick={() => setUpnpExpanded(v => !v)}
+                  className="w-full flex items-center justify-between p-3 text-left"
+                >
                   <div className="flex items-center gap-2">
                     <Globe className="h-3.5 w-3.5 text-muted-foreground" />
                     <p className="text-sm font-medium">Internet Access</p>
@@ -1817,12 +1822,17 @@ export default function SettingsPage() {
                       UPnP · experimental
                     </span>
                   </div>
-                  {upnpStatus?.active && (
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 shrink-0">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Active
-                    </span>
-                  )}
-                </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {upnpStatus?.active && (
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Active
+                      </span>
+                    )}
+                    <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", upnpExpanded && "rotate-180")} />
+                  </div>
+                </button>
+
+                {upnpExpanded && <div className="px-3 pb-3 space-y-3">
 
                 {/* Disclaimer — shown until accepted */}
                 {upnpStatus && !upnpStatus.disclaimer_accepted && (
@@ -1927,6 +1937,7 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 )}
+                </div>}
               </div>
 
               {/* Internet Access — Cloudflare Tunnel */}
