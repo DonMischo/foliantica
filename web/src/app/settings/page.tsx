@@ -1845,7 +1845,7 @@ export default function SettingsPage() {
                         join. This exposes the Foliantica service to the internet.
                       </p>
                       <div>
-                        <p className="font-medium text-foreground mb-1">Risks</p>
+                        <p className="font-semibold text-orange-900 dark:text-orange-200 mb-1">Risks</p>
                         <ul className="list-disc list-inside space-y-1">
                           <li>Traffic is <strong>unencrypted (HTTP, not HTTPS)</strong> — everything
                               sent over the internet is visible to your ISP and network observers.</li>
@@ -1860,7 +1860,7 @@ export default function SettingsPage() {
                         </ul>
                       </div>
                       <div>
-                        <p className="font-medium text-foreground mb-1">Protections in place</p>
+                        <p className="font-semibold text-orange-900 dark:text-orange-200 mb-1">Protections in place</p>
                         <ul className="list-disc list-inside space-y-1">
                           <li>Every guest requires a valid invitation token.</li>
                           <li>Optional PIN adds a second factor.</li>
@@ -1974,7 +1974,7 @@ export default function SettingsPage() {
                 {cfStatus?.active && cfStatus.url && (
                   <div className="flex items-center gap-2 rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 px-3 py-2 text-xs">
                     <span className="text-muted-foreground shrink-0">Tunnel URL:</span>
-                    <code className="flex-1 font-mono text-[11px] text-foreground truncate">
+                    <code className="flex-1 font-mono text-[11px] text-emerald-950 dark:text-emerald-100 truncate">
                       {cfStatus.url}/join?token=…
                     </code>
                     <button
