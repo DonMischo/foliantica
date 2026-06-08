@@ -283,7 +283,15 @@ def cloudflare_open() -> dict:
 
     try:
         proc = subprocess.Popen(
-            ["cloudflared", "tunnel", "--url", f"http://localhost:{web_port}"],
+            [
+                "cloudflared", "tunnel",
+                "--url", f"http://localhost:{web_port}",
+                # Rewrite the Host header so the local Next.js server sees
+                # "localhost" instead of the public *.trycloudflare.com hostname.
+                # Without this, Next.js (and many other servers) reject the request
+                # because the Host doesn't match any known origin → Cloudflare 1033.
+                "--http-host-header", f"localhost:{web_port}",
+            ],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,  # merge stderr into stdout
             text=True,
