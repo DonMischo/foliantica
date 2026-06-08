@@ -1,9 +1,13 @@
 import os
 from contextlib import asynccontextmanager
 
+import jwt as _pyjwt
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 from sqlalchemy import text
 
 from database import (
@@ -22,6 +26,7 @@ from database import (
 from models import Base
 from routers import projects, acts, chapters, scenes, codex, settings, ai, export, imports, graph, time, fragments, images, scene_commands, grammar, analytics, research, submissions, achievements
 from routers import sync as sync_router
+from routers import collab as collab_router
 
 # ── Schema + migrations ───────────────────────────────────────────────────────
 
@@ -106,15 +111,76 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Foliantica API", version="0.1.0", lifespan=lifespan)
 
-app.add_middleware(
-    CORSMiddleware,
-    # Allow any localhost / 127.0.0.1 port — needed for the Electron build
-    # where the Next.js server runs on a dynamic port.
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# ── CORS ──────────────────────────────────────────────────────────────────────
+# When co-work is enabled the Next.js server forwards requests from guest
+# browsers, so we must allow any origin.  When disabled, restrict to localhost.
+if collab_router.is_cowork_enabled():
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+
+# ── Co-work auth middleware ───────────────────────────────────────────────────
+# The Next.js proxy (route.ts) forwards the real client IP as X-Client-IP.
+# Requests from 127.0.0.1 (host browser or the proxy itself when the guest's
+# request has no X-Client-IP override) are always trusted.
+# External clients must supply a valid Bearer JWT issued by /api/collab/join.
+
+_COWORK_PUBLIC_PATHS = {"/api/health", "/api/collab/join", "/api/collab/info"}
+
+class CoworkAuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # OPTIONS preflight — always pass through so CORS headers are set
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
+        # Only enforce when co-work is enabled
+        if not collab_router.is_cowork_enabled():
+            return await call_next(request)
+
+        # Public endpoints (join + health) — no auth required
+        if request.url.path in _COWORK_PUBLIC_PATHS:
+            return await call_next(request)
+
+        # Determine real client IP.  The Next.js proxy sets X-Client-IP from
+        # the browser's IP; if absent, fall back to the direct connection IP.
+        client_ip = (
+            request.headers.get("X-Client-IP")
+            or (request.client.host if request.client else "127.0.0.1")
+        )
+
+        # Localhost is always trusted (host browser, internal calls)
+        if client_ip in ("127.0.0.1", "::1"):
+            return await call_next(request)
+
+        # External client: require a valid Bearer JWT
+        auth = request.headers.get("Authorization", "")
+        if not auth.startswith("Bearer "):
+            return JSONResponse({"detail": "Authentication required."}, status_code=401)
+
+        token = auth[len("Bearer "):]
+        try:
+            collab_router.verify_session_jwt(token)
+        except _pyjwt.ExpiredSignatureError:
+            return JSONResponse({"detail": "Session expired. Please rejoin."}, status_code=401)
+        except _pyjwt.InvalidTokenError:
+            return JSONResponse({"detail": "Invalid session token."}, status_code=401)
+
+        return await call_next(request)
+
+
+app.add_middleware(CoworkAuthMiddleware)
 
 app.include_router(projects.router)
 app.include_router(acts.router)
@@ -137,6 +203,7 @@ app.include_router(research.router)
 app.include_router(submissions.router)
 app.include_router(achievements.router)
 app.include_router(sync_router.router)
+app.include_router(collab_router.router)
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 

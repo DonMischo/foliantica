@@ -538,6 +538,15 @@ async function startServers() {
   const webPort = await findFreePort();
 
   if (isProd) {
+    // ── Co-work bind address ──────────────────────────────────────────────────
+    // When co-work is enabled, both servers must listen on all interfaces so
+    // LAN / internet guests can connect.  The setting is read from config.json
+    // before any process is spawned (changing it requires an app restart).
+    const lwCfgForCowork = loadLwConfig();
+    const coworkEnabled  = !!(lwCfgForCowork?.cowork?.enabled);
+    const bindHost       = coworkEnabled ? "0.0.0.0" : "127.0.0.1";
+    if (coworkEnabled) log("[cowork] Co-Work enabled — binding to 0.0.0.0");
+
     // ── Embedded PostgreSQL ───────────────────────────────────────────────────
     const pgResult = await startPostgres();
 
@@ -552,7 +561,7 @@ async function startServers() {
       env: {
         ...process.env,
         LW_API_PORT: String(apiPort),
-        LW_API_HOST: "127.0.0.1",
+        LW_API_HOST: bindHost,
         LW_DATA_DIR: dataDir,
         LW_RESOURCES_DIR: process.resourcesPath,
         // PostgreSQL connection — use Docker PG values if provided, else defaults
@@ -582,7 +591,7 @@ async function startServers() {
           ...process.env,
           ELECTRON_RUN_AS_NODE: "1",
           PORT: String(webPort),
-          HOSTNAME: "127.0.0.1",
+          HOSTNAME: bindHost,
           LW_API_PORT: String(apiPort),
           NODE_ENV: "production",
         },

@@ -48,9 +48,39 @@ export interface ExportChapter { id: number; title: string; order_index: number;
 export interface ExportAct     { id: number; title: string; order_index: number; chapters: ExportChapter[] }
 export interface ExportStructure { title: string; acts: ExportAct[] }
 
+// ── Co-work JWT helpers ───────────────────────────────────────────────────────
+// When a guest joins via /join, their session JWT is stored in localStorage.
+// It is injected into every API request so the FastAPI auth middleware can
+// identify external clients. The host (local app) has no JWT — it is trusted
+// by IP. This is a no-op when running as the host or when co-work is disabled.
+
+export function getCoworkJwt(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("cowork_jwt");
+}
+
+export function clearCoworkSession(): void {
+  if (typeof window === "undefined") return;
+  ["cowork_jwt", "cowork_role", "cowork_name", "cowork_session"].forEach(k =>
+    localStorage.removeItem(k)
+  );
+}
+
+export function getCoworkIdentity(): { name: string; role: string } | null {
+  if (typeof window === "undefined") return null;
+  const name = localStorage.getItem("cowork_name");
+  const role = localStorage.getItem("cowork_role");
+  return name && role ? { name, role } : null;
+}
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
+  const jwtToken = getCoworkJwt();
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: {
+      "Content-Type": "application/json",
+      ...(jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {}),
+      ...init?.headers,
+    } as Record<string, string>,
     ...init,
   });
   if (!res.ok) {
@@ -806,4 +836,69 @@ export interface StatsTotals {
 export const statsApi = {
   totals: () => req<StatsTotals>("/stats/totals"),
   pingView: () => req<{ ok: boolean }>("/stats/ping", { method: "POST" }),
+};
+
+// ── Co-Work ───────────────────────────────────────────────────────────────────
+
+export interface Invitation {
+  id:           string;
+  name:         string;
+  role:         "coauthor" | "student";
+  has_pin:      boolean;
+  max_sessions: number;
+  assigned_items: object[];
+}
+
+export interface CollabInfo {
+  enabled:         boolean;
+  lan_ip:          string;
+  lan_url:         string;
+  active_sessions: number;
+  invitation?:     { name: string; role: string; has_pin: boolean } | null;
+}
+
+export const collabApi = {
+  info: (token?: string) =>
+    req<CollabInfo>(`/collab/info${token ? `?token=${encodeURIComponent(token)}` : ""}`),
+
+  toggle: (enabled: boolean) =>
+    req<{ enabled: boolean; restart_required: boolean }>("/collab/toggle", {
+      method: "POST",
+      body:   JSON.stringify({ enabled }),
+    }),
+
+  listInvitations: () =>
+    req<Invitation[]>("/collab/invitations"),
+
+  createInvitation: (body: {
+    name: string;
+    role?: string;
+    pin?: string;
+    max_sessions?: number;
+    assigned_items?: object[];
+  }) =>
+    req<Invitation>("/collab/invitations", {
+      method: "POST",
+      body:   JSON.stringify(body),
+    }),
+
+  updateInvitation: (id: string, body: Partial<{
+    name: string; role: string; pin: string; max_sessions: number; assigned_items: object[];
+  }>) =>
+    req<Invitation>(`/collab/invitations/${id}`, {
+      method: "PATCH",
+      body:   JSON.stringify(body),
+    }),
+
+  deleteInvitation: (id: string) =>
+    req<void>(`/collab/invitations/${id}`, { method: "DELETE" }),
+
+  getInvitationToken: (id: string) =>
+    req<{ token: string; join_url: string }>(`/collab/invitations/${id}/token`),
+
+  listSessions: () =>
+    req<object[]>("/collab/sessions"),
+
+  kickSession: (sessionId: string) =>
+    req<void>(`/collab/kick/${sessionId}`, { method: "POST" }),
 };

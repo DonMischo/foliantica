@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database } from "lucide-react";
+import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database, Users, Copy, Link2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings, useUpdateSettings, useOpenRouterModels, usePrompts, useCreatePrompt, useUpdatePrompt, useDeletePrompt, useRevertPrompt, useServiceStatus, useSyncStatus } from "@/store/queries";
-import { dataDirApi, settingsApi, syncApi, pgConfigApi, type PgConfig, type PgActive } from "@/lib/api";
+import { dataDirApi, settingsApi, syncApi, pgConfigApi, collabApi, type PgConfig, type PgActive, type Invitation } from "@/lib/api";
 import { ACH_POPUPS_KEY } from "@/components/AchievementToast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useUIStore } from "@/store/ui";
@@ -238,6 +238,69 @@ export default function SettingsPage() {
   const [dumpState,     setDumpState]     = useState<"idle"|"busy"|"ok"|"error">("idle");
   const [dumpMsg,       setDumpMsg]       = useState("");
   const [dumpConflict,  setDumpConflict]  = useState<{ dump_time: string } | null>(null);
+
+  // ── Co-Work ───────────────────────────────────────────────────────────────
+  const [coworkEnabled,      setCoworkEnabled]      = useState(false);
+  const [coworkInfo,         setCoworkInfo]         = useState<{ lan_ip: string; lan_url: string; active_sessions: number } | null>(null);
+  const [invitations,        setInvitations]        = useState<Invitation[]>([]);
+  const [coworkLoading,      setCoworkLoading]      = useState(false);
+  const [newInvName,         setNewInvName]         = useState("");
+  const [newInvRole,         setNewInvRole]         = useState<"coauthor"|"student">("coauthor");
+  const [newInvPin,          setNewInvPin]          = useState("");
+  const [newInvMaxSessions,  setNewInvMaxSessions]  = useState(1);
+  const [copiedInvId,        setCopiedInvId]        = useState<string | null>(null);
+  const [coworkToggleBusy,   setCoworkToggleBusy]   = useState(false);
+
+  useEffect(() => {
+    collabApi.info().then(d => {
+      setCoworkEnabled(d.enabled);
+      setCoworkInfo(d);
+    }).catch(() => {});
+    collabApi.listInvitations().then(setInvitations).catch(() => {});
+  }, []);
+
+  const handleCoworkToggle = async (enabled: boolean) => {
+    setCoworkToggleBusy(true);
+    try {
+      await collabApi.toggle(enabled);
+      setCoworkEnabled(enabled);
+    } finally {
+      setCoworkToggleBusy(false);
+    }
+  };
+
+  const handleCreateInvitation = async () => {
+    if (!newInvName.trim()) return;
+    setCoworkLoading(true);
+    try {
+      const inv = await collabApi.createInvitation({
+        name: newInvName.trim(),
+        role: newInvRole,
+        pin: newInvPin || undefined,
+        max_sessions: newInvMaxSessions,
+      });
+      setInvitations(prev => [...prev, inv]);
+      setNewInvName("");
+      setNewInvPin("");
+      setNewInvMaxSessions(1);
+    } finally {
+      setCoworkLoading(false);
+    }
+  };
+
+  const handleDeleteInvitation = async (id: string) => {
+    await collabApi.deleteInvitation(id);
+    setInvitations(prev => prev.filter(i => i.id !== id));
+  };
+
+  const handleCopyLink = async (id: string) => {
+    try {
+      const { join_url } = await collabApi.getInvitationToken(id);
+      await navigator.clipboard.writeText(join_url);
+      setCopiedInvId(id);
+      setTimeout(() => setCopiedInvId(null), 2000);
+    } catch {}
+  };
 
   useEffect(() => {
     dataDirApi.get().then((res) => {
@@ -1595,6 +1658,158 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+
+        <div className="border-t border-border" />
+
+        {/* Co-Work */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Users className="h-4 w-4 text-primary" />
+            <h2 className="text-base font-semibold">Co-Work</h2>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Let co-authors or students join your project over your local network.
+            Each person gets a named invitation link. A restart is required to change the bind address.
+          </p>
+
+          {/* Enable toggle */}
+          <div className="flex items-center justify-between rounded-lg border border-border p-4">
+            <div>
+              <p className="text-sm font-medium">Enable Co-Work mode</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Binds the server to <code className="font-mono text-[11px]">0.0.0.0</code> so guests can connect.
+                {coworkEnabled && coworkInfo && (
+                  <span className="ml-1 text-primary">
+                    LAN: <code className="font-mono text-[11px]">{coworkInfo.lan_url}</code>
+                  </span>
+                )}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={coworkEnabled}
+              disabled={coworkToggleBusy}
+              onClick={() => handleCoworkToggle(!coworkEnabled)}
+              className={cn(
+                "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors disabled:opacity-50",
+                coworkEnabled ? "bg-primary" : "bg-input"
+              )}
+            >
+              <span className={cn(
+                "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-background shadow-lg ring-0 transition-transform",
+                coworkEnabled ? "translate-x-4" : "translate-x-0"
+              )} />
+            </button>
+          </div>
+
+          {coworkEnabled && (
+            <>
+              {/* Network info */}
+              {coworkInfo && (
+                <div className="rounded-md bg-muted/40 border border-border px-3 py-2 flex items-center gap-3 text-xs">
+                  <Link2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span className="text-muted-foreground">LAN URL:</span>
+                  <code className="font-mono text-[11px] text-foreground flex-1">{coworkInfo.lan_url}/join?token=…</code>
+                  <span className="text-muted-foreground">{coworkInfo.active_sessions} active</span>
+                </div>
+              )}
+
+              {/* Invitations list */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Invitations</p>
+                {invitations.length === 0 && (
+                  <p className="text-xs text-muted-foreground italic">No invitations yet.</p>
+                )}
+                {invitations.map(inv => (
+                  <div key={inv.id} className="rounded-lg border border-border p-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium truncate">{inv.name}</span>
+                        <span className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
+                          inv.role === "student" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                                                 : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                        )}>
+                          {inv.role === "student" ? "Student" : "Co-Author"}
+                        </span>
+                        {inv.has_pin && <ShieldCheck className="h-3 w-3 text-muted-foreground" aria-label="PIN required" />}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        max {inv.max_sessions} session{inv.max_sessions !== 1 ? "s" : ""}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleCopyLink(inv.id)}
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      title="Copy join link"
+                    >
+                      {copiedInvId === inv.id
+                        ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                        : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteInvitation(inv.id)}
+                      className="text-muted-foreground hover:text-destructive transition-colors"
+                      title="Revoke invitation"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* New invitation form */}
+              <div className="rounded-lg border border-dashed border-border p-3 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">New invitation</p>
+                <div className="flex gap-2">
+                  <Input
+                    value={newInvName}
+                    onChange={e => setNewInvName(e.target.value)}
+                    placeholder="Name  (e.g. Alice, Student Group A)"
+                    className="text-xs h-8 flex-1"
+                    onKeyDown={e => e.key === "Enter" && handleCreateInvitation()}
+                  />
+                  <select
+                    value={newInvRole}
+                    onChange={e => setNewInvRole(e.target.value as "coauthor" | "student")}
+                    className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                  >
+                    <option value="coauthor">Co-Author</option>
+                    <option value="student">Student</option>
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={newInvPin}
+                    onChange={e => setNewInvPin(e.target.value)}
+                    placeholder="PIN (optional)"
+                    type="password"
+                    className="text-xs h-8 flex-1"
+                  />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground">Max</span>
+                    <Input
+                      type="number"
+                      min={1} max={20}
+                      value={newInvMaxSessions}
+                      onChange={e => setNewInvMaxSessions(Number(e.target.value))}
+                      className="text-xs h-8 w-16 text-center"
+                    />
+                  </div>
+                  <Button size="sm" className="h-8 shrink-0" onClick={handleCreateInvitation} disabled={coworkLoading || !newInvName.trim()}>
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-md px-3 py-2">
+                <strong className="text-amber-700 dark:text-amber-400">Restart required</strong> — changes to Co-Work mode take effect after restarting the app.
+                Internet access (UPnP) coming in a later update.
+              </p>
+            </>
+          )}
+        </section>
 
         <div className="border-t border-border" />
 
