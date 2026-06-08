@@ -9,34 +9,55 @@ export interface LockRecord {
   item_id:      number;
 }
 
+export interface PresenceRecord {
+  session_id:   string;
+  display_name: string;
+  color:        string;
+  item_type:    string | null;
+  item_id:      number | null;
+}
+
 interface CollabState {
   /** Whether the WebSocket is currently connected */
   connected: boolean;
   /** Locks keyed by "item_type:item_id" e.g. "scene:42" */
   locks: Record<string, LockRecord>;
+  /** Active presence — one record per connected session */
+  presence: PresenceRecord[];
+  /** My own session_id as assigned by the server */
+  mySessionId: string | null;
   /** Internal: reference to the open WebSocket (not reactive) */
   _ws: WebSocket | null;
 
   // ── Actions ────────────────────────────────────────────────────────────────
-  setConnected:  (v: boolean) => void;
-  setLocks:      (locks: LockRecord[]) => void;
-  setWs:         (ws: WebSocket | null) => void;
+  setConnected:   (v: boolean) => void;
+  setLocks:       (locks: LockRecord[]) => void;
+  setPresence:    (records: PresenceRecord[]) => void;
+  setMySessionId: (id: string | null) => void;
+  setWs:          (ws: WebSocket | null) => void;
 
   /** Request a lock for item_type:item_id.  Returns immediately; server
    *  replies with either a "locks" broadcast (granted) or "lock_denied". */
   requestLock:   (item_type: string, item_id: number) => void;
   releaseLock:   (item_type: string, item_id: number) => void;
   sendHeartbeat: (item_type: string, item_id: number) => void;
+  /** Broadcast current location to all connected collaborators. */
+  sendPresence:  (item_type: string | null, item_id: number | null) => void;
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────────
 
 export const useCollabStore = create<CollabState>((set, get) => ({
-  connected: false,
-  locks:     {},
-  _ws:       null,
+  connected:   false,
+  locks:       {},
+  presence:    [],
+  mySessionId: null,
+  _ws:         null,
 
-  setConnected: (v) => set({ connected: v }),
+  setConnected:   (v) => set({ connected: v }),
+  setPresence:    (records) => set({ presence: records }),
+  setMySessionId: (id) => set({ mySessionId: id }),
+  setWs:          (ws) => set({ _ws: ws }),
 
   setLocks: (locks) => {
     const map: Record<string, LockRecord> = {};
@@ -45,8 +66,6 @@ export const useCollabStore = create<CollabState>((set, get) => ({
     }
     set({ locks: map });
   },
-
-  setWs: (ws) => set({ _ws: ws }),
 
   requestLock: (item_type, item_id) => {
     const ws = get()._ws;
@@ -66,6 +85,13 @@ export const useCollabStore = create<CollabState>((set, get) => ({
     const ws = get()._ws;
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: "heartbeat", item_type, item_id }));
+    }
+  },
+
+  sendPresence: (item_type, item_id) => {
+    const ws = get()._ws;
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "presence", item_type, item_id }));
     }
   },
 }));

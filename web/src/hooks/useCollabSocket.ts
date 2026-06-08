@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getCoworkJwt, getCoworkIdentity } from "@/lib/api";
-import { useCollabStore } from "@/store/collabStore";
+import { useCollabStore, type PresenceRecord } from "@/store/collabStore";
 
 // Exponential backoff delays (ms) for reconnection attempts
 const BACKOFF = [1_000, 2_000, 5_000, 10_000, 30_000];
@@ -25,9 +25,11 @@ const TABLE_TO_QUERY_KEY: Record<string, string[][]> = {
 
 export function useCollabSocket() {
   const queryClient   = useQueryClient();
-  const setConnected  = useCollabStore((s) => s.setConnected);
-  const setLocks      = useCollabStore((s) => s.setLocks);
-  const setWs         = useCollabStore((s) => s.setWs);
+  const setConnected   = useCollabStore((s) => s.setConnected);
+  const setLocks       = useCollabStore((s) => s.setLocks);
+  const setPresence    = useCollabStore((s) => s.setPresence);
+  const setMySessionId = useCollabStore((s) => s.setMySessionId);
+  const setWs          = useCollabStore((s) => s.setWs);
 
   const attempt  = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -70,8 +72,10 @@ export function useCollabSocket() {
         switch (msg.type) {
 
           case "state":
-            // Initial snapshot: sync locks
+            // Initial snapshot: sync locks, presence, and learn our session id
             if (Array.isArray(msg.locks)) setLocks(msg.locks as never);
+            if (typeof msg.my_session_id === "string") setMySessionId(msg.my_session_id as string);
+            if (Array.isArray(msg.presence)) setPresence(msg.presence as PresenceRecord[]);
             break;
 
           case "change": {
@@ -92,6 +96,10 @@ export function useCollabSocket() {
             if (Array.isArray(msg.locks)) setLocks(msg.locks as never);
             break;
 
+          case "presence":
+            if (Array.isArray(msg.sessions)) setPresence(msg.sessions as PresenceRecord[]);
+            break;
+
           case "lock_denied":
             // The scene page listens to the store; denial is reflected there
             // by the absence of the lock for our session (store isn't updated).
@@ -106,6 +114,8 @@ export function useCollabSocket() {
       ws.onclose = () => {
         wsRef.current = null;
         setConnected(false);
+        setPresence([]);
+        setMySessionId(null);
         setWs(null);
         if (!cancelled) scheduleReconnect();
       };

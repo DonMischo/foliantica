@@ -65,6 +65,42 @@ _bans: dict[str, datetime] = {}
 _LOCK_TTL = 30  # seconds without heartbeat before lock expires
 _locks: dict[str, dict] = {}
 
+# ── Phase 3 state ─────────────────────────────────────────────────────────────
+
+_PRESENCE_COLORS = [
+    "#7c3aed",  # violet
+    "#2563eb",  # blue
+    "#059669",  # emerald
+    "#d97706",  # amber
+    "#dc2626",  # red
+    "#db2777",  # pink
+    "#0891b2",  # cyan
+]
+
+# Active presence: session_id → {item_type, item_id} (both nullable)
+_presence: dict[str, dict] = {}
+
+
+def _color_for_session(session_id: str) -> str:
+    """Deterministic color per session — stable across broadcasts."""
+    h = 0
+    for c in session_id:
+        h = (h * 31 + ord(c)) & 0x7FFFFFFF
+    return _PRESENCE_COLORS[h % len(_PRESENCE_COLORS)]
+
+
+def _presence_snapshot() -> list[dict]:
+    return [
+        {
+            "session_id":   sid,
+            "display_name": _display_name_for(sid),
+            "color":        _color_for_session(sid),
+            "item_type":    data.get("item_type"),
+            "item_id":      data.get("item_id"),
+        }
+        for sid, data in _presence.items()
+    ]
+
 
 class ConnectionManager:
     """Tracks all open WebSocket connections and broadcasts messages to them."""
@@ -525,13 +561,21 @@ async def ws_collab(ws: WebSocket, token: str = Query(default="")):
 
     # ── Connect ───────────────────────────────────────────────────────────────
     await manager.connect(ws, session_id)
+    _presence[session_id] = {"item_type": None, "item_id": None}
     try:
-        # Send initial state snapshot
+        # Send initial state snapshot (my_session_id lets client know its own id)
         await ws.send_json({
-            "type":     "state",
-            "locks":    _lock_snapshot(),
-            "sessions": list(_sessions.values()),
+            "type":          "state",
+            "my_session_id": session_id,
+            "locks":         _lock_snapshot(),
+            "sessions":      list(_sessions.values()),
+            "presence":      _presence_snapshot(),
         })
+        # Notify other clients of the new joiner
+        await manager.broadcast(
+            {"type": "presence", "sessions": _presence_snapshot()},
+            exclude=session_id,
+        )
 
         # ── Message loop ──────────────────────────────────────────────────────
         while True:
@@ -582,6 +626,15 @@ async def ws_collab(ws: WebSocket, token: str = Query(default="")):
                         datetime.now(UTC) + timedelta(seconds=_LOCK_TTL)
                     )
 
+            elif msg_type == "presence":
+                item_type = data.get("item_type")   # str or None
+                item_id   = data.get("item_id")     # int or None
+                _presence[session_id] = {
+                    "item_type": item_type,
+                    "item_id":   int(item_id) if item_id is not None else None,
+                }
+                await manager.broadcast({"type": "presence", "sessions": _presence_snapshot()})
+
             elif msg_type == "ping":
                 await manager.send(session_id, {"type": "pong"})
 
@@ -595,6 +648,10 @@ async def ws_collab(ws: WebSocket, token: str = Query(default="")):
             del _locks[k]
         if held:
             await manager.broadcast({"type": "locks", "locks": _lock_snapshot()})
+        # Clear presence and notify remaining clients
+        _presence.pop(session_id, None)
+        if manager.connected_count:
+            await manager.broadcast({"type": "presence", "sessions": _presence_snapshot()})
 
 
 # ── Co-work toggle ────────────────────────────────────────────────────────────

@@ -92,27 +92,30 @@ export default function ScenePage() {
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
 
-  // ── Co-work soft lock ────────────────────────────────────────────────────
+  // ── Co-work soft lock + presence ────────────────────────────────────────
   const locks          = useCollabStore((s) => s.locks);
+  const mySessionId    = useCollabStore((s) => s.mySessionId);
   const requestLock    = useCollabStore((s) => s.requestLock);
   const releaseLock    = useCollabStore((s) => s.releaseLock);
   const sendHeartbeat  = useCollabStore((s) => s.sendHeartbeat);
+  const sendPresence   = useCollabStore((s) => s.sendPresence);
   const collabConn     = useCollabStore((s) => s.connected);
   const [lockDenied, setLockDenied] = useState<string | null>(null); // holder name if denied
 
-  const lockHolder = getLockHolder(locks, "scene", sceneIdNum,
-    typeof window !== "undefined" ? localStorage.getItem("cowork_session") : null);
+  const lockHolder = getLockHolder(locks, "scene", sceneIdNum, mySessionId);
 
-  // Request lock on mount; release on unmount (only when WS is active)
+  // Request lock + announce presence on mount; release/clear on unmount
   useEffect(() => {
     if (!collabConn) return;
     requestLock("scene", sceneIdNum);
+    sendPresence("scene", sceneIdNum);
     const hb = setInterval(() => sendHeartbeat("scene", sceneIdNum), 20_000);
     return () => {
       clearInterval(hb);
       releaseLock("scene", sceneIdNum);
+      sendPresence(null, null);
     };
-  }, [collabConn, sceneIdNum, requestLock, releaseLock, sendHeartbeat]);
+  }, [collabConn, sceneIdNum, requestLock, releaseLock, sendHeartbeat, sendPresence]);
 
   // Listen for lock_denied custom events from the WS hook
   useEffect(() => {

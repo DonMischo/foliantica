@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCollabStore } from "@/store/collabStore";
+import { PresenceBar } from "@/components/collab/PresenceBar";
 import { ScenePlanPopover } from "./ScenePlanPopover";
 import { useQueryClient } from "@tanstack/react-query";
 import { scenesApi, syncApi } from "@/lib/api";
@@ -84,6 +85,13 @@ function SceneItem({
   const { t } = useLanguage();
   const style = { transform: CSS.Transform.toString(transform), transition };
 
+  // Presence dots — other sessions currently viewing this scene
+  const presence    = useCollabStore((s) => s.presence);
+  const mySessionId = useCollabStore((s) => s.mySessionId);
+  const presenceDots = presence.filter(
+    (r) => r.item_type === "scene" && r.item_id === scene.id && r.session_id !== mySessionId
+  );
+
   return (
     <div
       ref={setNodeRef}
@@ -114,6 +122,14 @@ function SceneItem({
         {scene.scene_time && Object.keys(scene.scene_time).length > 0 && (
           <Clock className="h-2.5 w-2.5 shrink-0 text-primary/60" aria-label="Has scene time" />
         )}
+        {presenceDots.map((r) => (
+          <span
+            key={r.session_id}
+            className="h-1.5 w-1.5 rounded-full shrink-0"
+            style={{ backgroundColor: r.color }}
+            title={r.display_name}
+          />
+        ))}
       </Link>
       <ScenePlanPopover sceneId={scene.id} sceneTitle={scene.title || ""} sceneType={scene.scene_type} />
       <button
@@ -516,6 +532,9 @@ export function ProjectSidebar({ projectId }: Props) {
           </span>
         )}
       </div>
+
+      {/* Presence strip — avatar chips for other connected sessions */}
+      {collabConnected && <PresenceBar />}
 
       <div className="flex items-center justify-between px-3 py-2 text-xs text-muted-foreground uppercase tracking-wider">
         <span>{t("nav_story")}</span>
