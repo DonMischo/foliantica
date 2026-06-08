@@ -1,0 +1,376 @@
+"""
+Phases 2, 3, 4 — WebSocket: locks, presence, student-mode enforcement.
+
+Strategy
+--------
+* Co-work DISABLED (default):  TestClient host appears as "testclient" which
+  is not in ("127.0.0.1", "::1"), but when co-work is disabled the auth check
+  is skipped and every WS connection receives session_id="host".  This keeps
+  lock/presence tests simple without needing real JWTs.
+
+* Co-work ENABLED (explicit):  Guest auth tests inject a real JWT via the
+  ?token= query param.  Student-mode tests build a session via the join
+  endpoint so the session dict (with assigned_items) is in _sessions.
+
+WebSocket path
+--------------
+The router has prefix /api/collab, so the WS endpoint is at
+/api/collab/ws/collab.
+"""
+
+from datetime import datetime, UTC, timedelta
+from unittest.mock import patch
+
+import pytest
+
+import routers.collab as collab_mod
+from tests.conftest import make_invitation, do_join, join_ok
+
+WS_PATH = "/api/collab/ws/collab"
+
+
+# ── Phase 2: connection + initial state ───────────────────────────────────────
+
+class TestConnection:
+
+    def test_connect_receives_state(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
+            msg = ws.receive_json()
+        assert msg["type"] == "state"
+        assert "locks" in msg
+        assert "presence" in msg
+        assert "sessions" in msg
+
+    def test_state_includes_my_session_id(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
+            msg = ws.receive_json()
+        assert "my_session_id" in msg
+        assert msg["my_session_id"] == "host"
+
+    def test_connect_registers_presence(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
+            ws.receive_json()  # state
+            assert "host" in collab_mod._presence
+
+    def test_disconnect_clears_presence(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
+            ws.receive_json()
+        assert "host" not in collab_mod._presence
+
+    def test_guest_rejected_without_jwt_when_cowork_enabled(self, client):
+        collab_mod.set_cowork_enabled(True)
+        with pytest.raises(Exception):
+            # Should close with code 1008 (policy violation)
+            with client.websocket_connect(WS_PATH) as ws:
+                ws.receive_json()
+
+    def test_guest_accepted_with_valid_jwt(self, client):
+        collab_mod.set_cowork_enabled(True)
+        inv = make_invitation(client, name="Bob")
+        data = join_ok(client, token=inv["token"], display_name="Bob")
+        jwt_token = data["jwt"]
+        with client.websocket_connect(f"{WS_PATH}?token={jwt_token}") as ws:
+            msg = ws.receive_json()
+        assert msg["type"] == "state"
+        assert msg["my_session_id"] == data["session_id"]
+
+    def test_guest_rejected_with_invalid_jwt(self, client):
+        collab_mod.set_cowork_enabled(True)
+        with pytest.raises(Exception):
+            with client.websocket_connect(f"{WS_PATH}?token=notvalid") as ws:
+                ws.receive_json()
+
+    def test_ping_pong(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
+            ws.receive_json()  # state
+            ws.send_json({"type": "ping"})
+            pong = ws.receive_json()
+        assert pong["type"] == "pong"
+
+
+# ── Phase 2: soft locks ───────────────────────────────────────────────────────
+
+class TestLocks:
+
+    def test_request_lock_grants_and_broadcasts(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
+            ws.receive_json()  # state
+            ws.send_json({"type": "lock", "item_type": "scene", "item_id": 42})
+            msg = ws.receive_json()
+        assert msg["type"] == "locks"
+        assert len(msg["locks"]) == 1
+        lock = msg["locks"][0]
+        assert lock["item_type"] == "scene"
+        assert lock["item_id"] == 42
+
+    def test_lock_recorded_in_module_state(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
+            ws.receive_json()
+            ws.send_json({"type": "lock", "item_type": "scene", "item_id": 1})
+            ws.receive_json()  # locks broadcast
+            # Check while the connection is still open (disconnect clears locks —
+            # that behavior is verified by test_disconnect_releases_all_locks)
+            assert "scene:1" in collab_mod._locks
+
+    def test_lock_denied_when_held_by_other(self, client):
+        """Two separate WS sessions; second one is denied the same lock."""
+        # First session grabs the lock by injecting directly into module state
+        collab_mod._locks["scene:10"] = {
+            "session_id":   "other-session",
+            "display_name": "Other User",
+            "item_type":    "scene",
+            "item_id":      10,
+            "expires_at":   datetime.now(UTC) + timedelta(seconds=30),
+        }
+        with client.websocket_connect(WS_PATH) as ws:
+            ws.receive_json()  # state
+            ws.send_json({"type": "lock", "item_type": "scene", "item_id": 10})
+            msg = ws.receive_json()
+        assert msg["type"] == "lock_denied"
+        assert msg["holder"] == "Other User"
+        assert msg["reason"] == "locked"
+        assert msg["item_id"] == 10
+
+    def test_lock_reacquired_by_same_session(self, client):
+        """If the same session already holds a lock, re-requesting it updates TTL."""
+        with client.websocket_connect(WS_PATH) as ws:
+            ws.receive_json()
+            ws.send_json({"type": "lock", "item_type": "scene", "item_id": 5})
+            ws.receive_json()  # granted
+            # Request again — should succeed (no denial)
+            ws.send_json({"type": "lock", "item_type": "scene", "item_id": 5})
+            msg = ws.receive_json()
+        assert msg["type"] == "locks"
+
+    def test_unlock_releases_lock(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
+            ws.receive_json()
+            ws.send_json({"type": "lock", "item_type": "scene", "item_id": 3})
+            ws.receive_json()  # granted
+            ws.send_json({"type": "unlock", "item_type": "scene", "item_id": 3})
+            msg = ws.receive_json()
+        assert msg["type"] == "locks"
+        assert len(msg["locks"]) == 0
+        assert "scene:3" not in collab_mod._locks
+
+    def test_disconnect_releases_all_locks(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
+            ws.receive_json()
+            ws.send_json({"type": "lock", "item_type": "scene", "item_id": 99})
+            ws.receive_json()
+        # After context exit the WS is closed
+        assert "scene:99" not in collab_mod._locks
+
+    def test_heartbeat_extends_expiry(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
+            ws.receive_json()
+            ws.send_json({"type": "lock", "item_type": "scene", "item_id": 7})
+            ws.receive_json()  # granted
+            before = collab_mod._locks["scene:7"]["expires_at"]
+            ws.send_json({"type": "heartbeat", "item_type": "scene", "item_id": 7})
+            # Give the server time to process (sync TestClient processes inline)
+            after = collab_mod._locks["scene:7"]["expires_at"]
+        assert after >= before
+
+    def test_expired_lock_pruned_on_next_request(self, client):
+        # Inject an already-expired lock
+        collab_mod._locks["scene:20"] = {
+            "session_id":   "old",
+            "display_name": "Gone",
+            "item_type":    "scene",
+            "item_id":      20,
+            "expires_at":   datetime.now(UTC) - timedelta(seconds=1),
+        }
+        with client.websocket_connect(WS_PATH) as ws:
+            ws.receive_json()
+            # Requesting the same item should succeed because the old lock expired
+            ws.send_json({"type": "lock", "item_type": "scene", "item_id": 20})
+            msg = ws.receive_json()
+        assert msg["type"] == "locks"
+        lock = next(l for l in msg["locks"] if l["item_id"] == 20)
+        assert lock["session_id"] == "host"
+
+    def test_lock_snapshot_excludes_expires_at(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
+            ws.receive_json()
+            ws.send_json({"type": "lock", "item_type": "scene", "item_id": 8})
+            msg = ws.receive_json()
+        lock = msg["locks"][0]
+        assert "expires_at" not in lock
+
+
+# ── Phase 3: presence ─────────────────────────────────────────────────────────
+
+class TestPresence:
+
+    def test_initial_state_includes_own_presence(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
+            state = ws.receive_json()
+        # The connecting session should be in presence
+        assert any(p["session_id"] == "host" for p in state["presence"])
+
+    def test_presence_message_updates_location(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
+            ws.receive_json()  # state
+            ws.send_json({"type": "presence", "item_type": "scene", "item_id": 42})
+            msg = ws.receive_json()  # broadcast back to self (only connection)
+        assert msg["type"] == "presence"
+        sessions = msg["sessions"]
+        host_presence = next(s for s in sessions if s["session_id"] == "host")
+        assert host_presence["item_type"] == "scene"
+        assert host_presence["item_id"] == 42
+
+    def test_presence_null_clears_location(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
+            ws.receive_json()
+            ws.send_json({"type": "presence", "item_type": "scene", "item_id": 1})
+            ws.receive_json()
+            ws.send_json({"type": "presence", "item_type": None, "item_id": None})
+            msg = ws.receive_json()
+        host = next(s for s in msg["sessions"] if s["session_id"] == "host")
+        assert host["item_type"] is None
+        assert host["item_id"] is None
+
+    def test_disconnect_removes_from_presence(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
+            ws.receive_json()
+        assert "host" not in collab_mod._presence
+
+    def test_presence_includes_display_name(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
+            state = ws.receive_json()
+        host = next(s for s in state["presence"] if s["session_id"] == "host")
+        assert host["display_name"] == "Host"
+
+    def test_presence_includes_color(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
+            state = ws.receive_json()
+        host = next(s for s in state["presence"] if s["session_id"] == "host")
+        assert host["color"].startswith("#")
+        assert len(host["color"]) == 7  # #rrggbb
+
+    def test_color_is_deterministic(self):
+        """Same session_id must always produce the same color."""
+        c1 = collab_mod._color_for_session("fixed-id")
+        c2 = collab_mod._color_for_session("fixed-id")
+        assert c1 == c2
+
+    def test_different_ids_may_differ(self):
+        """Different session IDs should map to colors from the palette."""
+        colors = {collab_mod._color_for_session(f"id-{i}") for i in range(20)}
+        # All colors must be from the known palette
+        assert colors <= set(collab_mod._PRESENCE_COLORS)
+
+
+# ── Phase 4: student-mode lock enforcement ────────────────────────────────────
+
+class TestStudentEnforcement:
+
+    def _student_jwt(self, client, *, scenes):
+        """Create a student invitation with assigned scenes, join, return jwt."""
+        items = [{"type": "scene", "id": sid} for sid in scenes]
+        inv = make_invitation(client, role="student", assigned_items=items)
+        collab_mod.set_cowork_enabled(True)
+        data = join_ok(client, token=inv["token"], display_name="Stu")
+        return data["jwt"], data["session_id"]
+
+    def test_student_denied_unassigned_scene(self, client):
+        jwt_token, _ = self._student_jwt(client, scenes=[1, 2])
+        with client.websocket_connect(f"{WS_PATH}?token={jwt_token}") as ws:
+            ws.receive_json()  # state
+            ws.send_json({"type": "lock", "item_type": "scene", "item_id": 99})
+            msg = ws.receive_json()
+        assert msg["type"] == "lock_denied"
+        assert msg["reason"] == "not_assigned"
+        assert msg["holder"] is None
+
+    def test_student_granted_assigned_scene(self, client):
+        jwt_token, _ = self._student_jwt(client, scenes=[5, 6])
+        with client.websocket_connect(f"{WS_PATH}?token={jwt_token}") as ws:
+            ws.receive_json()
+            ws.send_json({"type": "lock", "item_type": "scene", "item_id": 5})
+            msg = ws.receive_json()
+        assert msg["type"] == "locks"
+        assert any(l["item_id"] == 5 for l in msg["locks"])
+
+    def test_student_empty_assignment_denies_all(self, client):
+        """Student with no assigned scenes cannot lock anything."""
+        jwt_token, _ = self._student_jwt(client, scenes=[])
+        with client.websocket_connect(f"{WS_PATH}?token={jwt_token}") as ws:
+            ws.receive_json()
+            ws.send_json({"type": "lock", "item_type": "scene", "item_id": 1})
+            msg = ws.receive_json()
+        assert msg["type"] == "lock_denied"
+        assert msg["reason"] == "not_assigned"
+
+    def test_coauthor_not_restricted_by_assignment(self, client):
+        """Co-author role bypasses assignment check entirely."""
+        inv = make_invitation(client, role="coauthor", assigned_items=[])
+        collab_mod.set_cowork_enabled(True)
+        data = join_ok(client, token=inv["token"])
+        with client.websocket_connect(f"{WS_PATH}?token={data['jwt']}") as ws:
+            ws.receive_json()
+            ws.send_json({"type": "lock", "item_type": "scene", "item_id": 999})
+            msg = ws.receive_json()
+        assert msg["type"] == "locks"
+
+    def test_student_lock_denied_does_not_pollute_lock_table(self, client):
+        """A denied lock must not appear in the shared lock state."""
+        jwt_token, _ = self._student_jwt(client, scenes=[])
+        with client.websocket_connect(f"{WS_PATH}?token={jwt_token}") as ws:
+            ws.receive_json()
+            ws.send_json({"type": "lock", "item_type": "scene", "item_id": 7})
+            ws.receive_json()  # lock_denied
+        assert "scene:7" not in collab_mod._locks
+
+    def test_is_assigned_helper_empty_returns_false(self):
+        sess = {"assigned_items": []}
+        assert collab_mod._is_assigned(sess, "scene", 1) is False
+
+    def test_is_assigned_helper_hit(self):
+        sess = {"assigned_items": [{"type": "scene", "id": 3}]}
+        assert collab_mod._is_assigned(sess, "scene", 3) is True
+
+    def test_is_assigned_helper_miss(self):
+        sess = {"assigned_items": [{"type": "scene", "id": 3}]}
+        assert collab_mod._is_assigned(sess, "scene", 4) is False
+
+    def test_is_assigned_helper_type_mismatch(self):
+        sess = {"assigned_items": [{"type": "chapter", "id": 3}]}
+        assert collab_mod._is_assigned(sess, "scene", 3) is False
+
+
+# ── Phase 4: teacher view ─────────────────────────────────────────────────────
+
+class TestTeacherView:
+
+    def test_teacher_view_empty(self, client):
+        r = client.get("/api/collab/teacher-view")
+        assert r.status_code == 200
+        assert r.json() == []
+
+    def test_teacher_view_includes_session_and_presence(self, client):
+        inv = make_invitation(client, role="student", name="Stu")
+        data = join_ok(client, token=inv["token"])
+        sid = data["session_id"]
+        # Inject a presence record
+        collab_mod._presence[sid] = {"item_type": "scene", "item_id": 10}
+
+        r = client.get("/api/collab/teacher-view")
+        assert r.status_code == 200
+        rows = r.json()
+        assert len(rows) == 1
+        row = rows[0]
+        assert row["display_name"] == "Guest"
+        assert row["role"] == "student"
+        assert row["item_type"] == "scene"
+        assert row["item_id"] == 10
+        assert row["color"].startswith("#")
+
+    def test_teacher_view_color_matches_color_helper(self, client):
+        inv = make_invitation(client)
+        data = join_ok(client, token=inv["token"])
+        sid = data["session_id"]
+        expected_color = collab_mod._color_for_session(sid)
+        r = client.get("/api/collab/teacher-view")
+        assert r.json()[0]["color"] == expected_color

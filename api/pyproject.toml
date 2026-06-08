@@ -20,6 +20,14 @@ dependencies = [
     "miniupnpc>=2.2.2",
 ]
 
+[project.optional-dependencies]
+test = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Run pytest from the api/ directory: python -m pytest
+# The api/ directory is the working dir so routers.collab is importable directly.
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

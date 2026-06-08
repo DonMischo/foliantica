@@ -55,7 +55,7 @@ export function useCollabSocket() {
       }
 
       const jwt     = getCoworkJwt();
-      const wsUrl   = `ws://${location.hostname}:${wsPort}/ws/collab${jwt ? `?token=${encodeURIComponent(jwt)}` : ""}`;
+      const wsUrl   = `ws://${location.hostname}:${wsPort}/api/collab/ws/collab${jwt ? `?token=${encodeURIComponent(jwt)}` : ""}`;
       const ws      = new WebSocket(wsUrl);
       wsRef.current = ws;
 
