@@ -138,25 +138,39 @@ def _parse_providers_cfg(settings: UserSettings) -> dict:
         return {}
 
 
-def _resolve_provider(settings: UserSettings) -> tuple[ProviderDef, str, str | None]:
-    """Return (ProviderDef, base_url, api_key) for the currently active provider.
+def _resolve_provider(settings: UserSettings, model: str | None = None) -> tuple[ProviderDef, str, str | None]:
+    """Return (ProviderDef, base_url, api_key) for the provider that should handle this request.
+
+    If *model* is given and it has an entry in the model→provider map (stored in
+    ai_providers_cfg._model_provider_map), that provider is used instead of the
+    active one.  This lets a user keep OpenRouter as the default while routing
+    a locally-favourited Qwen model to AnythingLLM automatically.
 
     Falls back to the legacy openrouter_api_key field so existing users keep
     working without reconfiguring anything.
     """
+    cfg = _parse_providers_cfg(settings)
     active_id = getattr(settings, "active_provider", None) or "openrouter"
-    pdef = PROVIDER_MAP.get(active_id)
+
+    # Per-model provider override
+    provider_id = active_id
+    if model:
+        mapped = cfg.get("_model_provider_map", {}).get(model)
+        if mapped and mapped in PROVIDER_MAP:
+            provider_id = mapped
+
+    pdef = PROVIDER_MAP.get(provider_id) or PROVIDER_MAP.get(active_id)
     if not pdef:
-        raise HTTPException(400, f"Unknown provider: {active_id}")
+        raise HTTPException(400, f"Unknown provider: {provider_id}")
 
-    cfg = _parse_providers_cfg(settings).get(active_id, {})
-    base_url = cfg.get("base_url") or pdef.default_base_url
+    prov_cfg = cfg.get(provider_id, {})
+    base_url = prov_cfg.get("base_url") or pdef.default_base_url
 
-    encrypted = cfg.get("api_key")
+    encrypted = prov_cfg.get("api_key")
     api_key = decrypt(encrypted) if encrypted else None
 
     # Backward compat: legacy openrouter_api_key
-    if active_id == "openrouter" and not api_key and settings.openrouter_api_key:
+    if provider_id == "openrouter" and not api_key and settings.openrouter_api_key:
         api_key = decrypt(settings.openrouter_api_key)
 
     if pdef.requires_key and not api_key:
@@ -174,9 +188,9 @@ async def generate(body: AIGenerateRequest, db: Session = Depends(get_db)):
     settings = db.query(UserSettings).first()
     if not settings:
         raise HTTPException(400, "No AI provider configured")
-    pdef, base_url, api_key = _resolve_provider(settings)
-
     model = body.model or settings.default_model
+    pdef, base_url, api_key = _resolve_provider(settings, model=model)
+
     context = _build_context(scene, db)
     system_prompt = MODE_SYSTEM_PROMPTS.get(body.mode, MODE_SYSTEM_PROMPTS["custom"])
 
@@ -293,9 +307,8 @@ async def ki_generate(body: KiGenerateRequest, db: Session = Depends(get_db)):
     settings = db.query(UserSettings).first()
     if not settings:
         raise HTTPException(400, "No AI provider configured")
-    pdef, base_url, api_key = _resolve_provider(settings)
-
     model = body.model or settings.default_model
+    pdef, base_url, api_key = _resolve_provider(settings, model=model)
 
     if body.prompt_id:
         # Use a stored prompt template
@@ -366,11 +379,10 @@ async def translate_text(body: TranslateRequest, db: Session = Depends(get_db)):
     settings = db.query(UserSettings).first()
     if not settings:
         raise HTTPException(400, "No AI provider configured")
-    pdef, base_url, api_key = _resolve_provider(settings)
-
     model = body.model or settings.default_codex_model or settings.default_model
     if not model:
         raise HTTPException(400, "No AI model configured")
+    pdef, base_url, api_key = _resolve_provider(settings, model=model)
 
     messages = [
         {
@@ -411,11 +423,10 @@ async def structure_text(body: StructureRequest, db: Session = Depends(get_db)):
     settings = db.query(UserSettings).first()
     if not settings:
         raise HTTPException(400, "No AI provider configured")
-    pdef, base_url, api_key = _resolve_provider(settings)
-
     model = body.model or settings.default_codex_model or settings.default_model
     if not model:
         raise HTTPException(400, "No AI model configured")
+    pdef, base_url, api_key = _resolve_provider(settings, model=model)
 
     entry_type = (body.entry_type or "custom").lower()
     sections = _STRUCTURE_SECTIONS.get(entry_type, _STRUCTURE_SECTIONS["custom"])
@@ -542,8 +553,8 @@ async def generate_synopsis(scene_id: int, db: Session = Depends(get_db)):
     if not content:
         raise HTTPException(400, "Scene has no content to summarize")
 
-    pdef, base_url, api_key = _resolve_provider(settings)
     model = settings.default_synopsis_model or settings.default_model
+    pdef, base_url, api_key = _resolve_provider(settings, model=model)
     lang = _project_language(scene, db)
 
     messages_syn = [
@@ -576,9 +587,9 @@ async def chat(body: ChatRequest, db: Session = Depends(get_db)):
     settings = db.query(UserSettings).first()
     if not settings:
         raise HTTPException(400, "No AI provider configured")
-    pdef, base_url, api_key = _resolve_provider(settings)
-
     model = body.model or settings.default_model
+    pdef, base_url, api_key = _resolve_provider(settings, model=model)
+
     language = _project_language(scene, db)
     scene_content = re.sub(r"<[^>]+>", "", scene.content or "")
 

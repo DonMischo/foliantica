@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, Fragment } from "react";
 import Link from "next/link";
-import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database, ChevronDown } from "lucide-react";
+import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,17 @@ import { useTheme, THEMES, THEME_LABELS, THEME_PREVIEW } from "@/contexts/ThemeC
 import { LOCALE_NAMES, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { AIPrompt } from "@/types";
+
+const PROVIDER_HINTS: Record<string, { title: string; steps: string[] }> = {
+  ollama: {
+    title: "Ollama is not running",
+    steps: [
+      "Start Ollama: run `ollama serve` in a terminal (or open the Ollama app).",
+      "Pull a model first: `ollama pull mistral` (or any other model).",
+      "Default port is 11434 — check your Base URL if you changed it.",
+    ],
+  },
+};
 
 const GRAMMAR_LANGUAGES = [
   { code: "en", label: "English" },
@@ -68,7 +79,7 @@ function ServiceStatusBadge({ label, status }: { label: string; status: "ok" | "
 export default function SettingsPage() {
   const { data: settings } = useSettings();
   const updateSettings = useUpdateSettings();
-  const { data: availableModels = [], isLoading: modelsLoading, refetch: refetchModels } = useOpenRouterModels();
+  const { data: availableModels = [], isLoading: modelsLoading, isError: modelsError, error: modelsErrorObj, refetch: refetchModels } = useOpenRouterModels();
   const { t, locale, setLocale } = useLanguage();
   const { theme, setTheme } = useTheme();
   const showParagraphNumbers    = useUIStore((s) => s.showParagraphNumbers);
@@ -98,7 +109,8 @@ export default function SettingsPage() {
   // ── AI Provider management ────────────────────────────────────────────────
   const [providers,         setProviders]        = useState<AIProvider[]>([]);
   const [providerTab,       setProviderTab]      = useState<"online" | "local">("online");
-  const [expandedProvider,  setExpandedProvider] = useState<string | null>(null);
+  const [localReachability, setLocalReachability] = useState<Record<string, boolean | null>>({});
+  const didScan = useRef(false);
   const [providerKeyDraft,  setProviderKeyDraft] = useState<Record<string, string>>({});
   const [providerUrlDraft,  setProviderUrlDraft] = useState<Record<string, string>>({});
   const [providerSaving,    setProviderSaving]   = useState<Record<string, boolean>>({});
@@ -109,8 +121,9 @@ export default function SettingsPage() {
   const [defaultSynopsisModel, setDefaultSynopsisModel]   = useState<string>("");
   const [defaultCodexModel, setDefaultCodexModel]         = useState<string>("");
   const [enabledModels, setEnabledModels]       = useState<string[]>([]);
-  const [modelSearch, setModelSearch]     = useState("");
-  const [saved, setSaved]                 = useState(false);
+  const [modelSearch, setModelSearch]           = useState("");
+  const [customModelInput, setCustomModelInput] = useState("");
+  const [saved, setSaved]                       = useState(false);
 
   // ── Services ──────────────────────────────────────────────────────────────
   const [grammarEnabled, setGrammarEnabled]   = useState(false);
@@ -349,7 +362,11 @@ export default function SettingsPage() {
       await aiProvidersApi.save(providerId, body);
       setProviderSaveOk(prev => ({ ...prev, [providerId]: true }));
       setProviderKeyDraft(prev => { const n = { ...prev }; delete n[providerId]; return n; });
-      aiProvidersApi.list().then(setProviders).catch(() => {});
+      aiProvidersApi.list().then(updated => {
+        setProviders(updated);
+        const pdef = updated.find(p => p.id === providerId);
+        if (pdef?.is_local) scanLocalProviders(updated);
+      }).catch(() => {});
       refetchModels();
       setTimeout(() => setProviderSaveOk(prev => { const n = { ...prev }; delete n[providerId]; return n; }), 2500);
     } finally {
@@ -363,10 +380,53 @@ export default function SettingsPage() {
     refetchModels();
   };
 
+  const scanLocalProviders = (list = providers) => {
+    const localPs = list.filter(p => p.is_local);
+    if (localPs.length === 0) return;
+    setLocalReachability(Object.fromEntries(localPs.map(p => [p.id, null])));
+    localPs.forEach(p => {
+      aiProvidersApi.ping(p.id)
+        .then(r => setLocalReachability(prev => ({ ...prev, [p.id]: r.reachable })))
+        .catch(() => setLocalReachability(prev => ({ ...prev, [p.id]: false })));
+    });
+  };
+
+  // Scan when switching to local tab
+  useEffect(() => {
+    if (providerTab === "local") scanLocalProviders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providerTab]);
+
+  // Scan once on initial provider load if local tab is active
+  useEffect(() => {
+    if (providerTab === "local" && providers.length > 0 && !didScan.current) {
+      didScan.current = true;
+      scanLocalProviders(providers);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providers.length]);
+
   const toggleModel = (id: string) => {
-    setEnabledModels(prev =>
-      prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
-    );
+    setEnabledModels(prev => {
+      if (prev.includes(id)) return prev.filter(m => m !== id);
+      // Record which provider this model belongs to so routing works across providers
+      const activeProvider = providers.find(p => p.is_active);
+      if (activeProvider) {
+        aiProvidersApi.setModelProvider(id, activeProvider.id).catch(() => {});
+      }
+      return [...prev, id];
+    });
+  };
+
+  const addCustomModel = () => {
+    const id = customModelInput.trim();
+    if (!id || enabledModels.includes(id)) return;
+    const activeProvider = providers.find(p => p.is_active);
+    if (activeProvider) {
+      aiProvidersApi.setModelProvider(id, activeProvider.id).catch(() => {});
+    }
+    setEnabledModels(prev => [...prev, id]);
+    setCustomModelInput("");
   };
 
   const handleSave = async () => {
@@ -384,19 +444,27 @@ export default function SettingsPage() {
       pandoc_url: pandocUrl,
     };
     await updateSettings.mutateAsync(payload);
-    setApiKeyDirty(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
-  // Models to show in the list: if API returned results use those, else show enabled_models already stored
-  const listModels = availableModels.length > 0 ? availableModels : enabledModels.map(id => ({ id, name: id }));
+  // All models from the active provider, plus any manually-enabled IDs that the provider
+  // didn't return (e.g. a Qwen model in AnythingLLM, or models from a previously active
+  // provider). This is the full browser list shown in the favourites picker.
+  const extraModels = enabledModels
+    .filter(id => !availableModels.some(m => m.id === id))
+    .map(id => ({ id, name: id }));
+  const listModels = availableModels.length > 0
+    ? [...availableModels, ...extraModels]
+    : enabledModels.map(id => ({ id, name: id }));
   const filteredModels = modelSearch
     ? listModels.filter(m => m.name.toLowerCase().includes(modelSearch.toLowerCase()) || m.id.toLowerCase().includes(modelSearch.toLowerCase()))
     : listModels;
 
-  // Default model dropdown: available models or just stored enabled ones
-  const defaultModelChoices = availableModels.length > 0 ? availableModels : listModels;
+  // Dropdowns only show favourited (enabled) models — local + online merged in one list.
+  // Falls back to the full provider list when nothing has been favourited yet.
+  const favouriteModels = listModels.filter(m => enabledModels.includes(m.id));
+  const defaultModelChoices = favouriteModels.length > 0 ? favouriteModels : listModels;
 
   // Restart the Python API then reload the UI.
   // In Electron: restart the API process first so the new data-dir is live,
@@ -503,84 +571,131 @@ export default function SettingsPage() {
                 <Cpu className="h-3.5 w-3.5" />
                 Provider
               </Label>
-              <div className="flex rounded-md border border-border overflow-hidden text-xs">
-                <button type="button"
-                  onClick={() => setProviderTab("online")}
-                  className={cn("px-2.5 py-1 transition-colors", providerTab === "online" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
-                >Online</button>
-                <button type="button"
-                  onClick={() => setProviderTab("local")}
-                  className={cn("px-2.5 py-1 transition-colors border-l border-border", providerTab === "local" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
-                >Local</button>
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-md border border-border overflow-hidden text-xs">
+                  <button type="button"
+                    onClick={() => setProviderTab("online")}
+                    className={cn("px-2.5 py-1 transition-colors", providerTab === "online" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+                  >Online</button>
+                  <button type="button"
+                    onClick={() => setProviderTab("local")}
+                    className={cn("px-2.5 py-1 transition-colors border-l border-border", providerTab === "local" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+                  >Local</button>
+                </div>
+                {providerTab === "local" && (
+                  <button type="button" onClick={() => scanLocalProviders()}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    title="Re-scan local providers"
+                  >
+                    <RefreshCw className={cn("h-3.5 w-3.5",
+                      Object.values(localReachability).some(v => v === null) && "animate-spin"
+                    )} />
+                  </button>
+                )}
               </div>
             </div>
 
-            {providers.filter(p => p.is_local === (providerTab === "local")).map(p => (
-              <div key={p.id} className="rounded-lg border border-border overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setExpandedProvider(expandedProvider === p.id ? null : p.id)}
-                  className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-secondary/30 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className={cn("h-2 w-2 rounded-full shrink-0", p.configured ? "bg-emerald-500" : "bg-muted-foreground/30")} />
-                    <span className="text-sm font-medium">{p.name}</span>
-                    {p.is_active && (
-                      <span className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-full font-medium shrink-0">Active</span>
-                    )}
-                  </div>
-                  <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0", expandedProvider === p.id && "rotate-180")} />
-                </button>
+            <p className="text-[11px] text-muted-foreground/70 flex items-center gap-1">
+              <Key className="h-3 w-3 shrink-0" />
+              API keys are encrypted with a machine-local key and won&apos;t be usable after syncing to another device. Re-enter them there.
+            </p>
 
-                {expandedProvider === p.id && (
-                  <div className="px-3 pb-3 pt-2 space-y-2 border-t border-border/50 bg-secondary/10">
-                    {p.requires_key && (
-                      <div className="space-y-1">
-                        <p className="text-[11px] text-muted-foreground">API Key</p>
-                        <Input
-                          type="password"
-                          placeholder={p.configured ? "••••••••••••••••" : "Enter API key…"}
-                          value={providerKeyDraft[p.id] ?? ""}
-                          onChange={e => setProviderKeyDraft(prev => ({ ...prev, [p.id]: e.target.value }))}
-                          autoComplete="new-password"
-                          className="h-8 text-xs"
-                        />
-                      </div>
+            <div className="rounded-lg border border-border overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-secondary/20">
+                    <th className="w-8 px-3 py-2" />
+                    <th className="text-left px-3 py-2 text-[11px] font-medium text-muted-foreground">Provider</th>
+                    <th className="text-left px-3 py-2 text-[11px] font-medium text-muted-foreground">
+                      {providerTab === "online" ? "API Key" : "Base URL"}
+                    </th>
+                    <th className="px-3 py-2 text-[11px] font-medium text-muted-foreground text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {providers.filter(p => p.is_local === (providerTab === "local")).map(p => (
+                    <Fragment key={p.id}>
+                    <tr className={cn(p.is_active && "bg-primary/[0.04]")}>
+                      <td className="px-3 py-3">
+                        {p.is_local ? (
+                          localReachability[p.id] === null
+                            ? <Loader2 className="h-2.5 w-2.5 animate-spin text-muted-foreground/40 mx-auto" />
+                            : <span className={cn("h-2 w-2 rounded-full block mx-auto", localReachability[p.id] ? "bg-emerald-500" : "bg-red-500")} />
+                        ) : (
+                          <span className={cn("h-2 w-2 rounded-full block mx-auto", p.configured ? "bg-emerald-500" : "bg-muted-foreground/20")} />
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-medium">{p.name}</span>
+                          {p.is_active && (
+                            <span className="text-[9px] px-1 py-0.5 bg-primary/15 text-primary rounded font-semibold uppercase tracking-wide">Active</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 w-full">
+                        {p.requires_key && (
+                          <Input
+                            type="password"
+                            placeholder={p.configured ? "••••••••" : "Enter API key…"}
+                            value={providerKeyDraft[p.id] ?? ""}
+                            onChange={e => setProviderKeyDraft(prev => ({ ...prev, [p.id]: e.target.value }))}
+                            autoComplete="new-password"
+                            className="h-7 text-xs max-w-sm"
+                          />
+                        )}
+                        {p.is_local && (
+                          <Input
+                            type="text"
+                            placeholder={p.default_base_url ?? ""}
+                            value={providerUrlDraft[p.id] ?? (p.base_url ?? "")}
+                            onChange={e => setProviderUrlDraft(prev => ({ ...prev, [p.id]: e.target.value }))}
+                            className="h-7 text-xs font-mono max-w-sm"
+                          />
+                        )}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {providerSaveOk[p.id] && (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                          )}
+                          {!p.is_active && (
+                            <Button size="sm" variant="ghost" className="h-6 text-[11px] px-2"
+                              onClick={() => handleSetActive(p.id)}
+                            >Set active</Button>
+                          )}
+                          <Button size="sm" variant="outline" className="h-6 text-[11px] px-2.5"
+                            disabled={providerSaving[p.id]}
+                            onClick={() => handleSaveProvider(p.id)}
+                          >
+                            {providerSaving[p.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                    {p.is_local && localReachability[p.id] === false && PROVIDER_HINTS[p.id] && (
+                      <tr className="bg-amber-50/60 dark:bg-amber-950/25">
+                        <td />
+                        <td colSpan={3} className="px-3 py-2.5">
+                          <p className="text-[11px] font-medium text-amber-700 dark:text-amber-400 mb-1">
+                            {PROVIDER_HINTS[p.id].title}
+                          </p>
+                          <ul className="space-y-0.5">
+                            {PROVIDER_HINTS[p.id].steps.map((step, i) => (
+                              <li key={i} className="text-[11px] text-amber-700/80 dark:text-amber-400/80 flex items-start gap-1.5">
+                                <span className="shrink-0 mt-0.5">·</span>
+                                <span>{step}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </td>
+                      </tr>
                     )}
-                    {p.is_local && (
-                      <div className="space-y-1">
-                        <p className="text-[11px] text-muted-foreground">Base URL</p>
-                        <Input
-                          type="text"
-                          placeholder={p.default_base_url}
-                          value={providerUrlDraft[p.id] ?? p.base_url}
-                          onChange={e => setProviderUrlDraft(prev => ({ ...prev, [p.id]: e.target.value }))}
-                          className="h-8 text-xs font-mono"
-                        />
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 pt-0.5">
-                      <Button size="sm" variant="outline" className="h-7 text-xs"
-                        disabled={providerSaving[p.id]}
-                        onClick={() => handleSaveProvider(p.id)}
-                      >
-                        {providerSaving[p.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
-                      </Button>
-                      {!p.is_active && (
-                        <Button size="sm" variant="outline" className="h-7 text-xs"
-                          onClick={() => handleSetActive(p.id)}
-                        >Set active</Button>
-                      )}
-                      {providerSaveOk[p.id] && (
-                        <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Saved
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Default model */}
@@ -662,7 +777,7 @@ export default function SettingsPage() {
           {/* Available models (checkbox list for /ki command) */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label>Models available in /ki command</Label>
+              <Label>Favourite models</Label>
               <button
                 type="button"
                 onClick={() => refetchModels()}
@@ -672,6 +787,10 @@ export default function SettingsPage() {
                 <RefreshCw className={cn("h-3.5 w-3.5", modelsLoading && "animate-spin")} />
               </button>
             </div>
+
+            <p className="text-xs text-muted-foreground">
+              Checked models appear in the default model dropdowns and the /ki command. Mix local and online models freely.
+            </p>
 
             {!providers.some(p => p.is_active && p.configured) && (
               <p className="text-xs text-muted-foreground">Configure and activate a provider to load models.</p>
@@ -686,11 +805,17 @@ export default function SettingsPage() {
                   onChange={e => setModelSearch(e.target.value)}
                 />
 
+                {modelsError && (
+                  <div className="flex items-start gap-2 rounded-md border border-amber-400/40 bg-amber-50 dark:bg-amber-950/30 px-3 py-2.5 text-xs text-amber-800 dark:text-amber-300">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                    <span>{(modelsErrorObj as Error)?.message?.replace(/^\d+:\s*/, "").replace(/^"|"$/g, "") || "Could not reach the provider. Make sure the service is running."}</span>
+                  </div>
+                )}
                 {modelsLoading ? (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading models…
                   </div>
-                ) : filteredModels.length === 0 ? (
+                ) : !modelsError && filteredModels.length === 0 ? (
                   <p className="text-xs text-muted-foreground py-2">No models found.</p>
                 ) : (
                   <div className="border border-border rounded-lg overflow-hidden max-h-72 overflow-y-auto divide-y divide-border/50">
@@ -714,9 +839,26 @@ export default function SettingsPage() {
                   </div>
                 )}
 
+                {/* Manual model ID entry — for models not returned by the provider's /models endpoint */}
+                <div className="flex gap-2 items-center pt-0.5">
+                  <Input
+                    className="h-7 text-xs flex-1 max-w-xs font-mono"
+                    placeholder="Add model ID manually…"
+                    value={customModelInput}
+                    onChange={e => setCustomModelInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustomModel(); } }}
+                  />
+                  <Button size="sm" variant="outline" className="h-7 text-xs px-2.5 shrink-0"
+                    onClick={addCustomModel}
+                    disabled={!customModelInput.trim() || enabledModels.includes(customModelInput.trim())}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />Add
+                  </Button>
+                </div>
+
                 {enabledModels.length > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    {enabledModels.length} model{enabledModels.length !== 1 ? "s" : ""} enabled
+                    {enabledModels.length} model{enabledModels.length !== 1 ? "s" : ""} favourited — used in all dropdowns
                   </p>
                 )}
               </>

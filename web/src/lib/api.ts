@@ -821,12 +821,24 @@ export const aiProvidersApi = {
 
   models: (providerId: string) =>
     req<AIModel[]>(`/settings/providers/${providerId}/models`),
+
+  ping: (providerId: string) =>
+    req<{ reachable: boolean }>(`/settings/providers/${providerId}/ping`),
+
+  setModelProvider: (modelId: string, providerId: string) =>
+    req<{ ok: true }>("/settings/providers/model-map", {
+      method: "POST",
+      body: JSON.stringify({ model_id: modelId, provider_id: providerId }),
+    }),
 };
 
 // ── Achievements ──────────────────────────────────────────────────────────────
 
 export const achievementsApi = {
   list: () => req<Achievement[]>("/achievements"),
+  ack:  (keys: string[]) => req<{ ok: true }>("/achievements/ack", {
+    method: "POST", body: JSON.stringify({ keys }),
+  }),
 };
 
 // ── Stats ─────────────────────────────────────────────────────────────────────

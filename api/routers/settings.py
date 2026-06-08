@@ -717,6 +717,36 @@ def list_providers(db: Session = Depends(get_db)):
     return result
 
 
+@router.post("/providers/model-map")
+def set_model_provider_map(body: dict, db: Session = Depends(get_db)):
+    """Record which provider owns a model ID so cross-provider routing works.
+    Body: {model_id: str, provider_id: str}
+    """
+    model_id    = (body.get("model_id") or "").strip()
+    provider_id = (body.get("provider_id") or "").strip()
+    if not model_id or not PROVIDER_MAP.get(provider_id):
+        raise HTTPException(400, "model_id and a valid provider_id are required")
+
+    s = _get_or_create_settings(db)
+    cfg = _parse_providers_cfg(s)
+    cfg.setdefault("_model_provider_map", {})[model_id] = provider_id
+    _write_providers_cfg(s, cfg)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/providers/active")
+def set_active_provider(body: dict, db: Session = Depends(get_db)):
+    """Set the active provider. Body: {provider_id: str}"""
+    provider_id = body.get("provider_id", "")
+    if not PROVIDER_MAP.get(provider_id):
+        raise HTTPException(400, f"Unknown provider: {provider_id}")
+    s = _get_or_create_settings(db)
+    s.active_provider = provider_id
+    db.commit()
+    return {"active_provider": provider_id}
+
+
 @router.post("/providers/{provider_id}")
 def save_provider_config(
     provider_id: str,
@@ -756,16 +786,23 @@ def save_provider_config(
     return {"ok": True}
 
 
-@router.post("/providers/active")
-def set_active_provider(body: dict, db: Session = Depends(get_db)):
-    """Set the active provider. Body: {provider_id: str}"""
-    provider_id = body.get("provider_id", "")
-    if not PROVIDER_MAP.get(provider_id):
-        raise HTTPException(400, f"Unknown provider: {provider_id}")
+@router.get("/providers/{provider_id}/ping")
+async def ping_provider(provider_id: str, db: Session = Depends(get_db)):
+    """Check if a local provider is reachable at its configured base URL."""
+    pdef = PROVIDER_MAP.get(provider_id)
+    if not pdef:
+        raise HTTPException(404, f"Unknown provider: {provider_id}")
+
     s = _get_or_create_settings(db)
-    s.active_provider = provider_id
-    db.commit()
-    return {"active_provider": provider_id}
+    cfg = _parse_providers_cfg(s).get(provider_id, {})
+    base_url = cfg.get("base_url") or pdef.default_base_url
+
+    try:
+        async with httpx.AsyncClient(timeout=3) as client:
+            await client.get(f"{base_url}/models")
+        return {"reachable": True}
+    except Exception:
+        return {"reachable": False}
 
 
 @router.get("/providers/{provider_id}/models")
@@ -784,7 +821,14 @@ async def get_provider_models(provider_id: str, db: Session = Depends(get_db)):
     if provider_id == "openrouter" and not api_key and s.openrouter_api_key:
         api_key = decrypt(s.openrouter_api_key)
 
-    return await fetch_models(pdef, base_url, api_key)
+    try:
+        return await fetch_models(pdef, base_url, api_key)
+    except httpx.ConnectError:
+        raise HTTPException(503, f"Cannot connect to {pdef.name} at {base_url}. Make sure the service is running and network discovery/API access is enabled.")
+    except httpx.TimeoutException:
+        raise HTTPException(503, f"{pdef.name} did not respond at {base_url}. Check that the service is reachable.")
+    except Exception:
+        return []
 
 
 @router.get("/models")
@@ -803,7 +847,14 @@ async def get_available_models(db: Session = Depends(get_db)):
     if active_id == "openrouter" and not api_key and s.openrouter_api_key:
         api_key = decrypt(s.openrouter_api_key)
 
-    return await fetch_models(pdef, base_url, api_key)
+    try:
+        return await fetch_models(pdef, base_url, api_key)
+    except httpx.ConnectError:
+        raise HTTPException(503, f"Cannot connect to {pdef.name} at {base_url}. Make sure the service is running and network discovery/API access is enabled.")
+    except httpx.TimeoutException:
+        raise HTTPException(503, f"{pdef.name} did not respond at {base_url}. Check that the service is reachable.")
+    except Exception:
+        return []
 
 
 # ── AI Prompts ────────────────────────────────────────────────────────────────

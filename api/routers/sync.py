@@ -130,19 +130,28 @@ def _do_pg_dump(mirror: Path) -> None:
             ))
         ]
 
+        # Columns that contain ciphertext encrypted with a machine-local key.
+        # Excluding them from the dump means restored databases start with NULL
+        # (no key configured) instead of undecryptable garbage from the source.
+        _SKIP_COLS: dict[str, set[str]] = {
+            "user_settings": {"openrouter_api_key", "ai_providers_cfg"},
+        }
+
         f.write(f"-- Foliantica PostgreSQL backup {datetime.now(UTC).replace(tzinfo=None).isoformat()}\n")
         f.write("SET session_replication_role = replica;\n\n")
 
         for table in tables:
-            cols = [
+            all_cols = [
                 row[0] for row in conn.execute(text(
                     "SELECT column_name FROM information_schema.columns "
                     "WHERE table_schema = 'public' AND table_name = :t "
                     "ORDER BY ordinal_position"
                 ), {"t": table})
             ]
-            rows    = conn.execute(text(f'SELECT * FROM "{table}"')).fetchall()
+            skip    = _SKIP_COLS.get(table, set())
+            cols    = [c for c in all_cols if c not in skip]
             col_sql = ", ".join(f'"{c}"' for c in cols)
+            rows    = conn.execute(text(f'SELECT {col_sql} FROM "{table}"')).fetchall()
 
             f.write(f"-- {table}\n")
             f.write(f'DELETE FROM "{table}";\n')
@@ -481,6 +490,22 @@ def restore_from_dump():
     from sqlalchemy import text
     from database import engine
 
+    # Save machine-local encrypted values before the dump overwrites user_settings.
+    # These columns are intentionally excluded from dumps (they hold ciphertext
+    # encrypted with a machine-local key and are meaningless on other machines),
+    # so restoring the dump would set them to NULL.  We preserve whatever this
+    # machine already has so the user doesn't lose their configured API keys.
+    _saved_keys: dict | None = None
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(text(
+                "SELECT openrouter_api_key, ai_providers_cfg FROM user_settings LIMIT 1"
+            )).fetchone()
+            if row:
+                _saved_keys = {"openrouter_api_key": row[0], "ai_providers_cfg": row[1]}
+    except Exception:
+        pass  # table may not exist yet on fresh install — restore will create it
+
     stmts = 0
     try:
         with engine.connect() as conn:
@@ -490,6 +515,17 @@ def restore_from_dump():
             conn.commit()
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    # Re-apply the machine-local keys that were saved above.
+    if _saved_keys and (_saved_keys["openrouter_api_key"] or _saved_keys["ai_providers_cfg"]):
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(
+                    "UPDATE user_settings "
+                    "SET openrouter_api_key = :k, ai_providers_cfg = :c"
+                ), {"k": _saved_keys["openrouter_api_key"], "c": _saved_keys["ai_providers_cfg"]})
+        except Exception:
+            pass  # best-effort; non-fatal if the restored row has a different schema
 
     mtime = datetime.fromtimestamp(
         dump_path.stat().st_mtime, UTC
