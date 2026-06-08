@@ -251,6 +251,18 @@ def _display_name_for(session_id: str) -> str:
     return s["display_name"] if s else session_id
 
 
+def _is_assigned(session: dict, item_type: str, item_id: int) -> bool:
+    """Return True if a student session has the given item in its assignment.
+    An empty assigned_items list means no access to anything."""
+    assigned = session.get("assigned_items", [])
+    if not assigned:
+        return False
+    return any(
+        a.get("type") == item_type and a.get("id") == item_id
+        for a in assigned
+    )
+
+
 # ── Broadcast scheduler (sync → async bridge) ─────────────────────────────────
 
 def _schedule_broadcast(message: dict) -> None:
@@ -594,24 +606,36 @@ async def ws_collab(ws: WebSocket, token: str = Query(default="")):
                 key       = _lock_key(item_type, item_id)
                 _prune_expired_locks()
 
-                existing = _locks.get(key)
-                if existing and existing["session_id"] != session_id:
-                    # Denied — locked by someone else
+                # Students may only lock items explicitly in their assignment
+                sess = _sessions.get(session_id, {})
+                if sess.get("role") == "student" and not _is_assigned(sess, item_type, item_id):
                     await manager.send(session_id, {
                         "type":      "lock_denied",
                         "item_type": item_type,
                         "item_id":   item_id,
-                        "holder":    existing["display_name"],
+                        "holder":    None,
+                        "reason":    "not_assigned",
                     })
                 else:
-                    _locks[key] = {
-                        "session_id":   session_id,
-                        "display_name": _display_name_for(session_id),
-                        "item_type":    item_type,
-                        "item_id":      item_id,
-                        "expires_at":   datetime.now(UTC) + timedelta(seconds=_LOCK_TTL),
-                    }
-                    await manager.broadcast({"type": "locks", "locks": _lock_snapshot()})
+                    existing = _locks.get(key)
+                    if existing and existing["session_id"] != session_id:
+                        # Denied — locked by someone else
+                        await manager.send(session_id, {
+                            "type":      "lock_denied",
+                            "item_type": item_type,
+                            "item_id":   item_id,
+                            "holder":    existing["display_name"],
+                            "reason":    "locked",
+                        })
+                    else:
+                        _locks[key] = {
+                            "session_id":   session_id,
+                            "display_name": _display_name_for(session_id),
+                            "item_type":    item_type,
+                            "item_id":      item_id,
+                            "expires_at":   datetime.now(UTC) + timedelta(seconds=_LOCK_TTL),
+                        }
+                        await manager.broadcast({"type": "locks", "locks": _lock_snapshot()})
 
             elif msg_type == "unlock":
                 key = _lock_key(data.get("item_type", "scene"), int(data.get("item_id", 0)))
@@ -652,6 +676,24 @@ async def ws_collab(ws: WebSocket, token: str = Query(default="")):
         _presence.pop(session_id, None)
         if manager.connected_count:
             await manager.broadcast({"type": "presence", "sessions": _presence_snapshot()})
+
+
+# ── Teacher view ─────────────────────────────────────────────────────────────
+
+@router.get("/teacher-view")
+def teacher_view():
+    """Active sessions merged with their current presence location.
+    Used by the host to monitor students without a live WebSocket connection."""
+    result = []
+    for sid, sess in _sessions.items():
+        loc = _presence.get(sid, {})
+        result.append({
+            **{k: v for k, v in sess.items()},
+            "color":     _color_for_session(sid),
+            "item_type": loc.get("item_type"),
+            "item_id":   loc.get("item_id"),
+        })
+    return result
 
 
 # ── Co-work toggle ────────────────────────────────────────────────────────────

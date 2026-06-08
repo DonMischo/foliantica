@@ -2,14 +2,15 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database, Users, Copy, Link2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database, Users, Copy, Link2, ShieldCheck, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings, useUpdateSettings, useOpenRouterModels, usePrompts, useCreatePrompt, useUpdatePrompt, useDeletePrompt, useRevertPrompt, useServiceStatus, useSyncStatus } from "@/store/queries";
-import { dataDirApi, settingsApi, syncApi, pgConfigApi, collabApi, type PgConfig, type PgActive, type Invitation } from "@/lib/api";
+import { dataDirApi, settingsApi, syncApi, pgConfigApi, collabApi, type PgConfig, type PgActive, type Invitation, type TeacherSession } from "@/lib/api";
+import { AssignmentPicker } from "@/components/collab/AssignmentPicker";
 import { ACH_POPUPS_KEY } from "@/components/AchievementToast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useUIStore } from "@/store/ui";
@@ -250,6 +251,9 @@ export default function SettingsPage() {
   const [newInvMaxSessions,  setNewInvMaxSessions]  = useState(1);
   const [copiedInvId,        setCopiedInvId]        = useState<string | null>(null);
   const [coworkToggleBusy,   setCoworkToggleBusy]   = useState(false);
+  const [assigningInv,       setAssigningInv]       = useState<Invitation | null>(null);
+  const [teacherSessions,    setTeacherSessions]    = useState<TeacherSession[]>([]);
+  const [teacherLoading,     setTeacherLoading]     = useState(false);
 
   useEffect(() => {
     collabApi.info().then(d => {
@@ -258,6 +262,20 @@ export default function SettingsPage() {
     }).catch(() => {});
     collabApi.listInvitations().then(setInvitations).catch(() => {});
   }, []);
+
+  const loadTeacherView = () => {
+    setTeacherLoading(true);
+    collabApi.teacherView()
+      .then(setTeacherSessions)
+      .catch(() => {})
+      .finally(() => setTeacherLoading(false));
+  };
+
+  // Reload teacher view whenever co-work section is visible
+  useEffect(() => {
+    if (coworkEnabled) loadTeacherView();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coworkEnabled]);
 
   const handleCoworkToggle = async (enabled: boolean) => {
     setCoworkToggleBusy(true);
@@ -1724,24 +1742,43 @@ export default function SettingsPage() {
                 {invitations.map(inv => (
                   <div key={inv.id} className="rounded-lg border border-border p-3 flex items-center gap-3">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium truncate">{inv.name}</span>
                         <span className={cn(
-                          "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
+                          "text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0",
                           inv.role === "student" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
                                                  : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
                         )}>
                           {inv.role === "student" ? "Student" : "Co-Author"}
                         </span>
-                        {inv.has_pin && <ShieldCheck className="h-3 w-3 text-muted-foreground" aria-label="PIN required" />}
+                        {inv.has_pin && <ShieldCheck className="h-3 w-3 text-muted-foreground shrink-0" aria-label="PIN required" />}
                       </div>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        max {inv.max_sessions} session{inv.max_sessions !== 1 ? "s" : ""}
-                      </p>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <p className="text-[11px] text-muted-foreground">
+                          max {inv.max_sessions} session{inv.max_sessions !== 1 ? "s" : ""}
+                        </p>
+                        {inv.role === "student" && (
+                          <p className="text-[11px] text-muted-foreground">
+                            {inv.assigned_items.length > 0
+                              ? `${inv.assigned_items.length} scene${inv.assigned_items.length !== 1 ? "s" : ""} assigned`
+                              : <span className="text-amber-600 dark:text-amber-400">no scenes assigned</span>}
+                          </p>
+                        )}
+                      </div>
                     </div>
+                    {/* Assign scenes button — students only */}
+                    {inv.role === "student" && (
+                      <button
+                        onClick={() => setAssigningInv(inv)}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                        title="Assign scenes"
+                      >
+                        <ListChecks className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                     <button
                       onClick={() => handleCopyLink(inv.id)}
-                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
                       title="Copy join link"
                     >
                       {copiedInvId === inv.id
@@ -1750,7 +1787,7 @@ export default function SettingsPage() {
                     </button>
                     <button
                       onClick={() => handleDeleteInvitation(inv.id)}
-                      className="text-muted-foreground hover:text-destructive transition-colors"
+                      className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
                       title="Revoke invitation"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -1807,7 +1844,72 @@ export default function SettingsPage() {
                 <strong className="text-amber-700 dark:text-amber-400">Restart required</strong> — changes to Co-Work mode take effect after restarting the app.
                 Internet access (UPnP) coming in a later update.
               </p>
+
+              {/* Teacher view — live sessions */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-muted-foreground">Live sessions</p>
+                  <button
+                    onClick={loadTeacherView}
+                    disabled={teacherLoading}
+                    className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+                    title="Refresh"
+                  >
+                    <RefreshCw className={cn("h-3 w-3", teacherLoading && "animate-spin")} />
+                  </button>
+                </div>
+                {teacherSessions.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No active sessions.</p>
+                ) : (
+                  teacherSessions.map(sess => (
+                    <div key={sess.session_id} className="rounded-lg border border-border p-2.5 flex items-center gap-3">
+                      <span
+                        className="h-6 w-6 rounded-full shrink-0 inline-flex items-center justify-center text-[9px] font-bold text-white"
+                        style={{ backgroundColor: sess.color }}
+                      >
+                        {sess.display_name.split(/\s+/).map((w: string) => w[0]?.toUpperCase() ?? "").slice(0, 2).join("")}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium truncate">{sess.display_name}</span>
+                          <span className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0",
+                            sess.role === "student"
+                              ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                              : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                          )}>
+                            {sess.role === "student" ? "Student" : "Co-Author"}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {sess.item_type === "scene" && sess.item_id != null
+                            ? `Viewing a scene`
+                            : "Browsing"}
+                          {sess.role === "student" && sess.assigned_items.length > 0
+                            ? ` · ${sess.assigned_items.length} scene${sess.assigned_items.length !== 1 ? "s" : ""} assigned`
+                            : ""}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </>
+          )}
+
+          {/* Assignment picker modal */}
+          {assigningInv && (
+            <AssignmentPicker
+              invitationId={assigningInv.id}
+              invitationName={assigningInv.name}
+              current={assigningInv.assigned_items}
+              onClose={() => setAssigningInv(null)}
+              onSaved={(items) => {
+                setInvitations(prev =>
+                  prev.map(i => i.id === assigningInv.id ? { ...i, assigned_items: items } : i)
+                );
+              }}
+            />
           )}
         </section>
 

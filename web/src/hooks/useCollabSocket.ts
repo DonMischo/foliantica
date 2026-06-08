@@ -101,11 +101,15 @@ export function useCollabSocket() {
             break;
 
           case "lock_denied":
-            // The scene page listens to the store; denial is reflected there
-            // by the absence of the lock for our session (store isn't updated).
             // Dispatch a custom event so the scene page can show a banner.
+            // reason: "locked" (held by another) | "not_assigned" (student restriction)
             window.dispatchEvent(new CustomEvent("cowork:lock_denied", {
-              detail: { item_type: msg.item_type, item_id: msg.item_id, holder: msg.holder },
+              detail: {
+                item_type: msg.item_type,
+                item_id:   msg.item_id,
+                holder:    msg.holder,
+                reason:    msg.reason ?? "locked",
+              },
             }));
             break;
         }

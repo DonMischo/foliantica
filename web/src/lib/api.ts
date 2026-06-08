@@ -840,13 +840,30 @@ export const statsApi = {
 
 // ── Co-Work ───────────────────────────────────────────────────────────────────
 
+export interface AssignedItem {
+  type: "scene";
+  id:   number;
+}
+
 export interface Invitation {
-  id:           string;
-  name:         string;
-  role:         "coauthor" | "student";
-  has_pin:      boolean;
-  max_sessions: number;
-  assigned_items: object[];
+  id:             string;
+  name:           string;
+  role:           "coauthor" | "student";
+  has_pin:        boolean;
+  max_sessions:   number;
+  assigned_items: AssignedItem[];
+}
+
+export interface TeacherSession {
+  session_id:      string;
+  display_name:    string;
+  invitation_name: string;
+  role:            "coauthor" | "student";
+  color:           string;
+  assigned_items:  AssignedItem[];
+  item_type:       string | null;
+  item_id:         number | null;
+  joined_at:       string;
 }
 
 export interface CollabInfo {
@@ -875,7 +892,7 @@ export const collabApi = {
     role?: string;
     pin?: string;
     max_sessions?: number;
-    assigned_items?: object[];
+    assigned_items?: AssignedItem[];
   }) =>
     req<Invitation>("/collab/invitations", {
       method: "POST",
@@ -883,7 +900,7 @@ export const collabApi = {
     }),
 
   updateInvitation: (id: string, body: Partial<{
-    name: string; role: string; pin: string; max_sessions: number; assigned_items: object[];
+    name: string; role: string; pin: string; max_sessions: number; assigned_items: AssignedItem[];
   }>) =>
     req<Invitation>(`/collab/invitations/${id}`, {
       method: "PATCH",
@@ -901,4 +918,7 @@ export const collabApi = {
 
   kickSession: (sessionId: string) =>
     req<void>(`/collab/kick/${sessionId}`, { method: "POST" }),
+
+  teacherView: () =>
+    req<TeacherSession[]>("/collab/teacher-view"),
 };

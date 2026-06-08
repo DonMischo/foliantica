@@ -100,7 +100,8 @@ export default function ScenePage() {
   const sendHeartbeat  = useCollabStore((s) => s.sendHeartbeat);
   const sendPresence   = useCollabStore((s) => s.sendPresence);
   const collabConn     = useCollabStore((s) => s.connected);
-  const [lockDenied, setLockDenied] = useState<string | null>(null); // holder name if denied
+  const [lockDenied, setLockDenied]         = useState<string | null>(null);
+  const [lockDeniedReason, setLockDeniedReason] = useState<string | null>(null);
 
   const lockHolder = getLockHolder(locks, "scene", sceneIdNum, mySessionId);
 
@@ -122,7 +123,8 @@ export default function ScenePage() {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.item_type === "scene" && detail?.item_id === sceneIdNum) {
-        setLockDenied(detail.holder as string);
+        setLockDenied(detail.holder as string | null);
+        setLockDeniedReason(detail.reason as string | null);
       }
     };
     window.addEventListener("cowork:lock_denied", handler);
@@ -666,9 +668,10 @@ export default function ScenePage() {
           {isReadOnly && (
             <div className="flex items-center gap-2 px-4 py-1.5 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900/40 text-xs text-amber-700 dark:text-amber-400 shrink-0">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
-              <span>
-                <strong>{lockHolder?.display_name ?? lockDenied}</strong> is editing this scene — read-only for now.
-              </span>
+              {lockDeniedReason === "not_assigned"
+                ? <span>This scene is not in your assignment — read-only.</span>
+                : <span><strong>{lockHolder?.display_name ?? lockDenied}</strong> is editing this scene — read-only for now.</span>
+              }
             </div>
           )}
           <TipTapEditor
