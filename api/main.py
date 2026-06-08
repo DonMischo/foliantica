@@ -199,6 +199,11 @@ class CoworkAuthMiddleware(BaseHTTPMiddleware):
             request.headers.get("X-Client-IP")
             or (request.client.host if request.client else "127.0.0.1")
         )
+        # Uvicorn on dual-stack sockets represents IPv4 loopback as the
+        # IPv4-mapped IPv6 address ::ffff:127.0.0.1.  Normalise it so the
+        # trust check below (and any ban-list lookups) use plain IPv4.
+        if client_ip.startswith("::ffff:"):
+            client_ip = client_ip[7:]
 
         # Localhost is always trusted (host browser, internal calls)
         if client_ip in ("127.0.0.1", "::1"):
