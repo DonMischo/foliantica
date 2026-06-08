@@ -96,24 +96,6 @@ PROVIDERS: list[ProviderDef] = [
         default_base_url="http://localhost:11434/v1",
         requires_key=False, is_local=True,
     ),
-    ProviderDef(
-        id="lmstudio", name="LM Studio",
-        api_type="openai_compat",
-        default_base_url="http://localhost:1234/v1",
-        requires_key=False, is_local=True,
-    ),
-    ProviderDef(
-        id="anyllm", name="AnythingLLM",
-        api_type="openai_compat",
-        default_base_url="http://localhost:3001/api/v1/openai",
-        requires_key=False, is_local=True,
-    ),
-    ProviderDef(
-        id="jan", name="Jan",
-        api_type="openai_compat",
-        default_base_url="http://localhost:1337/v1",
-        requires_key=False, is_local=True,
-    ),
 ]
 
 PROVIDER_MAP: dict[str, ProviderDef] = {p.id: p for p in PROVIDERS}
@@ -311,22 +293,35 @@ async def fetch_models(
     if pdef.static_models:
         return [{"id": m, "name": m} for m in pdef.static_models]
 
-    headers: dict[str, str] = {}
-    if api_key:
-        headers["Authorization"] = f"Bearer {api_key}"
+    async with httpx.AsyncClient(timeout=10) as client:
+        # Ollama: use native /api/tags — always lists all pulled models,
+        # even ones not currently loaded into memory.
+        if pdef.id == "ollama":
+            root = base_url.rstrip("/")
+            if root.endswith("/v1"):
+                root = root[:-3]
+            resp = await client.get(f"{root}/api/tags")
+            if resp.status_code != 200:
+                return []
+            models = [
+                {"id": m["name"], "name": m["name"]}
+                for m in resp.json().get("models", [])
+                if m.get("name")
+            ]
+            return sorted(models, key=lambda m: m["name"].lower())
 
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(f"{base_url}/models", headers=headers)
-        if resp.status_code != 200:
-            return []
-        data = resp.json()
-        raw = data.get("data", data) if isinstance(data, dict) else data
-        models = [
-            {"id": m["id"], "name": m.get("name") or m["id"]}
-            for m in raw
-            if isinstance(m, dict) and m.get("id")
-        ]
-        return sorted(models, key=lambda m: m["name"].lower())
-    except Exception:
+        headers: dict[str, str] = {}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        resp = await client.get(f"{base_url}/models", headers=headers)
+
+    if resp.status_code != 200:
         return []
+    data = resp.json()
+    raw = data.get("data", data) if isinstance(data, dict) else data
+    models = [
+        {"id": m["id"], "name": m.get("name") or m["id"]}
+        for m in raw
+        if isinstance(m, dict) and m.get("id")
+    ]
+    return sorted(models, key=lambda m: m["name"].lower())
