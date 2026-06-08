@@ -854,6 +854,21 @@ export interface Invitation {
   assigned_items: AssignedItem[];
 }
 
+export interface UPnPStatus {
+  active:               boolean;
+  disclaimer_accepted:  boolean;
+  external_ip:          string | null;
+  external_url:         string | null;
+  ports_mapped:         number[];
+}
+
+export interface UPnPOpenResult {
+  success:      boolean;
+  external_ip:  string;
+  external_url: string;
+  ports_mapped: number[];
+}
+
 export interface TeacherSession {
   session_id:      string;
   display_name:    string;
@@ -921,4 +936,16 @@ export const collabApi = {
 
   teacherView: () =>
     req<TeacherSession[]>("/collab/teacher-view"),
+
+  upnpStatus: () =>
+    req<UPnPStatus>("/collab/upnp/status"),
+
+  upnpAcceptDisclaimer: () =>
+    req<{ disclaimer_accepted: true }>("/collab/upnp/accept-disclaimer", { method: "POST" }),
+
+  upnpOpen: () =>
+    req<UPnPOpenResult>("/collab/upnp/open", { method: "POST" }),
+
+  upnpClose: () =>
+    req<{ active: false }>("/collab/upnp/close", { method: "POST" }),
 };

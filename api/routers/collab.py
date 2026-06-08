@@ -102,6 +102,154 @@ def _presence_snapshot() -> list[dict]:
     ]
 
 
+# ── Phase 5 state — UPnP internet access ─────────────────────────────────────
+
+# Runtime state (not persisted — rebuilt from scratch on each startup)
+_upnp_active:       bool       = False
+_upnp_external_ip:  str | None = None
+_upnp_mapped_ports: list[int]  = []
+
+# UPnP lease duration in seconds.
+# 0 = permanent until explicitly deleted.
+# We also register an atexit hook and a FastAPI shutdown hook for cleanup,
+# so the most likely failure scenario (clean shutdown) is covered.
+# If the process is hard-killed the mapping stays until the router restarts.
+_UPNP_LEASE = 0
+
+# Description string shown in the router's port-mapping table
+_UPNP_DESC = "Foliantica Co-Work"
+
+
+def is_upnp_disclaimer_accepted() -> bool:
+    return bool(_read_config().get("cowork", {}).get("upnp_disclaimer_accepted", False))
+
+
+def set_upnp_disclaimer_accepted() -> None:
+    cfg = _read_config()
+    cfg.setdefault("cowork", {})["upnp_disclaimer_accepted"] = True
+    _write_config(cfg)
+
+
+def upnp_open() -> dict:
+    """Open UPnP port mappings so guests can reach Foliantica from the internet.
+
+    Maps the Next.js port (web UI / HTTP proxy) and the FastAPI port (WebSocket).
+    Runs synchronously; call via asyncio.to_thread() from async handlers.
+
+    Returns a dict:  {success, external_ip?, external_url?, ports_mapped?, error?}
+    """
+    global _upnp_active, _upnp_external_ip, _upnp_mapped_ports
+
+    try:
+        import miniupnpc  # guarded import — optional dependency
+    except ImportError:
+        return {
+            "success": False,
+            "error": "miniupnpc is not installed. Run: pip install miniupnpc",
+        }
+
+    api_port  = int(os.environ.get("LW_API_PORT",  "8765"))
+    web_port  = int(os.environ.get("LW_WEB_PORT",  "3000"))
+    local_ip  = _get_lan_ip()
+    ports     = [web_port, api_port]
+
+    try:
+        u = miniupnpc.UPnP()
+        u.discoverdelay = 500          # ms to wait for IGD broadcast reply
+        found = u.discover()
+        if found == 0:
+            return {
+                "success": False,
+                "error": (
+                    "No UPnP gateway found on your network. "
+                    "Your router may not support UPnP, or it is disabled in its settings."
+                ),
+            }
+
+        u.selectigd()                  # choose the Internet Gateway Device
+        external_ip = u.externalipaddress()
+
+        mapped: list[int] = []
+        errors: list[str] = []
+
+        for port in ports:
+            try:
+                u.addportmapping(
+                    port, "TCP",
+                    local_ip, port,
+                    _UPNP_DESC, _UPNP_LEASE,
+                )
+                mapped.append(port)
+            except Exception as exc:
+                errors.append(f"port {port}: {exc}")
+
+        if not mapped:
+            return {
+                "success": False,
+                "error": "Failed to map any ports. " + "; ".join(errors),
+            }
+
+        _upnp_active       = True
+        _upnp_external_ip  = external_ip
+        _upnp_mapped_ports = mapped
+
+        return {
+            "success":      True,
+            "external_ip":  external_ip,
+            "external_url": f"http://{external_ip}:{web_port}",
+            "ports_mapped": mapped,
+        }
+
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}
+
+
+def upnp_close() -> None:
+    """Remove all UPnP port mappings created by this session.
+
+    Safe to call even if UPnP was never opened or already closed.
+    Runs synchronously; call via asyncio.to_thread() from async handlers
+    or directly from atexit.
+    """
+    global _upnp_active, _upnp_external_ip, _upnp_mapped_ports
+
+    ports_to_remove = list(_upnp_mapped_ports)
+
+    # Reset state immediately so a second call is a no-op
+    _upnp_active       = False
+    _upnp_external_ip  = None
+    _upnp_mapped_ports = []
+
+    if not ports_to_remove:
+        return
+
+    try:
+        import miniupnpc
+    except ImportError:
+        return  # if miniupnpc is gone we can't clean up — mapping will expire naturally
+
+    try:
+        u = miniupnpc.UPnP()
+        u.discoverdelay = 500
+        if u.discover() == 0:
+            return  # router disappeared — nothing we can do
+        u.selectigd()
+        for port in ports_to_remove:
+            try:
+                u.deleteportmapping(port, "TCP")
+            except Exception:
+                pass  # best-effort; individual port failures don't stop the rest
+    except Exception:
+        pass  # best-effort; gateway may have gone offline
+
+
+# Register atexit cleanup so the port is removed on interpreter exit even
+# when the lifespan context manager isn't run (e.g. direct uvicorn invocation,
+# keyboard interrupt before the ASGI app fully starts).
+import atexit as _atexit
+_atexit.register(upnp_close)
+
+
 class ConnectionManager:
     """Tracks all open WebSocket connections and broadcasts messages to them."""
 
@@ -676,6 +824,48 @@ async def ws_collab(ws: WebSocket, token: str = Query(default="")):
         _presence.pop(session_id, None)
         if manager.connected_count:
             await manager.broadcast({"type": "presence", "sessions": _presence_snapshot()})
+
+
+# ── Phase 5: UPnP endpoints ──────────────────────────────────────────────────
+
+@router.get("/upnp/status")
+def upnp_status():
+    """Current UPnP state and whether the user has accepted the disclaimer."""
+    web_port = int(os.environ.get("LW_WEB_PORT", "3000"))
+    return {
+        "active":               _upnp_active,
+        "disclaimer_accepted":  is_upnp_disclaimer_accepted(),
+        "external_ip":          _upnp_external_ip,
+        "external_url": (
+            f"http://{_upnp_external_ip}:{web_port}" if _upnp_external_ip else None
+        ),
+        "ports_mapped": _upnp_mapped_ports,
+    }
+
+
+@router.post("/upnp/accept-disclaimer", status_code=200)
+def upnp_accept_disclaimer():
+    """Persist the user's acknowledgement of the UPnP risk disclaimer."""
+    set_upnp_disclaimer_accepted()
+    return {"disclaimer_accepted": True}
+
+
+@router.post("/upnp/open")
+async def upnp_open_endpoint():
+    """Discover the UPnP gateway and open port mappings.
+    Runs in a thread pool because miniupnpc discovery is a blocking network call.
+    """
+    result = await asyncio.to_thread(upnp_open)
+    if not result.get("success"):
+        raise HTTPException(status_code=503, detail=result.get("error", "UPnP failed"))
+    return result
+
+
+@router.post("/upnp/close")
+async def upnp_close_endpoint():
+    """Remove all UPnP port mappings opened by this session."""
+    await asyncio.to_thread(upnp_close)
+    return {"active": False}
 
 
 # ── Teacher view ─────────────────────────────────────────────────────────────

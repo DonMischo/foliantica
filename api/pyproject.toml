@@ -17,6 +17,7 @@ dependencies = [
     "psycopg2-binary>=2.9.0",
     "pyjwt>=2.8.0",
     "bcrypt>=4.1.0",
+    "miniupnpc>=2.2.2",
 ]
 
 [build-system]

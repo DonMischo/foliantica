@@ -139,6 +139,12 @@ _register_collab_hooks()
 async def lifespan(app: FastAPI):
     yield
     sync_router.shutdown_backup()
+    # Clean up UPnP port mappings if any were opened this session.
+    # This runs in a thread because miniupnpc discovery is blocking.
+    # A secondary atexit hook in collab.py catches hard-exit scenarios.
+    if collab_router._upnp_active:
+        import asyncio as _asyncio
+        await _asyncio.to_thread(collab_router.upnp_close)
 
 
 app = FastAPI(title="Foliantica API", version="0.1.0", lifespan=lifespan)
