@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useSettings, useUpdateSettings, useOpenRouterModels, usePrompts, useCreatePrompt, useUpdatePrompt, useDeletePrompt, useRevertPrompt, useServiceStatus, useSyncStatus } from "@/store/queries";
 import { dataDirApi, settingsApi, syncApi, pgConfigApi, collabApi, type PgConfig, type PgActive, type Invitation, type TeacherSession, type UPnPStatus, type CloudflareStatus } from "@/lib/api";
 import { AssignmentPicker } from "@/components/collab/AssignmentPicker";
+import QRCode from "react-qr-code";
 import { ACH_POPUPS_KEY } from "@/components/AchievementToast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useUIStore } from "@/store/ui";
@@ -1808,140 +1809,6 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {/* Internet Access — UPnP */}
-              <div className="rounded-lg border border-border">
-                <button
-                  type="button"
-                  onClick={() => setUpnpExpanded(v => !v)}
-                  className="w-full flex items-center justify-between p-3 text-left"
-                >
-                  <div className="flex items-center gap-2">
-                    <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-                    <p className="text-sm font-medium">Internet Access</p>
-                    <span className="text-[10px] px-1.5 py-0.5 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 rounded-full font-medium shrink-0">
-                      UPnP · experimental
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {upnpStatus?.active && (
-                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Active
-                      </span>
-                    )}
-                    <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", upnpExpanded && "rotate-180")} />
-                  </div>
-                </button>
-
-                {upnpExpanded && (
-                <div className="px-3 pb-3 space-y-3">
-
-                {/* Disclaimer — shown until accepted */}
-                {upnpStatus && !upnpStatus.disclaimer_accepted && (
-                  <div className="space-y-3">
-                    <div className="text-xs text-muted-foreground rounded-md border border-orange-200 dark:border-orange-900/50 bg-orange-50 dark:bg-orange-950/20 p-3 space-y-2">
-                      <p className="font-semibold text-orange-700 dark:text-orange-400">⚠ Read before enabling</p>
-                      <p>
-                        UPnP asks your router to open a public port so guests outside your home network can
-                        join. This exposes the Foliantica service to the internet.
-                      </p>
-                      <div>
-                        <p className="font-semibold text-orange-900 dark:text-orange-200 mb-1">Risks</p>
-                        <ul className="list-disc list-inside space-y-1">
-                          <li>Traffic is <strong>unencrypted (HTTP, not HTTPS)</strong> — everything
-                              sent over the internet is visible to your ISP and network observers.</li>
-                          <li>Your public IP address and port become reachable by anyone on the internet,
-                              including automated scanners and bots.</li>
-                          <li>UPnP support varies by router. Some routers have known UPnP
-                              vulnerabilities — consult your router documentation.</li>
-                          <li>If the app is hard-killed (power loss, crash), the port mapping may
-                              remain open until your router is restarted. The app cleans up properly
-                              on normal shutdown.</li>
-                          <li>Your public IP may change (DHCP), invalidating existing invite links.</li>
-                        </ul>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-orange-900 dark:text-orange-200 mb-1">Protections in place</p>
-                        <ul className="list-disc list-inside space-y-1">
-                          <li>Every guest requires a valid invitation token.</li>
-                          <li>Optional PIN adds a second factor.</li>
-                          <li>One failed auth attempt triggers a 5-minute IP ban.</li>
-                          <li>You can revoke any invitation instantly.</li>
-                        </ul>
-                      </div>
-                      <p className="font-semibold text-orange-700 dark:text-orange-400">
-                        Use at your own risk. Foliantica provides no warranty for internet-facing deployments.
-                      </p>
-                    </div>
-                    <label className="flex items-start gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="mt-0.5 shrink-0"
-                        checked={upnpRiskChecked}
-                        onChange={e => setUpnpRiskChecked(e.target.checked)}
-                      />
-                      <span className="text-xs text-muted-foreground">
-                        I have read and understood the risks above. I accept full responsibility
-                        for enabling internet access and will use strong PINs.
-                      </span>
-                    </label>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={!upnpRiskChecked}
-                      onClick={handleUpnpAcceptDisclaimer}
-                      className="border-orange-300 dark:border-orange-700"
-                    >
-                      I accept — show internet access controls
-                    </Button>
-                  </div>
-                )}
-
-                {/* Controls — shown after disclaimer accepted */}
-                {upnpStatus?.disclaimer_accepted && (
-                  <div className="space-y-2">
-                    {upnpStatus.active && upnpStatus.external_url && (
-                      <div className="flex items-center gap-2 rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 px-3 py-2 text-xs">
-                        <span className="text-muted-foreground shrink-0">External URL:</span>
-                        <code className="flex-1 font-mono text-[11px] text-foreground truncate">
-                          {upnpStatus.external_url}/join?token=…
-                        </code>
-                        <button
-                          onClick={() => navigator.clipboard.writeText(upnpStatus.external_url!).catch(() => {})}
-                          className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                          title="Copy base URL"
-                        >
-                          <Copy className="h-3 w-3" />
-                        </button>
-                      </div>
-                    )}
-                    {upnpError && (
-                      <p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1.5">{upnpError}</p>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant={upnpStatus.active ? "destructive" : "outline"}
-                        onClick={upnpStatus.active ? handleUpnpClose : handleUpnpOpen}
-                        disabled={upnpBusy}
-                      >
-                        {upnpBusy
-                          ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Working…</>
-                          : upnpStatus.active ? "Close port" : "Open port"
-                        }
-                      </Button>
-                      {!upnpStatus.active && (
-                        <p className="text-[11px] text-muted-foreground">
-                          Opens ports {/* show them once available from status */}
-                          on your router via UPnP.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-                </div>
-                )}
-              </div>
-
               {/* Internet Access — Cloudflare Tunnel */}
               <div className="rounded-lg border border-border p-3 space-y-3">
                 <div className="flex items-center justify-between">
@@ -1972,19 +1839,26 @@ export default function SettingsPage() {
                   to be installed. Traffic passes through Cloudflare servers.
                 </p>
                 {cfStatus?.active && cfStatus.url && (
-                  <div className="flex items-center gap-2 rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 px-3 py-2 text-xs">
-                    <span className="text-muted-foreground shrink-0">Tunnel URL:</span>
-                    <code className="flex-1 font-mono text-[11px] text-emerald-950 dark:text-emerald-100 truncate">
-                      {cfStatus.url}/join?token=…
-                    </code>
-                    <button
-                      onClick={() => navigator.clipboard.writeText(cfStatus.url!).catch(() => {})}
-                      className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                      title="Copy base URL"
-                    >
-                      <Copy className="h-3 w-3" />
-                    </button>
-                  </div>
+                  <>
+                    <div className="flex items-center gap-2 rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 px-3 py-2 text-xs">
+                      <span className="text-muted-foreground shrink-0">Tunnel URL:</span>
+                      <code className="flex-1 font-mono text-[11px] text-emerald-950 dark:text-emerald-100 truncate">
+                        {cfStatus.url}/join?token=…
+                      </code>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(cfStatus.url!).catch(() => {})}
+                        className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                        title="Copy base URL"
+                      >
+                        <Copy className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <div className="flex justify-center pt-1">
+                      <div className="bg-white p-2 rounded-lg border border-emerald-200 dark:border-emerald-800/40 inline-block">
+                        <QRCode value={cfStatus.url} size={128} />
+                      </div>
+                    </div>
+                  </>
                 )}
                 {cfError && (
                   <p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1.5">{cfError}</p>
@@ -2111,10 +1985,138 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <p className="text-xs text-muted-foreground bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-md px-3 py-2">
-                <strong className="text-amber-700 dark:text-amber-400">Restart required</strong> — changes to Co-Work mode take effect after restarting the app.
-                Internet access (UPnP) coming in a later update.
-              </p>
+              {/* Internet Access — UPnP (advanced / legacy option) */}
+              <div className="rounded-lg border border-border">
+                <button
+                  type="button"
+                  onClick={() => setUpnpExpanded(v => !v)}
+                  className="w-full flex items-center justify-between p-3 text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                    <p className="text-sm font-medium">Internet Access</p>
+                    <span className="text-[10px] px-1.5 py-0.5 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 rounded-full font-medium shrink-0">
+                      UPnP · experimental
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {upnpStatus?.active && (
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Active
+                      </span>
+                    )}
+                    <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", upnpExpanded && "rotate-180")} />
+                  </div>
+                </button>
+
+                {upnpExpanded && (
+                <div className="px-3 pb-3 space-y-3">
+
+                {/* Disclaimer — shown until accepted */}
+                {upnpStatus && !upnpStatus.disclaimer_accepted && (
+                  <div className="space-y-3">
+                    <div className="text-xs text-muted-foreground rounded-md border border-orange-200 dark:border-orange-900/50 bg-orange-50 dark:bg-orange-950/20 p-3 space-y-2">
+                      <p className="font-semibold text-orange-700 dark:text-orange-400">⚠ Read before enabling</p>
+                      <p>
+                        UPnP asks your router to open a public port so guests outside your home network can
+                        join. This exposes the Foliantica service to the internet.
+                      </p>
+                      <div>
+                        <p className="font-semibold text-orange-900 dark:text-orange-200 mb-1">Risks</p>
+                        <ul className="list-disc list-inside space-y-1">
+                          <li>Traffic is <strong>unencrypted (HTTP, not HTTPS)</strong> — everything
+                              sent over the internet is visible to your ISP and network observers.</li>
+                          <li>Your public IP address and port become reachable by anyone on the internet,
+                              including automated scanners and bots.</li>
+                          <li>UPnP support varies by router. Some routers have known UPnP
+                              vulnerabilities — consult your router documentation.</li>
+                          <li>If the app is hard-killed (power loss, crash), the port mapping may
+                              remain open until your router is restarted. The app cleans up properly
+                              on normal shutdown.</li>
+                          <li>Your public IP may change (DHCP), invalidating existing invite links.</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-orange-900 dark:text-orange-200 mb-1">Protections in place</p>
+                        <ul className="list-disc list-inside space-y-1">
+                          <li>Every guest requires a valid invitation token.</li>
+                          <li>Optional PIN adds a second factor.</li>
+                          <li>One failed auth attempt triggers a 5-minute IP ban.</li>
+                          <li>You can revoke any invitation instantly.</li>
+                        </ul>
+                      </div>
+                      <p className="font-semibold text-orange-700 dark:text-orange-400">
+                        Use at your own risk. Foliantica provides no warranty for internet-facing deployments.
+                      </p>
+                    </div>
+                    <label className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 shrink-0"
+                        checked={upnpRiskChecked}
+                        onChange={e => setUpnpRiskChecked(e.target.checked)}
+                      />
+                      <span className="text-xs text-muted-foreground">
+                        I have read and understood the risks above. I accept full responsibility
+                        for enabling internet access and will use strong PINs.
+                      </span>
+                    </label>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={!upnpRiskChecked}
+                      onClick={handleUpnpAcceptDisclaimer}
+                      className="border-orange-300 dark:border-orange-700"
+                    >
+                      I accept — show internet access controls
+                    </Button>
+                  </div>
+                )}
+
+                {/* Controls — shown after disclaimer accepted */}
+                {upnpStatus?.disclaimer_accepted && (
+                  <div className="space-y-2">
+                    {upnpStatus.active && upnpStatus.external_url && (
+                      <div className="flex items-center gap-2 rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 px-3 py-2 text-xs">
+                        <span className="text-muted-foreground shrink-0">External URL:</span>
+                        <code className="flex-1 font-mono text-[11px] text-foreground truncate">
+                          {upnpStatus.external_url}/join?token=…
+                        </code>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(upnpStatus.external_url!).catch(() => {})}
+                          className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                          title="Copy base URL"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+                    {upnpError && (
+                      <p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1.5">{upnpError}</p>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant={upnpStatus.active ? "destructive" : "outline"}
+                        onClick={upnpStatus.active ? handleUpnpClose : handleUpnpOpen}
+                        disabled={upnpBusy}
+                      >
+                        {upnpBusy
+                          ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Working…</>
+                          : upnpStatus.active ? "Close port" : "Open port"
+                        }
+                      </Button>
+                      {!upnpStatus.active && (
+                        <p className="text-[11px] text-muted-foreground">
+                          Opens ports on your router via UPnP.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                </div>
+                )}
+              </div>
 
               {/* Teacher view — live sessions */}
               <div className="space-y-2">
