@@ -15,7 +15,7 @@ from database import (
     migrate_codex_entry_sharing, migrate_research, migrate_publishing,
     migrate_publisher_profiles, migrate_achievements, migrate_backfill_word_counts,
     migrate_ai_disabled, migrate_sync_mirror, migrate_research_pdf,
-    migrate_research_media,
+    migrate_research_media, migrate_ai_providers,
     # PostgreSQL seed functions (fresh DB, no ALTER TABLE needed)
     seed_ai_prompts, seed_publisher_profiles, seed_export_profiles,
 )
@@ -49,6 +49,7 @@ if USE_SQLITE:
     migrate_sync_mirror()
     migrate_research_pdf()
     migrate_research_media()
+    migrate_ai_providers()
 else:
     # PostgreSQL path: create_all() handles the full schema in one shot.
     # Then seed static reference data that would otherwise come from the

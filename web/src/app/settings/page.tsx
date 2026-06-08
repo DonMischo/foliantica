@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database } from "lucide-react";
+import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings, useUpdateSettings, useOpenRouterModels, usePrompts, useCreatePrompt, useUpdatePrompt, useDeletePrompt, useRevertPrompt, useServiceStatus, useSyncStatus } from "@/store/queries";
-import { dataDirApi, settingsApi, syncApi, pgConfigApi, type PgConfig, type PgActive } from "@/lib/api";
+import { dataDirApi, settingsApi, syncApi, pgConfigApi, aiProvidersApi, type PgConfig, type PgActive, type AIProvider } from "@/lib/api";
 import { ACH_POPUPS_KEY } from "@/components/AchievementToast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useUIStore } from "@/store/ui";
@@ -95,8 +95,15 @@ export default function SettingsPage() {
   const deletePrompt  = useDeletePrompt();
   const revertPrompt  = useRevertPrompt();
 
-  const [apiKey, setApiKey]               = useState("");
-  const [apiKeyDirty, setApiKeyDirty]     = useState(false);
+  // ── AI Provider management ────────────────────────────────────────────────
+  const [providers,         setProviders]        = useState<AIProvider[]>([]);
+  const [providerTab,       setProviderTab]      = useState<"online" | "local">("online");
+  const [expandedProvider,  setExpandedProvider] = useState<string | null>(null);
+  const [providerKeyDraft,  setProviderKeyDraft] = useState<Record<string, string>>({});
+  const [providerUrlDraft,  setProviderUrlDraft] = useState<Record<string, string>>({});
+  const [providerSaving,    setProviderSaving]   = useState<Record<string, boolean>>({});
+  const [providerSaveOk,    setProviderSaveOk]   = useState<Record<string, boolean>>({});
+
   const [defaultModel, setDefaultModel]                   = useState("anthropic/claude-3.5-sonnet");
   const [defaultChatModel, setDefaultChatModel]           = useState<string>("");
   const [defaultSynopsisModel, setDefaultSynopsisModel]   = useState<string>("");
@@ -130,6 +137,7 @@ export default function SettingsPage() {
   useEffect(() => {
     pgConfigApi.get().then(cfg => setPgCfg({ ...defaultPgCfg, ...cfg })).catch(() => {});
     pgConfigApi.getActive().then(setPgActive).catch(() => {});
+    aiProvidersApi.list().then(setProviders).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -332,6 +340,29 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSaveProvider = async (providerId: string) => {
+    setProviderSaving(prev => ({ ...prev, [providerId]: true }));
+    try {
+      const body: { api_key?: string; base_url?: string } = {};
+      if (providerKeyDraft[providerId] !== undefined) body.api_key = providerKeyDraft[providerId];
+      if (providerUrlDraft[providerId] !== undefined) body.base_url = providerUrlDraft[providerId];
+      await aiProvidersApi.save(providerId, body);
+      setProviderSaveOk(prev => ({ ...prev, [providerId]: true }));
+      setProviderKeyDraft(prev => { const n = { ...prev }; delete n[providerId]; return n; });
+      aiProvidersApi.list().then(setProviders).catch(() => {});
+      refetchModels();
+      setTimeout(() => setProviderSaveOk(prev => { const n = { ...prev }; delete n[providerId]; return n; }), 2500);
+    } finally {
+      setProviderSaving(prev => ({ ...prev, [providerId]: false }));
+    }
+  };
+
+  const handleSetActive = async (providerId: string) => {
+    await aiProvidersApi.setActive(providerId);
+    aiProvidersApi.list().then(setProviders).catch(() => {});
+    refetchModels();
+  };
+
   const toggleModel = (id: string) => {
     setEnabledModels(prev =>
       prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
@@ -352,11 +383,7 @@ export default function SettingsPage() {
       pandoc_enabled: pandocEnabled,
       pandoc_url: pandocUrl,
     };
-    // Only include the key when the user has explicitly typed in the field.
-    // Guards against browser autofill silently populating a password field on load.
-    if (apiKeyDirty && apiKey) payload.openrouter_api_key = apiKey;
     await updateSettings.mutateAsync(payload);
-    setApiKey("");
     setApiKeyDirty(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -469,25 +496,91 @@ export default function SettingsPage() {
           )}
 
           {!aiDisabled && (<>
-          <div className="space-y-1.5">
-            <Label htmlFor="api-key" className="flex items-center gap-1.5">
-              <Key className="h-3.5 w-3.5" />
-              {t("settings_api_key")}
-            </Label>
-            <Input
-              id="api-key"
-              type="password"
-              placeholder={settings?.has_api_key ? "••••••••••••••••••••••••••••••" : "sk-or-..."}
-              value={apiKey}
-              onChange={(e) => { setApiKey(e.target.value); setApiKeyDirty(true); }}
-              autoComplete="new-password"
-            />
-            <p className="text-xs text-muted-foreground">
-              {t("settings_api_key_note")}{" "}
-              <a href="https://openrouter.ai/keys" target="_blank" rel="noopener" className="text-primary hover:underline">
-                Get a key →
-              </a>
-            </p>
+          {/* ── AI Provider selection ─────────────────────────────────────── */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-1.5">
+                <Cpu className="h-3.5 w-3.5" />
+                Provider
+              </Label>
+              <div className="flex rounded-md border border-border overflow-hidden text-xs">
+                <button type="button"
+                  onClick={() => setProviderTab("online")}
+                  className={cn("px-2.5 py-1 transition-colors", providerTab === "online" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+                >Online</button>
+                <button type="button"
+                  onClick={() => setProviderTab("local")}
+                  className={cn("px-2.5 py-1 transition-colors border-l border-border", providerTab === "local" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+                >Local</button>
+              </div>
+            </div>
+
+            {providers.filter(p => p.is_local === (providerTab === "local")).map(p => (
+              <div key={p.id} className="rounded-lg border border-border overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setExpandedProvider(expandedProvider === p.id ? null : p.id)}
+                  className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-secondary/30 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={cn("h-2 w-2 rounded-full shrink-0", p.configured ? "bg-emerald-500" : "bg-muted-foreground/30")} />
+                    <span className="text-sm font-medium">{p.name}</span>
+                    {p.is_active && (
+                      <span className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-full font-medium shrink-0">Active</span>
+                    )}
+                  </div>
+                  <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0", expandedProvider === p.id && "rotate-180")} />
+                </button>
+
+                {expandedProvider === p.id && (
+                  <div className="px-3 pb-3 pt-2 space-y-2 border-t border-border/50 bg-secondary/10">
+                    {p.requires_key && (
+                      <div className="space-y-1">
+                        <p className="text-[11px] text-muted-foreground">API Key</p>
+                        <Input
+                          type="password"
+                          placeholder={p.configured ? "••••••••••••••••" : "Enter API key…"}
+                          value={providerKeyDraft[p.id] ?? ""}
+                          onChange={e => setProviderKeyDraft(prev => ({ ...prev, [p.id]: e.target.value }))}
+                          autoComplete="new-password"
+                          className="h-8 text-xs"
+                        />
+                      </div>
+                    )}
+                    {p.is_local && (
+                      <div className="space-y-1">
+                        <p className="text-[11px] text-muted-foreground">Base URL</p>
+                        <Input
+                          type="text"
+                          placeholder={p.default_base_url}
+                          value={providerUrlDraft[p.id] ?? p.base_url}
+                          onChange={e => setProviderUrlDraft(prev => ({ ...prev, [p.id]: e.target.value }))}
+                          className="h-8 text-xs font-mono"
+                        />
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 pt-0.5">
+                      <Button size="sm" variant="outline" className="h-7 text-xs"
+                        disabled={providerSaving[p.id]}
+                        onClick={() => handleSaveProvider(p.id)}
+                      >
+                        {providerSaving[p.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                      </Button>
+                      {!p.is_active && (
+                        <Button size="sm" variant="outline" className="h-7 text-xs"
+                          onClick={() => handleSetActive(p.id)}
+                        >Set active</Button>
+                      )}
+                      {providerSaveOk[p.id] && (
+                        <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Saved
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
 
           {/* Default model */}
@@ -580,11 +673,11 @@ export default function SettingsPage() {
               </button>
             </div>
 
-            {!settings?.has_api_key && (
-              <p className="text-xs text-muted-foreground">Add an API key to load available models.</p>
+            {!providers.some(p => p.is_active && p.configured) && (
+              <p className="text-xs text-muted-foreground">Configure and activate a provider to load models.</p>
             )}
 
-            {settings?.has_api_key && (
+            {providers.some(p => p.is_active && p.configured) && (
               <>
                 <Input
                   className="h-7 text-xs max-w-xs"

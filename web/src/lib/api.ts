@@ -787,6 +787,42 @@ export const pgConfigApi = {
     }),
 };
 
+// ── AI Providers ──────────────────────────────────────────────────────────────
+
+export interface AIProvider {
+  id:               string;
+  name:             string;
+  is_local:         boolean;
+  requires_key:     boolean;
+  default_base_url: string;
+  configured:       boolean;
+  is_active:        boolean;
+  base_url:         string;
+}
+
+export interface AIModel {
+  id:   string;
+  name: string;
+}
+
+export const aiProvidersApi = {
+  list: () =>
+    req<AIProvider[]>("/settings/providers"),
+
+  save: (providerId: string, body: { api_key?: string; base_url?: string }) =>
+    req<{ ok: true }>(`/settings/providers/${providerId}`, {
+      method: "POST", body: JSON.stringify(body),
+    }),
+
+  setActive: (providerId: string) =>
+    req<{ active_provider: string }>("/settings/providers/active", {
+      method: "POST", body: JSON.stringify({ provider_id: providerId }),
+    }),
+
+  models: (providerId: string) =>
+    req<AIModel[]>(`/settings/providers/${providerId}/models`),
+};
+
 // ── Achievements ──────────────────────────────────────────────────────────────
 
 export const achievementsApi = {

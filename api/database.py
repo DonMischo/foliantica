@@ -1159,6 +1159,19 @@ def migrate_research_media():
                     ), {"rid": row[0], "kind": kind, "path": path})
 
 
+def migrate_ai_providers():
+    """Add active_provider and ai_providers_cfg columns to user_settings."""
+    with engine.begin() as conn:
+        for stmt in [
+            "ALTER TABLE user_settings ADD COLUMN active_provider TEXT NOT NULL DEFAULT 'openrouter'",
+            "ALTER TABLE user_settings ADD COLUMN ai_providers_cfg TEXT",
+        ]:
+            try:
+                conn.execute(text(stmt))
+            except Exception:
+                pass  # column already exists
+
+
 def migrate_sync_mirror():
     """Add sync_mirror_enabled and sync_local_dir columns to user_settings."""
     with engine.begin() as conn:

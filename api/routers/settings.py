@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import httpx
 
+from ai_providers import PROVIDERS, PROVIDER_MAP, fetch_models
 from crypto import encrypt, decrypt
 from database import get_db, DEFAULT_AI_PROMPTS
 from models import UserSettings, AIPrompt
@@ -679,30 +680,130 @@ def transfer_pg(body: dict):
         dst_engine.dispose()
 
 
-@router.get("/models")
-def get_available_models(db: Session = Depends(get_db)):
-    """Proxy the OpenRouter model list so the API key stays server-side."""
-    s = _get_or_create_settings(db)
-    if not s.openrouter_api_key:
-        return []
+def _parse_providers_cfg(s: UserSettings) -> dict:
     try:
+        return json.loads(s.ai_providers_cfg or "{}")
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+
+def _write_providers_cfg(s: UserSettings, cfg: dict) -> None:
+    s.ai_providers_cfg = json.dumps(cfg)
+
+
+@router.get("/providers")
+def list_providers(db: Session = Depends(get_db)):
+    """List all known providers with configured + active status."""
+    s = _get_or_create_settings(db)
+    cfg = _parse_providers_cfg(s)
+    active_id = getattr(s, "active_provider", None) or "openrouter"
+    result = []
+    for p in PROVIDERS:
+        prov_cfg = cfg.get(p.id, {})
+        has_key = bool(prov_cfg.get("api_key"))
+        # Backward compat: OpenRouter may still use the legacy column
+        if p.id == "openrouter" and not has_key:
+            has_key = bool(s.openrouter_api_key)
+        result.append({
+            "id":          p.id,
+            "name":        p.name,
+            "is_local":    p.is_local,
+            "requires_key": p.requires_key,
+            "default_base_url": p.default_base_url,
+            "configured":  has_key or (not p.requires_key),
+            "is_active":   p.id == active_id,
+            "base_url":    prov_cfg.get("base_url") or p.default_base_url,
+        })
+    return result
+
+
+@router.post("/providers/{provider_id}")
+def save_provider_config(
+    provider_id: str,
+    body: dict,
+    db: Session = Depends(get_db),
+):
+    """Save API key and/or base URL for a provider.
+    Body: {api_key?: str, base_url?: str}
+    Passing api_key="" removes the stored key.
+    """
+    pdef = PROVIDER_MAP.get(provider_id)
+    if not pdef:
+        raise HTTPException(404, f"Unknown provider: {provider_id}")
+
+    s = _get_or_create_settings(db)
+    cfg = _parse_providers_cfg(s)
+    prov_cfg = cfg.setdefault(provider_id, {})
+
+    if "api_key" in body:
+        key_val = body["api_key"]
+        if key_val:
+            prov_cfg["api_key"] = encrypt(key_val)
+            # Keep legacy column in sync for OpenRouter (backward compat)
+            if provider_id == "openrouter":
+                s.openrouter_api_key = encrypt(key_val)
+        else:
+            prov_cfg.pop("api_key", None)
+            if provider_id == "openrouter":
+                s.openrouter_api_key = None
+
+    if "base_url" in body:
+        url_val = (body["base_url"] or "").strip()
+        prov_cfg["base_url"] = url_val if url_val else None
+
+    _write_providers_cfg(s, cfg)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/providers/active")
+def set_active_provider(body: dict, db: Session = Depends(get_db)):
+    """Set the active provider. Body: {provider_id: str}"""
+    provider_id = body.get("provider_id", "")
+    if not PROVIDER_MAP.get(provider_id):
+        raise HTTPException(400, f"Unknown provider: {provider_id}")
+    s = _get_or_create_settings(db)
+    s.active_provider = provider_id
+    db.commit()
+    return {"active_provider": provider_id}
+
+
+@router.get("/providers/{provider_id}/models")
+async def get_provider_models(provider_id: str, db: Session = Depends(get_db)):
+    """Fetch available models for the given provider (key stays server-side)."""
+    pdef = PROVIDER_MAP.get(provider_id)
+    if not pdef:
+        raise HTTPException(404, f"Unknown provider: {provider_id}")
+
+    s = _get_or_create_settings(db)
+    cfg = _parse_providers_cfg(s).get(provider_id, {})
+    base_url = cfg.get("base_url") or pdef.default_base_url
+
+    encrypted = cfg.get("api_key")
+    api_key = decrypt(encrypted) if encrypted else None
+    if provider_id == "openrouter" and not api_key and s.openrouter_api_key:
         api_key = decrypt(s.openrouter_api_key)
-        resp = httpx.get(
-            "https://openrouter.ai/api/v1/models",
-            headers={"Authorization": f"Bearer {api_key}"},
-            timeout=15,
-        )
-        if resp.status_code != 200:
-            return []
-        data = resp.json()
-        models = [
-            {"id": m["id"], "name": m.get("name") or m["id"]}
-            for m in data.get("data", [])
-            if m.get("id")
-        ]
-        return sorted(models, key=lambda m: m["name"].lower())
-    except Exception:
+
+    return await fetch_models(pdef, base_url, api_key)
+
+
+@router.get("/models")
+async def get_available_models(db: Session = Depends(get_db)):
+    """Return models for the currently active provider (legacy endpoint kept for compat)."""
+    s = _get_or_create_settings(db)
+    active_id = getattr(s, "active_provider", None) or "openrouter"
+    pdef = PROVIDER_MAP.get(active_id)
+    if not pdef:
         return []
+
+    cfg = _parse_providers_cfg(s).get(active_id, {})
+    base_url = cfg.get("base_url") or pdef.default_base_url
+    encrypted = cfg.get("api_key")
+    api_key = decrypt(encrypted) if encrypted else None
+    if active_id == "openrouter" and not api_key and s.openrouter_api_key:
+        api_key = decrypt(s.openrouter_api_key)
+
+    return await fetch_models(pdef, base_url, api_key)
 
 
 # ── AI Prompts ────────────────────────────────────────────────────────────────

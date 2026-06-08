@@ -286,6 +286,9 @@ class UserSettings(Base):
     pandoc_enabled: Mapped[int] = mapped_column(Integer, default=0)
     pandoc_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     ai_disabled: Mapped[int] = mapped_column(Integer, default=0)
+    # Multi-provider AI adapter (Phase 2)
+    active_provider: Mapped[str] = mapped_column(String(50), default="openrouter")
+    ai_providers_cfg: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
     sync_mirror_enabled: Mapped[int] = mapped_column(Integer, default=0)
     sync_local_dir: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # Counters — incremented by raw SQL in analytics.py / export.py.
