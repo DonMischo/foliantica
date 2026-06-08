@@ -1832,7 +1832,8 @@ export default function SettingsPage() {
                   </div>
                 </button>
 
-                {upnpExpanded && <div className="px-3 pb-3 space-y-3">
+                {upnpExpanded && (
+                <div className="px-3 pb-3 space-y-3">
 
                 {/* Disclaimer — shown until accepted */}
                 {upnpStatus && !upnpStatus.disclaimer_accepted && (
@@ -1937,7 +1938,8 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 )}
-                </div>}
+                </div>
+                )}
               </div>
 
               {/* Internet Access — Cloudflare Tunnel */}
