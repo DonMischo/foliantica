@@ -1,4 +1,4 @@
-# Foliantica
+# Foliantica - Story writing tool
 
 > *Your manuscript. Your world. Your machine.*
 
