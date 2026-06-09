@@ -43,7 +43,7 @@
     {
       "id": 3,
       "title": "Analytics, timeline, scene commands",
-      "status": "todo",
+      "status": "done",
       "estimated_tests": 45,
       "requires_mocking": false,
       "files_to_create": [
@@ -61,7 +61,7 @@
     {
       "id": 4,
       "title": "File I/O (images, imports)",
-      "status": "todo",
+      "status": "done",
       "estimated_tests": 30,
       "requires_mocking": true,
       "mocking_strategy": "monkeypatch UPLOAD_DIR to tmp_path; multipart via files= kwarg",
