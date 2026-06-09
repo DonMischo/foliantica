@@ -2,7 +2,7 @@
 
 > *Your manuscript. Your world. Your machine.*
 
-**The writing studio built for novelists who build worlds.**
+**The writing studio built for authors who build worlds.**
 
 You open the app. Your manuscript is there, exactly where you left it. The world-bible is a sidebar click away. The timeline remembers every hour of every day you mapped. Thirty-eight publisher formatting profiles are waiting for submission day. Nothing lives in someone else's cloud.
 
