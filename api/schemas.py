@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 from typing import Optional, Any, Literal
-from pydantic import BaseModel, Field, model_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 
 
 # ── Projects ──────────────────────────────────────────────────────────────────
@@ -357,18 +357,15 @@ class SceneCommandOut(BaseModel):
 
     model_config = {"from_attributes": True}
 
-    @model_validator(mode="before")
+    @field_validator("data", "scene_time", mode="before")
     @classmethod
-    def _parse_json(cls, data):
-        if hasattr(data, "__dict__"):
-            for field in ("data", "scene_time"):
-                raw = getattr(data, field, None)
-                if isinstance(raw, str):
-                    try:
-                        object.__setattr__(data, field, json.loads(raw))
-                    except Exception:
-                        pass
-        return data
+    def _parse_json(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except Exception:
+                pass
+        return v
 
 
 # ── Data directory ────────────────────────────────────────────────────────────

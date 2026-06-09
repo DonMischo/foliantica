@@ -31,13 +31,9 @@ def _item_div(char_id, item_id, qty=1, order=0):
     )
 
 
-def _sync(client, scene_id, commands, db=None):
+def _sync(client, scene_id, commands):
     r = client.post(f"/api/scenes/{scene_id}/commands/sync", json={"commands": commands})
     assert r.status_code == 200
-    # The SceneCommandOut validator mutates ORM objects in the identity map (data: str → dict).
-    # Expire all objects so subsequent GET requests reload fresh string data from DB.
-    if db is not None:
-        db.expire_all()
     return r.json()
 
 
@@ -153,11 +149,9 @@ class TestResync:
         html = f"<p>Some text.</p>{_currency_div(1, 'Gold', 100)}"
         db.query(Scene).filter(Scene.id == scene["id"]).update({"content": html})
         db.commit()
-        db.expire_all()
 
         r = client.post(f"/api/projects/{project['id']}/commands/resync")
         assert r.status_code == 200
-        db.expire_all()
 
         # Verify the command now appears in history
         hist = client.get(f"/api/projects/{project['id']}/command-history").json()
@@ -173,21 +167,21 @@ class TestCommandHistory:
         assert r.status_code == 200
         assert r.json() == []
 
-    def test_synced_commands_appear_in_history(self, client, db, scene, project):
+    def test_synced_commands_appear_in_history(self, client, scene, project):
         _sync(client, scene["id"], [
             {"command_type": "currency", "character_id": 1,
              "data": {"currencyName": "Gold", "delta": 5}, "order_index": 0},
-        ], db)
+        ])
         hist = client.get(f"/api/projects/{project['id']}/command-history").json()
         assert len(hist) == 1
         assert hist[0]["scene_id"] == scene["id"]
         assert hist[0]["commands"][0]["command_type"] == "currency"
 
-    def test_filter_by_command_type(self, client, db, scene, project):
+    def test_filter_by_command_type(self, client, scene, project):
         _sync(client, scene["id"], [
             {"command_type": "currency", "character_id": 1, "order_index": 0},
             {"command_type": "item", "character_id": 1, "item_id": 5, "order_index": 1},
-        ], db)
+        ])
         hist = client.get(
             f"/api/projects/{project['id']}/command-history",
             params={"command_type": "item"},
@@ -196,11 +190,11 @@ class TestCommandHistory:
         all_types = [c["command_type"] for group in hist for c in group["commands"]]
         assert all(t == "item" for t in all_types)
 
-    def test_filter_by_character_id(self, client, db, scene, project):
+    def test_filter_by_character_id(self, client, scene, project):
         _sync(client, scene["id"], [
             {"command_type": "currency", "character_id": 1, "order_index": 0},
             {"command_type": "currency", "character_id": 2, "order_index": 1},
-        ], db)
+        ])
         hist = client.get(
             f"/api/projects/{project['id']}/command-history",
             params={"character_id": 1},
@@ -218,11 +212,11 @@ class TestItemLog:
         assert r.status_code == 200
         assert r.json() == []
 
-    def test_item_log_shows_synced_commands(self, client, db, scene):
+    def test_item_log_shows_synced_commands(self, client, scene):
         _sync(client, scene["id"], [
             {"command_type": "item", "character_id": 1, "item_id": 5,
              "data": {"qty": 2}, "order_index": 0},
-        ], db)
+        ])
         r = client.get(f"/api/scenes/{scene['id']}/item-log",
                        params={"item_id": 5, "character_id": 1})
         assert r.status_code == 200
@@ -242,12 +236,12 @@ class TestCurrencyBalance:
         assert r.status_code == 200
         assert r.json()["balance"] == 0
 
-    def test_balance_excludes_current_scene(self, client, db, scene):
+    def test_balance_excludes_current_scene(self, client, scene):
         # Commands IN the current scene don't count — only scenes BEFORE it
         _sync(client, scene["id"], [
             {"command_type": "currency", "character_id": 1,
              "data": {"currencyName": "Gold", "delta": 100}, "order_index": 0},
-        ], db)
+        ])
         r = client.get(f"/api/scenes/{scene['id']}/currency-balance",
                        params={"character_id": 1, "currency_name": "Gold"})
         # current scene is position 0, so no scenes before it → balance = 0
@@ -270,12 +264,12 @@ class TestCharacterCurrencies:
         assert r.status_code == 200
         assert r.json() == []
 
-    def test_command_detected_currency_appears(self, client, db, project, scene):
+    def test_command_detected_currency_appears(self, client, project, scene):
         entry = self._make_codex_entry(client, project["id"])
         _sync(client, scene["id"], [
             {"command_type": "currency", "character_id": entry["id"],
              "data": {"currencyName": "Silver", "delta": 10}, "order_index": 0},
-        ], db)
+        ])
         r = client.get(f"/api/codex/{entry['id']}/currencies")
         assert "Silver" in r.json()
 
@@ -298,24 +292,24 @@ class TestInventorySummary:
         assert body["items"] == []
         assert body["currencies"] == []
 
-    def test_command_adds_to_currency_balance(self, client, db, project, scene):
+    def test_command_adds_to_currency_balance(self, client, project, scene):
         entry = self._make_codex_entry(client, project["id"])
         _sync(client, scene["id"], [
             {"command_type": "currency", "character_id": entry["id"],
              "data": {"currencyName": "Gold", "delta": 50}, "order_index": 0},
-        ], db)
+        ])
         r = client.get(f"/api/codex/{entry['id']}/inventory-summary")
         currencies = r.json()["currencies"]
         gold = next((c for c in currencies if c["name"] == "Gold"), None)
         assert gold is not None
         assert gold["balance"] == 50
 
-    def test_item_command_adds_to_items(self, client, db, project, scene):
+    def test_item_command_adds_to_items(self, client, project, scene):
         entry = self._make_codex_entry(client, project["id"])
         _sync(client, scene["id"], [
             {"command_type": "item", "character_id": entry["id"], "item_id": 7,
              "data": {"qty": 3}, "order_index": 0},
-        ], db)
+        ])
         r = client.get(f"/api/codex/{entry['id']}/inventory-summary")
         items = r.json()["items"]
         found = next((i for i in items if i["item_id"] == 7), None)
