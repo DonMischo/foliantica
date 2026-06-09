@@ -4,7 +4,7 @@
     {
       "id": 1,
       "title": "Low-hanging CRUD",
-      "status": "todo",
+      "status": "done",
       "estimated_tests": 55,
       "requires_mocking": false,
       "files_to_create": [
@@ -26,7 +26,7 @@
     {
       "id": 2,
       "title": "Codex",
-      "status": "todo",
+      "status": "done",
       "estimated_tests": 35,
       "requires_mocking": false,
       "files_to_create": [
