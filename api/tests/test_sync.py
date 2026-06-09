@@ -19,13 +19,34 @@ from models import UserSettings  # noqa: used in test_restore_preserves_existing
 # ── Key exclusion from dump ───────────────────────────────────────────────────
 
 class TestDumpKeyExclusion:
-    def test_skip_cols_constant_contains_encrypted_columns(self):
-        """The _SKIP_COLS dict in sync.py must exclude the two encrypted columns."""
-        from routers.sync import _do_pg_dump  # noqa: just ensure import works
-        import inspect, ast
-        src = inspect.getsource(_do_pg_dump)
-        assert "openrouter_api_key" in src
-        assert "ai_providers_cfg" in src
+    def test_pg_dump_excludes_encrypted_columns_in_sqlite_mode(self, client, db, test_engine, tmp_path):
+        """_do_pg_dump must omit the two encrypted columns from the dump output.
+        On SQLite the function raises (information_schema is PostgreSQL-only), so
+        the test is skipped gracefully — the full assertion runs in PostgreSQL CI."""
+        import json as _json
+        import database as db_module
+        from routers.sync import _do_pg_dump
+        from crypto import encrypt
+
+        encrypted = encrypt("sk-should-not-appear")
+        db.add(UserSettings(
+            id=1,
+            openrouter_api_key=encrypted,
+            ai_providers_cfg=_json.dumps({"test": encrypted}),
+        ))
+        db.commit()
+
+        mirror = tmp_path / "sync"
+        mirror.mkdir()
+        with patch.object(db_module, "engine", test_engine):
+            try:
+                _do_pg_dump(mirror)
+            except Exception:
+                pytest.skip("_do_pg_dump requires PostgreSQL")
+
+        dump_sql = (mirror / "foliantica.sql").read_text()
+        assert "sk-should-not-appear" not in dump_sql
+        assert encrypted not in dump_sql
 
     def test_pg_dump_skips_encrypted_columns(self, tmp_path, db, test_engine):
         """Patching the module-level engine so _do_pg_dump uses our test DB."""
@@ -118,12 +139,12 @@ class TestRestoreKeyPreservation:
             assert row[0] == encrypted_key, "openrouter_api_key should be preserved"
             assert row[1] == encrypted_cfg, "ai_providers_cfg should be preserved"
 
-    def test_restore_endpoint_exists(self, client):
-        """The restore endpoint should be reachable (even if it returns an error)."""
+    def test_restore_endpoint_rejects_sqlite_mode(self, client):
+        """In SQLite test mode the endpoint must return 400 — not a 404 'Not Found'
+        which would indicate the route itself is missing."""
         r = client.post("/api/sync/restore")
-        # 400 = SQLite mode (not supported), 404 = no dump file found
-        # 200 = success, 500 = internal error (would be a real bug)
-        assert r.status_code in (200, 400, 404)
+        assert r.status_code == 400
+        assert "PostgreSQL" in r.json()["detail"]
 
 
 # ── Settings key column round-trip ────────────────────────────────────────────

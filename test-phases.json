@@ -78,7 +78,7 @@
     {
       "id": 5,
       "title": "External-proxy routers (grammar, export)",
-      "status": "todo",
+      "status": "done",
       "estimated_tests": 30,
       "requires_mocking": true,
       "mocking_strategy": "respx for outbound httpx calls",
@@ -96,7 +96,7 @@
     {
       "id": 6,
       "title": "Scenes extras",
-      "status": "todo",
+      "status": "done",
       "estimated_tests": 20,
       "requires_mocking": false,
       "files_to_create": [
@@ -110,7 +110,7 @@
     {
       "id": 7,
       "title": "Frontend: framework setup + utility layer",
-      "status": "todo",
+      "status": "done",
       "estimated_tests": 40,
       "requires_mocking": false,
       "setup": [
@@ -138,7 +138,7 @@
     {
       "id": 8,
       "title": "Frontend: component tests (selective)",
-      "status": "todo",
+      "status": "done",
       "estimated_tests": 25,
       "requires_mocking": true,
       "mocking_strategy": "vi.mock('@/lib/api'); QueryClientProvider wrapper",
@@ -156,7 +156,7 @@
     {
       "id": 9,
       "title": "Playwright E2E (optional)",
-      "status": "optional",
+      "status": "done",
       "estimated_tests": 10,
       "setup": ["npx playwright install --with-deps chromium"],
       "files_to_create": [

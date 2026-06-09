@@ -178,13 +178,16 @@ class TestStatsTotals:
         assert total >= 200
 
     def test_scene_length_buckets_populated(self, client, scene, db, project):
-        # scene fixture has word_count > 0 (content="<p>Hello world</p>")
-        # Force word_count to ensure it's bucketed
+        # Force a specific word_count so we know exactly which bucket it falls in
         from models import Scene
         db.query(Scene).filter(Scene.id == scene["id"]).update({"word_count": 50})
         db.commit()
         body = client.get("/api/stats/totals").json()
-        assert isinstance(body["scene_length_buckets"], list)
+        buckets = body["scene_length_buckets"]
+        assert isinstance(buckets, list)
+        assert len(buckets) > 0
+        # The scene with word_count=50 must be counted in at least one bucket
+        assert sum(b["count"] for b in buckets) >= 1
 
 
 # ── POST /api/stats/ping ──────────────────────────────────────────────────────
@@ -195,8 +198,16 @@ class TestStatsPing:
         assert r.status_code == 200
         assert r.json() == {"ok": True}
 
-    def test_ping_callable_multiple_times(self, client):
-        for _ in range(3):
-            r = client.post("/api/stats/ping")
-            assert r.status_code == 200
-            assert r.json()["ok"] is True
+    def test_ping_increments_stats_views_counter(self, client, db):
+        """Each ping must increment the stats_views counter in user_settings."""
+        from sqlalchemy import text
+        # Ensure the settings row exists (ping does a bare UPDATE with no INSERT fallback)
+        client.get("/api/settings")
+        row = db.execute(text("SELECT stats_views FROM user_settings LIMIT 1")).fetchone()
+        assert row is not None
+        before = row[0] or 0
+
+        client.post("/api/stats/ping")
+        db.expire_all()
+        row2 = db.execute(text("SELECT stats_views FROM user_settings LIMIT 1")).fetchone()
+        assert row2[0] == before + 1

@@ -509,10 +509,10 @@ def export_html(project: Project, opts) -> str:
             for scene in sorted(chapter.scenes, key=lambda s: s.order_index):
                 if allowed is not None and scene.id not in allowed:
                     continue
-                _html, _imgs = _extract_images(scene.content or "")
+                scene_html, scene_imgs = _extract_images(scene.content or "")
                 content = _IMG_PH_RE.sub(
-                    lambda m: _img_html(*_imgs[int(m.group(1))]),
-                    _html,
+                    lambda m: _img_html(*scene_imgs[int(m.group(1))]),
+                    scene_html,
                 ).strip()
                 if not content:
                     continue

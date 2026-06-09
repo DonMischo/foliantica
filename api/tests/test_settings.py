@@ -34,7 +34,8 @@ class TestSettings:
         assert r.status_code == 200
         data = r.json()
         assert "theme" in data
-        assert data["theme"] in ("dark", "light", "system", None, "dark")
+        # The app default theme is "dark" (UserSettings.theme has default="dark")
+        assert data["theme"] == "dark"
         assert "enabled_models" in data
 
     def test_update_settings_theme(self, client):
@@ -164,17 +165,24 @@ class TestModelProviderMap:
                         json={"model_id": "", "provider_id": "ollama"})
         assert r.status_code == 400
 
-    def test_model_map_persists_multiple_entries(self, client):
+    def test_model_map_persists_multiple_entries(self, client, db):
+        import json
+        from sqlalchemy import text
+
         client.post("/api/settings/providers/model-map",
                     json={"model_id": "qwen3:2b", "provider_id": "ollama"})
         client.post("/api/settings/providers/model-map",
                     json={"model_id": "llama3:8b", "provider_id": "ollama"})
 
-        # Both entries should be stored (GET providers does not expose the map
-        # directly, but we can verify no error and the endpoint is idempotent)
-        r = client.post("/api/settings/providers/model-map",
-                        json={"model_id": "qwen3:2b", "provider_id": "ollama"})
-        assert r.status_code == 200
+        # Both entries must be present in the persisted _model_provider_map JSON blob
+        row = db.execute(
+            text("SELECT ai_providers_cfg FROM user_settings LIMIT 1")
+        ).fetchone()
+        assert row is not None
+        cfg = json.loads(row[0])
+        model_map = cfg.get("_model_provider_map", {})
+        assert model_map.get("qwen3:2b") == "ollama"
+        assert model_map.get("llama3:8b") == "ollama"
 
 
 # ── Ping endpoint ─────────────────────────────────────────────────────────────
