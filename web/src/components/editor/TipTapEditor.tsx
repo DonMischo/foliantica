@@ -44,6 +44,7 @@ interface Props {
   onOpenChat?: () => void;
   aiDisabled?: boolean;
   onOpenTimeline?: () => void;
+  onOpenLink?: () => void;
   onWordSelect?: (word: string | null) => void;
   onFlagsChange?: (flags: FlagItem[]) => void;
   replaceWordRef?: React.MutableRefObject<((word: string) => void) | null>;
@@ -130,7 +131,7 @@ function applyTypewriterScroll(
   } catch { /* view not mounted */ }
 }
 
-export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, onPrefillEntry, aiDisabled = false }: Props) {
+export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onOpenLink, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, onPrefillEntry, aiDisabled = false }: Props) {
   const showLineNumbers  = useUIStore((s) => s.showParagraphNumbers);
   const typewriterMode   = useUIStore((s) => s.typewriterMode);
   const typewriterOffset = useUIStore((s) => s.typewriterOffset);
@@ -165,6 +166,8 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
   aiDisabledRef.current = aiDisabled;
   const onOpenTimelineRef = useRef(onOpenTimeline);
   onOpenTimelineRef.current = onOpenTimeline;
+  const onOpenLinkRef = useRef(onOpenLink);
+  onOpenLinkRef.current = onOpenLink;
   const onWordSelectRef  = useRef(onWordSelect);
   onWordSelectRef.current  = onWordSelect;
   const onFlagsChangeRef = useRef(onFlagsChange);
@@ -235,6 +238,9 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
                 .insertContent('<span data-ghost="" class="ghost-text">[placeholder]</span>')
                 .unsetMark("ghostText")
                 .run();
+            } else if (props.id === "link") {
+              editor.chain().focus().deleteRange(range).run();
+              onOpenLinkRef.current?.();
             } else if (props.id === "table") {
               editor.chain().focus().deleteRange(range)
                 .insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();

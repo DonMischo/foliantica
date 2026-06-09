@@ -14,6 +14,7 @@ import { CodexSidebar } from "@/components/codex/CodexSidebar";
 import { CodexEntryDialog } from "@/components/codex/CodexEntryDialog";
 import { VersionHistoryPanel } from "@/components/editor/VersionHistoryPanel";
 import { ChatPanel } from "@/components/editor/ChatPanel";
+import { LinkPanel } from "@/components/editor/LinkPanel";
 import { SceneTimePanel } from "@/components/time/SceneTimePanel";
 import { TimeConfigDialog } from "@/components/time/TimeConfigDialog";
 import { TimelineCommandDialog } from "@/components/timeline/TimelineCommandDialog";
@@ -90,6 +91,7 @@ export default function ScenePage() {
   const [timelineCommandOpen, setTimelineCommandOpen] = useState(false);
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
+  const [linkPanelOpen, setLinkPanelOpen] = useState(false);
 
   const codexSidebarOpen    = useUIStore((s) => s.codexSidebarOpen);
   const setCodexSidebarOpen = useUIStore((s) => s.setCodexSidebarOpen);
@@ -631,6 +633,7 @@ export default function ScenePage() {
             aiDisabled={aiDisabled}
             onOpenChat={aiDisabled ? undefined : () => setChatPanelOpen(true)}
             onOpenTimeline={() => setTimelineCommandOpen(true)}
+            onOpenLink={() => setLinkPanelOpen(true)}
             onWordSelect={(w) => { if (w) setSelectedWord(w); }}
             onFlagsChange={setFlags}
             replaceWordRef={replaceWordRef}
@@ -679,6 +682,15 @@ export default function ScenePage() {
           <ChatPanel
             sceneId={sceneIdNum}
             onClose={() => setChatPanelOpen(false)}
+          />
+        )}
+
+        {/* Scene links panel */}
+        {linkPanelOpen && (
+          <LinkPanel
+            projectId={projectId}
+            sceneId={sceneIdNum}
+            onClose={() => setLinkPanelOpen(false)}
           />
         )}
 

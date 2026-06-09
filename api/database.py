@@ -12,24 +12,38 @@ from sqlalchemy.orm import sessionmaker
 USE_SQLITE = os.getenv("LW_USE_SQLITE", "0") == "1"
 
 if USE_SQLITE:
-    DATABASE_URL = "sqlite:///./foliantica.db"
+    # LW_SQLITE_PATH overrides the default file path.
+    # Set to ":memory:" in test environments so tests never touch foliantica.db.
+    _sqlite_path = os.getenv("LW_SQLITE_PATH", "./foliantica.db")
 
-    # One-time migration: rename loreweaver.db → foliantica.db for existing users
-    if os.path.exists("loreweaver.db") and not os.path.exists("foliantica.db"):
-        os.rename("loreweaver.db", "foliantica.db")
+    if _sqlite_path == ":memory:":
+        from sqlalchemy.pool import StaticPool as _StaticPool
+        DATABASE_URL = "sqlite:///:memory:"
+        engine = create_engine(
+            DATABASE_URL,
+            connect_args={"check_same_thread": False},
+            poolclass=_StaticPool,
+        )
+    else:
+        DATABASE_URL = f"sqlite:///{_sqlite_path}"
 
-    engine = create_engine(
-        DATABASE_URL,
-        connect_args={"check_same_thread": False, "timeout": 30},
-    )
+        # One-time migration: rename loreweaver.db → foliantica.db for existing users
+        if _sqlite_path == "./foliantica.db":
+            if os.path.exists("loreweaver.db") and not os.path.exists("foliantica.db"):
+                os.rename("loreweaver.db", "foliantica.db")
 
-    @event.listens_for(engine, "connect")
-    def set_sqlite_pragma(dbapi_conn, _):
-        cursor = dbapi_conn.cursor()
-        cursor.execute("PRAGMA journal_mode=WAL")
-        cursor.execute("PRAGMA busy_timeout=30000")
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.close()
+        engine = create_engine(
+            DATABASE_URL,
+            connect_args={"check_same_thread": False, "timeout": 30},
+        )
+
+        @event.listens_for(engine, "connect")
+        def set_sqlite_pragma(dbapi_conn, _):
+            cursor = dbapi_conn.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA busy_timeout=30000")
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
 
 else:
     _PG_HOST = os.getenv("LW_PG_HOST", "127.0.0.1")

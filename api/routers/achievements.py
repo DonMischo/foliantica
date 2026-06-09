@@ -3,7 +3,7 @@ from calendar import monthrange
 from datetime import date, datetime, UTC, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, distinct, text
+from sqlalchemy import func, distinct, text, case
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -236,15 +236,28 @@ def _compute_metrics(db: Session) -> dict[str, int]:
         .scalar() or 0
     )
 
-    queries_sent    = db.query(func.count(QuerySubmission.id)).scalar() or 0
-    queries_partial = db.query(func.count(QuerySubmission.id)).filter(QuerySubmission.status == "partial_requested").scalar() or 0
-    queries_full    = db.query(func.count(QuerySubmission.id)).filter(QuerySubmission.status == "full_requested").scalar()   or 0
-    queries_offer   = db.query(func.count(QuerySubmission.id)).filter(QuerySubmission.status == "offer").scalar()            or 0
+    # All four QuerySubmission counts in a single round-trip
+    _qs = db.query(
+        func.count(QuerySubmission.id),
+        func.count(case((QuerySubmission.status == "partial_requested", 1))),
+        func.count(case((QuerySubmission.status == "full_requested",    1))),
+        func.count(case((QuerySubmission.status == "offer",             1))),
+    ).one()
+    queries_sent, queries_partial, queries_full, queries_offer = (_qs[i] or 0 for i in range(4))
     research_items  = db.query(func.count(ResearchItem.id)).scalar() or 0
 
     # ── New metrics via raw SQL ───────────────────────────────────────────────
-    typed_scene_count = _safe(db, "SELECT COUNT(*) FROM scenes WHERE scene_type IS NOT NULL")
-    corkboard_scenes  = _safe(db, "SELECT COUNT(*) FROM scenes WHERE node_x IS NOT NULL")
+    # Merge three scene-table scans into one
+    _sc = db.execute(text(
+        "SELECT "
+        "  COUNT(CASE WHEN scene_type IS NOT NULL THEN 1 END), "
+        "  COUNT(CASE WHEN node_x     IS NOT NULL THEN 1 END), "
+        "  COALESCE(MAX(word_count), 0) "
+        "FROM scenes"
+    )).one()
+    typed_scene_count = _sc[0] or 0
+    corkboard_scenes  = _sc[1] or 0
+    max_scene_words   = _sc[2] or 0
     timeline_events   = _safe(db, "SELECT COUNT(*) FROM timeline_events")
     fragment_count    = _safe(db, "SELECT COUNT(*) FROM fragments")
     # Parse inventory JSON once for items / currency / relics
@@ -324,8 +337,6 @@ def _compute_metrics(db: Session) -> dict[str, int]:
             if len(days_written) == monthrange(year, month)[1]:
                 perfect_month = 1
                 break
-
-    max_scene_words = _safe(db, "SELECT COALESCE(MAX(word_count), 0) FROM scenes")
 
     # Lore bomb: max scenes a single codex entry appears in
     lore_bomb = 0

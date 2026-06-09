@@ -846,8 +846,12 @@ class ResearchItemOut(BaseModel):
         if hasattr(data, "__dict__"):
             raw = getattr(data, "tags", None)
             if isinstance(raw, str):
+                # Build a plain dict so Pydantic constructs from it — never mutate
+                # the ORM object directly (that corrupts the SQLAlchemy identity map).
+                d = {k: v for k, v in vars(data).items() if not k.startswith("_")}
                 try:
-                    object.__setattr__(data, "tags", json.loads(raw))
+                    d["tags"] = json.loads(raw)
                 except Exception:
-                    object.__setattr__(data, "tags", [])
+                    d["tags"] = []
+                return d
         return data
