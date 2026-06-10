@@ -610,6 +610,21 @@ def transfer_pg(body: dict):
     from models import Base
 
     dst_cfg    = {**_EMBEDDED_PG, **body.get("target", {})}
+
+    # This endpoint copies the entire datastore — including the encrypted
+    # api-key columns — to the target. An unrestricted destination is a data
+    # exfiltration primitive (e.g. via a same-origin XSS payload POSTing here).
+    # Restrict the target to loopback unless an operator explicitly opts in via
+    # an environment variable (trusted, not attacker-settable).
+    dst_host = str(dst_cfg.get("host", "")).lower()
+    if dst_host not in ("localhost", "127.0.0.1", "::1") and \
+            os.getenv("LW_ALLOW_REMOTE_PG_TRANSFER") != "1":
+        raise HTTPException(
+            403,
+            "pg-transfer target must be a loopback host. Set "
+            "LW_ALLOW_REMOTE_PG_TRANSFER=1 to allow a remote destination.",
+        )
+
     dst_engine = _pg_engine_for(dst_cfg)
 
     try:
@@ -747,6 +762,32 @@ def set_active_provider(body: dict, db: Session = Depends(get_db)):
     return {"active_provider": provider_id}
 
 
+def _validate_base_url(url: str, pdef) -> str:
+    """Validate a user-supplied provider base URL.
+
+    The base URL is the outbound target for AI calls, and for key-bearing
+    providers the *decrypted* API key is attached as an Authorization header.
+    An unvalidated value lets an attacker (e.g. via a same-origin XSS payload)
+    point the request at their own host and exfiltrate the key, or reach
+    internal services. We therefore:
+      - allow only ``http`` / ``https`` schemes (blocks ``file:``/``gopher:`` etc.)
+      - require a hostname
+      - require ``https`` for non-loopback hosts when the provider sends a key
+        (prevents plaintext credential exfiltration / cleartext SSRF)
+    Local providers (e.g. ollama) may use ``http://localhost``.
+    """
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise HTTPException(400, "base_url must be a valid http(s) URL")
+    host = parsed.hostname.lower()
+    is_loopback = host in ("localhost", "127.0.0.1", "::1")
+    if pdef.requires_key and not is_loopback and parsed.scheme != "https":
+        raise HTTPException(400, "base_url must use https for non-local providers")
+    return url
+
+
 @router.post("/providers/{provider_id}")
 def save_provider_config(
     provider_id: str,
@@ -779,7 +820,7 @@ def save_provider_config(
 
     if "base_url" in body:
         url_val = (body["base_url"] or "").strip()
-        prov_cfg["base_url"] = url_val if url_val else None
+        prov_cfg["base_url"] = _validate_base_url(url_val, pdef) if url_val else None
 
     _write_providers_cfg(s, cfg)
     db.commit()

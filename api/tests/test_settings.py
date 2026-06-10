@@ -215,3 +215,45 @@ class TestPingProvider:
             r = client.get("/api/settings/providers/ollama/ping")
         assert r.status_code == 200
         assert r.json()["reachable"] is True
+
+
+# ── Provider base_url validation (security) ───────────────────────────────────
+# An unvalidated base_url lets an attacker redirect AI calls (which carry the
+# decrypted API key) to their own host. Validate scheme/host on save.
+
+class TestBaseUrlValidation:
+    def test_rejects_non_http_scheme(self, client):
+        r = client.post("/api/settings/providers/openrouter",
+                        json={"base_url": "file:///etc/passwd"})
+        assert r.status_code == 400
+
+    def test_rejects_plain_http_for_key_bearing_provider(self, client):
+        # openrouter sends an API key — plaintext http to a remote host would
+        # exfiltrate it, so it must be rejected.
+        r = client.post("/api/settings/providers/openrouter",
+                        json={"base_url": "http://attacker.example.com"})
+        assert r.status_code == 400
+
+    def test_accepts_https_for_key_bearing_provider(self, client):
+        r = client.post("/api/settings/providers/openrouter",
+                        json={"base_url": "https://my-proxy.example.com/v1"})
+        assert r.status_code == 200
+
+    def test_accepts_localhost_http_for_local_provider(self, client):
+        # ollama is local and sends no key — http://localhost is legitimate.
+        r = client.post("/api/settings/providers/ollama",
+                        json={"base_url": "http://localhost:11434/v1"})
+        assert r.status_code == 200
+
+
+# ── pg-transfer destination guard (security) ──────────────────────────────────
+
+class TestPgTransferGuard:
+    def test_remote_target_rejected_without_optin(self, client):
+        # Copying the whole datastore (incl. encrypted key columns) to an
+        # arbitrary host is an exfiltration primitive — reject non-loopback
+        # targets unless explicitly opted in via env var.
+        r = client.post("/api/settings/pg-transfer",
+                        json={"target": {"host": "attacker.example.com", "port": 5432}})
+        assert r.status_code == 403
+        assert "loopback" in r.json()["detail"].lower()

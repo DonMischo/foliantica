@@ -251,6 +251,49 @@ class TestBatchExport:
         assert r.status_code == 400
 
 
+# ── Image path-traversal safety (security) ────────────────────────────────────
+# Scene content is raw, attacker-influenceable HTML, so a scene-image data-src
+# must never be able to read a file outside the uploads dir during export.
+
+class TestImagePathSafety:
+    def test_rejects_absolute_path(self, tmp_path):
+        from services.export import _safe_image_path
+        secret = tmp_path / "secret.txt"
+        secret.write_text("TOP SECRET")
+        assert _safe_image_path(str(secret)) is None
+
+    def test_rejects_parent_traversal(self):
+        from services.export import _safe_image_path
+        assert _safe_image_path("uploads/../../etc/passwd") is None
+        assert _safe_image_path("../../../etc/passwd") is None
+
+    def test_rejects_empty(self):
+        from services.export import _safe_image_path
+        assert _safe_image_path("") is None
+        assert _safe_image_path(None) is None  # type: ignore[arg-type]
+
+    def test_accepts_file_inside_uploads(self, tmp_path, monkeypatch):
+        from services.export import _safe_image_path
+        monkeypatch.chdir(tmp_path)
+        up = tmp_path / "uploads" / "scenes"
+        up.mkdir(parents=True)
+        img = up / "a.png"
+        img.write_bytes(b"\x89PNG fake")
+        assert _safe_image_path("uploads/scenes/a.png") == img.resolve()
+
+    def test_img_html_does_not_embed_arbitrary_file(self, tmp_path, monkeypatch):
+        import base64
+        from services.export import _img_html
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "uploads").mkdir()
+        secret = tmp_path / "secret.key"
+        secret.write_bytes(b"FERNET-SECRET-VALUE")
+        # data-src pointing outside uploads must yield NO output and leak nothing
+        out = _img_html(str(secret), "caption")
+        assert out == ""
+        assert base64.b64encode(b"FERNET-SECRET-VALUE").decode() not in out
+
+
 # ── Live tests: real Pandoc container ─────────────────────────────────────────
 
 PANDOC_LIVE_URL = "http://localhost:8082"

@@ -81,15 +81,35 @@ def _extract_images(html: str) -> "tuple[str, list[tuple[str,str]]]":
     return _SCENE_IMG_RE.sub(_sub, html), imgs
 
 
-def _img_md(src: str, cap: str) -> str:
+def _safe_image_path(src: str) -> "Path | None":
+    """Resolve a scene-image ``data-src`` to a real file *inside* the uploads dir.
+
+    Scene content is raw, attacker-influenceable HTML, so ``data-src`` must be
+    treated as untrusted.  Absolute paths, drive letters and ``..`` traversal are
+    rejected; only files contained within ``<cwd>/uploads`` are returned.  This
+    prevents exporting arbitrary files off disk (path traversal / file read).
+    """
     if not src:
+        return None
+    uploads_root = (Path.cwd() / "uploads").resolve()
+    raw = src.replace("\\", "/").lstrip("/")
+    candidate = (Path.cwd() / raw).resolve()
+    try:
+        candidate.relative_to(uploads_root)
+    except ValueError:
+        return None
+    return candidate if candidate.is_file() else None
+
+
+def _img_md(src: str, cap: str) -> str:
+    if not _safe_image_path(src):
         return ""
     rel = "../" + src.replace("\\", "/")
     return f"\n\n![{cap}]({rel})\n\n"
 
 
 def _img_latex(src: str, cap: str) -> str:
-    if not src:
+    if not _safe_image_path(src):
         return ""
     rel = "../" + src.replace("\\", "/")
     cap_line = f"\n\\caption{{{_escape_latex(cap)}}}" if cap else ""
@@ -101,10 +121,8 @@ def _img_latex(src: str, cap: str) -> str:
 
 
 def _img_html(src: str, cap: str) -> str:
-    if not src:
-        return ""
-    p = Path(src)
-    if not p.exists():
+    p = _safe_image_path(src)
+    if not p:
         return ""
     data = p.read_bytes()
     ext = p.suffix.lower().lstrip(".")
