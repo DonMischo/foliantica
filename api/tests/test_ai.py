@@ -120,6 +120,34 @@ def _collect_sse_content(response) -> str:
     return "".join(tokens)
 
 
+# ── Model guard: streaming endpoints must fail cleanly without a model ────────
+
+class TestModelGuard:
+    """With no model configured, streaming endpoints must return 400 rather than
+    a 200 SSE stream whose only payload is a provider error chunk."""
+
+    def _settings_without_model(self, db):
+        db.add(UserSettings(id=1, default_model=""))
+        db.commit()
+
+    def test_generate_without_model_returns_400(self, client, db, scene):
+        self._settings_without_model(db)
+        r = client.post("/api/ai/generate", json={
+            "scene_id": scene["id"], "mode": "custom", "custom_prompt": "x",
+        })
+        assert r.status_code == 400
+        assert "model" in r.json()["detail"].lower()
+
+    def test_chat_without_model_returns_400(self, client, db, scene):
+        self._settings_without_model(db)
+        r = client.post("/api/ai/chat", json={
+            "scene_id": scene["id"],
+            "messages": [{"role": "user", "content": "hi"}],
+        })
+        assert r.status_code == 400
+        assert "model" in r.json()["detail"].lower()
+
+
 # ── Unit tests: _fill_placeholders ───────────────────────────────────────────
 
 class TestFillPlaceholders:

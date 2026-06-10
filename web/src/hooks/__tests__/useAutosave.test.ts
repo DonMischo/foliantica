@@ -138,4 +138,57 @@ describe("useAutosave", () => {
 
     expect(scenesApi.update).toHaveBeenCalledWith(3, { content: "stored content" });
   });
+
+  it("does NOT re-save when stored pending content equals the loaded content", async () => {
+    // A leftover pending key that matches the server content must not trigger a
+    // redundant (potentially clobbering) write — just clear the stale key.
+    localStorage.setItem("lw_pending_4", "same content");
+
+    renderHook(
+      () => useAutosave({ sceneId: 4, content: "same content", enabled: true }),
+      { wrapper: makeWrapper() }
+    );
+
+    await act(async () => {
+      vi.advanceTimersByTime(0);
+    });
+
+    expect(scenesApi.update).not.toHaveBeenCalled();
+    expect(localStorage.getItem("lw_pending_4")).toBeNull();
+  });
+
+  it("flushes a pending edit on unmount instead of dropping it", async () => {
+    const { rerender, unmount } = renderHook(
+      ({ content }) => useAutosave({ sceneId: 9, content, enabled: true }),
+      { wrapper: makeWrapper(), initialProps: { content: "first" } }
+    );
+
+    // Edit, then unmount BEFORE the 1s debounce fires.
+    rerender({ content: "edited before nav" });
+    await act(async () => {
+      unmount();
+    });
+
+    // The last edit is persisted (flushed), not lost — tagged with scene 9.
+    expect(scenesApi.update).toHaveBeenCalledWith(9, { content: "edited before nav" });
+  });
+
+  it("flushes the previous scene's pending edit to the correct scene on navigation", async () => {
+    const { rerender } = renderHook(
+      ({ sceneId, content }) => useAutosave({ sceneId, content, enabled: true }),
+      {
+        wrapper: makeWrapper(),
+        initialProps: { sceneId: 1, content: "scene one edit" },
+      }
+    );
+
+    // Navigate to scene 2 before scene 1's debounce fires.
+    await act(async () => {
+      rerender({ sceneId: 2, content: "scene two content" });
+    });
+
+    // Scene 1's pending edit must be written to scene 1 — never to scene 2.
+    expect(scenesApi.update).toHaveBeenCalledWith(1, { content: "scene one edit" });
+    expect(scenesApi.update).not.toHaveBeenCalledWith(2, { content: "scene one edit" });
+  });
 });

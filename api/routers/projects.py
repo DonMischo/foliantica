@@ -100,10 +100,11 @@ def create_project(body: ProjectCreate, db: Session = Depends(get_db)):
             project.time_config = source.time_config
 
     db.add(project)
-    db.commit()
-    db.refresh(project)
+    db.flush()  # assign project.id without committing — keep the copy atomic
 
-    # Deep-copy codex entries + relations from source project
+    # Deep-copy codex entries + relations from source project. Done in the SAME
+    # transaction as the project insert so a failure mid-copy rolls back the
+    # whole thing instead of leaving an orphaned empty project behind.
     if copy_id:
         # Resolve to actual codex owner in case source is sharing
         actual_copy_id = source.shared_codex_project_id or copy_id  # type: ignore[possibly-undefined]
@@ -149,9 +150,8 @@ def create_project(body: ProjectCreate, db: Session = Depends(get_db)):
             )
             db.add(new_rel)
 
-        db.commit()
-        db.refresh(project)
-
+    db.commit()
+    db.refresh(project)
     return _project_to_out(project, None)
 
 

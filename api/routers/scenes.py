@@ -1,7 +1,7 @@
 import re
 import json
 import hashlib
-from datetime import datetime, UTC, timedelta
+from datetime import datetime, UTC
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -150,16 +150,17 @@ def update_scene(scene_id: int, body: SceneUpdate, db: Session = Depends(get_db)
     if "scene_time" in body.model_fields_set:
         st = body.scene_time
         data["scene_time"] = json.dumps(st) if st is not None else None
-    # Handle subplot separately — None means "move back to main plot"
-    if "subplot" in body.model_fields_set:
-        data["subplot"] = body.subplot
-    # Handle pov_character_id and beat — None means "clear the value"
-    if "pov_character_id" in body.model_fields_set:
-        data["pov_character_id"] = body.pov_character_id
-    if "beat" in body.model_fields_set:
-        data["beat"] = body.beat
-    if "scene_type" in body.model_fields_set:
-        data["scene_type"] = body.scene_type
+    # These fields are intentionally nullable: an explicit null means "clear the
+    # value" — e.g. move a scene back to the main plot, or remove it from the
+    # corkboard canvas (node_x/node_y) or a stack. exclude_none above drops them,
+    # so restore any the client explicitly set (including to null).
+    _NULLABLE_FIELDS = (
+        "subplot", "pov_character_id", "beat", "scene_type",
+        "synopsis", "global_order", "stack_group", "node_x", "node_y",
+    )
+    for field in _NULLABLE_FIELDS:
+        if field in body.model_fields_set:
+            data[field] = getattr(body, field)
     # Validate cross-chapter move
     if "chapter_id" in data and not db.get(Chapter, data["chapter_id"]):
         raise HTTPException(404, f"Chapter {data['chapter_id']} not found")
@@ -197,7 +198,14 @@ def reorder_scenes(body: ReorderRequest, db: Session = Depends(get_db)):
 # ── Scene Versions ────────────────────────────────────────────────────────────
 
 def _prune_versions(scene_id: int, db: Session) -> None:
-    """Keep max 30 versions. If >30 exist, apply 30-day rule first, then hard-cap at 30."""
+    """Keep the 30 most recent versions; delete the rest.
+
+    The previous implementation also purged anything older than 30 days *before*
+    the hard-cap, which could delete a version that was among the 30 newest
+    simply because it was old — violating the "keep the 30 most recent" contract
+    and losing history for users who snapshot in bursts then pause. The hard-cap
+    alone bounds storage while always retaining the newest 30.
+    """
     versions = (
         db.query(SceneVersion)
         .filter(SceneVersion.scene_id == scene_id)
@@ -206,20 +214,7 @@ def _prune_versions(scene_id: int, db: Session) -> None:
     )
     if len(versions) <= 30:
         return
-    # Step 1: delete versions older than 30 days
-    cutoff = _now() - timedelta(days=30)
-    for v in versions:
-        if v.created_at < cutoff:
-            db.delete(v)
-    db.flush()
-    # Step 2: hard-cap at 30 (delete oldest first)
-    remaining = (
-        db.query(SceneVersion)
-        .filter(SceneVersion.scene_id == scene_id)
-        .order_by(SceneVersion.created_at.desc())
-        .all()
-    )
-    for v in remaining[30:]:
+    for v in versions[30:]:  # newest-first, so [30:] are the oldest beyond the cap
         db.delete(v)
     db.flush()
 

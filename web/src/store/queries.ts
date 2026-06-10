@@ -179,6 +179,9 @@ export const useScene = (sceneId: number) =>
     queryKey: ["scene", sceneId],
     queryFn: () => scenesApi.get(sceneId),
     enabled: !!sceneId,
+    // Avoid refetch-driven clobbers of in-flight autosaves on incidental
+    // invalidations (window refocus, sibling mutations).
+    staleTime: 1000 * 30,
   });
 
 export const useCreateScene = (chapterId: number) => {
@@ -432,10 +435,14 @@ export const useDeleteFragment = (projectId: number) => {
 
 // ── Scene Commands ────────────────────────────────────────────────────────────
 
-export const useSyncSceneCommands = (sceneId: number) => {
+export const useSyncSceneCommands = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (commands: SceneCommandIn[]) => sceneCommandsApi.sync(sceneId, commands),
+    // sceneId is passed per-call (not bound at hook time) so a debounced sync
+    // that fires after the user navigates targets the scene the commands were
+    // extracted from, not whatever scene is now mounted.
+    mutationFn: ({ sceneId, commands }: { sceneId: number; commands: SceneCommandIn[] }) =>
+      sceneCommandsApi.sync(sceneId, commands),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["codex"] });           // refreshes CodexEntry.inventory
       qc.invalidateQueries({ queryKey: ["codex-relations"] });

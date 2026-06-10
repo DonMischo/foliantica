@@ -298,3 +298,69 @@ class TestGhostTexts:
         ghosts = result[0]["ghost_texts"]
         assert "First ghost" in ghosts
         assert "Second ghost" in ghosts
+
+
+# ── Version pruning ───────────────────────────────────────────────────────────
+
+class TestVersionPruning:
+    def test_keeps_30_newest_even_when_all_are_old(self, client, scene, db):
+        """The contract is "keep the 30 most recent versions". Versions older
+        than 30 days that are still among the newest 30 must NOT be purged."""
+        from datetime import datetime, timedelta
+        from models import SceneVersion
+        from routers.scenes import _prune_versions
+
+        base = datetime(2020, 1, 1)  # all far older than 30 days
+        for i in range(35):
+            db.add(SceneVersion(
+                scene_id=scene["id"],
+                content=f"<p>v{i}</p>",
+                content_hash=f"hash{i}",
+                created_at=base + timedelta(minutes=i),
+            ))
+        db.commit()
+
+        _prune_versions(scene["id"], db)
+        db.commit()
+
+        remaining = (
+            db.query(SceneVersion)
+            .filter(SceneVersion.scene_id == scene["id"])
+            .order_by(SceneVersion.created_at.desc())
+            .all()
+        )
+        assert len(remaining) == 30
+        contents = {v.content for v in remaining}
+        assert "<p>v34</p>" in contents   # newest kept
+        assert "<p>v5</p>" in contents    # 30th-newest kept
+        assert "<p>v4</p>" not in contents  # oldest beyond cap pruned
+        assert "<p>v0</p>" not in contents
+
+
+# ── Nullable field clears (explicit null must clear, not be ignored) ──────────
+
+class TestSceneNullableClears:
+    def test_clear_node_position_with_null(self, client, scene):
+        client.patch(f"/api/scenes/{scene['id']}", json={"node_x": 10.5, "node_y": 20.0})
+        s = client.get(f"/api/scenes/{scene['id']}").json()
+        assert s["node_x"] == 10.5 and s["node_y"] == 20.0
+
+        # Explicit null must clear the value (remove from corkboard canvas)
+        client.patch(f"/api/scenes/{scene['id']}", json={"node_x": None, "node_y": None})
+        s = client.get(f"/api/scenes/{scene['id']}").json()
+        assert s["node_x"] is None
+        assert s["node_y"] is None
+
+    def test_clear_synopsis_with_null(self, client, scene):
+        client.patch(f"/api/scenes/{scene['id']}", json={"synopsis": "A summary"})
+        assert client.get(f"/api/scenes/{scene['id']}").json()["synopsis"] == "A summary"
+
+        client.patch(f"/api/scenes/{scene['id']}", json={"synopsis": None})
+        assert client.get(f"/api/scenes/{scene['id']}").json()["synopsis"] is None
+
+    def test_clear_global_order_with_null(self, client, scene):
+        client.patch(f"/api/scenes/{scene['id']}", json={"global_order": 5})
+        assert client.get(f"/api/scenes/{scene['id']}").json()["global_order"] == 5
+
+        client.patch(f"/api/scenes/{scene['id']}", json={"global_order": None})
+        assert client.get(f"/api/scenes/{scene['id']}").json()["global_order"] is None

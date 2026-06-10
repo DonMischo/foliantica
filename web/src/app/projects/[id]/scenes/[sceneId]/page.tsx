@@ -72,7 +72,7 @@ export default function ScenePage() {
   const createFragment = useCreateFragment(projectId);
   // chapter_id is on scene; hook needs it — use 0 until scene loads, only called after
   const deleteScene = useDeleteScene(scene?.chapter_id ?? 0);
-  const syncCommands = useSyncSceneCommands(sceneIdNum);
+  const syncCommands = useSyncSceneCommands();
   const createVersion = useCreateSceneVersion(sceneIdNum);
   const updateSettings = useUpdateSettings();
   const qc = useQueryClient();
@@ -162,7 +162,7 @@ export default function ScenePage() {
       // user navigated away before the debounced sync fired in a previous session.
       if (scene.content) {
         const commands = extractCommands(scene.content);
-        syncCommands.mutate(commands);
+        syncCommands.mutate({ sceneId: scene.id, commands });
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -201,18 +201,40 @@ export default function ScenePage() {
 
   // Debounced command sync (fires 2s after last change, same rhythm as autosave)
   const syncRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The pending command sync, tagged with the scene it was extracted from.
+  const pendingCmdRef = useRef<{ sceneId: number; html: string } | null>(null);
+  // Keep a stable reference to the (stable) RQ mutate fn so flushCommands below
+  // doesn't change identity every render.
+  const syncMutateRef = useRef(syncCommands.mutate);
+  syncMutateRef.current = syncCommands.mutate;
+
+  const flushCommands = useCallback(() => {
+    const pending = pendingCmdRef.current;
+    if (!pending) return;
+    pendingCmdRef.current = null;
+    syncMutateRef.current({ sceneId: pending.sceneId, commands: extractCommands(pending.html) });
+  }, [extractCommands]);
+
   const handleContentChange = useCallback((html: string) => {
     setContent(html);
     contentRef.current = html;
     const text = html.replace(/<[^>]+>/g, "");
     setWordCount(text.trim().split(/\s+/).filter(Boolean).length);
-    // Debounce command sync
+    // Debounce command sync, tagging the scene so a late fire targets the scene
+    // the commands came from — not whatever scene is mounted when it fires.
+    pendingCmdRef.current = { sceneId: sceneIdNum, html };
     if (syncRef.current) clearTimeout(syncRef.current);
-    syncRef.current = setTimeout(() => {
-      const commands = extractCommands(html);
-      syncCommands.mutate(commands);
-    }, 2000);
-  }, [extractCommands, syncCommands]);
+    syncRef.current = setTimeout(flushCommands, 2000);
+  }, [sceneIdNum, flushCommands]);
+
+  // Flush any pending command sync when leaving the scene / unmounting, so the
+  // last edits' inventory commands aren't dropped; also clears the stale timer.
+  useEffect(() => {
+    return () => {
+      if (syncRef.current) { clearTimeout(syncRef.current); syncRef.current = null; }
+      flushCommands();
+    };
+  }, [sceneIdNum, flushCommands]);
 
   const handleTitleBlur = () => {
     if (scene && title !== scene.title) {

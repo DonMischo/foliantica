@@ -189,6 +189,8 @@ async def generate(body: AIGenerateRequest, db: Session = Depends(get_db)):
     if not settings:
         raise HTTPException(400, "No AI provider configured")
     model = body.model or settings.default_model
+    if not model:
+        raise HTTPException(400, "No AI model configured")
     pdef, base_url, api_key = _resolve_provider(settings, model=model)
 
     context = _build_context(scene, db)
@@ -308,6 +310,8 @@ async def ki_generate(body: KiGenerateRequest, db: Session = Depends(get_db)):
     if not settings:
         raise HTTPException(400, "No AI provider configured")
     model = body.model or settings.default_model
+    if not model:
+        raise HTTPException(400, "No AI model configured")
     pdef, base_url, api_key = _resolve_provider(settings, model=model)
 
     if body.prompt_id:
@@ -554,6 +558,8 @@ async def generate_synopsis(scene_id: int, db: Session = Depends(get_db)):
         raise HTTPException(400, "Scene has no content to summarize")
 
     model = settings.default_synopsis_model or settings.default_model
+    if not model:
+        raise HTTPException(400, "No AI model configured")
     pdef, base_url, api_key = _resolve_provider(settings, model=model)
     lang = _project_language(scene, db)
 
@@ -588,6 +594,8 @@ async def chat(body: ChatRequest, db: Session = Depends(get_db)):
     if not settings:
         raise HTTPException(400, "No AI provider configured")
     model = body.model or settings.default_model
+    if not model:
+        raise HTTPException(400, "No AI model configured")
     pdef, base_url, api_key = _resolve_provider(settings, model=model)
 
     language = _project_language(scene, db)
