@@ -1,0 +1,13 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web-test",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "-p", "3100"],
+      "cwd": "web",
+      "env": { "LW_API_PORT": "8799" },
+      "port": 3100
+    }
+  ]
+}

@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { Handle, Position } from "@xyflow/react";
 import type { Node, NodeProps } from "@xyflow/react";
-import { GripVertical, ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import { ChevronDown, ChevronUp, Pencil, Waypoints } from "lucide-react";
 import { SingleCard } from "./SceneCard";
 import { hexToRgba } from "./ColorPicker";
+import { CONNECTION_TYPES } from "./connectionTypes";
 import type { CorkboardScene } from "@/types";
 
 // ── Node data contract ────────────────────────────────────────────────────────
@@ -19,12 +20,15 @@ export interface SceneNodeData extends Record<string, unknown> {
   compact: boolean;
   generatingId: number | null;
   availableSubplots: string[];
+  stackName?: string;
   onTitleChange: (id: number, title: string) => void;
   onSynopsisChange: (id: number, syn: string | null) => void;
   onGenerateSynopsis: (id: number) => Promise<string>;
   onColorChange: (id: number, color: string | null) => void;
   onSubplotChange: (ids: number[], subplot: string | null) => void;
   onUnstack: (sceneId: number) => void;
+  onStackRename: (stackGroup: string, name: string) => void;
+  onCodexWeb: (sceneId: number) => void;
 }
 
 export type SceneNodeType = Node<SceneNodeData, "sceneNode">;
@@ -40,32 +44,29 @@ interface StackDisplayProps {
   compact: boolean;
   generatingId: number | null;
   availableSubplots: string[];
+  stackName: string;
   onTitleChange: (id: number, title: string) => void;
   onSynopsisChange: (id: number, syn: string | null) => void;
   onGenerateSynopsis: (id: number) => Promise<string>;
   onColorChange: (id: number, color: string | null) => void;
   onSubplotChange: (ids: number[], subplot: string | null) => void;
   onUnstack: (sceneId: number) => void;
+  onStackRename: (stackGroup: string, name: string) => void;
 }
 
 function StackDisplay({
   scenes, projectId, sceneColors, showSynopsis, compact, colColor,
-  generatingId, availableSubplots,
+  generatingId, availableSubplots, stackName,
   onTitleChange, onSynopsisChange, onGenerateSynopsis, onColorChange,
-  onSubplotChange, onUnstack,
+  onSubplotChange, onUnstack, onStackRename,
 }: StackDisplayProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [editingName, setEditingName] = useState(false);
-  const [stackName, setStackName] = useState(() => {
-    if (typeof window === "undefined") return "";
-    const sg = scenes[0]?.stack_group ?? "";
-    return localStorage.getItem(`lw_stack_name_${sg}`) ?? "";
-  });
+  const [draftName, setDraftName] = useState(stackName);
 
   const saveStackName = (name: string) => {
     const sg = scenes[0]?.stack_group ?? "";
-    if (sg) localStorage.setItem(`lw_stack_name_${sg}`, name);
-    setStackName(name);
+    if (sg) onStackRename(sg, name);
     setEditingName(false);
   };
 
@@ -82,18 +83,18 @@ function StackDisplay({
           <input
             autoFocus
             className="nodrag flex-1 text-xs bg-transparent border-b border-primary outline-none"
-            value={stackName}
-            onChange={(e) => setStackName(e.target.value)}
-            onBlur={() => saveStackName(stackName)}
+            value={draftName}
+            onChange={(e) => setDraftName(e.target.value)}
+            onBlur={() => saveStackName(draftName)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") saveStackName(stackName);
+              if (e.key === "Enter") saveStackName(draftName);
               if (e.key === "Escape") { setEditingName(false); }
             }}
           />
         ) : (
           <span
             className="flex-1 text-xs font-medium truncate cursor-text"
-            onClick={() => setEditingName(true)}
+            onClick={() => { setDraftName(stackName); setEditingName(true); }}
           >
             {displayName}
           </span>
@@ -121,11 +122,11 @@ function StackDisplay({
           <input
             autoFocus
             className="nodrag flex-1 text-xs bg-transparent border-b border-primary outline-none"
-            value={stackName}
-            onChange={(e) => setStackName(e.target.value)}
-            onBlur={() => saveStackName(stackName)}
+            value={draftName}
+            onChange={(e) => setDraftName(e.target.value)}
+            onBlur={() => saveStackName(draftName)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") saveStackName(stackName);
+              if (e.key === "Enter") saveStackName(draftName);
               if (e.key === "Escape") { setEditingName(false); }
             }}
           />
@@ -136,7 +137,7 @@ function StackDisplay({
         )}
         <button
           className="nodrag text-muted-foreground/30 hover:text-muted-foreground/70 p-0.5"
-          onClick={() => setEditingName(true)}
+          onClick={() => { setDraftName(stackName); setEditingName(true); }}
           title="Rename stack"
         >
           <Pencil className="h-2.5 w-2.5" />
@@ -198,7 +199,6 @@ function SubplotChip({
   available: string[];
   onChange: (val: string | null) => void;
 }) {
-  const label = current ?? "Main Plot";
   return (
     <select
       className="nodrag text-[9px] bg-transparent border border-border/30 rounded px-1 py-0.5 text-muted-foreground/50 hover:text-muted-foreground cursor-pointer outline-none max-w-[90px] truncate"
@@ -214,14 +214,68 @@ function SubplotChip({
   );
 }
 
+// ── Typed cable handles ───────────────────────────────────────────────────────
+
+/** Colored connection sockets — targets on the left edge, sources on the right.
+ *  Handle ids encode the cable type: `tgt-<type>` / `src-<type>`. */
+function TypedHandles() {
+  const n = CONNECTION_TYPES.length;
+  return (
+    <>
+      {CONNECTION_TYPES.map((t, i) => {
+        const top = `${((i + 1) / (n + 1)) * 100}%`;
+        const common: React.CSSProperties = {
+          top,
+          width: 9,
+          height: 9,
+          border: "2px solid hsl(var(--card))",
+          background: t.color,
+        };
+        return (
+          <span key={t.id}>
+            <Handle
+              type="target"
+              position={Position.Left}
+              id={`tgt-${t.id}`}
+              style={{ ...common, left: -5 }}
+              title={`${t.label} (in)`}
+            />
+            <Handle
+              type="source"
+              position={Position.Right}
+              id={`src-${t.id}`}
+              style={{ ...common, right: -5 }}
+              title={`${t.label} (out)`}
+            />
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
+/** Hidden centered source handle — anchor for codex spider-web edges. */
+const webHandleStyle: React.CSSProperties = {
+  left: "50%",
+  top: "50%",
+  transform: "translate(-50%, -50%)",
+  width: 1,
+  height: 1,
+  minWidth: 1,
+  minHeight: 1,
+  opacity: 0,
+  pointerEvents: "none",
+  border: "none",
+};
+
 // ── Custom React Flow node ────────────────────────────────────────────────────
 
 export function SceneNode({ data }: NodeProps<SceneNodeType>) {
   const {
     scenes, projectId, sceneColors, colColor, showSynopsis, compact,
-    generatingId, availableSubplots,
+    generatingId, availableSubplots, stackName,
     onTitleChange, onSynopsisChange, onGenerateSynopsis, onColorChange,
-    onSubplotChange, onUnstack,
+    onSubplotChange, onUnstack, onStackRename, onCodexWeb,
   } = data;
 
   const isStack = scenes.length > 1;
@@ -230,18 +284,24 @@ export function SceneNode({ data }: NodeProps<SceneNodeType>) {
 
   return (
     <div
-      className="nowheel flex flex-col gap-0.5 rounded-lg"
+      className="nowheel flex flex-col gap-0.5 rounded-lg relative"
       style={{
         borderLeft: `3px solid ${hexToRgba(colColor, 0.7)}`,
-        background: hexToRgba(colColor, 0.05),
+        background: "hsl(var(--card))",
       }}
     >
-      {/* Target handle */}
+      {/* Sequence handles (top/bottom) — derived story-order thread */}
       <Handle
         type="target"
         position={Position.Top}
         className="!w-2 !h-2 !bg-border !border-border/50"
       />
+
+      {/* Typed cable sockets (left/right) */}
+      <TypedHandles />
+
+      {/* Spider-web anchor (invisible, centered) */}
+      <Handle type="source" position={Position.Bottom} id="web" style={webHandleStyle} isConnectable={false} />
 
       {/* Card body */}
       {isStack ? (
@@ -254,12 +314,14 @@ export function SceneNode({ data }: NodeProps<SceneNodeType>) {
           compact={compact}
           generatingId={generatingId}
           availableSubplots={availableSubplots}
+          stackName={stackName ?? ""}
           onTitleChange={onTitleChange}
           onSynopsisChange={onSynopsisChange}
           onGenerateSynopsis={onGenerateSynopsis}
           onColorChange={onColorChange}
           onSubplotChange={onSubplotChange}
           onUnstack={onUnstack}
+          onStackRename={onStackRename}
         />
       ) : (
         <SingleCard
@@ -277,8 +339,15 @@ export function SceneNode({ data }: NodeProps<SceneNodeType>) {
         />
       )}
 
-      {/* Subplot selector footer */}
-      <div className="flex justify-end pr-1">
+      {/* Footer: codex web + subplot selector */}
+      <div className="flex items-center justify-between pl-1 pr-1 bg-card rounded-b-md">
+        <button
+          className="nodrag text-muted-foreground/30 hover:text-primary transition-colors"
+          onClick={() => onCodexWeb(representative.id)}
+          title="Show codex web — characters, places & items in this scene"
+        >
+          <Waypoints className="h-3 w-3" />
+        </button>
         <SubplotChip
           current={representative.subplot}
           available={availableSubplots}
@@ -286,7 +355,7 @@ export function SceneNode({ data }: NodeProps<SceneNodeType>) {
         />
       </div>
 
-      {/* Source handle */}
+      {/* Sequence source handle */}
       <Handle
         type="source"
         position={Position.Bottom}

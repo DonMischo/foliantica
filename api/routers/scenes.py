@@ -157,6 +157,7 @@ def update_scene(scene_id: int, body: SceneUpdate, db: Session = Depends(get_db)
     _NULLABLE_FIELDS = (
         "subplot", "pov_character_id", "beat", "scene_type",
         "synopsis", "global_order", "stack_group", "node_x", "node_y",
+        "card_color",
     )
     for field in _NULLABLE_FIELDS:
         if field in body.model_fields_set:

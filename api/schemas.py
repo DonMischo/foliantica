@@ -159,6 +159,7 @@ class SceneUpdate(BaseModel):
     pov_character_id: Optional[int] = None
     beat: Optional[str] = None
     scene_type: Optional[str] = None
+    card_color: Optional[str] = None
 
 
 class SceneOut(SceneBase):
@@ -175,6 +176,7 @@ class SceneOut(SceneBase):
     pov_character_id: Optional[int] = None
     beat: Optional[str] = None
     scene_type: Optional[str] = None
+    card_color: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -191,6 +193,35 @@ class SceneOut(SceneBase):
                 except Exception:
                     pass
         return data
+
+
+# ── Corkboard connections / ordering ─────────────────────────────────────────
+
+class SceneConnectionCreate(BaseModel):
+    source_scene_id: int
+    target_scene_id: int
+    connection_type: str = "reference"
+    label: Optional[str] = None
+
+
+class SceneConnectionOut(BaseModel):
+    id: int
+    project_id: int
+    source_scene_id: int
+    target_scene_id: int
+    connection_type: str
+    label: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+class GlobalOrderItem(BaseModel):
+    id: int
+    global_order: int
+
+
+class GlobalOrderRequest(BaseModel):
+    items: list[GlobalOrderItem]
 
 
 # ── Codex Entries ─────────────────────────────────────────────────────────────

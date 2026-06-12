@@ -4,8 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
-from models import Project, CodexEntry, CodexEntryAccess, CodexRelation, Act, Chapter, Scene
-from schemas import ProjectCreate, ProjectOut, ProjectUpdate
+from models import Project, CodexEntry, CodexEntryAccess, CodexRelation, Act, Chapter, Scene, SceneConnection
+from schemas import (
+    ProjectCreate, ProjectOut, ProjectUpdate,
+    SceneConnectionCreate, SceneConnectionOut, GlobalOrderRequest,
+)
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -305,6 +308,17 @@ def get_corkboard(project_id: int, db: Session = Depends(get_db)):
             seen[s.subplot] = None
     subplots = list(seen.keys())
 
+    connections = (
+        db.query(SceneConnection)
+        .filter(SceneConnection.project_id == project_id)
+        .all()
+    )
+
+    try:
+        prefs = json.loads(project.corkboard_prefs or "{}")
+    except Exception:
+        prefs = {}
+
     return {
         "scenes": [
             {
@@ -320,11 +334,104 @@ def get_corkboard(project_id: int, db: Session = Depends(get_db)):
                 "node_y": s.node_y,
                 "pov_character_id": getattr(s, "pov_character_id", None),
                 "beat": getattr(s, "beat", None),
+                "card_color": getattr(s, "card_color", None),
             }
             for s in sorted(all_scenes, key=lambda sc: sc.global_order or 0)
         ],
         "subplots": subplots,
+        "connections": [
+            {
+                "id": c.id,
+                "source_scene_id": c.source_scene_id,
+                "target_scene_id": c.target_scene_id,
+                "connection_type": c.connection_type,
+                "label": c.label,
+            }
+            for c in connections
+        ],
+        "prefs": prefs,
     }
+
+
+@router.patch("/{project_id}/corkboard-prefs")
+def update_corkboard_prefs(project_id: int, body: dict, db: Session = Depends(get_db)):
+    """Replace the per-project corkboard view preferences (layout, colors, …)."""
+    project = db.get(Project, project_id)
+    if not project:
+        raise HTTPException(404, "Project not found")
+    project.corkboard_prefs = json.dumps(body)
+    db.commit()
+    return body
+
+
+@router.post("/{project_id}/connections", response_model=SceneConnectionOut, status_code=201)
+def create_scene_connection(project_id: int, body: SceneConnectionCreate, db: Session = Depends(get_db)):
+    """Create a typed cable between two scenes of this project."""
+    project = db.get(Project, project_id)
+    if not project:
+        raise HTTPException(404, "Project not found")
+    if body.source_scene_id == body.target_scene_id:
+        raise HTTPException(400, "Cannot connect a scene to itself")
+
+    # Both scenes must belong to this project (no cross-project cables)
+    for sid in (body.source_scene_id, body.target_scene_id):
+        scene = db.get(Scene, sid)
+        if not scene or scene.chapter.act.project_id != project_id:
+            raise HTTPException(404, f"Scene {sid} not found in project")
+
+    existing = (
+        db.query(SceneConnection)
+        .filter(
+            SceneConnection.source_scene_id == body.source_scene_id,
+            SceneConnection.target_scene_id == body.target_scene_id,
+            SceneConnection.connection_type == body.connection_type,
+        )
+        .first()
+    )
+    if existing:
+        return existing
+
+    conn = SceneConnection(
+        project_id=project_id,
+        source_scene_id=body.source_scene_id,
+        target_scene_id=body.target_scene_id,
+        connection_type=body.connection_type,
+        label=body.label,
+    )
+    db.add(conn)
+    db.commit()
+    db.refresh(conn)
+    return conn
+
+
+@router.delete("/{project_id}/connections/{connection_id}", status_code=204)
+def delete_scene_connection(project_id: int, connection_id: int, db: Session = Depends(get_db)):
+    conn = db.get(SceneConnection, connection_id)
+    if not conn or conn.project_id != project_id:
+        raise HTTPException(404, "Connection not found")
+    db.delete(conn)
+    db.commit()
+
+
+@router.post("/{project_id}/corkboard/global-order", status_code=204)
+def set_global_order(project_id: int, body: GlobalOrderRequest, db: Session = Depends(get_db)):
+    """Bulk-set scenes.global_order — used by cable reordering and its undo."""
+    if not db.get(Project, project_id):
+        raise HTTPException(404, "Project not found")
+    scene_ids = [item.id for item in body.items]
+    scenes = (
+        db.query(Scene)
+        .join(Chapter, Scene.chapter_id == Chapter.id)
+        .join(Act, Chapter.act_id == Act.id)
+        .filter(Scene.id.in_(scene_ids), Act.project_id == project_id)
+        .all()
+    )
+    by_id = {s.id: s for s in scenes}
+    for item in body.items:
+        scene = by_id.get(item.id)
+        if scene:
+            scene.global_order = item.global_order
+    db.commit()
 
 
 @router.patch("/{project_id}/subplot-names", response_model=list[str])

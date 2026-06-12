@@ -33,6 +33,7 @@ class Project(Base):
     cover_image: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     main_plot_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     subplot_names: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: ["name", ...]
+    corkboard_prefs: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: layout, toggles, colors, stack names
 
     acts: Mapped[list["Act"]] = relationship(
         "Act", back_populates="project", cascade="all, delete-orphan",
@@ -109,6 +110,7 @@ class Scene(Base):
     pov_character_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # codex_entries.id — POV character for this scene
     beat: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # plot beat label (e.g. "Inciting Incident")
     scene_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # action | dialogue | introspection | description | transition
+    card_color: Mapped[Optional[str]] = mapped_column(String(7), nullable=True)  # corkboard card tint (hex)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 
@@ -197,6 +199,22 @@ class CodexEntry(Base):
 
     def set_groups(self, groups: list[str]) -> None:
         self.entry_group = json.dumps(groups)
+
+
+class SceneConnection(Base):
+    """User-drawn typed cable between two scenes on the corkboard."""
+    __tablename__ = "scene_connections"
+    __table_args__ = (
+        UniqueConstraint("source_scene_id", "target_scene_id", "connection_type"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    project_id: Mapped[int] = mapped_column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    source_scene_id: Mapped[int] = mapped_column(Integer, ForeignKey("scenes.id", ondelete="CASCADE"), index=True)
+    target_scene_id: Mapped[int] = mapped_column(Integer, ForeignKey("scenes.id", ondelete="CASCADE"), index=True)
+    connection_type: Mapped[str] = mapped_column(String(50), nullable=False, default="reference")
+    label: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
 
 class CodexRelation(Base):

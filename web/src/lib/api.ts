@@ -4,6 +4,7 @@ import type {
   Fragment, FragmentTabs, BookMeta, AIPrompt, ProjectSceneItem,
   SceneVersion, SceneVersionDetail, MentionStat, SceneMentionStat,
   WritingLogEntry, GhostTextScene, CorkboardAct, CorkboardData,
+  CorkboardPrefs, SceneConnection, RelationsGraph,
   TimelineTrack, TimelineEventItem, SeriesData,
   ProjectAnalytics, ResearchItem, QuerySubmission, ExportProfile, PublisherProfile,
   Achievement,
@@ -94,6 +95,16 @@ export const projectsApi = {
   listScenes: (id: number) => req<ProjectSceneItem[]>(`/projects/${id}/scenes`),
   structure: (id: number) => req<CorkboardAct[]>(`/projects/${id}/structure`),
   corkboard: (id: number) => req<CorkboardData>(`/projects/${id}/corkboard`),
+  updateCorkboardPrefs: (id: number, prefs: CorkboardPrefs) =>
+    req<CorkboardPrefs>(`/projects/${id}/corkboard-prefs`, { method: "PATCH", body: JSON.stringify(prefs) }),
+  createConnection: (id: number, data: { source_scene_id: number; target_scene_id: number; connection_type: string; label?: string | null }) =>
+    req<SceneConnection>(`/projects/${id}/connections`, { method: "POST", body: JSON.stringify(data) }),
+  deleteConnection: (id: number, connectionId: number) =>
+    req<void>(`/projects/${id}/connections/${connectionId}`, { method: "DELETE" }),
+  setGlobalOrder: (id: number, items: { id: number; global_order: number }[]) =>
+    req<void>(`/projects/${id}/corkboard/global-order`, { method: "POST", body: JSON.stringify({ items }) }),
+  relationsGraph: (id: number) =>
+    req<RelationsGraph>(`/projects/${id}/graph`),
   setSubplotNames: (id: number, names: string[]) =>
     req<string[]>(`/projects/${id}/subplot-names`, { method: "PATCH", body: JSON.stringify({ names }) }),
   detachCodexSharing: (id: number) =>
@@ -152,6 +163,7 @@ export const scenesApi = {
     pov_character_id?: number | null;
     beat?: string | null;
     scene_type?: string | null;
+    card_color?: string | null;
   }) =>
     req<Scene>(`/scenes/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id: number) => req<void>(`/scenes/${id}`, { method: "DELETE" }),

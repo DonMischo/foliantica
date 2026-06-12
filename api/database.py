@@ -1186,6 +1186,23 @@ def migrate_ai_providers():
                 pass  # column already exists
 
 
+def migrate_corkboard():
+    """Add corkboard persistence columns (scenes.card_color, projects.corkboard_prefs).
+
+    Runs on both SQLite and PostgreSQL — one transaction per statement so a
+    duplicate-column failure on PG doesn't poison the following statements.
+    """
+    for stmt in [
+        "ALTER TABLE scenes ADD COLUMN card_color TEXT",
+        "ALTER TABLE projects ADD COLUMN corkboard_prefs TEXT",
+    ]:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(stmt))
+        except Exception:
+            pass  # column already exists
+
+
 def migrate_achievement_popup_shown():
     """Add popup_shown_at column to achievement_unlocks if not present."""
     with engine.begin() as conn:

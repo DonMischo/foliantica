@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient, useQueries } from "@tanstack/rea
 import { projectsApi, actsApi, chaptersApi, scenesApi, codexApi, settingsApi, timeApi, fragmentsApi, imagesApi, sceneCommandsApi, promptsApi, versionsApi, mentionStatsApi, writingLogApi, synopsisApi, timelineTracksApi, timelineEventsApi, grammarApi, fontsApi, seriesApi, analyticsApi, researchApi, submissionsApi, exportProfilesApi, publishersApi, achievementsApi, statsApi, syncApi, type StatsTotals, type SyncStatus } from "@/lib/api";
 import type { GrammarCheckResult, PovStats, QuerySubmissionCreate, ExportProfileCreate } from "@/lib/api";
 import type { SceneCommandIn, ProjectItemLogEntry, ProjectCurrencyLogEntry, OpenRouterModel } from "@/lib/api";
-import type { AIPrompt, ProjectSceneItem, SceneVersion, SceneVersionDetail, CorkboardAct, CorkboardData, SeriesData, ProjectAnalytics, ResearchItem, QuerySubmission, ExportProfile, PublisherProfile } from "@/types";
+import type { AIPrompt, ProjectSceneItem, SceneVersion, SceneVersionDetail, CorkboardAct, CorkboardData, CorkboardPrefs, RelationsGraph, SeriesData, ProjectAnalytics, ResearchItem, QuerySubmission, ExportProfile, PublisherProfile } from "@/types";
 
 // ── Projects ──────────────────────────────────────────────────────────────────
 
@@ -786,6 +786,50 @@ export const useCorkboard = (projectId: number) =>
     queryKey: ["corkboard", projectId],
     queryFn: () => projectsApi.corkboard(projectId),
     enabled: !!projectId,
+  });
+
+export const useUpdateCorkboardPrefs = (projectId: number) =>
+  // No invalidation — prefs are written-through from local state; refetching
+  // the whole corkboard on every toggle would cause needless node rebuilds.
+  useMutation({
+    mutationFn: (prefs: CorkboardPrefs) => projectsApi.updateCorkboardPrefs(projectId, prefs),
+  });
+
+export const useCreateConnection = (projectId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { source_scene_id: number; target_scene_id: number; connection_type: string; label?: string | null }) =>
+      projectsApi.createConnection(projectId, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["corkboard", projectId] }),
+  });
+};
+
+export const useDeleteConnection = (projectId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (connectionId: number) => projectsApi.deleteConnection(projectId, connectionId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["corkboard", projectId] }),
+  });
+};
+
+export const useSetGlobalOrder = (projectId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (items: { id: number; global_order: number }[]) =>
+      projectsApi.setGlobalOrder(projectId, items),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["corkboard", projectId] });
+      qc.invalidateQueries({ queryKey: ["scenes"] });
+    },
+  });
+};
+
+export const useRelationsGraph = (projectId: number) =>
+  useQuery<RelationsGraph>({
+    queryKey: ["relations-graph", projectId],
+    queryFn: () => projectsApi.relationsGraph(projectId),
+    enabled: !!projectId,
+    staleTime: 1000 * 60,  // codex relations change rarely while on the board
   });
 
 export const useGenerateSynopsis = (projectId: number) => {

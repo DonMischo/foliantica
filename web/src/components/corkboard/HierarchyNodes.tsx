@@ -39,11 +39,11 @@ export function GroupFrameNode({ data }: NodeProps<GroupFrameNodeType>) {
     <div
       className="w-full h-full rounded-xl cursor-grab active:cursor-grabbing transition-colors hover:border-primary/40"
       style={{
-        background: "hsl(var(--card)/0.25)",
-        border: "2px dashed hsl(var(--border)/0.45)",
+        background: "hsl(var(--muted)/0.92)",
+        border: "2px dashed hsl(var(--border)/0.7)",
       }}
     >
-      <div className="px-2.5 pt-1.5 flex items-center gap-1 text-[11px] font-semibold text-muted-foreground/50 select-none">
+      <div className="px-2.5 pt-1.5 flex items-center gap-1 text-[11px] font-semibold text-muted-foreground/70 select-none">
         <GripVertical className="h-3 w-3 shrink-0" />
         {data.label}
       </div>
