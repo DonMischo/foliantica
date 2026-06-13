@@ -18,7 +18,7 @@ import {
   useCorkboard, useUpdateSceneSynopsis, useGenerateSynopsis,
   useMoveScene, useCodexEntries, useProjectStructure, useProject, useUpdateProject,
   useUpdateCorkboardPrefs, useCreateConnection, useDeleteConnection,
-  useSetGlobalOrder, useRelationsGraph, useSceneMentionStats,
+  useSetGlobalOrder, useRelationsGraph, useSceneMentionStats, useRescanSceneMentions,
 } from "@/store/queries";
 import { projectsApi, scenesApi } from "@/lib/api";
 import { SceneNode } from "@/components/corkboard/SceneNode";
@@ -33,6 +33,7 @@ import type { CorkboardScene, CorkboardAct, CorkboardLayout, SceneConnection, Co
 import { PLOT_TEMPLATES } from "@/lib/plotTemplates";
 import { useColColorsStore } from "@/store/colColors";
 import { BOARD_STYLES } from "@/components/corkboard/boardStyles";
+import { CodexEntryDetail } from "@/components/codex/CodexEntryDetail";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -249,10 +250,11 @@ function buildRFNodes(
   compact: boolean,
   generatingId: number | null,
   availableSubplots: string[],
+  availableBeats: string[],
   stackNames: Record<string, string>,
   handlers: Pick<SceneNodeData,
     "onTitleChange" | "onSynopsisChange" | "onGenerateSynopsis" |
-    "onColorChange" | "onSubplotChange" | "onUnstack" | "onStackRename" | "onCodexWeb">,
+    "onColorChange" | "onSubplotChange" | "onBeatChange" | "onUnstack" | "onStackRename" | "onCodexWeb">,
   projectId: number,
   viewPositions: Map<string, { x: number; y: number }> | null,
 ): SceneNodeType[] {
@@ -295,6 +297,7 @@ function buildRFNodes(
         compact,
         generatingId,
         availableSubplots,
+        availableBeats,
         stackName: sg ? stackNames[sg] ?? "" : undefined,
         ...handlers,
       },
@@ -419,9 +422,10 @@ function buildHierarchyNodes(
   compact: boolean,
   generatingId: number | null,
   availableSubplots: string[],
+  availableBeats: string[],
   handlers: Pick<SceneNodeData,
     "onTitleChange" | "onSynopsisChange" | "onGenerateSynopsis" |
-    "onColorChange" | "onSubplotChange" | "onUnstack" | "onStackRename" | "onCodexWeb">,
+    "onColorChange" | "onSubplotChange" | "onBeatChange" | "onUnstack" | "onStackRename" | "onCodexWeb">,
   projectId: number,
 ): { nodes: AnyNode[]; edges: Edge[]; positions: Map<number, { x: number; y: number }> } {
   const allNodes: AnyNode[] = [];
@@ -485,6 +489,7 @@ function buildHierarchyNodes(
             compact,
             generatingId,
             availableSubplots,
+            availableBeats,
             ...handlers,
           },
         } as SceneNodeType);
@@ -585,9 +590,10 @@ function buildBeatViewNodes(
   cascade: boolean,          // when true, stack cards with CDX/CDY offsets
   generatingId: number | null,
   availableSubplots: string[],
+  availableBeats: string[],
   handlers: Pick<SceneNodeData,
     "onTitleChange" | "onSynopsisChange" | "onGenerateSynopsis" |
-    "onColorChange" | "onSubplotChange" | "onUnstack" | "onStackRename" | "onCodexWeb">,
+    "onColorChange" | "onSubplotChange" | "onBeatChange" | "onUnstack" | "onStackRename" | "onCodexWeb">,
   projectId: number,
 ): { nodes: AnyNode[]; edges: Edge[] } {
   const sw = compact ? CARD_W_SM : CARD_W;
@@ -653,6 +659,7 @@ function buildBeatViewNodes(
           compact,
           generatingId,
           availableSubplots,
+          availableBeats,
           ...handlers,
         },
       } as SceneNodeType);
@@ -692,7 +699,7 @@ function buildCodexWeb(input: CodexWebInput): { nodes: CodexWebNodeType[]; edges
   for (const r of ringsUsed) {
     const ring = mentioned.filter((m) => ringOf(m.entry.entry_type) === r);
     const idx = ringIndex.get(r)!;
-    const radius = 300 + idx * 150;
+    const radius = 158 + idx * 79;
     ring.forEach((m, i) => {
       const angle = -Math.PI / 2 + idx * 0.4 + (i * 2 * Math.PI) / ring.length;
       nodes.push({
@@ -786,9 +793,6 @@ function toolBtn(active: boolean): string {
   ].join(" ");
 }
 
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-}
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -809,6 +813,7 @@ export default function CorkboardPage() {
   const createConn       = useCreateConnection(projectId);
   const deleteConn       = useDeleteConnection(projectId);
   const setGlobalOrder   = useSetGlobalOrder(projectId);
+  const rescanScene      = useRescanSceneMentions();
 
   // ── Stable mutation refs ──────────────────────────────────────────────────
   // Mutation objects are new references every render; store .mutate in refs so
@@ -822,6 +827,7 @@ export default function CorkboardPage() {
     createConn:     createConn.mutate,
     deleteConn:     deleteConn.mutate,
     setGlobalOrder: setGlobalOrder.mutate,
+    rescanScene:    rescanScene.mutate,
   });
   mutateRef.current.move           = moveScene.mutate;
   mutateRef.current.updateSyn      = updateSynopsis.mutate;
@@ -831,6 +837,7 @@ export default function CorkboardPage() {
   mutateRef.current.createConn     = createConn.mutate;
   mutateRef.current.deleteConn     = deleteConn.mutate;
   mutateRef.current.setGlobalOrder = setGlobalOrder.mutate;
+  mutateRef.current.rescanScene    = rescanScene.mutate;
 
   // Codex name → color map for subplot auto-coloring
   const codexColorByName = useMemo(() => {
@@ -1022,6 +1029,11 @@ export default function CorkboardPage() {
     sceneIds.forEach((sid) => mutateRef.current.move({ sceneId: sid, data: { subplot } }));
   }, []); // stable
 
+  const handleBeatChange = useCallback((sceneIds: number[], beat: string | null) => {
+    setLocalScenes((prev) => prev.map((s) => sceneIds.includes(s.id) ? { ...s, beat } : s));
+    sceneIds.forEach((sid) => mutateRef.current.move({ sceneId: sid, data: { beat } }));
+  }, []); // stable
+
   const handleUnstack = useCallback((sceneId: number) => {
     setLocalScenes((prev) => {
       const scene = prev.find((s) => s.id === sceneId);
@@ -1046,7 +1058,11 @@ export default function CorkboardPage() {
   }, []); // persisted via the prefs effect
 
   const handleCodexWeb = useCallback((sceneId: number) => {
-    setWebSceneId((prev) => (prev === sceneId ? null : sceneId));
+    setWebSceneId((prev) => {
+      const next = prev === sceneId ? null : sceneId;
+      if (next !== null) mutateRef.current.rescanScene(sceneId);
+      return next;
+    });
     setDrawerEntryId(null);
   }, []);
 
@@ -1075,12 +1091,13 @@ export default function CorkboardPage() {
     onGenerateSynopsis: handleGenerateSynopsis,
     onColorChange: handleColorChange,
     onSubplotChange: handleSubplotChange,
+    onBeatChange: handleBeatChange,
     onUnstack: handleUnstack,
     onStackRename: handleStackRename,
     onCodexWeb: handleCodexWeb,
   }), [
     handleTitleChange, handleSynopsisChange, handleGenerateSynopsis,
-    handleColorChange, handleSubplotChange, handleUnstack,
+    handleColorChange, handleSubplotChange, handleBeatChange, handleUnstack,
     handleStackRename, handleCodexWeb,
   ]);
 
@@ -1221,7 +1238,7 @@ export default function CorkboardPage() {
       const { nodes: bn, edges: be } = buildBeatViewNodes(
         visibleScenes, allBeatCols, beatPositions, sceneColors,
         resolvedColColors, allCols,
-        compact, beatCascade, generatingId, availableSubplots, handlers, projectId,
+        compact, beatCascade, generatingId, availableSubplots, beatCols, handlers, projectId,
       );
       builtNodes = bn;
       builtEdges = be;
@@ -1230,7 +1247,7 @@ export default function CorkboardPage() {
       const { nodes: hn, edges: he } = buildHierarchyNodes(
         visibleScenes, structure, sceneColors,
         resolvedColColors, allCols,
-        compact, generatingId, availableSubplots, handlers, projectId,
+        compact, generatingId, availableSubplots, beatCols, handlers, projectId,
       );
       builtNodes = hn;
       builtEdges = he;
@@ -1242,7 +1259,7 @@ export default function CorkboardPage() {
         : computeViewPositions(groups, layout, allCols, compact, circleRadiusMult, concentricRadiusMult);
       const newNodes = buildRFNodes(
         groups, allCols, sceneColors, resolvedColColors,
-        compact, generatingId, availableSubplots, stackNames, handlers, projectId,
+        compact, generatingId, availableSubplots, beatCols, stackNames, handlers, projectId,
         viewPositions,
       );
       builtEdges = buildRFEdges(groups, layout === "custom");
@@ -1312,7 +1329,7 @@ export default function CorkboardPage() {
   }, [
     localScenes, visibleScenes, connections, structure, showHierarchy, showBeatView, showFrames, layout,
     allCols, allBeatCols, beatPositions, beatCascade, sceneColors, resolvedColColors,
-    compact, generatingId, availableSubplots, stackNames,
+    compact, generatingId, availableSubplots, beatCols, stackNames,
     circleRadiusMult, concentricRadiusMult,
     webSceneId, webMentions, codexEntries, codexRelations, handleOpenCodexEntry,
     handlers, projectId, setNodes, setEdges,
@@ -1805,6 +1822,7 @@ export default function CorkboardPage() {
   return (
     <div className="h-full flex flex-col overflow-hidden relative bg-background" style={activeStyle.vars as CSSProperties}>
       <ReactFlow
+        colorMode={activeStyle.isDark ? "dark" : "light"}
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
@@ -2286,11 +2304,7 @@ export default function CorkboardPage() {
             className="flex items-center gap-2 px-3 py-2.5 border-b border-border"
             style={{ borderTop: `3px solid ${drawerEntry.color}` }}
           >
-            <span
-              className="h-3 w-3 rounded-full shrink-0"
-              style={{ background: drawerEntry.color }}
-            />
-            <h3 className="flex-1 text-sm font-semibold truncate">{drawerEntry.name}</h3>
+            <span className="text-sm font-medium flex-1">Codex</span>
             <button
               onClick={() => setDrawerEntryId(null)}
               className="text-muted-foreground/50 hover:text-foreground"
@@ -2298,24 +2312,11 @@ export default function CorkboardPage() {
               <X className="h-4 w-4" />
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-3 space-y-3 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground capitalize">
-                {drawerEntry.entry_type}
-              </span>
-              {drawerEntry.aliases.length > 0 && (
-                <span className="text-muted-foreground/60 truncate">
-                  aka {drawerEntry.aliases.join(", ")}
-                </span>
-              )}
-            </div>
-            {drawerEntry.description ? (
-              <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                {stripHtml(drawerEntry.description)}
-              </p>
-            ) : (
-              <p className="text-muted-foreground/40 italic">No description yet.</p>
-            )}
+          <div className="flex-1 overflow-y-auto p-3">
+            <CodexEntryDetail
+              entry={drawerEntry}
+              allEntries={(codexEntries as CodexEntry[] | undefined) ?? []}
+            />
           </div>
           <div className="p-3 border-t border-border">
             <a

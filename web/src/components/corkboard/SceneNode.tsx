@@ -20,12 +20,14 @@ export interface SceneNodeData extends Record<string, unknown> {
   compact: boolean;
   generatingId: number | null;
   availableSubplots: string[];
+  availableBeats: string[];
   stackName?: string;
   onTitleChange: (id: number, title: string) => void;
   onSynopsisChange: (id: number, syn: string | null) => void;
   onGenerateSynopsis: (id: number) => Promise<string>;
   onColorChange: (id: number, color: string | null) => void;
   onSubplotChange: (ids: number[], subplot: string | null) => void;
+  onBeatChange: (ids: number[], beat: string | null) => void;
   onUnstack: (sceneId: number) => void;
   onStackRename: (stackGroup: string, name: string) => void;
   onCodexWeb: (sceneId: number) => void;
@@ -190,6 +192,31 @@ function StackDisplay({
   );
 }
 
+// ── Beat selector ─────────────────────────────────────────────────────────────
+
+function BeatChip({
+  current, available, onChange,
+}: {
+  current: string | null;
+  available: string[];
+  onChange: (val: string | null) => void;
+}) {
+  if (available.length === 0) return null;
+  return (
+    <select
+      className="nodrag text-[9px] bg-transparent border border-border/30 rounded px-1 py-0.5 text-muted-foreground/50 hover:text-muted-foreground cursor-pointer outline-none max-w-[80px] truncate"
+      value={current ?? ""}
+      onChange={(e) => onChange(e.target.value === "" ? null : e.target.value)}
+      title="Assign beat"
+    >
+      <option value="">— beat —</option>
+      {available.map((b) => (
+        <option key={b} value={b}>{b}</option>
+      ))}
+    </select>
+  );
+}
+
 // ── Subplot selector ──────────────────────────────────────────────────────────
 
 function SubplotChip({
@@ -273,9 +300,9 @@ const webHandleStyle: React.CSSProperties = {
 export function SceneNode({ data }: NodeProps<SceneNodeType>) {
   const {
     scenes, projectId, sceneColors, colColor, showSynopsis, compact,
-    generatingId, availableSubplots, stackName,
+    generatingId, availableSubplots, availableBeats, stackName,
     onTitleChange, onSynopsisChange, onGenerateSynopsis, onColorChange,
-    onSubplotChange, onUnstack, onStackRename, onCodexWeb,
+    onSubplotChange, onBeatChange, onUnstack, onStackRename, onCodexWeb,
   } = data;
 
   const isStack = scenes.length > 1;
@@ -339,7 +366,7 @@ export function SceneNode({ data }: NodeProps<SceneNodeType>) {
         />
       )}
 
-      {/* Footer: codex web + subplot selector */}
+      {/* Footer: codex web + beat + subplot selector */}
       <div className="flex items-center justify-between pl-1 pr-1 bg-card rounded-b-md">
         <button
           className="nodrag text-muted-foreground/30 hover:text-primary transition-colors"
@@ -348,6 +375,11 @@ export function SceneNode({ data }: NodeProps<SceneNodeType>) {
         >
           <Waypoints className="h-3 w-3" />
         </button>
+        <BeatChip
+          current={representative.beat ?? null}
+          available={availableBeats}
+          onChange={(val) => onBeatChange(sceneIds, val)}
+        />
         <SubplotChip
           current={representative.subplot}
           available={availableSubplots}
