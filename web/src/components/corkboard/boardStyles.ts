@@ -1,6 +1,7 @@
 export interface BoardStyle {
   id: string;
   label: string;
+  isDark: boolean;
   swatch: { bg: string; card: string };
   vars: Record<string, string>;
 }
@@ -9,12 +10,14 @@ export const BOARD_STYLES: BoardStyle[] = [
   {
     id: "default",
     label: "Default",
+    isDark: true,
     swatch: { bg: "hsl(222,20%,8%)", card: "hsl(222,20%,11%)" },
     vars: {},
   },
   {
     id: "manuscript",
     label: "Manuscript",
+    isDark: false,
     swatch: { bg: "hsl(42,28%,91%)", card: "hsl(40,32%,96%)" },
     vars: {
       "--background":           "42 28% 91%",
@@ -39,6 +42,7 @@ export const BOARD_STYLES: BoardStyle[] = [
   {
     id: "noir",
     label: "Noir",
+    isDark: true,
     swatch: { bg: "hsl(0,0%,4%)", card: "hsl(0,0%,7%)" },
     vars: {
       "--background":           "0 0% 4%",
@@ -63,6 +67,7 @@ export const BOARD_STYLES: BoardStyle[] = [
   {
     id: "blueprint",
     label: "Blueprint",
+    isDark: true,
     swatch: { bg: "hsl(218,55%,7%)", card: "hsl(218,50%,10%)" },
     vars: {
       "--background":           "218 55% 7%",
@@ -87,6 +92,7 @@ export const BOARD_STYLES: BoardStyle[] = [
   {
     id: "cork",
     label: "Cork",
+    isDark: false,
     swatch: { bg: "hsl(34,38%,72%)", card: "hsl(36,35%,80%)" },
     vars: {
       "--background":           "34 38% 72%",

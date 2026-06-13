@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { CodexEntry, EntryType } from "@/types";
-import { useEntryRelations, useInventorySummary } from "@/store/queries";
 import { EntryMentionsDialog } from "./EntryMentionsDialog";
+import { CodexEntryDetail } from "./CodexEntryDetail";
 
 const TYPE_ICONS: Record<EntryType, React.ElementType> = {
   character: User,
@@ -67,9 +67,6 @@ export function CodexSidebar({ entries, selectedId, onSelect, onClose, onAdd, sc
   });
 
   const selected = entries.find((e) => e.id === selectedId);
-  const { data: relations = [] } = useEntryRelations(selected?.id ?? 0);
-  const isCharacter = selected?.entry_type === "character";
-  const { data: inventory } = useInventorySummary(isCharacter ? (selected?.id ?? 0) : 0);
 
   return (
     <>
@@ -94,146 +91,7 @@ export function CodexSidebar({ entries, selectedId, onSelect, onClose, onAdd, sc
           >
             ← Back to list
           </button>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: selected.color }} />
-            <h3 className="font-semibold flex-1">{selected.name}</h3>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6 text-muted-foreground hover:text-foreground"
-              title="Mentions across scenes"
-              onClick={() => setMentionsEntry(selected)}
-            >
-              <BarChart2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wider">{TYPE_LABELS[selected.entry_type as EntryType]}</p>
-
-          {/* Groups / Species / Subtype */}
-          {((selected.groups?.length) || selected.species || selected.subtype) && (
-            <div className="flex gap-3 mb-3 flex-wrap">
-              {(selected.groups?.length > 0) && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">Groups</p>
-                  <div className="flex flex-wrap gap-0.5">
-                    {selected.groups.map(g => (
-                      <span key={g} className="text-xs bg-secondary px-1.5 py-0.5 rounded">{g}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {selected.species && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">Species</p>
-                  <p className="text-xs">{selected.species}</p>
-                </div>
-              )}
-              {selected.subtype && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">Subtype</p>
-                  <p className="text-xs">{selected.subtype}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Tags */}
-          {selected.tags.length > 0 && (
-            <div className="mb-3">
-              <p className="text-xs text-muted-foreground mb-1">Tags</p>
-              <div className="flex flex-wrap gap-1">
-                {selected.tags.map((t) => (
-                  <span key={t} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">#{t}</span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Aliases */}
-          {selected.aliases.length > 0 && (
-            <div className="mb-3">
-              <p className="text-xs text-muted-foreground mb-1">Also known as</p>
-              <div className="flex flex-wrap gap-1">
-                {selected.aliases.map((a) => (
-                  <span key={a} className="text-xs bg-secondary px-2 py-0.5 rounded">{a}</span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Description */}
-          {selected.description && (
-            <div className="mb-3">
-              <p className="text-xs text-muted-foreground mb-1">Description</p>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{selected.description}</p>
-            </div>
-          )}
-
-          {/* Notes */}
-          {selected.notes && (
-            <div className="mb-3">
-              <p className="text-xs text-muted-foreground mb-1">Notes</p>
-              <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">{selected.notes}</p>
-            </div>
-          )}
-
-          {/* Relations — manual only, auto: entries live in Inventory */}
-          {relations.filter(r => !r.relation_type?.startsWith("auto:")).length > 0 && (
-            <div className="mb-3">
-              <p className="text-xs text-muted-foreground mb-1">Relations</p>
-              <div className="space-y-1">
-                {relations.filter(r => !r.relation_type?.startsWith("auto:")).map((r) => (
-                  <div key={r.id} className="flex items-center gap-2 text-xs">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: r.other_color }} />
-                    <span className="font-medium">{r.other_name}</span>
-                    {r.relation_type && (
-                      <span className="text-muted-foreground">— {r.relation_type}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Inventory — characters only */}
-          {isCharacter && inventory && (
-            (inventory.items.length > 0 || inventory.currencies.length > 0) && (
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Inventory</p>
-                {inventory.items.length > 0 && (
-                  <div className="mb-2 space-y-0.5">
-                    {inventory.items.map(({ item_id, qty }) => {
-                      const entry = entries.find((e) => e.id === item_id);
-                      return (
-                        <div key={item_id} className="flex items-center gap-2 text-xs">
-                          <Package className="h-3 w-3 shrink-0 text-blue-400" />
-                          <span className="flex-1 truncate">{entry?.name ?? `Item #${item_id}`}</span>
-                          <span className={cn(
-                            "font-mono shrink-0",
-                            qty > 0 ? "text-green-400" : "text-red-400"
-                          )}>×{qty}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                {inventory.currencies.length > 0 && (
-                  <div className="space-y-0.5">
-                    {inventory.currencies.map(({ name, balance }) => (
-                      <div key={name} className="flex items-center gap-2 text-xs">
-                        <Coins className="h-3 w-3 shrink-0 text-green-400" />
-                        <span className="flex-1 truncate">{name}</span>
-                        <span className={cn(
-                          "font-mono shrink-0",
-                          balance >= 0 ? "text-green-400" : "text-red-400"
-                        )}>{balance}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          )}
+          <CodexEntryDetail entry={selected} allEntries={entries} />
         </div>
       ) : (
         <>

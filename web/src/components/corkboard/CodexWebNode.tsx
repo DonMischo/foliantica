@@ -2,8 +2,7 @@
 
 import { Handle, Position } from "@xyflow/react";
 import type { Node, NodeProps } from "@xyflow/react";
-import { User, MapPin, Sword, Gem, Scroll, Tag } from "lucide-react";
-import { hexToRgba } from "./ColorPicker";
+import { User, MapPin, Package, Scroll, Tag } from "lucide-react";
 
 // ── Node data contract ────────────────────────────────────────────────────────
 
@@ -21,8 +20,7 @@ export type CodexWebNodeType = Node<CodexWebNodeData, "codexWebNode">;
 const TYPE_ICONS: Record<string, typeof User> = {
   character: User,
   location: MapPin,
-  item: Sword,
-  relic: Gem,
+  item: Package,
   lore: Scroll,
 };
 
@@ -44,10 +42,8 @@ export function CodexWebNode({ data }: NodeProps<CodexWebNodeType>) {
   const Icon = TYPE_ICONS[data.entryType] ?? Tag;
   return (
     <div
-      className="flex flex-col items-center gap-1 cursor-pointer group"
+      className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border bg-card shadow-sm cursor-pointer group hover:bg-secondary/50 transition-colors"
       onClick={(e) => {
-        // Don't let the click bubble to the canvas — onPaneClick would close
-        // the overlay (and the drawer we are about to open).
         e.stopPropagation();
         data.onOpen(data.entryId);
       }}
@@ -56,28 +52,17 @@ export function CodexWebNode({ data }: NodeProps<CodexWebNodeType>) {
       <Handle type="target" position={Position.Top} id="web" style={centerHandleStyle} isConnectable={false} />
       <Handle type="source" position={Position.Bottom} id="web" style={centerHandleStyle} isConnectable={false} />
 
-      <div
-        className="relative flex items-center justify-center rounded-full border-2 shadow-md transition-transform group-hover:scale-110 bg-card"
-        style={{
-          width: 44,
-          height: 44,
-          borderColor: data.color,
-          background: hexToRgba(data.color, 0.15),
-        }}
-      >
-        <Icon className="h-5 w-5" style={{ color: data.color }} />
-        {data.mentionCount > 1 && (
-          <span
-            className="absolute -top-1.5 -right-1.5 text-[9px] font-semibold rounded-full px-1 min-w-[16px] text-center text-white"
-            style={{ background: data.color }}
-          >
-            {data.mentionCount}
-          </span>
-        )}
-      </div>
-      <span className="text-[10px] font-medium text-foreground max-w-[100px] truncate text-center bg-background/70 rounded px-1">
-        {data.name}
-      </span>
+      <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: data.color }} />
+      <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+      <span className="text-sm font-medium truncate max-w-[120px] text-card-foreground">{data.name}</span>
+      {data.mentionCount > 1 && (
+        <span
+          className="text-[9px] font-semibold rounded-full px-1 min-w-[16px] text-center text-white shrink-0"
+          style={{ background: data.color }}
+        >
+          {data.mentionCount}
+        </span>
+      )}
     </div>
   );
 }
