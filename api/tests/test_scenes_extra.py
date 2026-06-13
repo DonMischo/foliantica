@@ -232,6 +232,70 @@ class TestMentionsRescan:
         assert matched[0]["count"] >= 1
 
 
+# ── Scene mention rescan (per-scene) ─────────────────────────────────────────
+
+class TestSceneRescan:
+    def test_rescan_unknown_scene_returns_404(self, client):
+        r = client.post("/api/scenes/99999/mentions/rescan")
+        assert r.status_code == 404
+
+    def test_rescan_returns_scanned_1(self, client, scene):
+        r = client.post(f"/api/scenes/{scene['id']}/mentions/rescan")
+        assert r.status_code == 200
+        assert r.json() == {"scanned": 1}
+
+    def test_rescan_rebuilds_stats_for_late_added_entry(self, client, project, chapter):
+        # Scene exists before codex entry → initial scan had nothing to match
+        scene = client.post("/api/scenes", json={
+            "title": "The Shire",
+            "content": "<p>Bilbo sat in his hobbit-hole.</p>",
+            "chapter_id": chapter["id"],
+            "order_index": 0,
+        }).json()
+
+        entry = client.post("/api/codex", json={
+            "name": "Bilbo",
+            "project_id": project["id"],
+            "entry_type": "character",
+        }).json()
+
+        # Stats missing before rescan
+        before = client.get(f"/api/scenes/{scene['id']}/mention-stats").json()
+        assert not any(s["codex_id"] == entry["id"] for s in before)
+
+        client.post(f"/api/scenes/{scene['id']}/mentions/rescan")
+
+        after = client.get(f"/api/scenes/{scene['id']}/mention-stats").json()
+        matched = [s for s in after if s["codex_id"] == entry["id"]]
+        assert len(matched) == 1
+        assert matched[0]["count"] >= 1
+
+    def test_rescan_does_not_touch_other_scenes(self, client, project, chapter):
+        entry = client.post("/api/codex", json={
+            "name": "Sam",
+            "project_id": project["id"],
+            "entry_type": "character",
+        }).json()
+
+        scene_a = client.post("/api/scenes", json={
+            "title": "A",
+            "content": "<p>Sam walked home.</p>",
+            "chapter_id": chapter["id"],
+            "order_index": 0,
+        }).json()
+        scene_b = client.post("/api/scenes", json={
+            "title": "B",
+            "content": "<p>No mentions here.</p>",
+            "chapter_id": chapter["id"],
+            "order_index": 1,
+        }).json()
+
+        client.post(f"/api/scenes/{scene_a['id']}/mentions/rescan")
+
+        stats_b = client.get(f"/api/scenes/{scene_b['id']}/mention-stats").json()
+        assert not any(s["codex_id"] == entry["id"] for s in stats_b)
+
+
 # ── Writing log ───────────────────────────────────────────────────────────────
 
 class TestWritingLog:
