@@ -608,6 +608,8 @@ export const mentionStatsApi = {
     req<MentionStat[]>(`/projects/${projectId}/mention-stats`),
   forEntry: (entryId: number) =>
     req<SceneMentionStat[]>(`/codex/${entryId}/scene-mentions`),
+  rescanScene: (sceneId: number) =>
+    req<{ scanned: number }>(`/scenes/${sceneId}/mentions/rescan`, { method: "POST" }),
   rescanProject: (projectId: number) =>
     req<{ scanned: number }>(`/projects/${projectId}/mentions/rescan`, { method: "POST" }),
 };

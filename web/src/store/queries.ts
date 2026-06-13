@@ -586,6 +586,16 @@ export const useEntrySceneMentions = (entryId: number) =>
     enabled: entryId > 0,
   });
 
+export const useRescanSceneMentions = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sceneId: number) => mentionStatsApi.rescanScene(sceneId),
+    onSuccess: (_data, sceneId) => {
+      qc.invalidateQueries({ queryKey: ["mention-stats", "scene", sceneId] });
+    },
+  });
+};
+
 export const useRescanProjectMentions = (projectId: number) => {
   const qc = useQueryClient();
   return useMutation({

@@ -313,6 +313,17 @@ def get_scene_mention_stats(scene_id: int, db: Session = Depends(get_db)):
     return [MentionStatOut(codex_id=r.codex_id, scene_id=r.scene_id, count=r.count) for r in rows]
 
 
+@router.post("/api/scenes/{scene_id}/mentions/rescan")
+def rescan_scene_mentions(scene_id: int, db: Session = Depends(get_db)):
+    """Re-scan one scene's content and rebuild its mention_stats rows on demand."""
+    scene = db.get(Scene, scene_id)
+    if not scene:
+        raise HTTPException(status_code=404, detail="Scene not found")
+    _update_mention_stats(scene_id, scene.content or "", db)
+    db.commit()
+    return {"scanned": 1}
+
+
 @router.get("/api/projects/{project_id}/mention-stats", response_model=list[MentionStatOut])
 def get_project_mention_stats(project_id: int, db: Session = Depends(get_db)):
     """Return aggregated mention counts across all scenes for a project."""
