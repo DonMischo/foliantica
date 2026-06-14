@@ -1227,6 +1227,19 @@ def migrate_sync_mirror():
                 pass  # column already exists
 
 
+def migrate_spacy():
+    """Add spacy_enabled and spacy_url columns to user_settings."""
+    with engine.begin() as conn:
+        for stmt in [
+            "ALTER TABLE user_settings ADD COLUMN spacy_enabled INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE user_settings ADD COLUMN spacy_url TEXT",
+        ]:
+            try:
+                conn.execute(text(stmt))
+            except Exception:
+                pass  # column already exists
+
+
 def migrate_backfill_word_counts():
     """Backfill scenes.word_count for rows where it is 0 but content exists."""
     import re as _re
