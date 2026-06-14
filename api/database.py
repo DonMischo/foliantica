@@ -170,6 +170,7 @@ def migrate_new_columns():
         ("scenes",        "word_count",                 "INTEGER DEFAULT 0"),
         ("user_settings", "stats_views",                 "INTEGER DEFAULT 0"),
         ("user_settings", "export_count",                "INTEGER DEFAULT 0"),
+        ("projects",      "language",                    "TEXT DEFAULT 'en'"),
     ]
     for table, col, col_type in new_columns:
         try:
@@ -1238,6 +1239,15 @@ def migrate_spacy():
                 conn.execute(text(stmt))
             except Exception:
                 pass  # column already exists
+
+
+def migrate_project_language():
+    """Add language column to projects (PostgreSQL existing-DB migration)."""
+    with engine.begin() as conn:
+        try:
+            conn.execute(text("ALTER TABLE projects ADD COLUMN language TEXT DEFAULT 'en'"))
+        except Exception:
+            pass  # column already exists
 
 
 def migrate_backfill_word_counts():

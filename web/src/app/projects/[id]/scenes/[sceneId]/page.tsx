@@ -114,6 +114,7 @@ export default function ScenePage() {
   const applyFlagRef           = useRef<((type: string) => void) | null>(null);
   const applyGrammarFixRef     = useRef<((matched: string, replacement: string, offset: number) => void) | null>(null);
   const jumpToGrammarMatchRef  = useRef<((matched: string, offset: number) => void) | null>(null);
+  const jumpToTextRef          = useRef<((text: string) => void) | null>(null);
 
   // Characters for POV selector
   const characters = useMemo(
@@ -662,6 +663,7 @@ export default function ScenePage() {
             applyFlagRef={applyFlagRef}
             applyGrammarFixRef={applyGrammarFixRef}
             jumpToGrammarMatchRef={jumpToGrammarMatchRef}
+            jumpToTextRef={jumpToTextRef}
             onPrefillEntry={(data) => { setNewEntryInitial(data); setNewEntryDialogOpen(true); }}
           />
           <StatusBar sceneWordCount={wordCount} />
@@ -685,8 +687,10 @@ export default function ScenePage() {
             selectedId={selectedCodexId >= 0 ? selectedCodexId : undefined}
             onSelect={(id) => setSelectedCodexId(id)}
             onClose={() => setCodexSidebarOpen(false)}
-            onAdd={() => setNewEntryDialogOpen(true)}
+            onAdd={(initial) => { if (initial) setNewEntryInitial(initial); setNewEntryDialogOpen(true); }}
+            onJumpToText={(text) => jumpToTextRef.current?.(text)}
             sceneContent={content}
+            sceneId={Number(sceneId)}
           />
         )}
 

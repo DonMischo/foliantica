@@ -446,3 +446,51 @@ def get_project_ghost_texts(project_id: int, db: Session = Depends(get_db)):
                 "ghost_texts": texts,
             })
     return result
+
+
+@router.get("/api/scenes/{scene_id}/suggest-entries")
+def suggest_entries(scene_id: int, db: Session = Depends(get_db)):
+    scene = db.get(Scene, scene_id)
+    if not scene:
+        raise HTTPException(404, "Scene not found")
+    settings = db.query(UserSettings).first()
+    if not (settings and settings.spacy_enabled and settings.spacy_url):
+        raise HTTPException(400, "spaCy not enabled")
+    row = db.execute(
+        text("SELECT a.project_id, p.book_meta FROM scenes s JOIN chapters c ON c.id = s.chapter_id JOIN acts a ON a.id = c.act_id JOIN projects p ON p.id = a.project_id WHERE s.id = :sid"),
+        {"sid": scene_id},
+    ).fetchone()
+    project_id = row[0] if row else None
+    try:
+        bm = json.loads(row[1] or "{}") if row else {}
+        # BCP 47 e.g. "de-DE" → take the primary subtag only
+        project_lang = (bm.get("language") or "en").split("-")[0].split("_")[0].lower()
+    except Exception:
+        project_lang = "en"
+    plain = re.sub(r"<[^>]+>", " ", scene.content or "")
+    try:
+        import httpx
+        resp = httpx.post(
+            f"{settings.spacy_url.rstrip('/')}/suggest",
+            json={"content": plain, "lang": project_lang},
+            timeout=10.0,
+        )
+        resp.raise_for_status()
+        suggestions: list[dict] = resp.json()
+    except Exception:
+        raise HTTPException(503, "spaCy service unavailable")
+    entries = db.query(CodexEntry).filter(CodexEntry.project_id == project_id).all()
+    known: set[str] = set()
+    for e in entries:
+        known.add(e.name.lower())
+        for alias in json.loads(e.aliases or "[]"):
+            known.add(alias.lower())
+    result = []
+    for s in suggestions:
+        norm = s["text"].lower()
+        candidates = [norm]
+        if norm.endswith("s") and len(norm) > 2:
+            candidates.append(norm[:-1])  # strip trailing 's' for German genitive (Claras → Clara)
+        if not any(c in known for c in candidates):
+            result.append(s)
+    return result
