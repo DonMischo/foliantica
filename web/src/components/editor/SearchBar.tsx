@@ -37,12 +37,20 @@ export function SearchBar({ editor, onClose }: Props) {
     editor.commands.setSearchTerm(value);
   };
 
+  // PM updates the DOM synchronously on dispatch, so we can query the
+  // decorated element immediately after the command returns.
+  const scrollToMatch = () => {
+    editor.view.dom
+      .querySelector<HTMLElement>(".search-result-current")
+      ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      e.shiftKey
-        ? editor.commands.prevSearchResult()
-        : editor.commands.nextSearchResult();
+      if (e.shiftKey) { editor.commands.prevSearchResult(); }
+      else { editor.commands.nextSearchResult(); }
+      scrollToMatch();
     }
     if (e.key === "Escape") close();
   };
@@ -72,7 +80,7 @@ export function SearchBar({ editor, onClose }: Props) {
       {/* Navigation */}
       <button
         type="button"
-        onMouseDown={(e) => { e.preventDefault(); editor.commands.prevSearchResult(); }}
+        onMouseDown={(e) => { e.preventDefault(); editor.commands.prevSearchResult(); scrollToMatch(); }}
         disabled={total < 2}
         title="Previous (Shift+Enter)"
         className="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 disabled:opacity-30 transition-colors"
@@ -81,7 +89,7 @@ export function SearchBar({ editor, onClose }: Props) {
       </button>
       <button
         type="button"
-        onMouseDown={(e) => { e.preventDefault(); editor.commands.nextSearchResult(); }}
+        onMouseDown={(e) => { e.preventDefault(); editor.commands.nextSearchResult(); scrollToMatch(); }}
         disabled={total < 2}
         title="Next (Enter)"
         className="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 disabled:opacity-30 transition-colors"

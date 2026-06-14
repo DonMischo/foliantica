@@ -51,6 +51,7 @@ interface Props {
   applyFlagRef?: React.MutableRefObject<((type: string) => void) | null>;
   applyGrammarFixRef?: React.MutableRefObject<((matched: string, replacement: string, plainOffset: number) => void) | null>;
   jumpToGrammarMatchRef?: React.MutableRefObject<((matched: string, plainOffset: number) => void) | null>;
+  jumpToTextRef?: React.MutableRefObject<((text: string) => void) | null>;
   onPrefillEntry?: (data: Partial<CodexEntry>) => void;
 }
 
@@ -131,7 +132,7 @@ function applyTypewriterScroll(
   } catch { /* view not mounted */ }
 }
 
-export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onOpenLink, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, onPrefillEntry, aiDisabled = false }: Props) {
+export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onOpenLink, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, jumpToTextRef, onPrefillEntry, aiDisabled = false }: Props) {
   const showLineNumbers  = useUIStore((s) => s.showParagraphNumbers);
   const typewriterMode   = useUIStore((s) => s.typewriterMode);
   const typewriterOffset = useUIStore((s) => s.typewriterOffset);
@@ -412,6 +413,36 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
     };
   }, [editor, jumpToGrammarMatchRef]);
 
+  // Jump to first occurrence of a plain-text string (used by codex suggestion clicks)
+  useEffect(() => {
+    if (!jumpToTextRef) return;
+    jumpToTextRef.current = (text: string) => {
+      if (!editor) return;
+      const lower = text.toLowerCase();
+      let found: { from: number; to: number } | null = null;
+      editor.state.doc.descendants((node, pos) => {
+        if (found || !node.isText || !node.text) return;
+        const idx = node.text.toLowerCase().indexOf(lower);
+        if (idx !== -1) found = { from: pos + idx, to: pos + idx + text.length };
+      });
+      if (!found) return;
+      const range = found as { from: number; to: number };
+      editor.chain().focus().setTextSelection(range).run();
+      // Scroll the nearest overflow-y container to center the match
+      const coords = editor.view.coordsAtPos(range.from);
+      let el: HTMLElement | null = editor.view.dom as HTMLElement;
+      while (el) {
+        const ov = window.getComputedStyle(el).overflowY;
+        if (ov === "auto" || ov === "scroll") {
+          const rect = el.getBoundingClientRect();
+          el.scrollTop += coords.top - rect.top - rect.height / 2;
+          break;
+        }
+        el = el.parentElement;
+      }
+    };
+  }, [editor, jumpToTextRef]);
+
   // Grammar: find matched text and replace with suggestion
   useEffect(() => {
     if (!applyGrammarFixRef) return;
@@ -454,20 +485,22 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
 
   return (
     <EditorContext.Provider value={{ characters, items, allEntries: codexEntries, sceneId, projectId: codexEntries[0]?.project_id ?? 0, onPrefillEntry }}>
-      <div ref={scrollRef} className={wrapperClass}>
-        <EditorContent editor={editor} className="h-full" />
-        {editor && <FormattingToolbar editor={editor} />}
+      <div className="relative h-full">
+        <div ref={scrollRef} className={wrapperClass}>
+          <EditorContent editor={editor} className="h-full" />
+          {editor && <FormattingToolbar editor={editor} />}
+          {slashMenu && (
+            <SlashCommandMenu
+              ref={menuHandleRef}
+              items={slashMenu.items}
+              rect={slashMenu.rect}
+              onSelect={slashMenu.command}
+              onClose={closeSlash}
+            />
+          )}
+        </div>
         {editor && searchOpen && (
           <SearchBar editor={editor} onClose={() => setSearchOpen(false)} />
-        )}
-        {slashMenu && (
-          <SlashCommandMenu
-            ref={menuHandleRef}
-            items={slashMenu.items}
-            rect={slashMenu.rect}
-            onSelect={slashMenu.command}
-            onClose={closeSlash}
-          />
         )}
       </div>
     </EditorContext.Provider>
