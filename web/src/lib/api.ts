@@ -486,12 +486,16 @@ export const settingsApi = {
     grammar_languages?: string[];
     pandoc_enabled?: boolean;
     pandoc_url?: string;
+    spacy_enabled?: boolean;
+    spacy_url?: string;
+    calibre_enabled?: boolean;
+    calibre_url?: string;
     ai_disabled?: boolean;
     sync_mirror_enabled?: boolean;
     sync_local_dir?: string | null;
   }) => req<Settings>("/settings", { method: "POST", body: JSON.stringify(data) }),
   getModels: () => req<OpenRouterModel[]>("/settings/models"),
-  serviceStatus: () => req<{ languagetool: "ok" | "error" | "offline"; pandoc: "ok" | "error" | "offline" }>("/settings/service-status"),
+  serviceStatus: () => req<{ languagetool: "ok" | "error" | "offline"; pandoc: "ok" | "error" | "offline"; spacy: "ok" | "error" | "offline"; calibre: "ok" | "error" | "offline" }>("/settings/service-status"),
   dockerComposeUp: () => req<{ status: string; output: string }>("/settings/docker/up", { method: "POST" }),
 };
 

@@ -133,6 +133,8 @@ export default function SettingsPage() {
   const [pandocUrl, setPandocUrl]           = useState("http://localhost:8082");
   const [spacyEnabled, setSpacyEnabled]     = useState(false);
   const [spacyUrl, setSpacyUrl]             = useState("http://localhost:8083");
+  const [calibreEnabled, setCalibreEnabled] = useState(false);
+  const [calibreUrl, setCalibreUrl]         = useState("http://localhost:8084");
   const [showServiceStatus, setShowServiceStatus] = useState(false);
   const { data: serviceStatus, isLoading: statusLoading, refetch: refetchStatus } =
     useServiceStatus(showServiceStatus);
@@ -332,6 +334,8 @@ export default function SettingsPage() {
       setPandocUrl(settings.pandoc_url ?? "http://localhost:8082");
       setSpacyEnabled(settings.spacy_enabled ?? false);
       setSpacyUrl(settings.spacy_url ?? "http://localhost:8083");
+      setCalibreEnabled(settings.calibre_enabled ?? false);
+      setCalibreUrl(settings.calibre_url ?? "http://localhost:8084");
       setAiDisabled(settings.ai_disabled ?? false);
       setSyncEnabled(settings.sync_mirror_enabled ?? false);
       setSyncLocalDir(settings.sync_local_dir ?? "");
@@ -448,6 +452,8 @@ export default function SettingsPage() {
       pandoc_url: pandocUrl,
       spacy_enabled: spacyEnabled,
       spacy_url: spacyUrl,
+      calibre_enabled: calibreEnabled,
+      calibre_url: calibreUrl,
     };
     await updateSettings.mutateAsync(payload);
     setSaved(true);
@@ -1550,6 +1556,42 @@ export default function SettingsPage() {
             )}
           </div>
 
+          {/* Calibre (MOBI / AZW3) */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Kindle Export (Calibre)</p>
+                <p className="text-xs text-muted-foreground">Convert projects to MOBI or AZW3 for Kindle devices</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={calibreEnabled}
+                onClick={() => setCalibreEnabled(v => !v)}
+                className={cn(
+                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                  calibreEnabled ? "bg-primary" : "bg-input"
+                )}
+              >
+                <span className={cn(
+                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
+                  calibreEnabled ? "translate-x-4" : "translate-x-0"
+                )} />
+              </button>
+            </div>
+            {calibreEnabled && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Service URL</Label>
+                <Input
+                  value={calibreUrl}
+                  onChange={e => setCalibreUrl(e.target.value)}
+                  placeholder="http://localhost:8084"
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+            )}
+          </div>
+
           {/* PostgreSQL Database */}
           <div className="rounded-lg border border-border p-4 space-y-4">
 
@@ -1675,6 +1717,8 @@ export default function SettingsPage() {
                     pandoc_url: pandocUrl,
                     spacy_enabled: spacyEnabled,
                     spacy_url: spacyUrl,
+                    calibre_enabled: calibreEnabled,
+                    calibre_url: calibreUrl,
                   });
                   setDockerUpStep("Starting Docker… (may take up to 90 s if Docker Desktop was closed)");
                   const res = await settingsApi.dockerComposeUp();
@@ -1743,6 +1787,9 @@ export default function SettingsPage() {
               )}
               {spacyEnabled && (
                 <ServiceStatusBadge label="spaCy" status={serviceStatus.spacy} />
+              )}
+              {calibreEnabled && (
+                <ServiceStatusBadge label="Calibre" status={serviceStatus.calibre} />
               )}
             </div>
           )}

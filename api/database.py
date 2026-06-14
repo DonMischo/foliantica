@@ -1241,6 +1241,19 @@ def migrate_spacy():
                 pass  # column already exists
 
 
+def migrate_calibre():
+    """Add calibre_enabled and calibre_url columns to user_settings."""
+    with engine.begin() as conn:
+        for stmt in [
+            "ALTER TABLE user_settings ADD COLUMN calibre_enabled INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE user_settings ADD COLUMN calibre_url TEXT",
+        ]:
+            try:
+                conn.execute(text(stmt))
+            except Exception:
+                pass  # column already exists
+
+
 def migrate_project_language():
     """Add language column to projects (PostgreSQL existing-DB migration)."""
     with engine.begin() as conn:

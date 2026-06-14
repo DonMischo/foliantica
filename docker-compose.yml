@@ -109,6 +109,16 @@ services:
     ports:
       - "127.0.0.1:8083:8083"
 
+  calibre:
+    build:
+      context: ./docker/calibre
+    container_name: foliantica-calibre
+    restart: unless-stopped
+    profiles:
+      - calibre
+    ports:
+      - "127.0.0.1:8084:8084"
+
 # ── Named volumes ─────────────────────────────────────────────────────────────
 # Stored in Docker's volume store (outside the app installation directory).
 # Persist across Foliantica reinstalls, updates, and OS reboots.

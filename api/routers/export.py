@@ -121,6 +121,43 @@ async def export_project(
         filename   = f"{safe_name}.{ext_map.get(opts.format, opts.format)}"
         media_type = mime_map.get(opts.format, "application/octet-stream")
 
+    elif opts.format in ("mobi", "azw3"):
+        s = db.query(UserSettings).first()
+        if not s or not s.calibre_enabled:
+            raise HTTPException(503, "MOBI/AZW3 export is not enabled in settings")
+        calibre_url = (s.calibre_url or "http://localhost:8084").rstrip("/")
+
+        import json as _json
+        html = export_html(project, opts)
+        meta = _json.loads(project.book_meta) if project.book_meta else {}
+        payload = {
+            "html":     html,
+            "format":   opts.format,
+            "title":    project.title or "",
+            "author":   meta.get("author", ""),
+            "language": meta.get("language", "en"),
+        }
+        if project.cover_image:
+            payload["cover"] = project.cover_image
+
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                r = await client.post(f"{calibre_url}/convert", json=payload)
+            r.raise_for_status()
+        except httpx.ConnectError:
+            raise HTTPException(503, "Calibre service is not reachable. Is the container running?")
+        except httpx.HTTPStatusError as exc:
+            raise HTTPException(502, f"Calibre error: {exc.response.text[:200]}")
+
+        content    = r.content
+        is_binary  = True
+        mime_map   = {
+            "mobi": "application/x-mobipocket-ebook",
+            "azw3": "application/vnd.amazon.ebook",
+        }
+        filename   = f"{safe_name}.{opts.format}"
+        media_type = mime_map[opts.format]
+
     else:
         raise HTTPException(400, "Unknown format")
 

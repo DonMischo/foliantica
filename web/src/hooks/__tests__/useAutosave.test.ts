@@ -32,7 +32,6 @@ function makeWrapper() {
 beforeEach(() => {
   vi.useFakeTimers();
   vi.clearAllMocks();
-  // Reset zustand store state between tests
   useUIStore.setState({ saveStatus: "idle" });
   vi.mocked(scenesApi.update).mockResolvedValue({} as any);
   localStorage.clear();
@@ -43,27 +42,38 @@ afterEach(() => {
 });
 
 describe("useAutosave", () => {
-  it("sets saveStatus to 'saving' immediately on content change", () => {
-    renderHook(
-      () => useAutosave({ sceneId: 1, content: "hello", enabled: true }),
-      { wrapper: makeWrapper() }
+  it("sets saveStatus to 'unsaved' immediately on content change", () => {
+    const { rerender } = renderHook(
+      ({ content }) => useAutosave({ sceneId: 1, content, enabled: true }),
+      { wrapper: makeWrapper(), initialProps: { content: "first" } }
     );
-    expect(useUIStore.getState().saveStatus).toBe("saving");
+    // After initial mount, lastSavedRef.current === content, so status stays idle.
+    // Change content to trigger the unsaved effect.
+    rerender({ content: "changed" });
+    expect(useUIStore.getState().saveStatus).toBe("unsaved");
   });
 
-  it("calls scenesApi.update after the debounce delay", async () => {
+  it("does NOT call scenesApi.update before the 20s interval fires", () => {
     renderHook(
       () => useAutosave({ sceneId: 1, content: "hello", enabled: true }),
       { wrapper: makeWrapper() }
     );
-
+    vi.advanceTimersByTime(5_000);
     expect(scenesApi.update).not.toHaveBeenCalled();
+  });
+
+  it("calls scenesApi.update after the 20s interval", async () => {
+    const { rerender } = renderHook(
+      ({ content }) => useAutosave({ sceneId: 1, content, enabled: true }),
+      { wrapper: makeWrapper(), initialProps: { content: "first" } }
+    );
+    rerender({ content: "edited" });
 
     await act(async () => {
-      vi.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(20_000);
     });
 
-    expect(scenesApi.update).toHaveBeenCalledWith(1, { content: "hello" });
+    expect(scenesApi.update).toHaveBeenCalledWith(1, { content: "edited" });
   });
 
   it("does not call scenesApi.update when enabled is false", async () => {
@@ -73,20 +83,21 @@ describe("useAutosave", () => {
     );
 
     await act(async () => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(20_000);
     });
 
     expect(scenesApi.update).not.toHaveBeenCalled();
   });
 
   it("sets saveStatus to 'saved' after successful save", async () => {
-    renderHook(
-      () => useAutosave({ sceneId: 1, content: "hello", enabled: true }),
-      { wrapper: makeWrapper() }
+    const { rerender } = renderHook(
+      ({ content }) => useAutosave({ sceneId: 1, content, enabled: true }),
+      { wrapper: makeWrapper(), initialProps: { content: "first" } }
     );
+    rerender({ content: "edited" });
 
     await act(async () => {
-      vi.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(20_000);
     });
 
     expect(useUIStore.getState().saveStatus).toBe("saved");
@@ -95,13 +106,14 @@ describe("useAutosave", () => {
   it("sets saveStatus to 'error' and persists to localStorage on API failure", async () => {
     vi.mocked(scenesApi.update).mockRejectedValueOnce(new Error("Network error"));
 
-    renderHook(
-      () => useAutosave({ sceneId: 7, content: "draft content", enabled: true }),
-      { wrapper: makeWrapper() }
+    const { rerender } = renderHook(
+      ({ content }) => useAutosave({ sceneId: 7, content, enabled: true }),
+      { wrapper: makeWrapper(), initialProps: { content: "first" } }
     );
+    rerender({ content: "draft content" });
 
     await act(async () => {
-      vi.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(20_000);
     });
 
     expect(useUIStore.getState().saveStatus).toBe("error");
@@ -111,13 +123,14 @@ describe("useAutosave", () => {
   it("removes localStorage entry after successful save", async () => {
     localStorage.setItem("lw_pending_5", "old draft");
 
-    renderHook(
-      () => useAutosave({ sceneId: 5, content: "hello", enabled: true }),
-      { wrapper: makeWrapper() }
+    const { rerender } = renderHook(
+      ({ content }) => useAutosave({ sceneId: 5, content, enabled: true }),
+      { wrapper: makeWrapper(), initialProps: { content: "first" } }
     );
+    rerender({ content: "edited" });
 
     await act(async () => {
-      vi.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(20_000);
     });
 
     expect(localStorage.getItem("lw_pending_5")).toBeNull();
@@ -131,7 +144,6 @@ describe("useAutosave", () => {
       { wrapper: makeWrapper() }
     );
 
-    // The recovery save fires immediately (not debounced)
     await act(async () => {
       vi.advanceTimersByTime(0);
     });
@@ -140,8 +152,6 @@ describe("useAutosave", () => {
   });
 
   it("does NOT re-save when stored pending content equals the loaded content", async () => {
-    // A leftover pending key that matches the server content must not trigger a
-    // redundant (potentially clobbering) write — just clear the stale key.
     localStorage.setItem("lw_pending_4", "same content");
 
     renderHook(
@@ -163,13 +173,11 @@ describe("useAutosave", () => {
       { wrapper: makeWrapper(), initialProps: { content: "first" } }
     );
 
-    // Edit, then unmount BEFORE the 1s debounce fires.
     rerender({ content: "edited before nav" });
     await act(async () => {
       unmount();
     });
 
-    // The last edit is persisted (flushed), not lost — tagged with scene 9.
     expect(scenesApi.update).toHaveBeenCalledWith(9, { content: "edited before nav" });
   });
 
@@ -178,17 +186,49 @@ describe("useAutosave", () => {
       ({ sceneId, content }) => useAutosave({ sceneId, content, enabled: true }),
       {
         wrapper: makeWrapper(),
-        initialProps: { sceneId: 1, content: "scene one edit" },
+        initialProps: { sceneId: 1, content: "initial" },
       }
     );
 
-    // Navigate to scene 2 before scene 1's debounce fires.
+    // Edit scene 1 — now there's a pending save
+    rerender({ sceneId: 1, content: "scene one edit" });
+
+    // Navigate to scene 2 before the 20s interval fires — scene 1 flush must run
     await act(async () => {
       rerender({ sceneId: 2, content: "scene two content" });
     });
 
-    // Scene 1's pending edit must be written to scene 1 — never to scene 2.
     expect(scenesApi.update).toHaveBeenCalledWith(1, { content: "scene one edit" });
     expect(scenesApi.update).not.toHaveBeenCalledWith(2, { content: "scene one edit" });
+  });
+
+  it("does not save again if content has not changed since last save", async () => {
+    const { rerender } = renderHook(
+      ({ content }) => useAutosave({ sceneId: 1, content, enabled: true }),
+      { wrapper: makeWrapper(), initialProps: { content: "first" } }
+    );
+    rerender({ content: "edited" });
+
+    // First interval — saves
+    await act(async () => { vi.advanceTimersByTime(20_000); });
+    expect(scenesApi.update).toHaveBeenCalledTimes(1);
+
+    // Second interval — content unchanged, should NOT save again
+    await act(async () => { vi.advanceTimersByTime(20_000); });
+    expect(scenesApi.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("saveNow triggers an immediate save", async () => {
+    const { rerender, result } = renderHook(
+      ({ content }) => useAutosave({ sceneId: 1, content, enabled: true }),
+      { wrapper: makeWrapper(), initialProps: { content: "first" } }
+    );
+    rerender({ content: "changed" });
+
+    await act(async () => {
+      result.current.saveNow();
+    });
+
+    expect(scenesApi.update).toHaveBeenCalledWith(1, { content: "changed" });
   });
 });

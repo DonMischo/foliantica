@@ -78,6 +78,8 @@ def _settings_out(s: UserSettings) -> SettingsOut:
         pandoc_url=s.pandoc_url or "http://localhost:8082",
         spacy_enabled=bool(s.spacy_enabled),
         spacy_url=s.spacy_url or "http://localhost:8083",
+        calibre_enabled=bool(s.calibre_enabled),
+        calibre_url=s.calibre_url or "http://localhost:8084",
         ai_disabled=bool(s.ai_disabled) if s.ai_disabled is not None else False,
         sync_mirror_enabled=bool(s.sync_mirror_enabled) if s.sync_mirror_enabled is not None else False,
         sync_local_dir=s.sync_local_dir or None,
@@ -130,6 +132,10 @@ def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
         s.spacy_enabled = int(body.spacy_enabled)
     if body.spacy_url is not None:
         s.spacy_url = body.spacy_url
+    if body.calibre_enabled is not None:
+        s.calibre_enabled = int(body.calibre_enabled)
+    if body.calibre_url is not None:
+        s.calibre_url = body.calibre_url
     if body.ai_disabled is not None:
         s.ai_disabled = int(body.ai_disabled)
     sync_changed = False
@@ -282,6 +288,8 @@ def docker_compose_up(db: Session = Depends(get_db)):
         profiles += ["--profile", "pandoc"]
     if s.spacy_enabled:
         profiles += ["--profile", "spacy"]
+    if s.calibre_enabled:
+        profiles += ["--profile", "calibre"]
 
     cmd = (["docker", "compose"]
            + profiles
@@ -319,13 +327,16 @@ async def service_status(db: Session = Depends(get_db)):
         except Exception:
             return "offline"
 
+    calibre_url = (s.calibre_url or "http://localhost:8084").rstrip("/")
+
     import asyncio
-    lt_status, pandoc_status, spacy_status = await asyncio.gather(
+    lt_status, pandoc_status, spacy_status, calibre_status = await asyncio.gather(
         ping(lt_url, "/v2/languages"),
         ping(pandoc_url, "/health"),
         ping(spacy_url, "/health"),
+        ping(calibre_url, "/health"),
     )
-    return {"languagetool": lt_status, "pandoc": pandoc_status, "spacy": spacy_status}
+    return {"languagetool": lt_status, "pandoc": pandoc_status, "spacy": spacy_status, "calibre": calibre_status}
 
 
 # ── Folder-picker: polling pattern ───────────────────────────────────────────

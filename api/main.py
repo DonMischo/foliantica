@@ -16,7 +16,7 @@ from database import (
     migrate_publisher_profiles, migrate_achievements, migrate_backfill_word_counts,
     migrate_ai_disabled, migrate_sync_mirror, migrate_research_pdf,
     migrate_research_media, migrate_ai_providers, migrate_achievement_popup_shown,
-    migrate_corkboard, migrate_spacy, migrate_project_language,
+    migrate_corkboard, migrate_spacy, migrate_calibre, migrate_project_language,
     # PostgreSQL seed functions (fresh DB, no ALTER TABLE needed)
     seed_ai_prompts, seed_publisher_profiles, seed_export_profiles,
 )
@@ -54,6 +54,7 @@ if USE_SQLITE:
     migrate_achievement_popup_shown()
     migrate_corkboard()
     migrate_spacy()
+    migrate_calibre()
 else:
     # PostgreSQL path: create_all() handles the full schema in one shot.
     # Then seed static reference data that would otherwise come from the
@@ -84,6 +85,7 @@ else:
     migrate_achievement_popup_shown()
     migrate_corkboard()
     migrate_spacy()
+    migrate_calibre()
     migrate_project_language()
 
 os.makedirs("uploads", exist_ok=True)

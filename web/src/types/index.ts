@@ -382,6 +382,10 @@ export interface Settings {
   grammar_languages: string[];
   pandoc_enabled: boolean;
   pandoc_url: string;
+  spacy_enabled: boolean;
+  spacy_url: string;
+  calibre_enabled: boolean;
+  calibre_url: string;
   ai_disabled: boolean;
   sync_mirror_enabled: boolean;
   sync_local_dir: string | null;
@@ -410,7 +414,7 @@ export interface FragmentTabs {
   all: string[];
 }
 
-export type SaveStatus = "saved" | "saving" | "error" | "idle";
+export type SaveStatus = "saved" | "saving" | "error" | "idle" | "unsaved";
 
 // Flowing read view shapes
 export interface ChapterReadScene {

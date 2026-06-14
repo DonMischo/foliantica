@@ -3,8 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useUIStore } from "@/store/ui";
 import { scenesApi } from "@/lib/api";
 
-const DEBOUNCE_MS = 1000;
-const INTERVAL_MS = 60_000;
+const INTERVAL_MS = 20_000;
 const STORAGE_PREFIX = "lw_pending_";
 
 interface Options {
@@ -16,11 +15,9 @@ interface Options {
 export function useAutosave({ sceneId, content, enabled }: Options) {
   const setSaveStatus = useUIStore((s) => s.setSaveStatus);
   const qc = useQueryClient();
-  const pendingRef = useRef(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contentRef = useRef(content);
   contentRef.current = content;
-  // The scheduled-but-not-yet-fired save, tagged with the scene it belongs to.
+  const lastSavedRef = useRef(content);
   const pendingSaveRef = useRef<{ value: string; sceneId: number } | null>(null);
 
   // save() takes the target sceneId explicitly so a late-firing save can never
@@ -28,40 +25,30 @@ export function useAutosave({ sceneId, content, enabled }: Options) {
   const save = useCallback(async (value: string, forSceneId: number) => {
     if (!enabled) return;
     setSaveStatus("saving");
-    pendingRef.current = true;
     try {
       await scenesApi.update(forSceneId, { content: value });
-      // Keep React Query cache in sync so remounts read fresh content
       qc.setQueryData(["scene", forSceneId], (old: any) =>
         old ? { ...old, content: value } : old
       );
       localStorage.removeItem(`${STORAGE_PREFIX}${forSceneId}`);
+      lastSavedRef.current = value;
       setSaveStatus("saved");
     } catch {
       localStorage.setItem(`${STORAGE_PREFIX}${forSceneId}`, value);
       setSaveStatus("error");
-    } finally {
-      pendingRef.current = false;
     }
   }, [enabled, setSaveStatus, qc]);
 
-  // Debounced save on content change
+  // Mark unsaved when content diverges from what was last saved
   useEffect(() => {
     if (!enabled) return;
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    setSaveStatus("saving");
-    const payload = { value: contentRef.current, sceneId };
-    pendingSaveRef.current = payload;
-    debounceRef.current = setTimeout(() => {
-      pendingSaveRef.current = null;
-      save(payload.value, payload.sceneId);
-    }, DEBOUNCE_MS);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [content, save, enabled, setSaveStatus, sceneId]);
+    if (content !== lastSavedRef.current) {
+      pendingSaveRef.current = { value: content, sceneId };
+      setSaveStatus("unsaved");
+    }
+  }, [content, enabled, sceneId, setSaveStatus]);
 
-  // Flush a pending edit when leaving the scene (navigation) or unmounting, so
-  // the last keystrokes before the debounce fires are never silently dropped.
-  // Keyed on sceneId: the cleanup runs with the *leaving* scene's pending save.
+  // Flush pending edit on navigation away or unmount — never silently drop keystrokes
   useEffect(() => {
     return () => {
       const pending = pendingSaveRef.current;
@@ -72,17 +59,23 @@ export function useAutosave({ sceneId, content, enabled }: Options) {
     };
   }, [sceneId, save]);
 
-  // Interval save
+  // 20-second interval save
   useEffect(() => {
     if (!enabled) return;
-    const interval = setInterval(() => save(contentRef.current, sceneId), INTERVAL_MS);
+    const interval = setInterval(() => {
+      const pending = pendingSaveRef.current;
+      if (pending) {
+        pendingSaveRef.current = null;
+        void save(pending.value, pending.sceneId);
+      }
+    }, INTERVAL_MS);
     return () => clearInterval(interval);
   }, [save, enabled, sceneId]);
 
-  // Warn on unload
+  // Warn on unload if there are unsaved changes
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (pendingRef.current) {
+      if (pendingSaveRef.current) {
         e.preventDefault();
         e.returnValue = "";
       }
@@ -91,10 +84,7 @@ export function useAutosave({ sceneId, content, enabled }: Options) {
     return () => window.removeEventListener("beforeunload", handler);
   }, []);
 
-  // Recover any locally stored unsaved changes on mount. Only replay if the
-  // stored copy actually differs from the loaded scene content — if they match,
-  // there is nothing to recover, so just clear the stale pending key instead of
-  // issuing a redundant (and potentially clobbering) write.
+  // Recover any locally stored unsaved changes on mount
   useEffect(() => {
     const key = `${STORAGE_PREFIX}${sceneId}`;
     const stored = localStorage.getItem(key);
@@ -105,4 +95,6 @@ export function useAutosave({ sceneId, content, enabled }: Options) {
       save(stored, sceneId);
     }
   }, [sceneId, save]);
+
+  return { saveNow: () => save(contentRef.current, sceneId) };
 }

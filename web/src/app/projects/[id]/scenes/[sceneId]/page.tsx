@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { BookOpen, Sparkles, Clock, Moon, Sun, Archive, History, MessageSquare, Focus, Braces, ChevronDown, AlignCenter, Timer, Flag, BookMarked, MoreHorizontal, Check, SpellCheck, User, ListChecks } from "lucide-react";
+import { BookOpen, Sparkles, Clock, Moon, Sun, Archive, History, MessageSquare, Focus, Braces, ChevronDown, AlignCenter, Timer, Flag, BookMarked, MoreHorizontal, Check, SpellCheck, User, ListChecks, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TipTapEditor } from "@/components/editor/TipTapEditor";
@@ -243,7 +243,7 @@ export default function ScenePage() {
     }
   };
 
-  useAutosave({ sceneId: sceneIdNum, content, enabled: !!scene });
+  const { saveNow } = useAutosave({ sceneId: sceneIdNum, content, enabled: !!scene });
 
   // ESC exits focus mode
   useEffect(() => {
@@ -405,6 +405,18 @@ export default function ScenePage() {
             )}
           </div>
         )}
+
+        {/* Save */}
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={saveNow}
+          className="gap-1.5 text-xs"
+          title="Save now (Ctrl+S)"
+        >
+          <Save className="h-3.5 w-3.5" />
+          Save
+        </Button>
 
         {/* History */}
         <Button
