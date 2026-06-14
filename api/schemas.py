@@ -430,6 +430,9 @@ class SettingsUpdate(BaseModel):
     spacy_url: Optional[str] = None
     calibre_mode: Optional[str] = None  # "off" | "system" | "docker"
     calibre_url: Optional[str] = None
+    vale_mode: Optional[str] = None  # "off" | "system" | "docker"
+    vale_url: Optional[str] = None
+    vale_config_path: Optional[str] = None
     ai_disabled: Optional[bool] = None
     sync_mirror_enabled: Optional[bool] = None
     sync_local_dir: Optional[str] = None
@@ -459,6 +462,10 @@ class SettingsOut(BaseModel):
     calibre_mode: str = "off"
     calibre_enabled: bool = False  # derived: calibre_mode != "off"
     calibre_url: str = "http://localhost:8084"
+    vale_mode: str = "off"
+    vale_enabled: bool = False  # derived: vale_mode != "off"
+    vale_url: str = "http://localhost:8085"
+    vale_config_path: Optional[str] = None
     ai_disabled: bool = False
     sync_mirror_enabled: bool = False
     sync_local_dir: Optional[str] = None

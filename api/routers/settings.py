@@ -80,6 +80,10 @@ def _settings_out(s: UserSettings) -> SettingsOut:
         calibre_mode=getattr(s, "calibre_mode", None) or "off",
         calibre_enabled=(getattr(s, "calibre_mode", None) or "off") != "off",
         calibre_url=s.calibre_url or "http://localhost:8084",
+        vale_mode=getattr(s, "vale_mode", None) or "off",
+        vale_enabled=(getattr(s, "vale_mode", None) or "off") != "off",
+        vale_url=getattr(s, "vale_url", None) or "http://localhost:8085",
+        vale_config_path=getattr(s, "vale_config_path", None) or None,
         ai_disabled=bool(s.ai_disabled) if s.ai_disabled is not None else False,
         sync_mirror_enabled=bool(s.sync_mirror_enabled) if s.sync_mirror_enabled is not None else False,
         sync_local_dir=s.sync_local_dir or None,
@@ -137,6 +141,12 @@ def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
         s.calibre_enabled = int(body.calibre_mode != "off")
     if body.calibre_url is not None:
         s.calibre_url = body.calibre_url
+    if body.vale_mode is not None:
+        s.vale_mode = body.vale_mode
+    if body.vale_url is not None:
+        s.vale_url = body.vale_url
+    if body.vale_config_path is not None:
+        s.vale_config_path = body.vale_config_path or None
     if body.ai_disabled is not None:
         s.ai_disabled = int(body.ai_disabled)
     sync_changed = False
@@ -291,6 +301,8 @@ def docker_compose_up(db: Session = Depends(get_db)):
         profiles += ["--profile", "spacy"]
     if (getattr(s, "calibre_mode", None) or "off") == "docker":
         profiles += ["--profile", "calibre"]
+    if (getattr(s, "vale_mode", None) or "off") == "docker":
+        profiles += ["--profile", "vale"]
 
     cmd = (["docker", "compose"]
            + profiles
@@ -330,11 +342,15 @@ async def service_status(db: Session = Depends(get_db)):
 
     import asyncio, shutil as _shutil
     calibre_mode = getattr(s, "calibre_mode", None) or "off"
+    vale_mode = getattr(s, "vale_mode", None) or "off"
 
     async def _calibre_system_status() -> str:
         return "ok" if _shutil.which("ebook-convert") else "offline"
 
-    async def _calibre_offline() -> str:
+    async def _vale_system_status() -> str:
+        return "ok" if _shutil.which("vale") else "offline"
+
+    async def _offline() -> str:
         return "offline"
 
     if calibre_mode == "system":
@@ -343,15 +359,44 @@ async def service_status(db: Session = Depends(get_db)):
         calibre_url = (s.calibre_url or "http://localhost:8084").rstrip("/")
         calibre_coro = ping(calibre_url, "/health")
     else:
-        calibre_coro = _calibre_offline()
+        calibre_coro = _offline()
 
-    lt_status, pandoc_status, spacy_status, calibre_status = await asyncio.gather(
+    if vale_mode == "system":
+        vale_coro = _vale_system_status()
+    elif vale_mode == "docker":
+        vale_url = (getattr(s, "vale_url", None) or "http://localhost:8085").rstrip("/")
+        vale_coro = ping(vale_url, "/health")
+    else:
+        vale_coro = _offline()
+
+    lt_status, pandoc_status, spacy_status, calibre_status, vale_status = await asyncio.gather(
         ping(lt_url, "/v2/languages"),
         ping(pandoc_url, "/health"),
         ping(spacy_url, "/health"),
         calibre_coro,
+        vale_coro,
     )
-    return {"languagetool": lt_status, "pandoc": pandoc_status, "spacy": spacy_status, "calibre": calibre_status}
+    return {
+        "languagetool": lt_status, "pandoc": pandoc_status,
+        "spacy": spacy_status, "calibre": calibre_status, "vale": vale_status,
+    }
+
+
+@router.get("/detect-vale")
+async def detect_vale(db: Session = Depends(get_db)):
+    """Check whether Vale is available via system PATH and/or Docker service."""
+    import shutil
+    s = _get_or_create_settings(db)
+    system_ok = shutil.which("vale") is not None
+    vale_url = (getattr(s, "vale_url", None) or "http://localhost:8085").rstrip("/")
+    docker_ok = False
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            r = await client.get(f"{vale_url}/health")
+        docker_ok = r.status_code < 400
+    except Exception:
+        pass
+    return {"system": system_ok, "docker": docker_ok}
 
 
 @router.get("/detect-calibre")

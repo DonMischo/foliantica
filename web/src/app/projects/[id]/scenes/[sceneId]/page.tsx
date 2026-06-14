@@ -9,6 +9,7 @@ import { TipTapEditor } from "@/components/editor/TipTapEditor";
 import { StatusBar } from "@/components/editor/StatusBar";
 import { ThesaurusPanel } from "@/components/editor/ThesaurusPanel";
 import { GrammarPanel } from "@/components/grammar/GrammarPanel";
+import { ValePanel } from "@/components/vale/ValePanel";
 import { SENSITIVITY_TYPES, type FlagItem, type SensitivityType } from "@/components/editor/SensitivityExtension";
 import { CodexSidebar } from "@/components/codex/CodexSidebar";
 import { CodexEntryDialog } from "@/components/codex/CodexEntryDialog";
@@ -110,6 +111,7 @@ export default function ScenePage() {
   const [thesaurusOpen, setThesaurusOpen]         = useState(false);
   const [selectedWord, setSelectedWord]           = useState<string>("");
   const [grammarPanelOpen, setGrammarPanelOpen]   = useState(false);
+  const [valePanelOpen, setValePanelOpen]         = useState(false);
   const replaceWordRef         = useRef<((word: string) => void) | null>(null);
   const applyFlagRef           = useRef<((type: string) => void) | null>(null);
   const applyGrammarFixRef     = useRef<((matched: string, replacement: string, offset: number) => void) | null>(null);
@@ -459,6 +461,18 @@ export default function ScenePage() {
             Grammar
           </Button>
         )}
+        {appSettings?.vale_enabled && (
+          <Button
+            size="sm"
+            variant={valePanelOpen ? "secondary" : "ghost"}
+            onClick={() => setValePanelOpen(v => !v)}
+            className="gap-1.5 text-xs"
+            title="Vale prose check"
+          >
+            <SpellCheck className="h-3.5 w-3.5" />
+            Vale
+          </Button>
+        )}
 
         {/* ── Sandwich menu ──────────────────────────────────────────────── */}
         <div className="relative">
@@ -562,6 +576,16 @@ export default function ScenePage() {
                   <SpellCheck className="h-3.5 w-3.5 text-muted-foreground" />
                   Grammar
                   {grammarPanelOpen && <Check className="ml-auto h-3 w-3 text-primary" />}
+                </button>
+              )}
+              {appSettings?.vale_enabled && (
+                <button
+                  onClick={() => { setValePanelOpen((v) => !v); setMenuOpen(false); }}
+                  className={cn("w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2", valePanelOpen && "text-primary")}
+                >
+                  <SpellCheck className="h-3.5 w-3.5 text-muted-foreground" />
+                  Vale
+                  {valePanelOpen && <Check className="ml-auto h-3 w-3 text-primary" />}
                 </button>
               )}
 
@@ -750,6 +774,14 @@ export default function ScenePage() {
             onClose={() => setGrammarPanelOpen(false)}
             onJumpTo={(matched, offset) => jumpToGrammarMatchRef.current?.(matched, offset)}
             onApplySuggestion={(matched, replacement, offset) => applyGrammarFixRef.current?.(matched, replacement, offset)}
+          />
+        )}
+
+        {/* Vale prose check panel */}
+        {valePanelOpen && (
+          <ValePanel
+            text={content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()}
+            onClose={() => setValePanelOpen(false)}
           />
         )}
 

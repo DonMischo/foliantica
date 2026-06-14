@@ -13,12 +13,12 @@ from database import (
     migrate_ai_disabled, migrate_research_pdf,
     migrate_ai_providers, migrate_corkboard,
     migrate_achievement_popup_shown, migrate_sync_mirror,
-    migrate_spacy, migrate_calibre, migrate_project_language,
+    migrate_spacy, migrate_calibre, migrate_vale, migrate_project_language,
     migrate_ai_prompts_word_count, migrate_backfill_word_counts,
     seed_ai_prompts, seed_publisher_profiles, seed_export_profiles,
 )
 from models import Base
-from routers import projects, acts, chapters, scenes, codex, settings, ai, export, imports, graph, time, fragments, images, scene_commands, grammar, analytics, research, submissions, achievements
+from routers import projects, acts, chapters, scenes, codex, settings, ai, export, imports, graph, time, fragments, images, scene_commands, grammar, analytics, research, submissions, achievements, vale
 from routers import sync as sync_router
 
 
@@ -73,6 +73,7 @@ async def lifespan(app: FastAPI):
     migrate_sync_mirror()
     migrate_spacy()
     migrate_calibre()
+    migrate_vale()
     migrate_project_language()
     migrate_ai_prompts_word_count()
     migrate_backfill_word_counts()
@@ -112,6 +113,7 @@ app.include_router(fragments.router)
 app.include_router(images.router)
 app.include_router(scene_commands.router)
 app.include_router(grammar.router)
+app.include_router(vale.router)
 app.include_router(analytics.router)
 app.include_router(research.router)
 app.include_router(submissions.router)

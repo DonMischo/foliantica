@@ -119,6 +119,16 @@ services:
     ports:
       - "127.0.0.1:8084:8084"
 
+  vale:
+    build:
+      context: ./docker/vale
+    container_name: foliantica-vale
+    restart: unless-stopped
+    profiles:
+      - vale
+    ports:
+      - "127.0.0.1:8085:8085"
+
 # ── Named volumes ─────────────────────────────────────────────────────────────
 # Stored in Docker's volume store (outside the app installation directory).
 # Persist across Foliantica reinstalls, updates, and OS reboots.

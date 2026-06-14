@@ -387,6 +387,10 @@ export interface Settings {
   calibre_mode: "off" | "system" | "docker";
   calibre_enabled: boolean;
   calibre_url: string;
+  vale_mode: "off" | "system" | "docker";
+  vale_enabled: boolean;
+  vale_url: string;
+  vale_config_path: string | null;
   ai_disabled: boolean;
   sync_mirror_enabled: boolean;
   sync_local_dir: string | null;

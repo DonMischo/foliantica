@@ -179,6 +179,20 @@ def migrate_calibre():
             pass
 
 
+def migrate_vale():
+    """Add vale columns to user_settings."""
+    for stmt in [
+        "ALTER TABLE user_settings ADD COLUMN vale_mode TEXT NOT NULL DEFAULT 'off'",
+        "ALTER TABLE user_settings ADD COLUMN vale_url TEXT",
+        "ALTER TABLE user_settings ADD COLUMN vale_config_path TEXT",
+    ]:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(stmt))
+        except Exception:
+            pass
+
+
 def migrate_project_language():
     """Add language column to projects."""
     try:

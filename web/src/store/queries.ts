@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient, useQueries } from "@tanstack/react-query";
-import { projectsApi, actsApi, chaptersApi, scenesApi, codexApi, settingsApi, timeApi, fragmentsApi, imagesApi, sceneCommandsApi, promptsApi, versionsApi, mentionStatsApi, writingLogApi, synopsisApi, timelineTracksApi, timelineEventsApi, grammarApi, fontsApi, seriesApi, analyticsApi, researchApi, submissionsApi, exportProfilesApi, publishersApi, achievementsApi, statsApi, syncApi, type StatsTotals, type SyncStatus } from "@/lib/api";
-import type { GrammarCheckResult, PovStats, QuerySubmissionCreate, ExportProfileCreate } from "@/lib/api";
+import { projectsApi, actsApi, chaptersApi, scenesApi, codexApi, settingsApi, timeApi, fragmentsApi, imagesApi, sceneCommandsApi, promptsApi, versionsApi, mentionStatsApi, writingLogApi, synopsisApi, timelineTracksApi, timelineEventsApi, grammarApi, valeApi, fontsApi, seriesApi, analyticsApi, researchApi, submissionsApi, exportProfilesApi, publishersApi, achievementsApi, statsApi, syncApi, type StatsTotals, type SyncStatus } from "@/lib/api";
+import type { GrammarCheckResult, ValeCheckResult, PovStats, QuerySubmissionCreate, ExportProfileCreate } from "@/lib/api";
 import type { SceneCommandIn, ProjectItemLogEntry, ProjectCurrencyLogEntry, OpenRouterModel } from "@/lib/api";
 import type { AIPrompt, ProjectSceneItem, SceneVersion, SceneVersionDetail, CorkboardAct, CorkboardData, CorkboardPrefs, RelationsGraph, SeriesData, ProjectAnalytics, ResearchItem, QuerySubmission, ExportProfile, PublisherProfile } from "@/types";
 
@@ -663,6 +663,11 @@ export const useServiceStatus = (enabled = true) =>
 export const useGrammarCheck = () =>
   useMutation<GrammarCheckResult, Error, { text: string; language?: string }>({
     mutationFn: ({ text, language }) => grammarApi.check(text, language),
+  });
+
+export const useValeCheck = () =>
+  useMutation<ValeCheckResult, Error, { text: string }>({
+    mutationFn: ({ text }) => valeApi.check(text),
   });
 
 export const usePandocFonts = (enabled = true) =>

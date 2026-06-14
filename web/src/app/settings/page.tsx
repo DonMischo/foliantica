@@ -141,6 +141,13 @@ export default function SettingsPage() {
   const [calibreDetectResult, setCalibreDetectResult] = useState<{ system: boolean; docker: boolean } | null>(null);
   const [calibreHelpOpen, setCalibreHelpOpen] = useState(false);
   const [calibreHelpOs, setCalibreHelpOs] = useState<"windows" | "mac" | "linux">("windows");
+  const [valeMode, setValeMode]             = useState<"off" | "system" | "docker">("off");
+  const [valeUrl, setValeUrl]               = useState("http://localhost:8085");
+  const [valeConfigPath, setValeConfigPath] = useState("");
+  const [valeDetecting, setValeDetecting]   = useState(false);
+  const [valeDetectResult, setValeDetectResult] = useState<{ system: boolean; docker: boolean } | null>(null);
+  const [valeHelpOpen, setValeHelpOpen]     = useState(false);
+  const [valeHelpOs, setValeHelpOs]         = useState<"windows" | "mac" | "linux">("windows");
   const [showServiceStatus, setShowServiceStatus] = useState(false);
   const { data: serviceStatus, isLoading: statusLoading, refetch: refetchStatus } =
     useServiceStatus(showServiceStatus);
@@ -342,6 +349,9 @@ export default function SettingsPage() {
       setSpacyUrl(settings.spacy_url ?? "http://localhost:8083");
       setCalibreMode(settings.calibre_mode ?? "off");
       setCalibreUrl(settings.calibre_url ?? "http://localhost:8084");
+      setValeMode(settings.vale_mode ?? "off");
+      setValeUrl(settings.vale_url ?? "http://localhost:8085");
+      setValeConfigPath(settings.vale_config_path ?? "");
       setAiDisabled(settings.ai_disabled ?? false);
       setSyncEnabled(settings.sync_mirror_enabled ?? false);
       setSyncLocalDir(settings.sync_local_dir ?? "");
@@ -460,6 +470,9 @@ export default function SettingsPage() {
       spacy_url: spacyUrl,
       calibre_mode: calibreMode,
       calibre_url: calibreUrl,
+      vale_mode: valeMode,
+      vale_url: valeUrl,
+      vale_config_path: valeConfigPath || null,
     };
     await updateSettings.mutateAsync(payload);
     setSaved(true);
@@ -1646,6 +1659,104 @@ export default function SettingsPage() {
             )}
           </div>
 
+          {/* Vale prose linter */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Vale</p>
+                <p className="text-xs text-muted-foreground">Prose style linter — checks writing rules, vocabulary, and custom styles</p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setValeDetecting(true);
+                    setValeDetectResult(null);
+                    try {
+                      const result = await settingsApi.detectVale();
+                      setValeDetectResult(result);
+                      if (result.system) setValeMode("system");
+                      else if (result.docker) setValeMode("docker");
+                    } catch { /* ignore */ } finally {
+                      setValeDetecting(false);
+                    }
+                  }}
+                  disabled={valeDetecting}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2.5 py-1 rounded border border-border hover:border-primary/50 transition-colors disabled:opacity-50"
+                >
+                  {valeDetecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                  Auto-detect
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setValeHelpOpen(true)}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  title="Setup instructions & config help"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {(["off", "system", "docker"] as const).map(mode => (
+                <label key={mode} className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="vale-mode"
+                    value={mode}
+                    checked={valeMode === mode}
+                    onChange={() => setValeMode(mode)}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">
+                    {mode === "off"    && "Off"}
+                    {mode === "system" && "System install"}
+                    {mode === "docker" && "Docker container"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {mode === "system" && "vale on PATH"}
+                    {mode === "docker" && "sidecar service"}
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            {valeMode === "system" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Config file path <span className="text-muted-foreground font-normal">(optional — path to your .vale.ini)</span></Label>
+                <Input
+                  value={valeConfigPath}
+                  onChange={e => setValeConfigPath(e.target.value)}
+                  placeholder="e.g. C:\Users\you\vale\.vale.ini or ~/.vale.ini"
+                  className="h-8 text-xs font-mono"
+                />
+                <p className="text-[11px] text-muted-foreground">Leave blank to let Vale find its config automatically (checks current dir, home dir, etc.).</p>
+              </div>
+            )}
+
+            {valeMode === "docker" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Service URL</Label>
+                <Input
+                  value={valeUrl}
+                  onChange={e => setValeUrl(e.target.value)}
+                  placeholder="http://localhost:8085"
+                  className="h-8 text-xs font-mono"
+                />
+                <p className="text-[11px] text-muted-foreground">Docker sidecar uses Vale's built-in style only. Mount a config volume for custom styles.</p>
+              </div>
+            )}
+
+            {valeDetectResult && (
+              <p className="text-xs text-muted-foreground">
+                System: {valeDetectResult.system ? "✓ vale found" : "✗ not found"}
+                {" · "}
+                Docker: {valeDetectResult.docker ? "✓ service responding" : "✗ not responding"}
+              </p>
+            )}
+          </div>
+
           {/* PostgreSQL Database */}
           <div className="rounded-lg border border-border p-4 space-y-4">
 
@@ -1844,6 +1955,9 @@ export default function SettingsPage() {
               )}
               {calibreMode !== "off" && (
                 <ServiceStatusBadge label="Calibre" status={serviceStatus.calibre} />
+              )}
+              {valeMode !== "off" && (
+                <ServiceStatusBadge label="Vale" status={serviceStatus.vale} />
               )}
             </div>
           )}
@@ -2090,6 +2204,135 @@ export default function SettingsPage() {
 
               <div className="px-5 py-3 border-t border-border shrink-0">
                 <Button size="sm" onClick={() => setCalibreHelpOpen(false)} className="w-full">Got it</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Vale help modal */}
+        {valeHelpOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => setValeHelpOpen(false)}>
+            <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+                <h2 className="text-sm font-semibold">Vale — Setup &amp; Config</h2>
+                <button onClick={() => setValeHelpOpen(false)} className="text-muted-foreground hover:text-foreground">✕</button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 text-xs">
+
+                {/* What is Vale */}
+                <div>
+                  <p className="font-semibold text-sm mb-1">What is Vale?</p>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Vale is a prose style linter. It checks your writing against configurable rule packages — things like weasel words, passive voice, overly complex sentences, banned terms, or your own vocabulary lists. Unlike grammar checkers, Vale focuses on style and consistency rules you define.
+                  </p>
+                </div>
+
+                {/* OS tabs */}
+                <div>
+                  <p className="font-semibold text-sm mb-2">Install Vale</p>
+                  <div className="flex rounded-md border border-border overflow-hidden text-xs mb-3">
+                    {(["windows", "mac", "linux"] as const).map(os => (
+                      <button key={os} onClick={() => setValeHelpOs(os)}
+                        className={`flex-1 px-3 py-1.5 transition-colors ${valeHelpOs === os ? "bg-primary text-primary-foreground font-medium" : "text-muted-foreground hover:bg-secondary"}`}>
+                        {os === "windows" ? "Windows" : os === "mac" ? "macOS" : "Linux"}
+                      </button>
+                    ))}
+                  </div>
+                  {valeHelpOs === "windows" && (
+                    <div className="space-y-2 text-muted-foreground leading-relaxed">
+                      <p><strong className="text-foreground">Recommended — winget:</strong></p>
+                      <code className="block bg-secondary/50 rounded px-3 py-2 font-mono text-[11px] text-foreground">winget install Vale.Vale</code>
+                      <p>Or via <strong className="text-foreground">Chocolatey:</strong> <code className="font-mono text-[11px] text-primary">choco install vale</code></p>
+                      <p>Or download the <code className="font-mono text-[11px] text-primary">.exe</code> from <strong className="text-foreground">github.com/errata-ai/vale/releases</strong> and add its folder to your PATH.</p>
+                      <p>After install, open a new terminal and verify: <code className="font-mono text-[11px] text-primary">vale --version</code></p>
+                    </div>
+                  )}
+                  {valeHelpOs === "mac" && (
+                    <div className="space-y-2 text-muted-foreground leading-relaxed">
+                      <p><strong className="text-foreground">Homebrew:</strong></p>
+                      <code className="block bg-secondary/50 rounded px-3 py-2 font-mono text-[11px] text-foreground">brew install vale</code>
+                      <p>Homebrew adds <code className="font-mono text-[11px] text-primary">vale</code> to your PATH automatically. Restart the backend, then click Auto-detect.</p>
+                    </div>
+                  )}
+                  {valeHelpOs === "linux" && (
+                    <div className="space-y-2 text-muted-foreground leading-relaxed">
+                      <p>Download the binary for your architecture from <strong className="text-foreground">github.com/errata-ai/vale/releases</strong> and place it in <code className="font-mono text-[11px] text-primary">/usr/local/bin/</code>:</p>
+                      <code className="block bg-secondary/50 rounded px-3 py-2 font-mono text-[11px] text-foreground whitespace-pre">{`sudo wget -O /usr/local/bin/vale \\
+  https://github.com/errata-ai/vale/releases/latest/download/vale_Linux_64-bit.tar.gz
+# extract and move binary as needed
+sudo chmod +x /usr/local/bin/vale`}</code>
+                      <p>Or via Snap: <code className="font-mono text-[11px] text-primary">snap install vale</code></p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Config file */}
+                <div>
+                  <p className="font-semibold text-sm mb-1">The .vale.ini config</p>
+                  <p className="text-muted-foreground leading-relaxed mb-2">
+                    Vale is driven by a <code className="font-mono text-[11px] text-primary">.vale.ini</code> file. It tells Vale where your styles live and which rules to apply. A minimal example:
+                  </p>
+                  <code className="block bg-secondary/50 rounded px-3 py-2 font-mono text-[11px] text-foreground whitespace-pre">{`StylesPath = styles
+MinAlertLevel = suggestion
+
+[*.md]
+BasedOnStyles = write-good`}</code>
+                  <ul className="mt-2 space-y-1 text-muted-foreground list-disc list-inside">
+                    <li><strong className="text-foreground">StylesPath</strong> — folder containing downloaded style packages (relative to .vale.ini)</li>
+                    <li><strong className="text-foreground">MinAlertLevel</strong> — show only <code className="font-mono text-[11px] text-primary">suggestion</code>, <code className="font-mono text-[11px] text-primary">warning</code>, or <code className="font-mono text-[11px] text-primary">error</code></li>
+                    <li><strong className="text-foreground">BasedOnStyles</strong> — comma-separated style packages to enable</li>
+                  </ul>
+                </div>
+
+                {/* Styles */}
+                <div>
+                  <p className="font-semibold text-sm mb-1">Style packages</p>
+                  <p className="text-muted-foreground leading-relaxed mb-2">
+                    After writing your <code className="font-mono text-[11px] text-primary">.vale.ini</code>, run <code className="font-mono text-[11px] text-primary">vale sync</code> in the same folder to download the packages. Popular ones for fiction writers:
+                  </p>
+                  <div className="space-y-1.5">
+                    {[
+                      ["write-good", "Flags weasel words, passive voice, clichés, and wordy phrases"],
+                      ["proselint",  "Curated literary style rules — redundancy, misused words, jargon"],
+                      ["Microsoft",  "Microsoft Writing Style Guide — clear, inclusive language"],
+                      ["Google",     "Google Developer Documentation Style — plain language rules"],
+                      ["Vale",       "Built-in Vale rules — spelling, repetition, terms (no sync needed)"],
+                    ].map(([name, desc]) => (
+                      <div key={name} className="flex gap-2">
+                        <code className="font-mono text-[11px] text-primary w-20 shrink-0">{name}</code>
+                        <span className="text-muted-foreground">{desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Vocabulary */}
+                <div>
+                  <p className="font-semibold text-sm mb-1">Vocabulary — accept &amp; reject lists</p>
+                  <p className="text-muted-foreground leading-relaxed mb-2">
+                    You can maintain per-project word lists. In your <code className="font-mono text-[11px] text-primary">.vale.ini</code>:
+                  </p>
+                  <code className="block bg-secondary/50 rounded px-3 py-2 font-mono text-[11px] text-foreground whitespace-pre">{`Vocab = MyProject
+
+[*.md]
+BasedOnStyles = write-good`}</code>
+                  <p className="text-muted-foreground mt-2 leading-relaxed">
+                    Then create two files in <code className="font-mono text-[11px] text-primary">styles/Vocab/MyProject/</code>:
+                  </p>
+                  <ul className="mt-1.5 space-y-1 text-muted-foreground list-disc list-inside">
+                    <li><strong className="text-foreground">accept.txt</strong> — one word/phrase per line — Vale won't flag these (allow-list)</li>
+                    <li><strong className="text-foreground">reject.txt</strong> — one word/phrase per line — Vale always flags these (block-list)</li>
+                  </ul>
+                  <p className="text-muted-foreground mt-2">
+                    Great for character names, made-up words, or terms you want to ban from your manuscript.
+                  </p>
+                </div>
+
+              </div>
+
+              <div className="px-5 py-3 border-t border-border shrink-0">
+                <Button size="sm" onClick={() => setValeHelpOpen(false)} className="w-full">Got it</Button>
               </div>
             </div>
           </div>

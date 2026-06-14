@@ -490,13 +490,17 @@ export const settingsApi = {
     spacy_url?: string;
     calibre_mode?: "off" | "system" | "docker";
     calibre_url?: string;
+    vale_mode?: "off" | "system" | "docker";
+    vale_url?: string;
+    vale_config_path?: string | null;
     ai_disabled?: boolean;
     sync_mirror_enabled?: boolean;
     sync_local_dir?: string | null;
   }) => req<Settings>("/settings", { method: "POST", body: JSON.stringify(data) }),
   getModels: () => req<OpenRouterModel[]>("/settings/models"),
-  serviceStatus: () => req<{ languagetool: "ok" | "error" | "offline"; pandoc: "ok" | "error" | "offline"; spacy: "ok" | "error" | "offline"; calibre: "ok" | "error" | "offline" }>("/settings/service-status"),
+  serviceStatus: () => req<{ languagetool: "ok" | "error" | "offline"; pandoc: "ok" | "error" | "offline"; spacy: "ok" | "error" | "offline"; calibre: "ok" | "error" | "offline"; vale: "ok" | "error" | "offline" }>("/settings/service-status"),
   detectCalibre: () => req<{ system: boolean; docker: boolean }>("/settings/detect-calibre"),
+  detectVale: () => req<{ system: boolean; docker: boolean }>("/settings/detect-vale"),
   dockerComposeUp: () => req<{ status: string; output: string }>("/settings/docker/up", { method: "POST" }),
 };
 
@@ -658,6 +662,33 @@ export interface GrammarMatch {
 export interface GrammarCheckResult {
   matches: GrammarMatch[];
 }
+
+// ── Vale ─────────────────────────────────────────────────────────────────────
+
+export interface ValeAlert {
+  Action: { Name: string; Params: string[] };
+  Check: string;
+  Description: string;
+  Line: number;
+  Link: string;
+  Message: string;
+  Severity: "error" | "warning" | "suggestion";
+  Span: [number, number];
+  Match: string;
+}
+
+export interface ValeCheckResult {
+  alerts: ValeAlert[];
+}
+
+export const valeApi = {
+  check: (text: string) =>
+    req<ValeCheckResult>("/vale/check", {
+      method: "POST",
+      body: JSON.stringify({ text }),
+      signal: AbortSignal.timeout(60_000),
+    }),
+};
 
 export const grammarApi = {
   check: (text: string, language = "auto") =>
