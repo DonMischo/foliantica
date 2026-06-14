@@ -428,3 +428,39 @@ class TestSceneNullableClears:
 
         client.patch(f"/api/scenes/{scene['id']}", json={"global_order": None})
         assert client.get(f"/api/scenes/{scene['id']}").json()["global_order"] is None
+
+
+# ── Scene delete cascades to versions ────────────────────────────────────────
+
+class TestSceneDeleteCascade:
+    """SceneVersion.scene_id has ondelete="CASCADE" — deleting a scene must
+    remove all its versions."""
+
+    def test_delete_scene_removes_its_versions(self, client, chapter, db):
+        from models import SceneVersion
+
+        scene = client.post("/api/scenes", json={
+            "title": "Doomed Scene", "content": "<p>Text</p>",
+            "chapter_id": chapter["id"], "order_index": 0,
+        }).json()
+
+        # Create a couple of versions
+        client.post(f"/api/scenes/{scene['id']}/versions", json={"content": "<p>v1</p>"})
+        client.post(f"/api/scenes/{scene['id']}/versions", json={"content": "<p>v2</p>"})
+
+        versions_before = (
+            db.query(SceneVersion)
+            .filter(SceneVersion.scene_id == scene["id"])
+            .count()
+        )
+        assert versions_before == 2
+
+        client.delete(f"/api/scenes/{scene['id']}")
+        db.expire_all()
+
+        versions_after = (
+            db.query(SceneVersion)
+            .filter(SceneVersion.scene_id == scene["id"])
+            .count()
+        )
+        assert versions_after == 0

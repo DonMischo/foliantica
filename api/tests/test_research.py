@@ -217,3 +217,32 @@ class TestCombinedLink:
         body = r.json()
         assert body["linked_scene_id"] == scene["id"]
         assert body["linked_codex_id"] == entry["id"]
+
+
+# ── Linked scene deleted (soft reference) ────────────────────────────────────
+
+class TestResearchSceneCascade:
+    """linked_scene_id is a plain integer column with no FK constraint.
+    Deleting the scene does not cascade — the stale ID is retained."""
+
+    def test_delete_linked_scene_leaves_stale_id(self, client, project, scene):
+        item = _create_item(client, project["id"])
+        client.patch(f"/api/research/{item['id']}",
+                     json={"linked_scene_id": scene["id"]})
+
+        client.delete(f"/api/scenes/{scene['id']}")
+
+        items = client.get(f"/api/projects/{project['id']}/research").json()
+        match = next(i for i in items if i["id"] == item["id"])
+        # Soft reference — no FK, so the old ID is retained
+        assert match["linked_scene_id"] == scene["id"]
+
+    def test_research_item_survives_scene_delete(self, client, project, scene):
+        item = _create_item(client, project["id"],
+                            title="Linked clip",
+                            linked_scene_id=scene["id"])
+
+        client.delete(f"/api/scenes/{scene['id']}")
+
+        items = client.get(f"/api/projects/{project['id']}/research").json()
+        assert any(i["id"] == item["id"] for i in items)

@@ -301,3 +301,31 @@ class TestTimelineV2:
         _make_track(client, project["id"], name="Subplot A")
         body = client.get(f"/api/projects/{project['id']}/timeline-v2").json()
         assert any(t["name"] == "Subplot A" for t in body["tracks"])
+
+
+# ── Track → event cascade (SET NULL) ─────────────────────────────────────────
+
+class TestTrackEventCascade:
+    """Deleting a track must set event.track_id to NULL, not delete the event."""
+
+    def test_delete_track_nullifies_event_track_id(self, client, project):
+        track = _make_track(client, project["id"], name="Doomed Track")
+        event = _make_event(client, project["id"], title="Orphan Event",
+                            track_id=track["id"])
+        assert event["track_id"] == track["id"]
+
+        client.delete(f"/api/projects/{project['id']}/timeline-tracks/{track['id']}")
+
+        events = client.get(f"/api/projects/{project['id']}/timeline-events").json()
+        match = next(e for e in events if e["id"] == event["id"])
+        assert match["track_id"] is None   # SET NULL via FK ondelete
+
+    def test_delete_track_does_not_delete_events(self, client, project):
+        track = _make_track(client, project["id"])
+        event = _make_event(client, project["id"], title="Survivor",
+                            track_id=track["id"])
+
+        client.delete(f"/api/projects/{project['id']}/timeline-tracks/{track['id']}")
+
+        events = client.get(f"/api/projects/{project['id']}/timeline-events").json()
+        assert any(e["id"] == event["id"] for e in events)

@@ -133,3 +133,77 @@ class TestApiKeyRoundTrip:
         bad_token = "gAAAAA" + "B" * 80
         result = decrypt(bad_token)
         assert result is None
+
+
+# ── Dump endpoint (POST /api/sync/dump) ───────────────────────────────────────
+
+class TestDumpEndpoint:
+    def test_creates_sql_file(self, client, test_engine, tmp_path):
+        import database as db_module
+        with (
+            patch.object(db_module, "engine", test_engine),
+            patch("pathlib.Path.cwd", return_value=tmp_path),
+        ):
+            r = client.post("/api/sync/dump?force=true")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["ok"] is True
+        assert "dump_time" in body
+        assert (tmp_path / "foliantica.sql").exists()
+        content = (tmp_path / "foliantica.sql").read_text()
+        assert "Foliantica PostgreSQL backup" in content
+
+    def test_returns_409_when_file_exists(self, client, tmp_path):
+        (tmp_path / "foliantica.sql").write_text("-- existing dump\n")
+        with patch("pathlib.Path.cwd", return_value=tmp_path):
+            r = client.post("/api/sync/dump")   # force=False (default)
+        assert r.status_code == 409
+        detail = r.json()["detail"]
+        assert detail["exists"] is True
+        assert "dump_time" in detail
+        assert "size" in detail
+
+    def test_force_overwrites_existing_file(self, client, test_engine, tmp_path):
+        (tmp_path / "foliantica.sql").write_text("-- old content\n")
+        import database as db_module
+        with (
+            patch.object(db_module, "engine", test_engine),
+            patch("pathlib.Path.cwd", return_value=tmp_path),
+        ):
+            r = client.post("/api/sync/dump?force=true")
+        assert r.status_code == 200
+        content = (tmp_path / "foliantica.sql").read_text()
+        assert "Foliantica PostgreSQL backup" in content
+
+
+# ── Restore endpoint (POST /api/sync/restore) ─────────────────────────────────
+
+class TestRestoreEndpoint:
+    def test_replays_statements_returns_ok(self, client, test_engine, tmp_path):
+        dump = tmp_path / "foliantica.sql"
+        dump.write_text(
+            "SET session_replication_role = replica;\n"
+            "SET session_replication_role = DEFAULT;\n"
+        )
+        import database as db_module
+        with (
+            patch.object(db_module, "engine", test_engine),
+            patch("pathlib.Path.cwd", return_value=tmp_path),
+        ):
+            r = client.post("/api/sync/restore")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["ok"] is True
+        assert body["statements"] >= 1
+
+    def test_roundtrip_preserves_data(self, client, test_engine, tmp_path, project):
+        """Dump the DB, delete the project, restore — project should be back."""
+        import database as db_module
+        with (
+            patch.object(db_module, "engine", test_engine),
+            patch("pathlib.Path.cwd", return_value=tmp_path),
+        ):
+            assert client.post("/api/sync/dump?force=true").status_code == 200
+            client.delete(f"/api/projects/{project['id']}")
+            assert client.post("/api/sync/restore").status_code == 200
+        assert client.get(f"/api/projects/{project['id']}").status_code == 200

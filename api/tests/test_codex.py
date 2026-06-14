@@ -328,3 +328,26 @@ class TestCodexMentions:
         assert "scene_title" in mention
         assert "chapter_title" in mention
         assert "act_title" in mention
+
+
+# ── Relation cascade on entry delete ─────────────────────────────────────────
+
+class TestCodexRelationCascade:
+    """Deleting an entry must remove all relations that reference it."""
+
+    def test_delete_source_entry_removes_relation(self, client, entry, entry2):
+        client.post("/api/codex/relations", json={
+            "source_id": entry["id"], "target_id": entry2["id"], "relation_type": "ally",
+        })
+        client.delete(f"/api/codex/{entry['id']}")
+        # entry2 should have no relations left
+        rels = client.get(f"/api/codex/{entry2['id']}/relations").json()
+        assert rels == []
+
+    def test_delete_target_entry_removes_relation(self, client, entry, entry2):
+        client.post("/api/codex/relations", json={
+            "source_id": entry["id"], "target_id": entry2["id"], "relation_type": "rival",
+        })
+        client.delete(f"/api/codex/{entry2['id']}")
+        rels = client.get(f"/api/codex/{entry['id']}/relations").json()
+        assert rels == []

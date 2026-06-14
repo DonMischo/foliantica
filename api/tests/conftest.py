@@ -11,16 +11,77 @@ Isolation guarantee:
   per-test isolation.
 """
 import os
+import shutil
+import socket
+import subprocess
 import pytest
 from fastapi.testclient import TestClient
+from pathlib import Path
 
 from models import Base
 from database import engine as _engine, SessionLocal as _SessionLocal, get_db
 from main import app  # noqa: must import after api/conftest.py sets env vars
 
 
+def _pg_is_up() -> bool:
+    with socket.socket() as s:
+        s.settimeout(1)
+        return s.connect_ex(("127.0.0.1", int(os.getenv("LW_PG_PORT", "5433")))) == 0
+
+
 @pytest.fixture(scope="session", autouse=True)
-def _ensure_test_db():
+def _start_pg():
+    """Start the embedded test PostgreSQL on port 5433 if not already running.
+
+    Uses scripts/start-test-pg.mjs (node embedded-postgres).  A no-op when
+    PG is already up (e.g. user started LaunchFoliantica.bat manually).
+    Polls the TCP port rather than parsing stdout so pipe buffering never stalls.
+    """
+    import time
+
+    if _pg_is_up():
+        yield
+        return
+
+    # Remove a stale data directory left by a previously killed process.
+    # embedded-postgres only cleans up via pg.stop() on graceful exit.
+    data_dir = Path(os.environ.get("TEMP", os.environ.get("TMPDIR", "/tmp"))) / "foliantica-pg-test"
+    if data_dir.exists():
+        shutil.rmtree(data_dir, ignore_errors=True)
+
+    root = Path(__file__).parent.parent.parent   # repo root
+    proc = subprocess.Popen(
+        ["node", str(root / "scripts" / "start-test-pg.mjs")],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+    deadline = time.monotonic() + 60
+    while time.monotonic() < deadline:
+        if _pg_is_up():
+            break
+        if proc.poll() is not None:
+            raise RuntimeError("Embedded PG process exited before becoming ready")
+        time.sleep(0.5)
+    else:
+        proc.terminate()
+        raise RuntimeError(
+            "Embedded PostgreSQL did not become ready within 60 s. "
+            "Check that Node.js and the embedded-postgres package are installed "
+            f"(scripts/start-test-pg.mjs, port {os.getenv('LW_PG_PORT', '5433')})."
+        )
+
+    yield
+
+    proc.terminate()
+    try:
+        proc.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _ensure_test_db(_start_pg):
     """Create the foliantica_test database if it doesn't exist."""
     import psycopg2
     from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT

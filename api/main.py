@@ -1,5 +1,5 @@
+import asyncio
 import os
-import time as _time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -21,50 +21,7 @@ from models import Base
 from routers import projects, acts, chapters, scenes, codex, settings, ai, export, imports, graph, time, fragments, images, scene_commands, grammar, analytics, research, submissions, achievements
 from routers import sync as sync_router
 
-# ── Schema + migrations ───────────────────────────────────────────────────────
-# Retry up to 60 s — Docker-managed PG may still be starting when the
-# API launches (container healthcheck takes a few seconds after `up -d`).
 
-_pg_ready = False
-for _attempt in range(60):
-    try:
-        Base.metadata.create_all(bind=engine)
-        _pg_ready = True
-        break
-    except Exception as _e:
-        if _attempt == 0:
-            print(f"[startup] Waiting for PostgreSQL… ({_e.__class__.__name__})", flush=True)
-        _time.sleep(1)
-if not _pg_ready:
-    raise RuntimeError(
-        "PostgreSQL did not become available within 60 seconds. "
-        "Check that the database is running and the connection settings are correct."
-    )
-
-# Seed static reference data
-seed_ai_prompts()
-seed_publisher_profiles()
-seed_export_profiles()
-
-# Incremental ALTER TABLE migrations — idempotent, safe on every startup.
-# Needed for existing databases that predate a column addition.
-migrate_indexes()
-migrate_codex_entry_sharing()
-migrate_ai_disabled()
-migrate_research_pdf()
-migrate_ai_providers()
-migrate_corkboard()
-migrate_achievement_popup_shown()
-migrate_sync_mirror()
-migrate_spacy()
-migrate_calibre()
-migrate_project_language()
-migrate_ai_prompts_word_count()
-migrate_backfill_word_counts()
-
-os.makedirs("uploads", exist_ok=True)
-
-# ── Init sync mirror from stored settings ─────────────────────────────────────
 def _init_sync() -> None:
     try:
         with engine.connect() as conn:
@@ -79,11 +36,48 @@ def _init_sync() -> None:
         pass
 
 
-_init_sync()
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # ── Schema: wait up to 60 s for PG (Docker may still be starting) ─────────
+    _pg_ready = False
+    for _attempt in range(60):
+        try:
+            Base.metadata.create_all(bind=engine)
+            _pg_ready = True
+            break
+        except Exception as _e:
+            if _attempt == 0:
+                print(f"[startup] Waiting for PostgreSQL… ({_e.__class__.__name__})", flush=True)
+            await asyncio.sleep(1)
+    if not _pg_ready:
+        raise RuntimeError(
+            "PostgreSQL did not become available within 60 seconds. "
+            "Check that the database is running and the connection settings are correct."
+        )
+
+    # Seed static reference data
+    seed_ai_prompts()
+    seed_publisher_profiles()
+    seed_export_profiles()
+
+    # Incremental ALTER TABLE migrations — idempotent, safe on every startup.
+    migrate_indexes()
+    migrate_codex_entry_sharing()
+    migrate_ai_disabled()
+    migrate_research_pdf()
+    migrate_ai_providers()
+    migrate_corkboard()
+    migrate_achievement_popup_shown()
+    migrate_sync_mirror()
+    migrate_spacy()
+    migrate_calibre()
+    migrate_project_language()
+    migrate_ai_prompts_word_count()
+    migrate_backfill_word_counts()
+
+    os.makedirs("uploads", exist_ok=True)
+    _init_sync()
+
     yield
     sync_router.shutdown_backup()
 
