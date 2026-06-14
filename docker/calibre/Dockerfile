@@ -6,9 +6,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# wget + xz-utils needed by the official calibre installer
+# wget + xz-utils for the installer; libegl1 + libopengl0 required by calibre's Qt libs
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends wget xz-utils \
+    && apt-get install -y --no-install-recommends wget xz-utils libegl1 libopengl0 \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /tmp/xdg
 
