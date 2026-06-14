@@ -203,14 +203,14 @@ def migrate_indexes():
         ("idx_timeline_events_project_id",   "timeline_events",   "project_id"),
         ("idx_timeline_events_track_id",     "timeline_events",   "track_id"),
     ]
-    with engine.begin() as conn:
-        for idx_name, table, col in indexes:
-            try:
+    for idx_name, table, col in indexes:
+        try:
+            with engine.begin() as conn:
                 conn.execute(text(
                     f"CREATE INDEX IF NOT EXISTS {idx_name} ON {table} ({col})"
                 ))
-            except Exception:
-                pass  # table may not exist yet on first run
+        except Exception:
+            pass  # table may not exist yet on first run
 
 
 def migrate_mention_stats():
@@ -419,10 +419,12 @@ def migrate_ai_prompts():
                 word_count INTEGER NOT NULL DEFAULT 400
             )
         """))
-        try:
+    try:
+        with engine.begin() as conn:
             conn.execute(text("ALTER TABLE ai_prompts ADD COLUMN word_count INTEGER NOT NULL DEFAULT 400"))
-        except Exception:
-            pass  # column already exists
+    except Exception:
+        pass  # column already exists
+    with engine.begin() as conn:
         for p in DEFAULT_AI_PROMPTS:
             existing = conn.execute(
                 text("SELECT id FROM ai_prompts WHERE built_in_key = :key"),
@@ -1123,20 +1125,20 @@ def migrate_achievements():
 
 def migrate_ai_disabled():
     """Add ai_disabled column to user_settings if not present."""
-    with engine.begin() as conn:
-        try:
+    try:
+        with engine.begin() as conn:
             conn.execute(text("ALTER TABLE user_settings ADD COLUMN ai_disabled INTEGER NOT NULL DEFAULT 0"))
-        except Exception:
-            pass  # column already exists
+    except Exception:
+        pass  # column already exists
 
 
 def migrate_research_pdf():
     """Add pdf_path column to research_items."""
-    with engine.begin() as conn:
-        try:
+    try:
+        with engine.begin() as conn:
             conn.execute(text("ALTER TABLE research_items ADD COLUMN pdf_path TEXT"))
-        except Exception:
-            pass  # column already exists
+    except Exception:
+        pass  # column already exists
 
 
 def migrate_research_media():
@@ -1178,15 +1180,15 @@ def migrate_research_media():
 
 def migrate_ai_providers():
     """Add active_provider and ai_providers_cfg columns to user_settings."""
-    with engine.begin() as conn:
-        for stmt in [
-            "ALTER TABLE user_settings ADD COLUMN active_provider TEXT NOT NULL DEFAULT 'openrouter'",
-            "ALTER TABLE user_settings ADD COLUMN ai_providers_cfg TEXT",
-        ]:
-            try:
+    for stmt in [
+        "ALTER TABLE user_settings ADD COLUMN active_provider TEXT NOT NULL DEFAULT 'openrouter'",
+        "ALTER TABLE user_settings ADD COLUMN ai_providers_cfg TEXT",
+    ]:
+        try:
+            with engine.begin() as conn:
                 conn.execute(text(stmt))
-            except Exception:
-                pass  # column already exists
+        except Exception:
+            pass  # column already exists
 
 
 def migrate_corkboard():
@@ -1208,37 +1210,37 @@ def migrate_corkboard():
 
 def migrate_achievement_popup_shown():
     """Add popup_shown_at column to achievement_unlocks if not present."""
-    with engine.begin() as conn:
-        try:
+    try:
+        with engine.begin() as conn:
             conn.execute(text("ALTER TABLE achievement_unlocks ADD COLUMN popup_shown_at DATETIME"))
-        except Exception:
-            pass  # column already exists
+    except Exception:
+        pass  # column already exists
 
 
 def migrate_sync_mirror():
     """Add sync_mirror_enabled and sync_local_dir columns to user_settings."""
-    with engine.begin() as conn:
-        for stmt in [
-            "ALTER TABLE user_settings ADD COLUMN sync_mirror_enabled INTEGER NOT NULL DEFAULT 0",
-            "ALTER TABLE user_settings ADD COLUMN sync_local_dir TEXT",
-        ]:
-            try:
+    for stmt in [
+        "ALTER TABLE user_settings ADD COLUMN sync_mirror_enabled INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE user_settings ADD COLUMN sync_local_dir TEXT",
+    ]:
+        try:
+            with engine.begin() as conn:
                 conn.execute(text(stmt))
-            except Exception:
-                pass  # column already exists
+        except Exception:
+            pass  # column already exists
 
 
 def migrate_spacy():
     """Add spacy_enabled and spacy_url columns to user_settings."""
-    with engine.begin() as conn:
-        for stmt in [
-            "ALTER TABLE user_settings ADD COLUMN spacy_enabled INTEGER NOT NULL DEFAULT 0",
-            "ALTER TABLE user_settings ADD COLUMN spacy_url TEXT",
-        ]:
-            try:
+    for stmt in [
+        "ALTER TABLE user_settings ADD COLUMN spacy_enabled INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE user_settings ADD COLUMN spacy_url TEXT",
+    ]:
+        try:
+            with engine.begin() as conn:
                 conn.execute(text(stmt))
-            except Exception:
-                pass  # column already exists
+        except Exception:
+            pass  # column already exists
 
 
 def migrate_calibre():
@@ -1257,11 +1259,11 @@ def migrate_calibre():
 
 def migrate_project_language():
     """Add language column to projects (PostgreSQL existing-DB migration)."""
-    with engine.begin() as conn:
-        try:
+    try:
+        with engine.begin() as conn:
             conn.execute(text("ALTER TABLE projects ADD COLUMN language TEXT DEFAULT 'en'"))
-        except Exception:
-            pass  # column already exists
+    except Exception:
+        pass  # column already exists
 
 
 def migrate_backfill_word_counts():

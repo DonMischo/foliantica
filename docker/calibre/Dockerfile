@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     QT_QPA_PLATFORM=offscreen \
@@ -6,16 +6,15 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# wget + xz-utils for the installer; libegl1 + libopengl0 required by calibre's Qt libs
+# apt handles all calibre/Qt dependencies automatically; without --no-install-recommends
+# so that Qt platform plugins (needed even in offscreen mode) are included
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends wget xz-utils libegl1 libopengl0 \
+    && apt-get install -y calibre python3 python3-venv \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /tmp/xdg
 
-# Official self-contained calibre installer — ships its own Qt, Python, and libs,
-# so it works reliably in headless containers without X11.
-RUN wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | sh /dev/stdin
-
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --no-cache-dir fastapi uvicorn
 
 WORKDIR /app

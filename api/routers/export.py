@@ -140,7 +140,7 @@ async def export_project(
         out_ext    = "epub" if opts.format == "epub-calibre" else opts.format
 
         if mode == "system":
-            import shutil as _shutil, subprocess as _sp, tempfile as _tf, base64 as _b64, os as _os
+            import shutil as _shutil, subprocess as _sp, tempfile as _tf, base64 as _b64, os as _os, sys as _sys
             from pathlib import Path as _Path
             if not _shutil.which("ebook-convert"):
                 raise HTTPException(503, "ebook-convert not found on PATH. Install Calibre or switch to Docker mode in settings.")
@@ -157,7 +157,10 @@ async def export_project(
                     cp.write_bytes(_b64.b64decode(cover_b64))
                     cmd += ["--cover", str(cp)]
                 env = {**_os.environ, "QT_QPA_PLATFORM": "offscreen"}
-                result = _sp.run(cmd, capture_output=True, text=True, timeout=120, env=env)
+                # Isolate child from parent's process group so uvicorn's SIGINT
+                # doesn't propagate into ebook-convert on Windows.
+                flags = _sp.CREATE_NEW_PROCESS_GROUP if _sys.platform == "win32" else 0
+                result = _sp.run(cmd, capture_output=True, text=True, timeout=120, env=env, creationflags=flags)
                 if result.returncode != 0:
                     raise HTTPException(500, f"ebook-convert failed: {result.stderr[-2000:]}")
                 content = dst.read_bytes()
