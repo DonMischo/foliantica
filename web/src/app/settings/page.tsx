@@ -131,6 +131,8 @@ export default function SettingsPage() {
   const [grammarLanguages, setGrammarLanguages] = useState<string[]>(["en"]);
   const [pandocEnabled, setPandocEnabled]     = useState(false);
   const [pandocUrl, setPandocUrl]           = useState("http://localhost:8082");
+  const [spacyEnabled, setSpacyEnabled]     = useState(false);
+  const [spacyUrl, setSpacyUrl]             = useState("http://localhost:8083");
   const [showServiceStatus, setShowServiceStatus] = useState(false);
   const { data: serviceStatus, isLoading: statusLoading, refetch: refetchStatus } =
     useServiceStatus(showServiceStatus);
@@ -328,6 +330,8 @@ export default function SettingsPage() {
       setGrammarLanguages(settings.grammar_languages ?? ["en"]);
       setPandocEnabled(settings.pandoc_enabled ?? false);
       setPandocUrl(settings.pandoc_url ?? "http://localhost:8082");
+      setSpacyEnabled(settings.spacy_enabled ?? false);
+      setSpacyUrl(settings.spacy_url ?? "http://localhost:8083");
       setAiDisabled(settings.ai_disabled ?? false);
       setSyncEnabled(settings.sync_mirror_enabled ?? false);
       setSyncLocalDir(settings.sync_local_dir ?? "");
@@ -442,6 +446,8 @@ export default function SettingsPage() {
       grammar_languages: grammarLanguages,
       pandoc_enabled: pandocEnabled,
       pandoc_url: pandocUrl,
+      spacy_enabled: spacyEnabled,
+      spacy_url: spacyUrl,
     };
     await updateSettings.mutateAsync(payload);
     setSaved(true);
@@ -1406,7 +1412,7 @@ export default function SettingsPage() {
             </button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Optional Docker-based services for grammar checking and PDF/EPUB export.
+            Optional Docker-based services for grammar checking, PDF/EPUB export, and NLP-enhanced codex analysis.
             Enable the ones you want, then click <strong className="text-foreground font-medium">Start Services</strong>.
           </p>
 
@@ -1503,6 +1509,43 @@ export default function SettingsPage() {
                   placeholder="http://localhost:8082"
                   className="h-8 text-xs font-mono"
                 />
+              </div>
+            )}
+          </div>
+
+          {/* spaCy NLP */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Codex Analysis (spaCy)</p>
+                <p className="text-xs text-muted-foreground">Token-aware mention scanning — more accurate than plain text search, handles aliases and word boundaries</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={spacyEnabled}
+                onClick={() => setSpacyEnabled(v => !v)}
+                className={cn(
+                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                  spacyEnabled ? "bg-primary" : "bg-input"
+                )}
+              >
+                <span className={cn(
+                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
+                  spacyEnabled ? "translate-x-4" : "translate-x-0"
+                )} />
+              </button>
+            </div>
+            {spacyEnabled && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Service URL</Label>
+                <Input
+                  value={spacyUrl}
+                  onChange={e => setSpacyUrl(e.target.value)}
+                  placeholder="http://localhost:8083"
+                  className="h-8 text-xs font-mono"
+                />
+                <p className="text-[11px] text-muted-foreground">Falls back to built-in text search if the service is unreachable.</p>
               </div>
             )}
           </div>
@@ -1630,6 +1673,8 @@ export default function SettingsPage() {
                     grammar_languages: grammarLanguages,
                     pandoc_enabled: pandocEnabled,
                     pandoc_url: pandocUrl,
+                    spacy_enabled: spacyEnabled,
+                    spacy_url: spacyUrl,
                   });
                   setDockerUpStep("Starting Docker… (may take up to 90 s if Docker Desktop was closed)");
                   const res = await settingsApi.dockerComposeUp();
@@ -1695,6 +1740,9 @@ export default function SettingsPage() {
               )}
               {pandocEnabled && (
                 <ServiceStatusBadge label="Pandoc" status={serviceStatus.pandoc} />
+              )}
+              {spacyEnabled && (
+                <ServiceStatusBadge label="spaCy" status={serviceStatus.spacy} />
               )}
             </div>
           )}

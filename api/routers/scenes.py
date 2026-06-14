@@ -7,7 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import Chapter, Scene, SceneVersion, MentionStat, CodexEntry, WritingLog
+from models import Chapter, Scene, SceneVersion, MentionStat, CodexEntry, WritingLog, UserSettings
 from schemas import SceneCreate, SceneOut, SceneUpdate, ReorderRequest, SceneVersionOut, SceneVersionDetail, CreateVersionRequest, MentionStatOut
 
 
@@ -31,6 +31,31 @@ def _scan_mentions(content: str, entries: list[CodexEntry]) -> dict[int, int]:
         if c:
             counts[entry.id] = c
     return counts
+
+
+def _scan_mentions_spacy(content: str, entries: list[CodexEntry], spacy_url: str) -> dict[int, int] | None:
+    """Call the spaCy service for token-aware mention scanning.
+    Returns {codex_id: count} or None if the service is unavailable."""
+    try:
+        import httpx
+        payload = {
+            "content": content,
+            "entries": [
+                {
+                    "id": e.id,
+                    "name": e.name,
+                    "aliases": json.loads(e.aliases or "[]") if e.aliases else [],
+                    "entry_type": e.entry_type,
+                }
+                for e in entries
+            ],
+        }
+        r = httpx.post(f"{spacy_url.rstrip('/')}/scan", json=payload, timeout=10.0)
+        if r.status_code == 200:
+            return {int(k): v for k, v in r.json()["counts"].items()}
+    except Exception:
+        pass
+    return None
 
 
 def _get_project_id(scene_id: int, db: Session) -> int | None:
@@ -79,7 +104,11 @@ def _update_mention_stats(
     if entries is None:
         entries = db.query(CodexEntry).filter(CodexEntry.project_id == project_id).all()
 
-    counts = _scan_mentions(content, entries)
+    settings = db.query(UserSettings).first()
+    if settings and settings.spacy_enabled and settings.spacy_url:
+        counts = _scan_mentions_spacy(content, entries, settings.spacy_url) or _scan_mentions(content, entries)
+    else:
+        counts = _scan_mentions(content, entries)
 
     # Replace all existing stats for this scene
     db.query(MentionStat).filter(MentionStat.scene_id == scene_id).delete()

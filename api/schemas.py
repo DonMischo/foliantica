@@ -426,6 +426,8 @@ class SettingsUpdate(BaseModel):
     grammar_languages: Optional[list[str]] = None
     pandoc_enabled: Optional[bool] = None
     pandoc_url: Optional[str] = None
+    spacy_enabled: Optional[bool] = None
+    spacy_url: Optional[str] = None
     ai_disabled: Optional[bool] = None
     sync_mirror_enabled: Optional[bool] = None
     sync_local_dir: Optional[str] = None
@@ -450,6 +452,8 @@ class SettingsOut(BaseModel):
     grammar_languages: list[str]
     pandoc_enabled: bool
     pandoc_url: str
+    spacy_enabled: bool = False
+    spacy_url: str = "http://localhost:8083"
     ai_disabled: bool = False
     sync_mirror_enabled: bool = False
     sync_local_dir: Optional[str] = None

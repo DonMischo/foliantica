@@ -93,6 +93,14 @@ services:
     ports:
       - "8082:8082"
 
+  spacy:
+    build:
+      context: ./docker/spacy
+    container_name: foliantica-spacy
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8083:8083"
+
 # ── Named volumes ─────────────────────────────────────────────────────────────
 # Stored in Docker's volume store (outside the app installation directory).
 # Persist across Foliantica reinstalls, updates, and OS reboots.

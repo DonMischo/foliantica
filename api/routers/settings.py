@@ -76,6 +76,8 @@ def _settings_out(s: UserSettings) -> SettingsOut:
         grammar_languages=grammar_langs,
         pandoc_enabled=bool(s.pandoc_enabled),
         pandoc_url=s.pandoc_url or "http://localhost:8082",
+        spacy_enabled=bool(s.spacy_enabled),
+        spacy_url=s.spacy_url or "http://localhost:8083",
         ai_disabled=bool(s.ai_disabled) if s.ai_disabled is not None else False,
         sync_mirror_enabled=bool(s.sync_mirror_enabled) if s.sync_mirror_enabled is not None else False,
         sync_local_dir=s.sync_local_dir or None,
@@ -124,6 +126,10 @@ def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
         s.pandoc_enabled = int(body.pandoc_enabled)
     if body.pandoc_url is not None:
         s.pandoc_url = body.pandoc_url
+    if body.spacy_enabled is not None:
+        s.spacy_enabled = int(body.spacy_enabled)
+    if body.spacy_url is not None:
+        s.spacy_url = body.spacy_url
     if body.ai_disabled is not None:
         s.ai_disabled = int(body.ai_disabled)
     sync_changed = False
@@ -298,6 +304,7 @@ async def service_status(db: Session = Depends(get_db)):
     s = _get_or_create_settings(db)
     lt_url = (s.grammar_check_url or "http://localhost:8081").rstrip("/")
     pandoc_url = (s.pandoc_url or "http://localhost:8082").rstrip("/")
+    spacy_url = (s.spacy_url or "http://localhost:8083").rstrip("/")
 
     async def ping(url: str, path: str) -> str:
         try:
@@ -308,11 +315,12 @@ async def service_status(db: Session = Depends(get_db)):
             return "offline"
 
     import asyncio
-    lt_status, pandoc_status = await asyncio.gather(
+    lt_status, pandoc_status, spacy_status = await asyncio.gather(
         ping(lt_url, "/v2/languages"),
         ping(pandoc_url, "/health"),
+        ping(spacy_url, "/health"),
     )
-    return {"languagetool": lt_status, "pandoc": pandoc_status}
+    return {"languagetool": lt_status, "pandoc": pandoc_status, "spacy": spacy_status}
 
 
 # ── Folder-picker: polling pattern ───────────────────────────────────────────
