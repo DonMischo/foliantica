@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, Fragment } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,6 +78,7 @@ function ServiceStatusBadge({ label, status }: { label: string; status: "ok" | "
 }
 
 export default function SettingsPage() {
+  const router = useRouter();
   const { data: settings } = useSettings();
   const updateSettings = useUpdateSettings();
   const { data: availableModels = [], isLoading: modelsLoading, isError: modelsError, error: modelsErrorObj, refetch: refetchModels } = useOpenRouterModels();
@@ -137,6 +139,8 @@ export default function SettingsPage() {
   const [calibreUrl, setCalibreUrl]         = useState("http://localhost:8084");
   const [calibreDetecting, setCalibreDetecting] = useState(false);
   const [calibreDetectResult, setCalibreDetectResult] = useState<{ system: boolean; docker: boolean } | null>(null);
+  const [calibreHelpOpen, setCalibreHelpOpen] = useState(false);
+  const [calibreHelpOs, setCalibreHelpOs] = useState<"windows" | "mac" | "linux">("windows");
   const [showServiceStatus, setShowServiceStatus] = useState(false);
   const { data: serviceStatus, isLoading: statusLoading, refetch: refetchStatus } =
     useServiceStatus(showServiceStatus);
@@ -525,9 +529,9 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border px-6 py-4 flex items-center gap-3">
-        <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
+        <button onClick={() => router.back()} className="text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-4 w-4" />
-        </Link>
+        </button>
         <h1 className="text-lg font-semibold">{t("settings_title")}</h1>
       </header>
 
@@ -1565,26 +1569,36 @@ export default function SettingsPage() {
                 <p className="text-sm font-medium">Calibre Export</p>
                 <p className="text-xs text-muted-foreground">EPUB, MOBI, AZW3 via Calibre</p>
               </div>
-              <button
-                type="button"
-                onClick={async () => {
-                  setCalibreDetecting(true);
-                  setCalibreDetectResult(null);
-                  try {
-                    const result = await settingsApi.detectCalibre();
-                    setCalibreDetectResult(result);
-                    if (result.system) setCalibreMode("system");
-                    else if (result.docker) setCalibreMode("docker");
-                  } catch { /* ignore */ } finally {
-                    setCalibreDetecting(false);
-                  }
-                }}
-                disabled={calibreDetecting}
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2.5 py-1 rounded border border-border hover:border-primary/50 transition-colors disabled:opacity-50"
-              >
-                {calibreDetecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                Auto-detect
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setCalibreDetecting(true);
+                    setCalibreDetectResult(null);
+                    try {
+                      const result = await settingsApi.detectCalibre();
+                      setCalibreDetectResult(result);
+                      if (result.system) setCalibreMode("system");
+                      else if (result.docker) setCalibreMode("docker");
+                    } catch { /* ignore */ } finally {
+                      setCalibreDetecting(false);
+                    }
+                  }}
+                  disabled={calibreDetecting}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2.5 py-1 rounded border border-border hover:border-primary/50 transition-colors disabled:opacity-50"
+                >
+                  {calibreDetecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                  Auto-detect
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCalibreHelpOpen(true)}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  title="Setup instructions"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -1961,6 +1975,121 @@ export default function SettingsPage() {
               {/* Modal footer */}
               <div className="px-5 py-3 border-t border-border shrink-0">
                 <Button size="sm" onClick={() => setHelpOpen(false)} className="w-full">Got it</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Calibre Setup Help Modal ─────────────────────────────────────── */}
+        {calibreHelpOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+            onClick={() => setCalibreHelpOpen(false)}
+          >
+            <div
+              className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+                <div className="flex items-center gap-2">
+                  <HelpCircle className="h-4 w-4 text-primary" />
+                  <h2 className="text-base font-semibold">Setting Up Calibre</h2>
+                </div>
+                <button onClick={() => setCalibreHelpOpen(false)} className="text-muted-foreground hover:text-foreground">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* OS tabs */}
+              <div className="flex border-b border-border shrink-0">
+                {(["windows", "mac", "linux"] as const).map(os => (
+                  <button
+                    key={os}
+                    onClick={() => setCalibreHelpOs(os)}
+                    className={cn(
+                      "flex-1 py-2.5 text-xs font-medium transition-colors",
+                      calibreHelpOs === os
+                        ? "border-b-2 border-primary text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {os === "windows" ? "Windows" : os === "mac" ? "macOS" : "Linux"}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 text-sm">
+
+                {calibreHelpOs === "windows" && (<>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold">Option A — System install</h3>
+                    <ol className="space-y-2 text-xs text-muted-foreground leading-relaxed list-decimal list-inside">
+                      <li>Download and run the Calibre installer from <a href="https://calibre-ebook.com/download_windows" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">calibre-ebook.com <ExternalLink className="h-3 w-3" /></a></li>
+                      <li>After installing, add Calibre to your PATH:
+                        <div className="mt-1.5 ml-4 rounded-md bg-secondary/50 px-3 py-2 font-mono text-[11px] text-foreground">
+                          C:\Program Files\Calibre2\
+                        </div>
+                        <p className="mt-1 ml-4">Search <em>Edit environment variables</em> → Environment Variables → System variables → Path → New → paste the path above.</p>
+                      </li>
+                      <li>Restart the Foliantica backend.</li>
+                      <li>Click <strong className="text-foreground">Auto-detect</strong> — it should find <code className="text-primary font-mono text-[11px]">ebook-convert</code> and select System install.</li>
+                    </ol>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold">Option B — Docker container</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Select <strong className="text-foreground">Docker container</strong> above. Install Docker Desktop, then click <strong className="text-foreground">Start Services</strong> (see the Docker setup guide <button onClick={() => { setCalibreHelpOpen(false); setHelpOpen(true); }} className="text-primary hover:underline">here</button>). No PATH changes needed.
+                    </p>
+                  </div>
+                </>)}
+
+                {calibreHelpOs === "mac" && (<>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold">Option A — Homebrew (recommended)</h3>
+                    <div className="rounded-md bg-secondary/50 px-3 py-2 font-mono text-[11px] text-foreground">
+                      brew install calibre
+                    </div>
+                    <p className="text-xs text-muted-foreground">Homebrew puts <code className="text-primary font-mono text-[11px]">ebook-convert</code> on your PATH automatically. Restart the backend, then Auto-detect.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold">Option B — App install</h3>
+                    <ol className="space-y-2 text-xs text-muted-foreground leading-relaxed list-decimal list-inside">
+                      <li>Download and install the Calibre app from <a href="https://calibre-ebook.com/download_osx" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">calibre-ebook.com <ExternalLink className="h-3 w-3" /></a></li>
+                      <li>Add to PATH — append to <code className="text-primary font-mono text-[11px]">~/.zshrc</code> (or <code className="text-primary font-mono text-[11px]">~/.bashrc</code>):
+                        <div className="mt-1.5 ml-4 rounded-md bg-secondary/50 px-3 py-2 font-mono text-[11px] text-foreground break-all">
+                          export PATH=&quot;/Applications/calibre.app/Contents/MacOS:$PATH&quot;
+                        </div>
+                      </li>
+                      <li>Run <code className="text-primary font-mono text-[11px]">source ~/.zshrc</code> and restart the backend.</li>
+                      <li>Click <strong className="text-foreground">Auto-detect</strong>.</li>
+                    </ol>
+                  </div>
+                </>)}
+
+                {calibreHelpOs === "linux" && (<>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold">Option A — Package manager</h3>
+                    <div className="rounded-md bg-secondary/50 px-3 py-2 font-mono text-[11px] text-foreground space-y-1">
+                      <div><span className="text-muted-foreground"># Debian / Ubuntu</span></div>
+                      <div>sudo apt install calibre</div>
+                      <div className="pt-1"><span className="text-muted-foreground"># Fedora</span></div>
+                      <div>sudo dnf install calibre</div>
+                    </div>
+                    <p className="text-xs text-muted-foreground"><code className="text-primary font-mono text-[11px]">ebook-convert</code> lands on PATH automatically. Restart the backend, then Auto-detect.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold">Option B — Official installer (latest version)</h3>
+                    <div className="rounded-md bg-secondary/50 px-3 py-2 font-mono text-[11px] text-foreground break-all">
+                      wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | sudo sh /dev/stdin
+                    </div>
+                    <p className="text-xs text-muted-foreground">Installs to <code className="text-primary font-mono text-[11px]">/opt/calibre</code> and adds a symlink to <code className="text-primary font-mono text-[11px]">/usr/bin/</code>. Restart the backend, then Auto-detect.</p>
+                  </div>
+                </>)}
+
+              </div>
+
+              <div className="px-5 py-3 border-t border-border shrink-0">
+                <Button size="sm" onClick={() => setCalibreHelpOpen(false)} className="w-full">Got it</Button>
               </div>
             </div>
           </div>

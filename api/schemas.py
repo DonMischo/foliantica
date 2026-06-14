@@ -663,7 +663,7 @@ class TimelineEventOut(BaseModel):
 # ── Export ────────────────────────────────────────────────────────────────────
 
 class ExportOptions(BaseModel):
-    format: Literal["md", "tex", "epub-style", "pdf", "epub", "docx"] = "md"
+    format: Literal["md", "tex", "epub-style", "pdf", "epub", "docx", "mobi", "azw3", "epub-calibre"] = "md"
     # Content selection — None means "all"
     scene_ids: Optional[list[int]] = None   # None = all scenes
     # Structural headings
