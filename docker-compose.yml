@@ -35,6 +35,8 @@ services:
     container_name: foliantica-binfmt
     privileged: true
     restart: "no"
+    profiles:
+      - languagetool
     command: --install amd64
 
   languagetool:
@@ -44,6 +46,8 @@ services:
     platform: linux/amd64
     container_name: foliantica-languagetool
     restart: unless-stopped
+    profiles:
+      - languagetool
     depends_on:
       binfmt:
         condition: service_completed_successfully
@@ -90,6 +94,8 @@ services:
       context: ./docker/pandoc
     container_name: foliantica-pandoc
     restart: unless-stopped
+    profiles:
+      - pandoc
     ports:
       - "8082:8082"
 
@@ -98,6 +104,8 @@ services:
       context: ./docker/spacy
     container_name: foliantica-spacy
     restart: unless-stopped
+    profiles:
+      - spacy
     ports:
       - "127.0.0.1:8083:8083"
 

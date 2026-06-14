@@ -272,11 +272,16 @@ def docker_compose_up(db: Session = Depends(get_db)):
     env_file.write_text(f"LT_LANGS={lt_langs}\n", encoding="utf-8")
 
     # ── Build compose command ─────────────────────────────────────────────────
-    # Include the 'postgres' profile when Docker PG is enabled in lw-config
     lw_cfg   = _read_lw_config()
     profiles = []
     if lw_cfg.get("pg", {}).get("useDocker"):
-        profiles = ["--profile", "postgres"]
+        profiles += ["--profile", "postgres"]
+    if s.grammar_check_enabled:
+        profiles += ["--profile", "languagetool"]
+    if s.pandoc_enabled:
+        profiles += ["--profile", "pandoc"]
+    if s.spacy_enabled:
+        profiles += ["--profile", "spacy"]
 
     cmd = (["docker", "compose"]
            + profiles
