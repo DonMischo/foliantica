@@ -431,8 +431,16 @@ export function ExportDialog({ projectId, projectTitle, bookMeta, open, onClose 
   const { data: appSettings } = useSettings();
   const pandocEnabled  = appSettings?.pandoc_enabled  ?? false;
   const calibreEnabled = appSettings?.calibre_enabled ?? false;
+  const calibreMode    = appSettings?.calibre_mode    ?? "off";
 
   const [opts, setOpts]       = useState<ExportOptions>({ ...DEFAULT_OPTS });
+
+  // If the selected format is epub-calibre but Docker mode is active (doesn't support it), reset
+  useEffect(() => {
+    if (opts.format === "epub-calibre" && calibreMode === "docker") {
+      setOpts(o => ({ ...o, format: "mobi" }));
+    }
+  }, [calibreMode, opts.format]);
   const [acts, setActs]       = useState<ExportAct[]>([]);
   const [allContent, setAllContent]           = useState(true);
   const [selectedSceneIds, setSelectedSceneIds] = useState<Set<number>>(new Set());
@@ -719,7 +727,7 @@ export function ExportDialog({ projectId, projectTitle, bookMeta, open, onClose 
           >
             {calibreEnabled && (
               <optgroup label="Calibre">
-                <option value="epub-calibre">EPUB — via Calibre</option>
+                {calibreMode !== "docker" && <option value="epub-calibre">EPUB — via Calibre</option>}
                 <option value="mobi">MOBI — Kindle (legacy)</option>
                 <option value="azw3">AZW3 — Kindle KF8</option>
               </optgroup>
