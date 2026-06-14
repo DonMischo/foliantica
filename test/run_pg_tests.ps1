@@ -112,7 +112,6 @@ New-Item -ItemType Directory -Force $testDataDir | Out-Null
 # Set env vars for child process
 $envBackup = @{}
 $envVars = @{
-    LW_USE_SQLITE      = "0"
     LW_PG_PORT         = [string]$PgPort
     LW_PG_USER         = "foliantica"
     LW_PG_PASS         = "foliantica"

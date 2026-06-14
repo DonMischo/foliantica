@@ -6,7 +6,7 @@ Run from the project root with PG already running:
 
 Requires:
     - Embedded PG running on port 5433 with the foliantica database
-    - Environment: LW_USE_SQLITE=0  LW_PG_PORT=5433  (etc.)
+    - Environment: LW_PG_PORT=5433  (etc.)
     - pip install pytest  (or: uv pip install pytest inside api/.venv)
 """
 import os
@@ -18,7 +18,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "api"))
 
 # Point at the test PG instance
-os.environ.setdefault("LW_USE_SQLITE",  "0")
 os.environ.setdefault("LW_PG_PORT",     "5433")
 os.environ.setdefault("LW_PG_USER",     "foliantica")
 os.environ.setdefault("LW_PG_PASS",     "foliantica")
