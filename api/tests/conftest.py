@@ -1,28 +1,48 @@
 """
 Shared fixtures for the Foliantica API test suite.
 
-Each test gets a fresh in-memory SQLite database and a FastAPI TestClient
-wired to it via the get_db dependency override.  Production data (foliantica.db)
-is never opened or modified.
+Each test gets a fresh PostgreSQL schema and a FastAPI TestClient wired to it
+via the get_db dependency override.  The production database is never touched.
 
 Isolation guarantee:
-  api/conftest.py sets LW_SQLITE_PATH=:memory: before any module is imported.
-  database.py reads that env var and creates a StaticPool in-memory engine.
-  All startup migrations in main.py run against that same in-memory DB.
-  Every test then drops and recreates the schema for full per-test isolation.
+  api/conftest.py points LW_PG_DB at "foliantica_test" before any module is
+  imported.  The _ensure_test_db fixture (session-scoped) creates that database
+  if it doesn't exist.  Every test then drops and recreates the schema for full
+  per-test isolation.
 """
+import os
 import pytest
 from fastapi.testclient import TestClient
 
 from models import Base
-# database.py has already been configured with an in-memory StaticPool engine
-# by api/conftest.py (sets LW_SQLITE_PATH=:memory: before any import).
 from database import engine as _engine, SessionLocal as _SessionLocal, get_db
 from main import app  # noqa: must import after api/conftest.py sets env vars
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _ensure_test_db():
+    """Create the foliantica_test database if it doesn't exist."""
+    import psycopg2
+    from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+
+    conn = psycopg2.connect(
+        host=os.getenv("LW_PG_HOST", "127.0.0.1"),
+        port=int(os.getenv("LW_PG_PORT", "5433")),
+        user=os.getenv("LW_PG_USER", "foliantica"),
+        password=os.getenv("LW_PG_PASS", "foliantica"),
+        dbname="postgres",
+    )
+    conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+    cur = conn.cursor()
+    cur.execute("SELECT 1 FROM pg_database WHERE datname = 'foliantica_test'")
+    if not cur.fetchone():
+        cur.execute("CREATE DATABASE foliantica_test")
+    cur.close()
+    conn.close()
+
+
 @pytest.fixture(autouse=True)
-def _fresh_schema():
+def _fresh_schema(_ensure_test_db):
     """Drop and recreate every table before each test — full isolation."""
     Base.metadata.drop_all(_engine)
     Base.metadata.create_all(_engine)
@@ -42,7 +62,7 @@ def db(_fresh_schema):
 
 @pytest.fixture
 def client(db):
-    """FastAPI TestClient connected to the per-test in-memory DB."""
+    """FastAPI TestClient connected to the per-test database."""
     def _override():
         yield db
 
@@ -92,5 +112,5 @@ def scene(client, chapter):
 
 @pytest.fixture
 def test_engine():
-    """Expose the shared in-memory engine for tests that need to patch module-level engines."""
+    """Expose the shared engine for tests that need to patch module-level engines."""
     return _engine

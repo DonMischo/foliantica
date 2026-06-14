@@ -2,7 +2,6 @@ import json
 import os
 import platform
 import shutil
-import sqlite3
 import sys
 import subprocess
 import threading
@@ -530,8 +529,9 @@ def get_data_dir():
 
 @router.get("/data-dir/check")
 def check_data_dir(path: str):
+    """Check whether a previously used data directory contains a SQL dump."""
     try:
-        return {"has_db": (Path(path) / "foliantica.db").exists()}
+        return {"has_db": (Path(path) / "foliantica.sql").exists()}
     except Exception:
         return {"has_db": False}
 
@@ -546,17 +546,6 @@ def set_data_dir(body: DataDirUpdate):
             dst = Path(body.path)
             dst.mkdir(parents=True, exist_ok=True)
             (dst / "uploads").mkdir(exist_ok=True)
-
-            # Use SQLite's backup API so we can copy the live, open database safely.
-            db_src = src / "foliantica.db"
-            if db_src.exists():
-                src_conn = sqlite3.connect(str(db_src))
-                dst_conn = sqlite3.connect(str(dst / "foliantica.db"))
-                try:
-                    src_conn.backup(dst_conn)
-                finally:
-                    dst_conn.close()
-                    src_conn.close()
 
             uploads_src = src / "uploads"
             if uploads_src.exists():
@@ -583,20 +572,13 @@ def set_data_dir(body: DataDirUpdate):
 
 @router.get("/pg-active")
 def get_pg_active():
-    """Return the PG connection the API is *currently* running on (from env vars).
-
-    Distinct from /pg-config (the saved lw-config preference for next restart).
-    The frontend compares both to detect a pending-restart state.
-    """
-    from database import USE_SQLITE
-    if USE_SQLITE:
-        return {"mode": "sqlite", "port": None}
+    """Return the PG connection the API is currently running on (from env vars)."""
     return {
-        "mode":   "pg",
-        "host":   os.getenv("LW_PG_HOST", "127.0.0.1"),
-        "port":   int(os.getenv("LW_PG_PORT", "5433")),
-        "user":   os.getenv("LW_PG_USER", "foliantica"),
-        "db":     os.getenv("LW_PG_DB",   "foliantica"),
+        "mode": "pg",
+        "host": os.getenv("LW_PG_HOST", "127.0.0.1"),
+        "port": int(os.getenv("LW_PG_PORT", "5433")),
+        "user": os.getenv("LW_PG_USER", "foliantica"),
+        "db":   os.getenv("LW_PG_DB",   "foliantica"),
     }
 
 

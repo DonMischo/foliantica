@@ -1,4 +1,5 @@
 import os
+import time as _time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -7,17 +8,13 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from database import (
-    engine, USE_SQLITE,
-    # SQLite incremental migrations (existing users upgrading)
-    migrate_to_four_level, migrate_new_columns, migrate_indexes,
-    migrate_entry_groups, migrate_ai_prompts, migrate_scene_versions,
-    migrate_mention_stats, migrate_writing_log, migrate_timeline_tables,
-    migrate_codex_entry_sharing, migrate_research, migrate_publishing,
-    migrate_publisher_profiles, migrate_achievements, migrate_backfill_word_counts,
-    migrate_ai_disabled, migrate_sync_mirror, migrate_research_pdf,
-    migrate_research_media, migrate_ai_providers, migrate_achievement_popup_shown,
-    migrate_corkboard, migrate_spacy, migrate_calibre, migrate_project_language,
-    # PostgreSQL seed functions (fresh DB, no ALTER TABLE needed)
+    engine,
+    migrate_indexes, migrate_codex_entry_sharing,
+    migrate_ai_disabled, migrate_research_pdf,
+    migrate_ai_providers, migrate_corkboard,
+    migrate_achievement_popup_shown, migrate_sync_mirror,
+    migrate_spacy, migrate_calibre, migrate_project_language,
+    migrate_ai_prompts_word_count, migrate_backfill_word_counts,
     seed_ai_prompts, seed_publisher_profiles, seed_export_profiles,
 )
 from models import Base
@@ -25,68 +22,45 @@ from routers import projects, acts, chapters, scenes, codex, settings, ai, expor
 from routers import sync as sync_router
 
 # ── Schema + migrations ───────────────────────────────────────────────────────
+# Retry up to 60 s — Docker-managed PG may still be starting when the
+# API launches (container healthcheck takes a few seconds after `up -d`).
 
-if USE_SQLITE:
-    # SQLite path: run incremental migrations for users upgrading from older
-    # versions. migrate_to_four_level() must run before create_all() because
-    # it renames the old 'chapters' table to 'acts'.
-    migrate_to_four_level()
-    Base.metadata.create_all(bind=engine)
-    migrate_new_columns()
-    migrate_indexes()
-    migrate_entry_groups()
-    migrate_ai_prompts()
-    migrate_scene_versions()
-    migrate_mention_stats()
-    migrate_writing_log()
-    migrate_timeline_tables()
-    migrate_codex_entry_sharing()
-    migrate_research()
-    migrate_publishing()
-    migrate_publisher_profiles()
-    migrate_achievements()
-    migrate_backfill_word_counts()
-    migrate_ai_disabled()
-    migrate_sync_mirror()
-    migrate_research_pdf()
-    migrate_research_media()
-    migrate_ai_providers()
-    migrate_achievement_popup_shown()
-    migrate_corkboard()
-    migrate_spacy()
-    migrate_calibre()
-else:
-    # PostgreSQL path: create_all() handles the full schema in one shot.
-    # Then seed static reference data that would otherwise come from the
-    # SQLite migrate_* functions (which use SQLite-specific DDL).
-    #
-    # Retry up to 60 s — Docker-managed PG may still be starting when the
-    # API launches (container healthcheck takes a few seconds after `up -d`).
-    import time as _time
-    _pg_ready = False
-    for _attempt in range(60):
-        try:
-            Base.metadata.create_all(bind=engine)
-            _pg_ready = True
-            break
-        except Exception as _e:
-            if _attempt == 0:
-                print(f"[startup] Waiting for PostgreSQL… ({_e.__class__.__name__})", flush=True)
-            _time.sleep(1)
-    if not _pg_ready:
-        raise RuntimeError(
-            "PostgreSQL did not become available within 60 seconds. "
-            "Check that the database is running and the connection settings are correct."
-        )
-    seed_ai_prompts()
-    seed_publisher_profiles()
-    seed_export_profiles()
-    migrate_ai_providers()
-    migrate_achievement_popup_shown()
-    migrate_corkboard()
-    migrate_spacy()
-    migrate_calibre()
-    migrate_project_language()
+_pg_ready = False
+for _attempt in range(60):
+    try:
+        Base.metadata.create_all(bind=engine)
+        _pg_ready = True
+        break
+    except Exception as _e:
+        if _attempt == 0:
+            print(f"[startup] Waiting for PostgreSQL… ({_e.__class__.__name__})", flush=True)
+        _time.sleep(1)
+if not _pg_ready:
+    raise RuntimeError(
+        "PostgreSQL did not become available within 60 seconds. "
+        "Check that the database is running and the connection settings are correct."
+    )
+
+# Seed static reference data
+seed_ai_prompts()
+seed_publisher_profiles()
+seed_export_profiles()
+
+# Incremental ALTER TABLE migrations — idempotent, safe on every startup.
+# Needed for existing databases that predate a column addition.
+migrate_indexes()
+migrate_codex_entry_sharing()
+migrate_ai_disabled()
+migrate_research_pdf()
+migrate_ai_providers()
+migrate_corkboard()
+migrate_achievement_popup_shown()
+migrate_sync_mirror()
+migrate_spacy()
+migrate_calibre()
+migrate_project_language()
+migrate_ai_prompts_word_count()
+migrate_backfill_word_counts()
 
 os.makedirs("uploads", exist_ok=True)
 
@@ -97,12 +71,10 @@ def _init_sync() -> None:
             row = conn.execute(text(
                 "SELECT sync_mirror_enabled, sync_local_dir FROM user_settings LIMIT 1"
             )).fetchone()
-        # Always call init — in PG mode it starts the background dump thread
-        # unconditionally (regardless of the Data Mirror toggle).
         if row:
             sync_router.init(bool(row[0]), row[1])
         else:
-            sync_router.init(False, None)   # no settings row yet; use defaults
+            sync_router.init(False, None)
     except Exception:
         pass
 

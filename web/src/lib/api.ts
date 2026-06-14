@@ -779,7 +779,7 @@ export interface PgConfig {
 }
 
 export interface PgActive {
-  mode: "pg" | "sqlite";
+  mode: "pg";
   host?: string;
   port?: number;
   user?: string;
