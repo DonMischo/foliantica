@@ -76,3 +76,4 @@ CLAUDE.md
 /.next-standalone
 /.pyinstaller-work
 /dist
+test_out.txt
