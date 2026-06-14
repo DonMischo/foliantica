@@ -1242,16 +1242,17 @@ def migrate_spacy():
 
 
 def migrate_calibre():
-    """Add calibre_enabled and calibre_url columns to user_settings."""
-    with engine.begin() as conn:
-        for stmt in [
-            "ALTER TABLE user_settings ADD COLUMN calibre_enabled INTEGER NOT NULL DEFAULT 0",
-            "ALTER TABLE user_settings ADD COLUMN calibre_url TEXT",
-        ]:
-            try:
+    """Add calibre columns to user_settings."""
+    for stmt in [
+        "ALTER TABLE user_settings ADD COLUMN calibre_enabled INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE user_settings ADD COLUMN calibre_url TEXT",
+        "ALTER TABLE user_settings ADD COLUMN calibre_mode TEXT NOT NULL DEFAULT 'off'",
+    ]:
+        try:
+            with engine.begin() as conn:
                 conn.execute(text(stmt))
-            except Exception:
-                pass  # column already exists
+        except Exception:
+            pass  # column already exists
 
 
 def migrate_project_language():

@@ -15,7 +15,7 @@ const BASE = "/api";
 // ── Export types ──────────────────────────────────────────────────────────────
 
 export interface ExportOptions {
-  format: "md" | "tex" | "epub-style" | "pdf" | "epub" | "docx";
+  format: "md" | "tex" | "epub-style" | "pdf" | "epub" | "docx" | "mobi" | "azw3" | "epub-calibre";
   scene_ids?: number[] | null;
   include_act_headings: boolean;
   include_chapter_headings: boolean;
@@ -488,7 +488,7 @@ export const settingsApi = {
     pandoc_url?: string;
     spacy_enabled?: boolean;
     spacy_url?: string;
-    calibre_enabled?: boolean;
+    calibre_mode?: "off" | "system" | "docker";
     calibre_url?: string;
     ai_disabled?: boolean;
     sync_mirror_enabled?: boolean;
@@ -496,6 +496,7 @@ export const settingsApi = {
   }) => req<Settings>("/settings", { method: "POST", body: JSON.stringify(data) }),
   getModels: () => req<OpenRouterModel[]>("/settings/models"),
   serviceStatus: () => req<{ languagetool: "ok" | "error" | "offline"; pandoc: "ok" | "error" | "offline"; spacy: "ok" | "error" | "offline"; calibre: "ok" | "error" | "offline" }>("/settings/service-status"),
+  detectCalibre: () => req<{ system: boolean; docker: boolean }>("/settings/detect-calibre"),
   dockerComposeUp: () => req<{ status: string; output: string }>("/settings/docker/up", { method: "POST" }),
 };
 

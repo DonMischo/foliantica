@@ -307,6 +307,7 @@ class UserSettings(Base):
     spacy_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     calibre_enabled: Mapped[int] = mapped_column(Integer, default=0)
     calibre_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    calibre_mode: Mapped[str] = mapped_column(Text, default="off")
     ai_disabled: Mapped[int] = mapped_column(Integer, default=0)
     # Multi-provider AI adapter (Phase 2)
     active_provider: Mapped[str] = mapped_column(String(50), default="openrouter")

@@ -133,8 +133,10 @@ export default function SettingsPage() {
   const [pandocUrl, setPandocUrl]           = useState("http://localhost:8082");
   const [spacyEnabled, setSpacyEnabled]     = useState(false);
   const [spacyUrl, setSpacyUrl]             = useState("http://localhost:8083");
-  const [calibreEnabled, setCalibreEnabled] = useState(false);
+  const [calibreMode, setCalibreMode]       = useState<"off" | "system" | "docker">("off");
   const [calibreUrl, setCalibreUrl]         = useState("http://localhost:8084");
+  const [calibreDetecting, setCalibreDetecting] = useState(false);
+  const [calibreDetectResult, setCalibreDetectResult] = useState<{ system: boolean; docker: boolean } | null>(null);
   const [showServiceStatus, setShowServiceStatus] = useState(false);
   const { data: serviceStatus, isLoading: statusLoading, refetch: refetchStatus } =
     useServiceStatus(showServiceStatus);
@@ -334,7 +336,7 @@ export default function SettingsPage() {
       setPandocUrl(settings.pandoc_url ?? "http://localhost:8082");
       setSpacyEnabled(settings.spacy_enabled ?? false);
       setSpacyUrl(settings.spacy_url ?? "http://localhost:8083");
-      setCalibreEnabled(settings.calibre_enabled ?? false);
+      setCalibreMode(settings.calibre_mode ?? "off");
       setCalibreUrl(settings.calibre_url ?? "http://localhost:8084");
       setAiDisabled(settings.ai_disabled ?? false);
       setSyncEnabled(settings.sync_mirror_enabled ?? false);
@@ -452,7 +454,7 @@ export default function SettingsPage() {
       pandoc_url: pandocUrl,
       spacy_enabled: spacyEnabled,
       spacy_url: spacyUrl,
-      calibre_enabled: calibreEnabled,
+      calibre_mode: calibreMode,
       calibre_url: calibreUrl,
     };
     await updateSettings.mutateAsync(payload);
@@ -1556,30 +1558,60 @@ export default function SettingsPage() {
             )}
           </div>
 
-          {/* Calibre (MOBI / AZW3) */}
+          {/* Calibre (EPUB / MOBI / AZW3) */}
           <div className="rounded-lg border border-border p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">Kindle Export (Calibre)</p>
-                <p className="text-xs text-muted-foreground">Convert projects to MOBI or AZW3 for Kindle devices</p>
+                <p className="text-sm font-medium">Calibre Export</p>
+                <p className="text-xs text-muted-foreground">EPUB, MOBI, AZW3 via Calibre</p>
               </div>
               <button
                 type="button"
-                role="switch"
-                aria-checked={calibreEnabled}
-                onClick={() => setCalibreEnabled(v => !v)}
-                className={cn(
-                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-                  calibreEnabled ? "bg-primary" : "bg-input"
-                )}
+                onClick={async () => {
+                  setCalibreDetecting(true);
+                  setCalibreDetectResult(null);
+                  try {
+                    const result = await settingsApi.detectCalibre();
+                    setCalibreDetectResult(result);
+                    if (result.system) setCalibreMode("system");
+                    else if (result.docker) setCalibreMode("docker");
+                  } catch { /* ignore */ } finally {
+                    setCalibreDetecting(false);
+                  }
+                }}
+                disabled={calibreDetecting}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2.5 py-1 rounded border border-border hover:border-primary/50 transition-colors disabled:opacity-50"
               >
-                <span className={cn(
-                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
-                  calibreEnabled ? "translate-x-4" : "translate-x-0"
-                )} />
+                {calibreDetecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                Auto-detect
               </button>
             </div>
-            {calibreEnabled && (
+
+            <div className="space-y-2">
+              {(["off", "system", "docker"] as const).map(mode => (
+                <label key={mode} className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="calibre-mode"
+                    value={mode}
+                    checked={calibreMode === mode}
+                    onChange={() => setCalibreMode(mode)}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">
+                    {mode === "off"    && "Off"}
+                    {mode === "system" && "System install"}
+                    {mode === "docker" && "Docker container"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {mode === "system" && "ebook-convert on PATH"}
+                    {mode === "docker" && "sidecar service"}
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            {calibreMode === "docker" && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Service URL</Label>
                 <Input
@@ -1589,6 +1621,14 @@ export default function SettingsPage() {
                   className="h-8 text-xs font-mono"
                 />
               </div>
+            )}
+
+            {calibreDetectResult && (
+              <p className="text-xs text-muted-foreground">
+                System: {calibreDetectResult.system ? "✓ ebook-convert found" : "✗ not found"}
+                {" · "}
+                Docker: {calibreDetectResult.docker ? "✓ service responding" : "✗ not responding"}
+              </p>
             )}
           </div>
 
@@ -1717,7 +1757,7 @@ export default function SettingsPage() {
                     pandoc_url: pandocUrl,
                     spacy_enabled: spacyEnabled,
                     spacy_url: spacyUrl,
-                    calibre_enabled: calibreEnabled,
+                    calibre_mode: calibreMode,
                     calibre_url: calibreUrl,
                   });
                   setDockerUpStep("Starting Docker… (may take up to 90 s if Docker Desktop was closed)");
@@ -1788,7 +1828,7 @@ export default function SettingsPage() {
               {spacyEnabled && (
                 <ServiceStatusBadge label="spaCy" status={serviceStatus.spacy} />
               )}
-              {calibreEnabled && (
+              {calibreMode !== "off" && (
                 <ServiceStatusBadge label="Calibre" status={serviceStatus.calibre} />
               )}
             </div>

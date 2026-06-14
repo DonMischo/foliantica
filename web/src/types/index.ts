@@ -384,6 +384,7 @@ export interface Settings {
   pandoc_url: string;
   spacy_enabled: boolean;
   spacy_url: string;
+  calibre_mode: "off" | "system" | "docker";
   calibre_enabled: boolean;
   calibre_url: string;
   ai_disabled: boolean;

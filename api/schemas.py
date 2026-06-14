@@ -428,7 +428,7 @@ class SettingsUpdate(BaseModel):
     pandoc_url: Optional[str] = None
     spacy_enabled: Optional[bool] = None
     spacy_url: Optional[str] = None
-    calibre_enabled: Optional[bool] = None
+    calibre_mode: Optional[str] = None  # "off" | "system" | "docker"
     calibre_url: Optional[str] = None
     ai_disabled: Optional[bool] = None
     sync_mirror_enabled: Optional[bool] = None
@@ -456,7 +456,8 @@ class SettingsOut(BaseModel):
     pandoc_url: str
     spacy_enabled: bool = False
     spacy_url: str = "http://localhost:8083"
-    calibre_enabled: bool = False
+    calibre_mode: str = "off"
+    calibre_enabled: bool = False  # derived: calibre_mode != "off"
     calibre_url: str = "http://localhost:8084"
     ai_disabled: bool = False
     sync_mirror_enabled: bool = False

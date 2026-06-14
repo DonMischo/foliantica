@@ -4,7 +4,7 @@ Foliantica Calibre conversion service.
 POST /convert
   body (JSON):
     html:     str          — HTML content of the book
-    format:   "mobi" | "azw3"
+    format:   "epub" | "mobi" | "azw3"
     title:    str
     author:   str | None
     language: str | None   — BCP-47 code, e.g. "en", "de"
@@ -25,7 +25,11 @@ from pydantic import BaseModel
 
 app = FastAPI(title="Foliantica Calibre")
 
-_MIME = {"mobi": "application/x-mobipocket-ebook", "azw3": "application/vnd.amazon.ebook"}
+_MIME = {
+    "epub": "application/epub+zip",
+    "mobi": "application/x-mobipocket-ebook",
+    "azw3": "application/vnd.amazon.ebook",
+}
 
 
 class ConvertRequest(BaseModel):
@@ -46,7 +50,7 @@ def health():
 def convert(req: ConvertRequest):
     fmt = req.format.lower()
     if fmt not in _MIME:
-        raise HTTPException(400, f"Unsupported format: {fmt}. Use 'mobi' or 'azw3'.")
+        raise HTTPException(400, f"Unsupported format: {fmt}. Use 'epub', 'mobi', or 'azw3'.")
 
     with tempfile.TemporaryDirectory() as tmp:
         src = Path(tmp) / "input.html"

@@ -78,7 +78,8 @@ def _settings_out(s: UserSettings) -> SettingsOut:
         pandoc_url=s.pandoc_url or "http://localhost:8082",
         spacy_enabled=bool(s.spacy_enabled),
         spacy_url=s.spacy_url or "http://localhost:8083",
-        calibre_enabled=bool(s.calibre_enabled),
+        calibre_mode=getattr(s, "calibre_mode", None) or "off",
+        calibre_enabled=(getattr(s, "calibre_mode", None) or "off") != "off",
         calibre_url=s.calibre_url or "http://localhost:8084",
         ai_disabled=bool(s.ai_disabled) if s.ai_disabled is not None else False,
         sync_mirror_enabled=bool(s.sync_mirror_enabled) if s.sync_mirror_enabled is not None else False,
@@ -132,8 +133,9 @@ def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
         s.spacy_enabled = int(body.spacy_enabled)
     if body.spacy_url is not None:
         s.spacy_url = body.spacy_url
-    if body.calibre_enabled is not None:
-        s.calibre_enabled = int(body.calibre_enabled)
+    if body.calibre_mode is not None:
+        s.calibre_mode = body.calibre_mode
+        s.calibre_enabled = int(body.calibre_mode != "off")
     if body.calibre_url is not None:
         s.calibre_url = body.calibre_url
     if body.ai_disabled is not None:
@@ -288,7 +290,7 @@ def docker_compose_up(db: Session = Depends(get_db)):
         profiles += ["--profile", "pandoc"]
     if s.spacy_enabled:
         profiles += ["--profile", "spacy"]
-    if s.calibre_enabled:
+    if (getattr(s, "calibre_mode", None) or "off") == "docker":
         profiles += ["--profile", "calibre"]
 
     cmd = (["docker", "compose"]
@@ -327,16 +329,47 @@ async def service_status(db: Session = Depends(get_db)):
         except Exception:
             return "offline"
 
-    calibre_url = (s.calibre_url or "http://localhost:8084").rstrip("/")
+    import asyncio, shutil as _shutil
+    calibre_mode = getattr(s, "calibre_mode", None) or "off"
 
-    import asyncio
+    async def _calibre_system_status() -> str:
+        return "ok" if _shutil.which("ebook-convert") else "offline"
+
+    async def _calibre_offline() -> str:
+        return "offline"
+
+    if calibre_mode == "system":
+        calibre_coro = _calibre_system_status()
+    elif calibre_mode == "docker":
+        calibre_url = (s.calibre_url or "http://localhost:8084").rstrip("/")
+        calibre_coro = ping(calibre_url, "/health")
+    else:
+        calibre_coro = _calibre_offline()
+
     lt_status, pandoc_status, spacy_status, calibre_status = await asyncio.gather(
         ping(lt_url, "/v2/languages"),
         ping(pandoc_url, "/health"),
         ping(spacy_url, "/health"),
-        ping(calibre_url, "/health"),
+        calibre_coro,
     )
     return {"languagetool": lt_status, "pandoc": pandoc_status, "spacy": spacy_status, "calibre": calibre_status}
+
+
+@router.get("/detect-calibre")
+async def detect_calibre(db: Session = Depends(get_db)):
+    """Check whether Calibre is available via system PATH and/or Docker service."""
+    import shutil
+    s = _get_or_create_settings(db)
+    system_ok = shutil.which("ebook-convert") is not None
+    calibre_url = (s.calibre_url or "http://localhost:8084").rstrip("/")
+    docker_ok = False
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            r = await client.get(f"{calibre_url}/health")
+        docker_ok = r.status_code < 400
+    except Exception:
+        pass
+    return {"system": system_ok, "docker": docker_ok}
 
 
 # ── Folder-picker: polling pattern ───────────────────────────────────────────
