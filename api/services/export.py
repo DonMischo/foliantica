@@ -49,6 +49,35 @@ def _yaml_str(value: str) -> str:
     return f'"{escaped}"'
 
 
+# ── Editor-only node stripping ───────────────────────────────────────────────
+# These nodes exist only inside the editor and must never appear in exports.
+#
+# • note   — author annotation; has real text content → strip node + content
+# • ghost  — un-accepted AI suggestion; has text → strip node + content
+# • currency / item / ki — empty tracker divs → strip (harmless but noisy)
+
+_NOTE_RE = re.compile(
+    r'<div\b[^>]*\bdata-type="note"[^>]*>.*?</div\s*>',
+    re.IGNORECASE | re.DOTALL,
+)
+_GHOST_RE = re.compile(
+    r'<span\b[^>]*\bdata-ghost="true"[^>]*>.*?</span\s*>',
+    re.IGNORECASE | re.DOTALL,
+)
+_CMD_RE = re.compile(
+    r'<div\b[^>]*\bdata-type="(?:currency|item|ki)"[^>]*>\s*(?:</div\s*>)?',
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _strip_command_nodes(html: str) -> str:
+    """Remove all editor-only nodes before handing content to an export path."""
+    html = _NOTE_RE.sub("", html)
+    html = _GHOST_RE.sub("", html)
+    html = _CMD_RE.sub("", html)
+    return html
+
+
 # ── Scene-image node extraction ───────────────────────────────────────────────
 # TipTap renders custom image nodes as:
 #   <div data-type="scene-image" data-src="uploads/…" data-caption="…"></div>
@@ -259,7 +288,7 @@ def export_markdown(project: Project, opts) -> str:
             for scene in sorted(chapter.scenes, key=lambda s: s.order_index):
                 if allowed is not None and scene.id not in allowed:
                     continue
-                _html, _imgs = _extract_images(scene.content or "")
+                _html, _imgs = _extract_images(_strip_command_nodes(scene.content or ""))
                 body = _strip_html(_html)
                 body = _IMG_PH_RE.sub(
                     lambda m: _img_md(*_imgs[int(m.group(1))]), body
@@ -418,7 +447,7 @@ def export_latex(project: Project, opts) -> str:
                 if allowed is not None and scene.id not in allowed:
                     continue
 
-                _html, _imgs = _extract_images(scene.content or "")
+                _html, _imgs = _extract_images(_strip_command_nodes(scene.content or ""))
                 plain = _strip_html(_html)
                 escaped = _escape_latex(plain)
                 # Restore image placeholders as LaTeX
@@ -527,7 +556,7 @@ def export_html(project: Project, opts) -> str:
             for scene in sorted(chapter.scenes, key=lambda s: s.order_index):
                 if allowed is not None and scene.id not in allowed:
                     continue
-                scene_html, scene_imgs = _extract_images(scene.content or "")
+                scene_html, scene_imgs = _extract_images(_strip_command_nodes(scene.content or ""))
                 content = _IMG_PH_RE.sub(
                     lambda m: _img_html(*scene_imgs[int(m.group(1))]),
                     scene_html,

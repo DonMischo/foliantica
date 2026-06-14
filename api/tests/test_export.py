@@ -1,6 +1,7 @@
 """
 Tests for api/routers/export.py.
 
+  - TestStripCommandNodes — unit tests for _strip_command_nodes()
   - TestExportMarkdown  — POST /api/projects/{id}/export format=md
   - TestExportLatex     — POST /api/projects/{id}/export format=tex
   - TestExportEpubStyle — POST /api/projects/{id}/export format=epub-style
@@ -17,9 +18,71 @@ import httpx
 import pytest
 
 from models import ExportProfile
+from services.export import _strip_command_nodes
 
 
 PANDOC_URL = "http://pandoc-test:8082"
+
+
+# ── _strip_command_nodes unit tests ───────────────────────────────────────────
+
+class TestStripCommandNodes:
+    def test_plain_html_unchanged(self):
+        html = "<p>Hello world</p>"
+        assert _strip_command_nodes(html) == html
+
+    def test_note_node_content_removed(self):
+        html = '<p>Before</p><div data-type="note"><p>secret annotation</p></div><p>After</p>'
+        result = _strip_command_nodes(html)
+        assert "secret annotation" not in result
+        assert "Before" in result
+        assert "After" in result
+
+    def test_note_node_wrapper_removed(self):
+        html = '<div data-type="note"><p>text</p></div>'
+        assert _strip_command_nodes(html) == ""
+
+    def test_ghost_span_content_removed(self):
+        html = '<p>Real text<span data-ghost="true"> suggestion</span></p>'
+        result = _strip_command_nodes(html)
+        assert "suggestion" not in result
+        assert "Real text" in result
+
+    def test_ghost_span_wrapper_removed(self):
+        html = '<span data-ghost="true">ghost</span>'
+        assert _strip_command_nodes(html) == ""
+
+    def test_currency_node_removed(self):
+        html = '<div data-type="currency" data-amount="50"></div><p>prose</p>'
+        result = _strip_command_nodes(html)
+        assert 'data-type="currency"' not in result
+        assert "prose" in result
+
+    def test_item_node_removed(self):
+        html = '<div data-type="item" data-name="Sword"></div>'
+        assert _strip_command_nodes(html).strip() == ""
+
+    def test_ki_node_removed(self):
+        html = '<div data-type="ki" data-value="100"></div>'
+        assert _strip_command_nodes(html).strip() == ""
+
+    def test_multiple_command_types_stripped_together(self):
+        html = (
+            '<p>Opening</p>'
+            '<div data-type="note"><p>Note text</p></div>'
+            '<div data-type="currency"></div>'
+            '<span data-ghost="true">ai hint</span>'
+            '<p>Closing</p>'
+        )
+        result = _strip_command_nodes(html)
+        assert "Note text" not in result
+        assert "ai hint" not in result
+        assert 'data-type="currency"' not in result
+        assert "Opening" in result
+        assert "Closing" in result
+
+    def test_empty_string_returns_empty(self):
+        assert _strip_command_nodes("") == ""
 
 
 def _enable_pandoc(client, url=PANDOC_URL):
@@ -48,6 +111,24 @@ class TestExportMarkdown:
         r = client.post(f"/api/projects/{project['id']}/export", json={"format": "md"})
         assert "Hello world" in r.text
 
+    def test_note_content_absent_from_markdown(self, client, project, chapter):
+        client.post("/api/scenes", json={
+            "title": "S", "chapter_id": chapter["id"], "order_index": 1,
+            "content": '<p>Story text</p><div data-type="note"><p>Editor note</p></div>',
+        })
+        r = client.post(f"/api/projects/{project['id']}/export", json={"format": "md"})
+        assert "Editor note" not in r.text
+        assert "Story text" in r.text
+
+    def test_ghost_text_absent_from_markdown(self, client, project, chapter):
+        client.post("/api/scenes", json={
+            "title": "S", "chapter_id": chapter["id"], "order_index": 2,
+            "content": '<p>Real<span data-ghost="true"> suggestion</span></p>',
+        })
+        r = client.post(f"/api/projects/{project['id']}/export", json={"format": "md"})
+        assert "suggestion" not in r.text
+        assert "Real" in r.text
+
     def test_unknown_project_returns_404(self, client):
         r = client.post("/api/projects/99999/export", json={"format": "md"})
         assert r.status_code == 404
@@ -63,6 +144,15 @@ class TestExportLatex:
         r = client.post(f"/api/projects/{project['id']}/export", json={"format": "tex"})
         # LaTeX output always contains backslash commands
         assert "\\" in r.text
+
+    def test_note_content_absent_from_latex(self, client, project, chapter):
+        client.post("/api/scenes", json={
+            "title": "S", "chapter_id": chapter["id"], "order_index": 1,
+            "content": '<p>Prose</p><div data-type="note"><p>Private note</p></div>',
+        })
+        r = client.post(f"/api/projects/{project['id']}/export", json={"format": "tex"})
+        assert "Private note" not in r.text
+        assert "Prose" in r.text
 
 
 class TestExportEpubStyle:
