@@ -55,10 +55,12 @@ async def lifespan(app: FastAPI):
             "Check that the database is running and the connection settings are correct."
         )
 
-    # Seed static reference data
-    seed_ai_prompts()
-    seed_publisher_profiles()
-    seed_export_profiles()
+    # Seed static reference data — skip in tests: _fresh_schema drops all
+    # tables between tests, and seeded rows would break tests expecting empty state.
+    if not os.environ.get("PYTEST_CURRENT_TEST"):
+        seed_ai_prompts()
+        seed_publisher_profiles()
+        seed_export_profiles()
 
     # Incremental ALTER TABLE migrations — idempotent, safe on every startup.
     migrate_indexes()

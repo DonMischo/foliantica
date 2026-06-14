@@ -5,6 +5,7 @@ Tests for sync behaviour focused on the crypto-key isolation invariants:
 """
 import json
 import pytest
+from pathlib import Path
 from unittest.mock import patch
 from sqlalchemy import text
 
@@ -80,11 +81,9 @@ class TestRestoreKeyPreservation:
         ))
         db.commit()
 
+        fixture = Path(__file__).parent / "fixtures" / "user_settings_no_keys.sql"
         dump = tmp_path / "foliantica.sql"
-        dump.write_text(
-            "DELETE FROM user_settings;\n"
-            "INSERT INTO user_settings (id, default_model) VALUES (1, '');\n"
-        )
+        dump.write_text(fixture.read_text())
 
         import database as db_module
         with (
@@ -101,9 +100,10 @@ class TestRestoreKeyPreservation:
             assert row[0] == encrypted_key, "openrouter_api_key should be preserved"
             assert row[1] == encrypted_cfg, "ai_providers_cfg should be preserved"
 
-    def test_restore_endpoint_requires_dump_file(self, client):
+    def test_restore_endpoint_requires_dump_file(self, client, tmp_path):
         """Without a dump file present, restore must return 404."""
-        r = client.post("/api/sync/restore")
+        with patch("pathlib.Path.cwd", return_value=tmp_path):
+            r = client.post("/api/sync/restore")
         assert r.status_code == 404
 
 

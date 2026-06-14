@@ -12,7 +12,6 @@ Isolation guarantee:
 """
 import os
 import shutil
-import socket
 import subprocess
 import pytest
 from fastapi.testclient import TestClient
@@ -24,9 +23,21 @@ from main import app  # noqa: must import after api/conftest.py sets env vars
 
 
 def _pg_is_up() -> bool:
-    with socket.socket() as s:
-        s.settimeout(1)
-        return s.connect_ex(("127.0.0.1", int(os.getenv("LW_PG_PORT", "5433")))) == 0
+    """Return True only when PostgreSQL is fully ready to accept connections."""
+    import psycopg2
+    try:
+        conn = psycopg2.connect(
+            host=os.getenv("LW_PG_HOST", "127.0.0.1"),
+            port=int(os.getenv("LW_PG_PORT", "5433")),
+            user=os.getenv("LW_PG_USER", "foliantica"),
+            password=os.getenv("LW_PG_PASS", "foliantica"),
+            dbname="postgres",
+            connect_timeout=1,
+        )
+        conn.close()
+        return True
+    except Exception:
+        return False
 
 
 @pytest.fixture(scope="session", autouse=True)
