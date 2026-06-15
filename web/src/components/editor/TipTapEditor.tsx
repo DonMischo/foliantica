@@ -408,8 +408,24 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
       if (!editor) return;
       const range = grammarFindInDoc(editor, matched, plainOffset);
       if (!range) return;
-      editor.chain().focus().setTextSelection(range).run();
-      editor.view.dispatch(editor.state.tr.scrollIntoView());
+      // preventScroll stops browser from auto-scrolling the window when focusing the editor DOM
+      editor.chain().focus(undefined, { scrollIntoView: false }).setTextSelection(range).run();
+      // Scroll the editor's own container (same one used by typewriter mode)
+      requestAnimationFrame(() => {
+        const container = scrollRef.current;
+        if (!container) return;
+        try {
+          const coords  = editor.view.coordsAtPos(range.from);
+          const cRect   = container.getBoundingClientRect();
+          const relTop  = coords.top - cRect.top;
+          const MARGIN  = 80;
+          if (relTop < MARGIN) {
+            container.scrollTop += relTop - MARGIN;
+          } else if (relTop > cRect.height - MARGIN) {
+            container.scrollTop += relTop - cRect.height + MARGIN;
+          }
+        } catch { /* view not mounted */ }
+      });
     };
   }, [editor, jumpToGrammarMatchRef]);
 
