@@ -1,10 +1,11 @@
 FROM jdkato/vale:latest AS vale
 
-FROM python:3.12-slim
+FROM python:3.12-alpine
 
 COPY --from=vale /bin/vale /usr/local/bin/vale
 
-RUN pip install --no-cache-dir fastapi uvicorn
+RUN apk add --no-cache libstdc++ && \
+    pip install --no-cache-dir fastapi uvicorn
 
 WORKDIR /app
 COPY main.py .
