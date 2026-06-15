@@ -15,6 +15,12 @@ function langName(code: string): string {
   }
 }
 
+// ── Friendly display names for Vale built-in rules ────────────────────────────
+const RULE_LABELS: Record<string, string> = {
+  "Vale.Repetition": "Double Words",
+  "Vale.Spelling":   "Spelling",
+};
+
 // ── Severity config ───────────────────────────────────────────────────────────
 
 const SEV = {
@@ -193,11 +199,14 @@ export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
                       const [pkg, ruleName] = rule.includes(".")
                         ? rule.split(".", 2)
                         : ["Vale", rule];
+                      const friendlyName = RULE_LABELS[rule];
                       return (
                         <div key={rule}>
                           <p className="text-[10px] text-muted-foreground mb-1 flex items-center gap-1">
-                            <span className="opacity-50 font-mono">{pkg}.</span>
-                            <span>{ruleName}</span>
+                            {friendlyName
+                              ? <span>{friendlyName}</span>
+                              : <><span className="opacity-50 font-mono">{pkg}.</span><span>{ruleName}</span></>
+                            }
                             {ruleAlerts.length > 1 && (
                               <span className="ml-auto text-[10px] tabular-nums opacity-60">×{ruleAlerts.length}</span>
                             )}
