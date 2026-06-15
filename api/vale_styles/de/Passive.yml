@@ -1,5 +1,6 @@
 extends: existence
 message: "Passivkonstruktion — Aktivform bevorzugen?"
+ignorecase: true
 level: suggestion
 tokens:
   # Vorgangspassiv (Präteritum) — häufigste Passivform in Erzähltexten

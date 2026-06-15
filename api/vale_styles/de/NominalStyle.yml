@@ -1,5 +1,6 @@
 extends: substitution
 message: "Nominalstil: '%s' → besser '%s'?"
+ignorecase: true
 level: suggestion
 swap:
   # Funktionsverbgefüge (Wolf Schneider, Ludwig Reiners "Stilkunst")

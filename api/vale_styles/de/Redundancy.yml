@@ -1,5 +1,6 @@
 extends: substitution
 message: "'%s' ist redundant — erwäge '%s'."
+ignorecase: true
 level: warning
 swap:
   # Klassische Pleonasmen (Duden, Zwiebelfisch / Bastian Sick)

@@ -1,5 +1,6 @@
 extends: substitution
 message: "'%s' → kürzer: '%s'"
+ignorecase: true
 level: suggestion
 swap:
   # Aufgeblähte Präpositionen (Bundesverwaltungsamt, Wolf Schneider)
