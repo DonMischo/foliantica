@@ -1,0 +1,129 @@
+# Quellen / Sources:
+#   - Wolf Schneider: "Deutsch fürs Leben" (Rowohlt, 1994), Kap. "Phrasen und Klischees"
+#   - Wolf Schneider: "Speak German!" (Rowohlt, 2008)
+#   - Bastian Sick: Zwiebelfisch-Kolumnen (Spiegel Online, 2003–)
+#   - Ludwig Reiners: "Stilkunst" (C.H. Beck, 1961), § "Das Klischee"
+#   - Gesellschaft für deutsche Sprache (GfdS): Wörter / Unwörter des Jahres
+extends: existence
+message: "Klischee: '%s' — gibt es eine frischere Formulierung?"
+level: suggestion
+ignorecase: true
+tokens:
+  # --- Abgedroschene Alltagswendungen (Schneider, Sick) ---
+  - \bam Ende des Tages\b
+  - \bunterm Strich\b
+  - \bunter dem Strich\b
+  - \bein Stück weit\b
+  - \bein gutes Stück weit\b
+  - \bnicht ganz unproblematisch\b
+  - \bnicht ganz unkompliziert\b
+  - \bauf der Agenda\b
+  - \bauf dem Radar\b
+  - \bauf Schiene\b
+  - \bin trockene Tücher bringen\b
+  - \bin trockenen Tüchern\b
+  - \bgrünes Licht geben\b
+  - \bgrünes Licht bekommen\b
+  - \bdie Weichen stellen\b
+  - \bWeichen gestellt\b
+  - \bein Zeichen setzen\b
+  - \bZeichen setzen\b
+  - \bein klares Zeichen\b
+  - \bklare Kante zeigen\b
+  - \bRückenwind haben\b
+  - \bRückenwind bekommen\b
+  - \bGegenwind bekommen\b
+  - \bGegenwind haben\b
+  - \bLicht ins Dunkel bringen\b
+  - \bLicht am Ende des Tunnels\b
+  - \bein Licht am Ende\b
+  - \bden Nagel auf den Kopf\b
+  - \bauf einen Nenner bringen\b
+  - \bunter einen Hut bringen\b
+  - \bins Boot holen\b
+  - \bins Boot nehmen\b
+  - \balles auf den Tisch legen\b
+  - \bKarten auf den Tisch legen\b
+  - \ban einem Strang ziehen\b
+  - \bauf der gleichen Wellenlänge\b
+  - \bdieselbe Sprache sprechen\b
+  - \bdie gleiche Sprache sprechen\b
+  - \bauf Augenhöhe begegnen\b
+  - \bauf Augenhöhe kommunizieren\b
+  - \bdas Ruder herumreißen\b
+  - \bdas Steuer herumreißen\b
+  - \beinen Gang zurückschalten\b
+  - \beinen Gang hochschalten\b
+  - \bauf vollen Touren\b
+  - \bdas letzte Puzzlestück\b
+  - \bdas Puzzle vervollständigen\b
+
+  # --- Sportmetaphern außerhalb des Sports (Schneider) ---
+  - \bam Ball bleiben\b
+  - \bden Ball flach halten\b
+  - \bin die Offensive gehen\b
+  - \bauf der Zielgeraden\b
+  - \bin der Verlängerung\b
+  - \bin die Verlängerung gehen\b
+  - \beine Runde drehen\b
+  - \beinen Schritt voraus\b
+  - \bim Rennen bleiben\b
+  - \baus dem Rennen\b
+  - \bden Staffelstab übergeben\b
+  - \bden Staffelstab weitergeben\b
+  - \bdie Ziellinie überschreiten\b
+  - \büber die Ziellinie bringen\b
+  - \bim eigenen Tor\b
+  - \bins eigene Tor schießen\b
+
+  # --- Politsprech und Behördenfloskeln (GfdS, Schneider) ---
+  - \bMenschen in diesem Land\b
+  - \bdie Menschen draußen im Land\b
+  - \bdie Menschen auf der Straße\b
+  - \bein klares Signal senden\b
+  - \bkeine Denkverbote\b
+  - \bkonstruktiver Dialog\b
+  - \bim Dialog bleiben\b
+  - \boffener Dialog\b
+  - \bin einen Dialog eintreten\b
+  - \bgemeinsam gestalten\b
+  - \bgemeinsam vorankommen\b
+  - \bauf allen Ebenen\b
+  - \bbreite Mehrheit\b
+  - \büberwältigende Mehrheit\b
+  - \bstille Mehrheit\b
+  - \bbreiter Konsens\b
+  - \bgesellschaftlicher Konsens\b
+  - \bbreite Bevölkerungsschichten\b
+  - \balle Beteiligten\b
+  - \balle Akteure\b
+
+  # --- Journalistische Klischees (Sick, Schneider) ---
+  - \bwie aus dem Nichts\b
+  - \bin letzter Minute\b
+  - \bin letzter Sekunde\b
+  - \bauf den letzten Drücker\b
+  - \bgegen alle Widerstände\b
+  - \btrotz aller Widrigkeiten\b
+  - \btrotz allem\b
+  - \bein Bild der Verwüstung\b
+  - \btotales Chaos\b
+  - \bregelrechtes Chaos\b
+  - \babsolutes Chaos\b
+  - \bpures Chaos\b
+  - \bhistorische(r|s)? Moment\b
+  - \bhistorische(r|s)? Stunde\b
+  - \bhistorische(r|s)? Tag\b
+  - \bschwarzer Tag\b
+  - \bdunkles Kapitel\b
+  - \btrauriges Kapitel\b
+  - \bneues Kapitel aufschlagen\b
+  - \bein neues Kapitel\b
+  - \bStunde der Wahrheit\b
+  - \bStunde null\b
+  - \bZäsur\b
+  - \bWendepunkt\b
+  - \bMeilenstein\b
+  - \bganz normale Menschen\b
+  - \beinfache Menschen\b
+  - \bbreite Öffentlichkeit\b
