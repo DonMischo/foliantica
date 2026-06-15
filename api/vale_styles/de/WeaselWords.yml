@@ -1,9 +1,16 @@
+# Quellen / Sources:
+#   - Wolf Schneider: "Deutsch fürs Leben" (Rowohlt, 1994), Kap. "Weichmacher" und "Füllwörter"
+#   - Wolf Schneider: "Deutsch! Das Handbuch für attraktives Schreiben" (Rowohlt, 2005)
+#   - Ludwig Reiners: "Stilkunst" (C.H. Beck, 1961), §§ "Das überflüssige Wort"
+#   - Bastian Sick: Zwiebelfisch-Kolumnen (Spiegel Online / Kiepenheuer & Witsch)
+#   - Bundesverwaltungsamt: "Leitfaden Bürgernahe Sprache" (2002)
+#   - Netzwerk Leichte Sprache: Regeln für Leichte Sprache (2013), www.leichte-sprache.org
 extends: existence
 message: "'%s' ist ein Füllwort — überprüfen ob weglassbar?"
-ignorecase: true
 level: warning
+ignorecase: true
 tokens:
-  # Abschwächer / Hedges (Wolf Schneider: "Weichmacher")
+  # --- Abschwächer / Hedges (Schneider: "Weichmacher") ---
   - \beigentlich\b
   - \birgendwie\b
   - \bgewissermaßen\b
@@ -12,8 +19,12 @@ tokens:
   - \bgleichsam\b
   - \bim Prinzip\b
   - \bim Grunde\b
+  - \bim Grunde genommen\b
+  - \bin gewisser Weise\b
+  - \bin gewissem Sinne\b
+  - \bauf gewisse Weise\b
 
-  # Intensifiers that paradoxically weaken the statement
+  # --- Intensifier, die paradoxerweise abschwächen (Schneider; Reiners) ---
   - \bwirklich\b
   - \becht\b
   - \bsehr\b
@@ -26,14 +37,14 @@ tokens:
   - \bgeradezu\b
   - \bschier\b
   - \bausgesprochen\b
-  - überaus
+  - \büberaus\b
   - \bungemein\b
   - \baußerordentlich\b
   - \baußergewöhnlich\b
   - \bmaßgeblich\b
   - \bnachhaltig\b
 
-  # Selbstverständlichkeiten — stating the obvious
+  # --- Selbstverständlichkeiten (Schneider; Sick) ---
   - \bnatürlich\b
   - \bselbstverständlich\b
   - \boffensichtlich\b
@@ -46,7 +57,70 @@ tokens:
   - \bfreilich\b
   - \bunbestreitbar\b
 
-  # Floskeln / Meaningless framing
+  # --- Vage Mengenangaben (Schneider; Reiners) ---
+  - \beinige\b
+  - \bmehrere\b
+  - zahlreiche
+  - diverse
+  - verschiedene
+  - \bgewisse\b
+  - \bbestimmte\b
+  - \bmancherlei\b
+  - \bvielerlei\b
+  - \bnicht selten\b
+  - \bdes Öfteren\b
+  - \bhin und wieder\b
+  - \bmehr oder weniger\b
+
+  # --- Epistemische Hedges / vage Wahrscheinlichkeit (Sick; Schneider) ---
+  - anscheinend
+  - scheinbar
+  - \bvermeintlich\b
+  - \bangeblich\b
+  - \bdürfte\b
+  - \beventuell\b
+  - \bvielleicht\b
+  - \bmöglicherweise\b
+  - \bunter Umständen\b
+  - \bim Zweifel\b
+  - \bim Großen und Ganzen\b
+
+  # --- Zeitliche Weasel Words (Bundesverwaltungsamt; Schneider) ---
+  - zeitnah
+  - \bkurzfristig\b
+  - \bmittelfristig\b
+  - \blangfristig\b
+  - \bin absehbarer Zeit\b
+  - \bin Kürze\b
+  - \bschnellstmöglich\b
+  - \bschnellstens\b
+  - \bso bald wie möglich\b
+  - \bzu gegebener Zeit\b
+  - \bin naher Zukunft\b
+  - \birgendwann\b
+  - \bfrüher oder später\b
+
+  # --- Bürokratisches Füllwerk / Amtsdeutsch (Bundesverwaltungsamt; Schneider) ---
+  - \bim Rahmen\b
+  - seitens
+  - vonseiten
+  - diesbezüglich
+  - dahingehend
+  - \bvor diesem Hintergrund\b
+  - \bvor dem Hintergrund\b
+  - \bim Lichte dessen\b
+  - \bangesichts dessen\b
+  - \bdementsprechend\b
+  - \bmithin\b
+  - \bes sei darauf hingewiesen\b
+  - \ban dieser Stelle\b
+  - \bes ist festzustellen\b
+  - \bes ist anzumerken\b
+  - \bes ist zu beachten\b
+  - \bfür den Fall dass\b
+  - \bim Falle\b
+
+  # --- Floskeln / bedeutungsarmes Framing (Schneider; Reiners) ---
   - \bletztendlich\b
   - \bletzten Endes\b
   - \bim Endeffekt\b
@@ -58,14 +132,22 @@ tokens:
   - \bnichtsdestotrotz\b
   - \bnichtsdestoweniger\b
   - \binfolgedessen\b
-  - \binzwischen\b
   - \bübrigens\b
 
-  # Vague approximators
+  # --- Vage Approximatoren (Schneider) ---
   - \bziemlich\b
   - \beinigermaßen\b
   - \bweitgehend\b
   - \bvergleichsweise\b
   - \brelativ\b
-  - \bmehr oder weniger\b
   - \bin etwa\b
+  - \bletzten Endes\b
+
+  # --- Relativierungswörter (Sick; Schneider) ---
+  - \bsogenannt\b
+  - sogenannte
+  - sogenannten
+  - \bsprichwörtlich\b
+  - \bim wahrsten Sinne des Wortes\b
+  - \bdie Problematik\b
+  - \bdie Thematik\b
