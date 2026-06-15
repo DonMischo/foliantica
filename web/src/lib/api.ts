@@ -681,12 +681,29 @@ export interface ValeCheckResult {
   alerts: ValeAlert[];
 }
 
+export interface ValeRuleMeta {
+  name: string;
+  type: "existence" | "substitution";
+}
+
+export type ValeCustomEntries = string[] | Record<string, string>;
+export type ValeCustomRules = Record<string, Record<string, ValeCustomEntries>>;
+
 export const valeApi = {
   check: (text: string, language?: string) =>
     req<ValeCheckResult>("/vale/check", {
       method: "POST",
       body: JSON.stringify({ text, language }),
       signal: AbortSignal.timeout(60_000),
+    }),
+  getRuleMeta: (lang: string) =>
+    req<{ rules: ValeRuleMeta[] }>(`/vale/rule-meta/${lang}`),
+  getCustomRules: () =>
+    req<{ rules: ValeCustomRules }>("/vale/custom-rules"),
+  updateCustomRules: (rules: ValeCustomRules) =>
+    req<{ ok: boolean }>("/vale/custom-rules", {
+      method: "PUT",
+      body: JSON.stringify({ rules }),
     }),
 };
 

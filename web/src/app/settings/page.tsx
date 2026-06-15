@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings, useUpdateSettings, useOpenRouterModels, usePrompts, useCreatePrompt, useUpdatePrompt, useDeletePrompt, useRevertPrompt, useServiceStatus, useSyncStatus } from "@/store/queries";
-import { dataDirApi, settingsApi, syncApi, pgConfigApi, aiProvidersApi, type PgConfig, type PgActive, type AIProvider } from "@/lib/api";
+import { dataDirApi, settingsApi, syncApi, pgConfigApi, aiProvidersApi, valeApi, type PgConfig, type PgActive, type AIProvider, type ValeRuleMeta, type ValeCustomRules } from "@/lib/api";
 import { ACH_POPUPS_KEY } from "@/components/AchievementToast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useUIStore } from "@/store/ui";
@@ -148,7 +148,22 @@ export default function SettingsPage() {
   const [valeDetectResult, setValeDetectResult] = useState<{ system: boolean; docker: boolean } | null>(null);
   const [valeHelpOpen, setValeHelpOpen]     = useState(false);
   const [valeSourcesOpen, setValeSourcesOpen] = useState(false);
+  const [valeDeLangOpen,  setValeDeLangOpen]  = useState(false);
+  const [valeEsLangOpen,  setValeEsLangOpen]  = useState(false);
+  const [valeFrLangOpen,  setValeFrLangOpen]  = useState(false);
+  const [valeItLangOpen,  setValeItLangOpen]  = useState(false);
+  const [valePtLangOpen,  setValePtLangOpen]  = useState(false);
+  const [valeNlLangOpen,  setValeNlLangOpen]  = useState(false);
+  const [valeSvLangOpen,  setValeSvLangOpen]  = useState(false);
+  const [valeDaLangOpen,  setValeDaLangOpen]  = useState(false);
+  const [valeNoLangOpen,  setValeNoLangOpen]  = useState(false);
   const [valeHelpOs, setValeHelpOs]         = useState<"windows" | "mac" | "linux">("windows");
+  const [valeCustomOpen,   setValeCustomOpen]   = useState(false);
+  const [valeCustomLang,   setValeCustomLang]   = useState("de");
+  const [valeCustomRules,  setValeCustomRules]  = useState<ValeCustomRules>({});
+  const [valeRuleMeta,     setValeRuleMeta]     = useState<Record<string, ValeRuleMeta[]>>({});
+  const [valeCustomSaving, setValeCustomSaving] = useState(false);
+  const [valeCustomInputs, setValeCustomInputs] = useState<Record<string, string>>({});
   const [showServiceStatus, setShowServiceStatus] = useState(false);
   const { data: serviceStatus, isLoading: statusLoading, refetch: refetchStatus } =
     useServiceStatus(showServiceStatus);
@@ -538,6 +553,75 @@ export default function SettingsPage() {
         <p className="text-xs text-muted-foreground">Waiting for backend to come back up</p>
       </div>
     );
+  }
+
+  // ── Vale custom rules helpers ─────────────────────────────────────────────
+
+  async function loadValeCustomRules() {
+    try {
+      const data = await valeApi.getCustomRules();
+      setValeCustomRules(data.rules ?? {});
+    } catch { /* ignore */ }
+  }
+
+  async function loadValeRuleMeta(lang: string) {
+    if (valeRuleMeta[lang]) return;
+    try {
+      const data = await valeApi.getRuleMeta(lang);
+      setValeRuleMeta(prev => ({ ...prev, [lang]: data.rules ?? [] }));
+    } catch { /* ignore */ }
+  }
+
+  async function saveValeCustom(rules: ValeCustomRules) {
+    setValeCustomSaving(true);
+    try { await valeApi.updateCustomRules(rules); } catch { /* ignore */ }
+    finally { setValeCustomSaving(false); }
+  }
+
+  function addExistenceEntry(lang: string, ruleName: string, token: string) {
+    const t = token.trim();
+    if (!t) return;
+    const prev = (valeCustomRules[lang]?.[ruleName] as string[] | undefined) ?? [];
+    if (prev.includes(t)) return;
+    const next: ValeCustomRules = {
+      ...valeCustomRules,
+      [lang]: { ...(valeCustomRules[lang] ?? {}), [ruleName]: [...prev, t] },
+    };
+    setValeCustomRules(next);
+    saveValeCustom(next);
+  }
+
+  function removeExistenceEntry(lang: string, ruleName: string, token: string) {
+    const prev = (valeCustomRules[lang]?.[ruleName] as string[] | undefined) ?? [];
+    const next: ValeCustomRules = {
+      ...valeCustomRules,
+      [lang]: { ...(valeCustomRules[lang] ?? {}), [ruleName]: prev.filter(e => e !== token) },
+    };
+    setValeCustomRules(next);
+    saveValeCustom(next);
+  }
+
+  function addSubstitutionEntry(lang: string, ruleName: string, original: string, replacement: string) {
+    const o = original.trim(), r = replacement.trim();
+    if (!o || !r) return;
+    const prev = (valeCustomRules[lang]?.[ruleName] as Record<string, string> | undefined) ?? {};
+    const next: ValeCustomRules = {
+      ...valeCustomRules,
+      [lang]: { ...(valeCustomRules[lang] ?? {}), [ruleName]: { ...prev, [o]: r } },
+    };
+    setValeCustomRules(next);
+    saveValeCustom(next);
+  }
+
+  function removeSubstitutionEntry(lang: string, ruleName: string, key: string) {
+    const prev = { ...((valeCustomRules[lang]?.[ruleName] as Record<string, string> | undefined) ?? {}) };
+    delete prev[key];
+    const next: ValeCustomRules = {
+      ...valeCustomRules,
+      [lang]: { ...(valeCustomRules[lang] ?? {}), [ruleName]: prev },
+    };
+    setValeCustomRules(next);
+    saveValeCustom(next);
   }
 
   return (
@@ -1757,6 +1841,192 @@ export default function SettingsPage() {
               </p>
             )}
 
+            {/* Custom rule entries */}
+            <div className="border border-border/60 rounded-md overflow-hidden">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!valeCustomOpen) {
+                    await Promise.all([loadValeCustomRules(), loadValeRuleMeta(valeCustomLang)]);
+                  }
+                  setValeCustomOpen(o => !o);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+              >
+                <Sparkles className="h-3.5 w-3.5 shrink-0 text-violet-400" />
+                <span className="flex-1 text-left">Your custom rules</span>
+                {valeCustomSaving && <Loader2 className="h-3 w-3 animate-spin" />}
+                {valeCustomOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </button>
+              {valeCustomOpen && (
+                <div className="px-3 pb-3 pt-2 space-y-3 border-t border-border/60 bg-muted/20">
+                  <p className="text-[11px] text-muted-foreground">Add words or phrases to any rule category. Your entries are checked alongside the built-in rules.</p>
+
+                  {/* Language tabs */}
+                  <div className="flex flex-wrap gap-1">
+                    {([
+                      { code: "de", label: "Deutsch" },
+                      { code: "es", label: "Español" },
+                      { code: "fr", label: "Français" },
+                      { code: "it", label: "Italiano" },
+                      { code: "pt", label: "Português" },
+                      { code: "nl", label: "Nederlands" },
+                      { code: "sv", label: "Svenska" },
+                      { code: "da", label: "Dansk" },
+                      { code: "no", label: "Norsk" },
+                    ] as const).map(({ code, label }) => (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={async () => {
+                          setValeCustomLang(code);
+                          await loadValeRuleMeta(code);
+                        }}
+                        className={cn(
+                          "text-[11px] px-2 py-0.5 rounded border transition-colors",
+                          valeCustomLang === code
+                            ? "border-primary/50 bg-primary/10 text-foreground"
+                            : "border-border text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Rule rows */}
+                  <div className="space-y-4">
+                    {(valeRuleMeta[valeCustomLang] ?? []).length === 0 && (
+                      <p className="text-[11px] text-muted-foreground italic">Loading…</p>
+                    )}
+                    {(valeRuleMeta[valeCustomLang] ?? []).map(rule => {
+                      const ik  = `${valeCustomLang}:${rule.name}`;
+                      const ikB = `${ik}:b`;
+                      const tokens = rule.type === "existence"
+                        ? ((valeCustomRules[valeCustomLang]?.[rule.name] as string[] | undefined) ?? [])
+                        : [];
+                      const pairs = rule.type === "substitution"
+                        ? ((valeCustomRules[valeCustomLang]?.[rule.name] as Record<string, string> | undefined) ?? {})
+                        : {};
+
+                      return (
+                        <div key={rule.name} className="space-y-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] font-medium text-foreground/80">{rule.name}</span>
+                            <span className="text-[9px] px-1 rounded border border-border/60 text-muted-foreground uppercase tracking-wide">
+                              {rule.type === "existence" ? "words" : "pairs"}
+                            </span>
+                          </div>
+
+                          {rule.type === "existence" ? (
+                            <div className="space-y-1.5">
+                              {tokens.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {tokens.map(tok => (
+                                    <span key={tok} className="inline-flex items-center gap-0.5 text-[11px] bg-muted/60 border border-border/60 rounded px-1.5 py-0.5">
+                                      {tok}
+                                      <button
+                                        type="button"
+                                        onClick={() => removeExistenceEntry(valeCustomLang, rule.name, tok)}
+                                        className="text-muted-foreground hover:text-foreground transition-colors ml-0.5"
+                                      >
+                                        <X className="h-2.5 w-2.5" />
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              <div className="flex gap-1">
+                                <input
+                                  type="text"
+                                  value={valeCustomInputs[ik] ?? ""}
+                                  onChange={e => setValeCustomInputs(p => ({ ...p, [ik]: e.target.value }))}
+                                  onKeyDown={e => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      addExistenceEntry(valeCustomLang, rule.name, valeCustomInputs[ik] ?? "");
+                                      setValeCustomInputs(p => ({ ...p, [ik]: "" }));
+                                    }
+                                  }}
+                                  placeholder="Add word or phrase…"
+                                  className="flex-1 h-7 text-[11px] bg-background border border-border rounded px-2 focus:outline-none focus:border-primary/50"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    addExistenceEntry(valeCustomLang, rule.name, valeCustomInputs[ik] ?? "");
+                                    setValeCustomInputs(p => ({ ...p, [ik]: "" }));
+                                  }}
+                                  className="text-[11px] px-2 h-7 rounded border border-border hover:border-primary/50 text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  Add
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {Object.entries(pairs).length > 0 && (
+                                <div className="space-y-1">
+                                  {Object.entries(pairs).map(([orig, repl]) => (
+                                    <div key={orig} className="flex items-center gap-1 text-[11px]">
+                                      <span className="bg-muted/60 border border-border/60 rounded px-1.5 py-0.5 font-mono">{orig}</span>
+                                      <span className="text-muted-foreground">→</span>
+                                      <span className="bg-muted/60 border border-border/60 rounded px-1.5 py-0.5 font-mono">{repl}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => removeSubstitutionEntry(valeCustomLang, rule.name, orig)}
+                                        className="text-muted-foreground hover:text-foreground transition-colors ml-1"
+                                      >
+                                        <X className="h-2.5 w-2.5" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <div className="flex gap-1 items-center">
+                                <input
+                                  type="text"
+                                  value={valeCustomInputs[ik] ?? ""}
+                                  onChange={e => setValeCustomInputs(p => ({ ...p, [ik]: e.target.value }))}
+                                  placeholder="Original…"
+                                  className="flex-1 h-7 text-[11px] bg-background border border-border rounded px-2 focus:outline-none focus:border-primary/50 font-mono"
+                                />
+                                <span className="text-muted-foreground text-[11px]">→</span>
+                                <input
+                                  type="text"
+                                  value={valeCustomInputs[ikB] ?? ""}
+                                  onChange={e => setValeCustomInputs(p => ({ ...p, [ikB]: e.target.value }))}
+                                  onKeyDown={e => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      addSubstitutionEntry(valeCustomLang, rule.name, valeCustomInputs[ik] ?? "", valeCustomInputs[ikB] ?? "");
+                                      setValeCustomInputs(p => ({ ...p, [ik]: "", [ikB]: "" }));
+                                    }
+                                  }}
+                                  placeholder="Replacement…"
+                                  className="flex-1 h-7 text-[11px] bg-background border border-border rounded px-2 focus:outline-none focus:border-primary/50 font-mono"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    addSubstitutionEntry(valeCustomLang, rule.name, valeCustomInputs[ik] ?? "", valeCustomInputs[ikB] ?? "");
+                                    setValeCustomInputs(p => ({ ...p, [ik]: "", [ikB]: "" }));
+                                  }}
+                                  className="text-[11px] px-2 h-7 rounded border border-border hover:border-primary/50 text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  Add
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Built-in style rule sources */}
             <div className="border border-border/60 rounded-md overflow-hidden">
               <button
@@ -1771,33 +2041,316 @@ export default function SettingsPage() {
               {valeSourcesOpen && (
                 <div className="px-3 pb-3 pt-1 space-y-2 border-t border-border/60 bg-muted/20">
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    Foliantica bundles prose style rules for German and other languages, derived from the following authoritative sources:
+                    Foliantica bundles prose style rules for German, Spanish, French, Italian, Portuguese, Dutch, Swedish, Danish, and Norwegian, derived from the following authoritative sources:
                   </p>
-                  <ul className="space-y-1.5 text-[11px]">
-                    {[
-                      { author: "Wolf Schneider", work: "Deutsch fürs Leben", year: "1994", note: "WeaselWords, NominalStyle, WordyPhrases" },
-                      { author: "Bastian Sick", work: "Der Dativ ist dem Genitiv sein Tod (Zwiebelfisch, Der Spiegel)", year: "2004–", note: "Redundancy, WeaselWords" },
-                      { author: "Ludwig Reiners", work: "Stilkunst", year: "1944 / rev. 1991", note: "NominalStyle (Funktionsverbgefüge)" },
-                      { author: "Bundesverwaltungsamt", work: "Leitfaden Bürgernahe Sprache / Handbuch für Leichte Sprache", year: "2002 / 2022", note: "WordyPhrases, Passive, NominalStyle" },
-                      { author: "Duden", work: "Richtiges und gutes Deutsch (Bd. 9) / Stilwörterbuch (Bd. 2)", year: "9. Aufl. 2010", note: "Redundancy, FalscheFreunde" },
-                      { author: "Wikipedia", work: "Liste der Pleonasmen (de.wikipedia.org/wiki/Pleonasmus)", year: "", note: "Redundancy" },
-                      { author: "Gesellschaft für deutsche Sprache (GfdS)", work: "Wörter des Jahres / Anglizismen-Empfehlungen", year: "laufend", note: "Anglizismen, Buzzwords" },
-                      { author: "Verein Deutsche Sprache (VDS)", work: "Anglizismen-Index", year: "laufend", note: "Anglizismen" },
-                      { author: "Unwort des Jahres (Sprachkritik-Jury)", work: "Unwörter & Modewörter", year: "seit 1991", note: "Buzzwords" },
-                      { author: "Institut für Deutsche Sprache (IDS)", work: "Grammis-Datenbank — Funktionsverbgefüge", year: "", note: "NominalStyle" },
-                    ].map(({ author, work, year, note }) => (
-                      <li key={author} className="flex gap-2">
-                        <span className="text-muted-foreground shrink-0">·</span>
-                        <span>
-                          <span className="font-medium text-foreground/80">{author}</span>
-                          {" – "}
-                          <span className="italic">{work}</span>
-                          {year && <span className="text-muted-foreground"> ({year})</span>}
-                          <span className="text-muted-foreground"> — {note}</span>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+
+                  {/* German sources */}
+                  <button
+                    type="button"
+                    onClick={() => setValeDeLangOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 hover:text-muted-foreground pt-1 transition-colors"
+                  >
+                    {valeDeLangOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronDown className="h-3 w-3 -rotate-90" />}
+                    Deutsch
+                  </button>
+                  {valeDeLangOpen && (
+                    <ul className="space-y-1.5 text-[11px]">
+                      {[
+                        { author: "Wolf Schneider", work: "Deutsch fürs Leben", year: "1994", note: "WeaselWords, NominalStyle, WordyPhrases" },
+                        { author: "Bastian Sick", work: "Der Dativ ist dem Genitiv sein Tod (Zwiebelfisch, Der Spiegel)", year: "2004–", note: "Redundancy, WeaselWords" },
+                        { author: "Ludwig Reiners", work: "Stilkunst", year: "1944 / rev. 1991", note: "NominalStyle (Funktionsverbgefüge)" },
+                        { author: "Bundesverwaltungsamt", work: "Leitfaden Bürgernahe Sprache / Handbuch für Leichte Sprache", year: "2002 / 2022", note: "WordyPhrases, Passive, NominalStyle" },
+                        { author: "Duden", work: "Richtiges und gutes Deutsch (Bd. 9) / Stilwörterbuch (Bd. 2)", year: "9. Aufl. 2010", note: "Redundancy, FalscheFreunde" },
+                        { author: "Wikipedia", work: "Liste der Pleonasmen (de.wikipedia.org/wiki/Pleonasmus)", year: "", note: "Redundancy" },
+                        { author: "Gesellschaft für deutsche Sprache (GfdS)", work: "Wörter des Jahres / Anglizismen-Empfehlungen", year: "laufend", note: "Anglizismen, Buzzwords" },
+                        { author: "Verein Deutsche Sprache (VDS)", work: "Anglizismen-Index", year: "laufend", note: "Anglizismen" },
+                        { author: "Unwort des Jahres (Sprachkritik-Jury)", work: "Unwörter & Modewörter", year: "seit 1991", note: "Buzzwords" },
+                        { author: "Institut für Deutsche Sprache (IDS)", work: "Grammis-Datenbank — Funktionsverbgefüge", year: "", note: "NominalStyle" },
+                      ].map(({ author, work, year, note }) => (
+                        <li key={author} className="flex gap-2">
+                          <span className="text-muted-foreground shrink-0">·</span>
+                          <span>
+                            <span className="font-medium text-foreground/80">{author}</span>
+                            {" – "}
+                            <span className="italic">{work}</span>
+                            {year && <span className="text-muted-foreground"> ({year})</span>}
+                            <span className="text-muted-foreground"> — {note}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Spanish sources */}
+                  <button
+                    type="button"
+                    onClick={() => setValeEsLangOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 hover:text-muted-foreground pt-1 transition-colors"
+                  >
+                    {valeEsLangOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronDown className="h-3 w-3 -rotate-90" />}
+                    Español
+                  </button>
+                  {valeEsLangOpen && (
+                    <ul className="space-y-1.5 text-[11px]">
+                      {[
+                        { author: "Álex Grijelmo", work: "El estilo del periodista / Defensa apasionada del idioma español", year: "1997 / 1998", note: "WeaselWords, NominalStyle, WordyPhrases, Redundancy, Anglicismos" },
+                        { author: "Fernando Lázaro Carreter", work: "El dardo en la palabra", year: "1997", note: "WeaselWords, NominalStyle, ErroresComunes, Redundancy" },
+                        { author: "Fundación del Español Urgente (FundéU)", work: "fundeu.es — recomendaciones de estilo", year: "en curso", note: "todos los módulos" },
+                        { author: "Real Academia Española (RAE)", work: "Diccionario panhispánico de dudas (DPD)", year: "2005", note: "Redundancy, ErroresComunes, WeaselWords" },
+                        { author: "RAE / ASALE", work: "Nueva gramática de la lengua española", year: "2009", note: "Passive, ErroresComunes" },
+                        { author: "Manuel Seco", work: "Diccionario de dudas y dificultades de la lengua española", year: "1998", note: "ErroresComunes, Redundancy" },
+                        { author: "Libro de estilo de El País", work: "Ediciones El País", year: "2014", note: "WeaselWords, WordyPhrases, NominalStyle" },
+                        { author: "José Martínez de Sousa", work: "Manual de estilo de la lengua española", year: "2000", note: "NominalStyle, WordyPhrases" },
+                        { author: "Grijelmo", work: "La seducción de las palabras", year: "2000", note: "Buzzwords" },
+                      ].map(({ author, work, year, note }) => (
+                        <li key={author} className="flex gap-2">
+                          <span className="text-muted-foreground shrink-0">·</span>
+                          <span>
+                            <span className="font-medium text-foreground/80">{author}</span>
+                            {" – "}
+                            <span className="italic">{work}</span>
+                            {year && <span className="text-muted-foreground"> ({year})</span>}
+                            <span className="text-muted-foreground"> — {note}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* French sources */}
+                  <button
+                    type="button"
+                    onClick={() => setValeFrLangOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 hover:text-muted-foreground pt-1 transition-colors"
+                  >
+                    {valeFrLangOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronDown className="h-3 w-3 -rotate-90" />}
+                    Français
+                  </button>
+                  {valeFrLangOpen && (
+                    <ul className="space-y-1.5 text-[11px]">
+                      {[
+                        { author: "Maurice Grevisse / André Goosse", work: "Le Bon Usage", year: "15e éd. 2011", note: "tous les modules" },
+                        { author: "Jean Girodet", work: "Dictionnaire des pièges et difficultés de la langue française", year: "1988", note: "WeaselWords, NominalStyle, WordyPhrases, Redundancy, FauxAmis" },
+                        { author: "Académie française", work: "recommandations officielles + mises en garde contre les anglicismes", year: "en cours", note: "Anglicismes, FauxAmis, Buzzwords" },
+                        { author: "Commission générale de terminologie et de néologie", work: "enrichissement de la langue française (Journal officiel)", year: "en cours", note: "Anglicismes, NominalStyle, WordyPhrases" },
+                        { author: "FranceTerme", work: "france-terme.culture.fr — termes officiels recommandés", year: "en cours", note: "Anglicismes" },
+                        { author: "Office québécois de la langue française (OQLF)", work: "Grand dictionnaire terminologique", year: "en cours", note: "Anglicismes, Redundancy, WeaselWords" },
+                      ].map(({ author, work, year, note }) => (
+                        <li key={author} className="flex gap-2">
+                          <span className="text-muted-foreground shrink-0">·</span>
+                          <span>
+                            <span className="font-medium text-foreground/80">{author}</span>
+                            {" – "}
+                            <span className="italic">{work}</span>
+                            {year && <span className="text-muted-foreground"> ({year})</span>}
+                            <span className="text-muted-foreground"> — {note}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Italian sources */}
+                  <button
+                    type="button"
+                    onClick={() => setValeItLangOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 hover:text-muted-foreground pt-1 transition-colors"
+                  >
+                    {valeItLangOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronDown className="h-3 w-3 -rotate-90" />}
+                    Italiano
+                  </button>
+                  {valeItLangOpen && (
+                    <ul className="space-y-1.5 text-[11px]">
+                      {[
+                        { author: "Luca Serianni", work: "Italiano (Garzanti) / Guida all'italiano (BUR)", year: "1988 / 2007", note: "tutti i moduli" },
+                        { author: "Accademia della Crusca", work: "consulenze linguistiche — accademicadellacrusca.it", year: "in corso", note: "Anglicismi, FalsiAmici, Buzzwords, Redundancy" },
+                        { author: "Tullio De Mauro", work: "Grande dizionario italiano dell'uso (GRADIT, UTET)", year: "1999", note: "WeaselWords, Redundancy, Anglicismi, FalsiAmici" },
+                        { author: "Maurizio Piemontese", work: "Manuale di stile (Presidenza del Consiglio dei Ministri)", year: "1997", note: "WordyPhrases, NominalStyle, Passive, WeaselWords" },
+                        { author: "Italo Calvino", work: "L'antilingua (Il Giorno)", year: "1965", note: "NominalStyle, WordyPhrases, Buzzwords, WeaselWords" },
+                        { author: "Valeria Della Valle / Giuseppe Patota", work: "Viva l'italiano! (Sperling & Kupfer)", year: "2009", note: "Redundancy, Anglicismi, FalsiAmici" },
+                        { author: "Beppe Severgnini", work: "L'italiano: lezioni semiserie (Rizzoli)", year: "2007", note: "Anglicismi, Buzzwords" },
+                      ].map(({ author, work, year, note }) => (
+                        <li key={author} className="flex gap-2">
+                          <span className="text-muted-foreground shrink-0">·</span>
+                          <span>
+                            <span className="font-medium text-foreground/80">{author}</span>
+                            {" – "}
+                            <span className="italic">{work}</span>
+                            {year && <span className="text-muted-foreground"> ({year})</span>}
+                            <span className="text-muted-foreground"> — {note}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Portuguese sources */}
+                  <button
+                    type="button"
+                    onClick={() => setValePtLangOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 hover:text-muted-foreground pt-1 transition-colors"
+                  >
+                    {valePtLangOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronDown className="h-3 w-3 -rotate-90" />}
+                    Português
+                  </button>
+                  {valePtLangOpen && (
+                    <ul className="space-y-1.5 text-[11px]">
+                      {[
+                        { author: "Celso Cunha / Lindley Cintra", work: "Nova Gramática do Português Contemporâneo (João Sá da Costa)", year: "1984/2014", note: "todos os módulos" },
+                        { author: "Cláudio Moreno", work: "Guia Prático de Estilo (L&PM)", year: "2009", note: "WeaselWords, WordyPhrases, NominalStyle, Estrangeirismos, Buzzwords" },
+                        { author: "Eduardo Martins", work: "Manual de Redação e Estilo de O Estado de S. Paulo", year: "1997", note: "WeaselWords, Redundancy, Estrangeirismos, Buzzwords" },
+                        { author: "Academia Brasileira de Letras (ABL)", work: "Vocabulário Ortográfico da Língua Portuguesa (VOLP) — volp.academia.org.br", year: "em curso", note: "Estrangeirismos, FalsosAmigos, Redundancy" },
+                        { author: "Academia das Ciências de Lisboa (ACL)", work: "Vocabulário Ortográfico do Português — academia.pt", year: "em curso", note: "Estrangeirismos, FalsosAmigos" },
+                        { author: "Vocabulário Ortográfico Comum (VOC)", work: "Acordo Ortográfico 2009 — vocabulario.cplp.org", year: "2009 / em curso", note: "Estrangeirismos, WeaselWords" },
+                        { author: "José Luís Nunes Moura", work: "Escrever em Português (Presença)", year: "2009", note: "WordyPhrases, NominalStyle, FalsosAmigos" },
+                      ].map(({ author, work, year, note }) => (
+                        <li key={author} className="flex gap-2">
+                          <span className="text-muted-foreground shrink-0">·</span>
+                          <span>
+                            <span className="font-medium text-foreground/80">{author}</span>
+                            {" – "}
+                            <span className="italic">{work}</span>
+                            {year && <span className="text-muted-foreground"> ({year})</span>}
+                            <span className="text-muted-foreground"> — {note}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Nederlands */}
+                  <button
+                    type="button"
+                    onClick={() => setValeNlLangOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 hover:text-muted-foreground pt-1 transition-colors"
+                  >
+                    {valeNlLangOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronDown className="h-3 w-3 -rotate-90" />}
+                    Nederlands
+                  </button>
+                  {valeNlLangOpen && (
+                    <ul className="space-y-1.5 text-[11px]">
+                      {[
+                        { author: "Jan Renkema", work: "Schrijfwijzer (Boom)", year: "2012", note: "alle modules — het Nederlandse stijlhandboek" },
+                        { author: "Genootschap Onze Taal", work: "taaladvies.net", year: "voortdurend bijgewerkt", note: "Anglicismen, TaalFouten, WeaselWords, Buzzwords" },
+                        { author: "Nederlandse Taalunie (NTU)", work: "taalunie.org — Schrijfwijzer overheid", year: "voortdurend bijgewerkt", note: "WordyPhrases, NominalStyle, WeaselWords" },
+                        { author: "Van Dale", work: "Groot woordenboek van de Nederlandse taal (15e druk)", year: "2015", note: "Redundancy, Anglicismen, TaalFouten" },
+                        { author: "ANS", work: "Algemene Nederlandse Spraakkunst (online editie)", year: "1997/2016", note: "Passive, Redundancy, TaalFouten" },
+                        { author: "Henk Pander Maat / Leo Lentz", work: "Schrijven voor lezers (Boom)", year: "2010", note: "WeaselWords, WordyPhrases, NominalStyle" },
+                        { author: "Instituut voor de Nederlandse Taal (INT)", work: "ivdnt.org", year: "voortdurend bijgewerkt", note: "Anglicismen" },
+                      ].map(({ author, work, year, note }) => (
+                        <li key={author} className="flex gap-2">
+                          <span className="text-muted-foreground shrink-0">·</span>
+                          <span>
+                            <span className="font-medium text-foreground/80">{author}</span>
+                            {" – "}
+                            <span className="italic">{work}</span>
+                            {year && <span className="text-muted-foreground"> ({year})</span>}
+                            <span className="text-muted-foreground"> — {note}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Svenska */}
+                  <button
+                    type="button"
+                    onClick={() => setValeSvLangOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 hover:text-muted-foreground pt-1 transition-colors"
+                  >
+                    {valeSvLangOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronDown className="h-3 w-3 -rotate-90" />}
+                    Svenska
+                  </button>
+                  {valeSvLangOpen && (
+                    <ul className="space-y-1.5 text-[11px]">
+                      {[
+                        { author: "Språkrådet", work: "Svenska skrivregler (Liber, 4e uppl.)", year: "2017", note: "alla moduler — det svenska skrivhandboket" },
+                        { author: "Strömquist, Siv", work: "Skrivboken (Gleerups, 8e uppl.)", year: "2014", note: "WeaselWords, WordyPhrases, NominalStyle, Buzzwords" },
+                        { author: "Myndigheternas skrivregler", work: "Norstedts Juridik (8e uppl.)", year: "2014", note: "WordyPhrases, NominalStyle, Passive" },
+                        { author: "SAOL", work: "Svenska Akademiens ordlista (14e uppl.)", year: "2015", note: "Redundancy, Anglicismer" },
+                        { author: "Josephson, Olle", work: "Ju (Norstedts)", year: "2018", note: "Anglicismer, SprakFel, Buzzwords" },
+                        { author: "Hellspong, Lennart / Ledin, Per", work: "Vägar genom texten (Studentlitteratur)", year: "1997", note: "WeaselWords, NominalStyle, WordyPhrases" },
+                      ].map(({ author, work, year, note }) => (
+                        <li key={author} className="flex gap-2">
+                          <span className="text-muted-foreground shrink-0">·</span>
+                          <span>
+                            <span className="font-medium text-foreground/80">{author}</span>
+                            {" – "}
+                            <span className="italic">{work}</span>
+                            {year && <span className="text-muted-foreground"> ({year})</span>}
+                            <span className="text-muted-foreground"> — {note}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Dansk */}
+                  <button
+                    type="button"
+                    onClick={() => setValeDaLangOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 hover:text-muted-foreground pt-1 transition-colors"
+                  >
+                    {valeDaLangOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronDown className="h-3 w-3 -rotate-90" />}
+                    Dansk
+                  </button>
+                  {valeDaLangOpen && (
+                    <ul className="space-y-1.5 text-[11px]">
+                      {[
+                        { author: "Dansk Sprognævn", work: "Retskrivningsordbogen (dsn.dk)", year: "2012 / løbende", note: "alle moduler" },
+                        { author: "Galberg Jacobsen / Jarvad", work: "Dansk Sproglære (Gyldendal)", year: "2010", note: "Passive, NominalStyle, Redundancy, WeaselWords" },
+                        { author: "Lund, Jørn", work: "Sproget i avisen — stilistik og skriftsprog", year: null, note: "WeaselWords, WordyPhrases, Buzzwords, SprogFejl" },
+                        { author: "Hannemand, Bjarne", work: "Godt Sprog (Gyldendal)", year: "2009", note: "NominalStyle, WordyPhrases, WeaselWords" },
+                        { author: "ODS", work: "Ordbog over det Danske Sprog (ordnet.dk)", year: "løbende", note: "Redundancy, Anglicismer" },
+                        { author: "Jarvad, Pia", work: "Nye ord — hvorfor og hvordan? (Gyldendal)", year: "1999", note: "Anglicismer" },
+                      ].map(({ author, work, year, note }) => (
+                        <li key={author} className="flex gap-2">
+                          <span className="text-muted-foreground shrink-0">·</span>
+                          <span>
+                            <span className="font-medium text-foreground/80">{author}</span>
+                            {" – "}
+                            <span className="italic">{work}</span>
+                            {year && <span className="text-muted-foreground"> ({year})</span>}
+                            <span className="text-muted-foreground"> — {note}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Norsk */}
+                  <button
+                    type="button"
+                    onClick={() => setValeNoLangOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 hover:text-muted-foreground pt-1 transition-colors"
+                  >
+                    {valeNoLangOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronDown className="h-3 w-3 -rotate-90" />}
+                    Norsk
+                  </button>
+                  {valeNoLangOpen && (
+                    <ul className="space-y-1.5 text-[11px]">
+                      {[
+                        { author: "Vinje, Finn-Erik", work: "Moderne norsk (Universitetsforlaget, 6. utg.)", year: "1990", note: "alle moduler — det norske stilhåndboken" },
+                        { author: "Språkrådet", work: "sprakradet.no — bokmålsrådgivning og klarspråk", year: "løpende", note: "WeaselWords, Anglisismer, SprakFeil" },
+                        { author: "Bokmålsordboka", work: "bokmaalsordboka.no (Universitetet i Oslo)", year: "løpende", note: "Redundancy, Anglisismer" },
+                        { author: "Lie, Svein", work: "Innføring i norsk syntaks (Universitetsforlaget, 4. utg.)", year: "2003", note: "Passive, NominalStyle, WordyPhrases" },
+                        { author: "NTB Språk", work: "NTBs språkbok — stilguide for norsk pressetekst", year: null, note: "WeaselWords, WordyPhrases, NominalStyle, Passive" },
+                        { author: "Berge, Kjell Lars m.fl.", work: "Å skape mening med språk (LNU/Cappelen)", year: "1998", note: "WeaselWords, NominalStyle, WordyPhrases" },
+                      ].map(({ author, work, year, note }) => (
+                        <li key={author} className="flex gap-2">
+                          <span className="text-muted-foreground shrink-0">·</span>
+                          <span>
+                            <span className="font-medium text-foreground/80">{author}</span>
+                            {" – "}
+                            <span className="italic">{work}</span>
+                            {year && <span className="text-muted-foreground"> ({year})</span>}
+                            <span className="text-muted-foreground"> — {note}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
                   <p className="text-[10px] text-muted-foreground/70 pt-1">
                     Rules are suggestions only. All credit for the underlying style guidance belongs to the original authors.
                   </p>

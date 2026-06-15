@@ -311,6 +311,7 @@ class UserSettings(Base):
     vale_mode: Mapped[str] = mapped_column(Text, default="off")
     vale_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     vale_config_path: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    vale_custom_rules: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
     ai_disabled: Mapped[int] = mapped_column(Integer, default=0)
     # Multi-provider AI adapter (Phase 2)
     active_provider: Mapped[str] = mapped_column(String(50), default="openrouter")

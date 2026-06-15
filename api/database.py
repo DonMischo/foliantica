@@ -193,6 +193,15 @@ def migrate_vale():
             pass
 
 
+def migrate_vale_custom_rules():
+    """Add vale_custom_rules column to user_settings."""
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE user_settings ADD COLUMN vale_custom_rules TEXT"))
+    except Exception:
+        pass
+
+
 def migrate_project_language():
     """Add language column to projects."""
     try:
