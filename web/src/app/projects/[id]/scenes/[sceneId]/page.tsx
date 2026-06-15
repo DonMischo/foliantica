@@ -789,6 +789,7 @@ export default function ScenePage() {
             text={content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()}
             language={project?.book_meta?.language ?? undefined}
             onClose={() => setValePanelOpen(false)}
+            onJumpTo={(matched, offset) => jumpToGrammarMatchRef.current?.(matched, offset)}
           />
         )}
 

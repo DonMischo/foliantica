@@ -17,7 +17,7 @@ const SEV = {
 
 // ── Alert card ────────────────────────────────────────────────────────────────
 
-function AlertCard({ alert }: { alert: ValeAlert }) {
+function AlertCard({ alert, onJumpTo }: { alert: ValeAlert; onJumpTo?: (matched: string, offset: number) => void }) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const cfg = SEV[alert.Severity] ?? SEV.suggestion;
@@ -29,6 +29,12 @@ function AlertCard({ alert }: { alert: ValeAlert }) {
     setTimeout(() => setCopied(null), 1500);
   };
 
+  const handleClick = () => {
+    const next = !expanded;
+    setExpanded(next);
+    if (next) onJumpTo?.(alert.Match, alert.Span[0] - 1);
+  };
+
   // Rule name: e.g. "write-good.Weasel" → show short name "Weasel" + package "write-good"
   const [pkg, ruleName] = alert.Check.includes(".")
     ? alert.Check.split(".", 2)
@@ -37,7 +43,7 @@ function AlertCard({ alert }: { alert: ValeAlert }) {
   return (
     <div
       className={cn("rounded-md border text-xs", cfg.border, cfg.bg)}
-      onClick={() => setExpanded(e => !e)}
+      onClick={handleClick}
     >
       {/* Header */}
       <div className="flex items-start gap-2 px-2.5 py-2 cursor-pointer select-none">
@@ -98,11 +104,12 @@ interface Props {
   text: string;
   language?: string;
   onClose: () => void;
+  onJumpTo?: (matched: string, offset: number) => void;
 }
 
 const SEVERITIES: ValeAlert["Severity"][] = ["error", "warning", "suggestion"];
 
-export function ValePanel({ text, language, onClose }: Props) {
+export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
   const check = useValeCheck();
 
   const byGroup = (check.data?.alerts ?? []).reduce<Record<string, ValeAlert[]>>(
@@ -185,7 +192,7 @@ export function ValePanel({ text, language, onClose }: Props) {
                             )}
                           </p>
                           <div className="space-y-1.5">
-                            {ruleAlerts.map((a, i) => <AlertCard key={i} alert={a} />)}
+                            {ruleAlerts.map((a, i) => <AlertCard key={i} alert={a} onJumpTo={onJumpTo} />)}
                           </div>
                         </div>
                       );
