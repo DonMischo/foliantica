@@ -334,6 +334,128 @@ class TestDetectVale:
         assert r.json()["docker"] is True
 
 
+# ── Custom rules ─────────────────────────────────────────────────────────────
+
+class TestValeCustomRules:
+    def test_get_custom_rules_empty_by_default(self, client):
+        r = client.get("/api/vale/custom-rules")
+        assert r.status_code == 200
+        assert r.json() == {"rules": {}}
+
+    def test_put_and_get_roundtrip(self, client):
+        rules = {
+            "de": {
+                "WeaselWords": ["sicherlich", "eigentlich"],
+                "Redundancy": {"alter Hase": "Hase"},
+            }
+        }
+        r = client.put("/api/vale/custom-rules", json={"rules": rules})
+        assert r.status_code == 200
+        assert r.json() == {"ok": True}
+
+        r2 = client.get("/api/vale/custom-rules")
+        assert r2.status_code == 200
+        assert r2.json()["rules"] == rules
+
+    def test_put_replaces_previous(self, client):
+        client.put("/api/vale/custom-rules", json={"rules": {"de": {"WeaselWords": ["first"]}}})
+        client.put("/api/vale/custom-rules", json={"rules": {"de": {"WeaselWords": ["second"]}}})
+        r = client.get("/api/vale/custom-rules")
+        assert r.json()["rules"] == {"de": {"WeaselWords": ["second"]}}
+
+    def test_rule_meta_known_language(self, client):
+        r = client.get("/api/vale/rule-meta/de")
+        assert r.status_code == 200
+        rules = r.json()["rules"]
+        names = [rule["name"] for rule in rules]
+        assert "WeaselWords" in names
+        assert "Redundancy" in names
+        # Each rule has a type field
+        for rule in rules:
+            assert rule["type"] in ("existence", "substitution")
+
+    def test_rule_meta_type_values(self, client):
+        r = client.get("/api/vale/rule-meta/de")
+        rules_by_name = {rule["name"]: rule["type"] for rule in r.json()["rules"]}
+        assert rules_by_name.get("WeaselWords") == "existence"
+        assert rules_by_name.get("Buzzwords") == "existence"
+        assert rules_by_name.get("Redundancy") == "substitution"
+        assert rules_by_name.get("NominalStyle") == "substitution"
+
+    def test_rule_meta_unsupported_language(self, client):
+        r = client.get("/api/vale/rule-meta/xx")
+        assert r.status_code == 200
+        assert r.json() == {"rules": []}
+
+    def test_custom_existence_rules_injected_in_system_mode(self, client):
+        _enable_system(client)
+        rules = {"de": {"WeaselWords": ["sicherlich", "eigentlich"]}}
+        client.put("/api/vale/custom-rules", json={"rules": rules})
+
+        written_files: list[str] = []
+        orig_run = __import__("subprocess").run
+
+        def capture_run(cmd, **kw):
+            # Collect which style files were written to the temp dir
+            import os
+            styles_dir = kw.get("cwd", "")
+            if styles_dir:
+                for root, _, files in os.walk(os.path.join(styles_dir, "styles")):
+                    for f in files:
+                        written_files.append(f)
+            return _fake_run("{}", 0)
+
+        with (
+            patch("routers.vale.shutil.which", return_value="/usr/bin/vale"),
+            patch("routers.vale.subprocess.run", side_effect=capture_run),
+        ):
+            r = client.post("/api/vale/check", json={"text": "Sicherlich.", "language": "de"})
+
+        assert r.status_code == 200
+        assert "Custom_WeaselWords.yml" in written_files
+
+    def test_custom_substitution_rules_injected_in_docker_mode(self, client):
+        _enable_docker(client)
+        rules = {"de": {"Redundancy": {"alter Hase": "Hase"}}}
+        client.put("/api/vale/custom-rules", json={"rules": rules})
+
+        captured_payload: list[dict] = []
+
+        with respx.mock:
+            def capture(request):
+                captured_payload.append(request.content)
+                return httpx.Response(200, json={"alerts": []})
+
+            respx.post(f"{VALE_URL}/check").mock(side_effect=capture)
+            r = client.post("/api/vale/check", json={"text": "Alter Hase.", "language": "de"})
+
+        assert r.status_code == 200
+        payload = json.loads(captured_payload[0])
+        style_keys = list(payload.get("styles", {}).keys())
+        assert any("Custom_Redundancy" in k for k in style_keys)
+
+    def test_custom_rules_not_injected_for_other_language(self, client):
+        _enable_docker(client)
+        # Store rules for "de" but check with "fr" — no custom files should appear
+        rules = {"de": {"WeaselWords": ["sicherlich"]}}
+        client.put("/api/vale/custom-rules", json={"rules": rules})
+
+        captured_payload: list[dict] = []
+
+        with respx.mock:
+            def capture(request):
+                captured_payload.append(request.content)
+                return httpx.Response(200, json={"alerts": []})
+
+            respx.post(f"{VALE_URL}/check").mock(side_effect=capture)
+            r = client.post("/api/vale/check", json={"text": "Évidemment.", "language": "fr"})
+
+        assert r.status_code == 200
+        payload = json.loads(captured_payload[0])
+        style_keys = list(payload.get("styles", {}).keys())
+        assert not any("Custom_" in k for k in style_keys)
+
+
 # ── Live tests — real vale binary ─────────────────────────────────────────────
 
 VALE_LIVE_URL = "http://localhost:8085"
