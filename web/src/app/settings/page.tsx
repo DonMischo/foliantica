@@ -1778,9 +1778,13 @@ export default function SettingsPage() {
                       { author: "Wolf Schneider", work: "Deutsch fürs Leben", year: "1994", note: "WeaselWords, NominalStyle, WordyPhrases" },
                       { author: "Bastian Sick", work: "Der Dativ ist dem Genitiv sein Tod (Zwiebelfisch, Der Spiegel)", year: "2004–", note: "Redundancy, WeaselWords" },
                       { author: "Ludwig Reiners", work: "Stilkunst", year: "1944 / rev. 1991", note: "NominalStyle (Funktionsverbgefüge)" },
-                      { author: "Bundesverwaltungsamt", work: "Handbuch für Leichte Sprache", year: "2022", note: "WordyPhrases, Passive (Amtsdeutsch)" },
-                      { author: "Duden", work: "Stilwörterbuch der deutschen Sprache", year: "9. Aufl. 2010", note: "Redundancy" },
+                      { author: "Bundesverwaltungsamt", work: "Leitfaden Bürgernahe Sprache / Handbuch für Leichte Sprache", year: "2002 / 2022", note: "WordyPhrases, Passive, NominalStyle" },
+                      { author: "Duden", work: "Richtiges und gutes Deutsch (Bd. 9) / Stilwörterbuch (Bd. 2)", year: "9. Aufl. 2010", note: "Redundancy, FalscheFreunde" },
                       { author: "Wikipedia", work: "Liste der Pleonasmen (de.wikipedia.org/wiki/Pleonasmus)", year: "", note: "Redundancy" },
+                      { author: "Gesellschaft für deutsche Sprache (GfdS)", work: "Wörter des Jahres / Anglizismen-Empfehlungen", year: "laufend", note: "Anglizismen, Buzzwords" },
+                      { author: "Verein Deutsche Sprache (VDS)", work: "Anglizismen-Index", year: "laufend", note: "Anglizismen" },
+                      { author: "Unwort des Jahres (Sprachkritik-Jury)", work: "Unwörter & Modewörter", year: "seit 1991", note: "Buzzwords" },
+                      { author: "Institut für Deutsche Sprache (IDS)", work: "Grammis-Datenbank — Funktionsverbgefüge", year: "", note: "NominalStyle" },
                     ].map(({ author, work, year, note }) => (
                       <li key={author} className="flex gap-2">
                         <span className="text-muted-foreground shrink-0">·</span>

@@ -1,0 +1,144 @@
+# Quellen / Sources:
+#   - Wolf Schneider: "Deutsch fürs Leben" (Rowohlt, 1994), Kap. "Modewörter"
+#   - Wolf Schneider: "Deutsch! Das Handbuch für attraktives Schreiben" (Rowohlt, 2005)
+#   - Bastian Sick: Zwiebelfisch-Kolumnen (Spiegel Online)
+#   - Gesellschaft für deutsche Sprache (GfdS): Wörter des Jahres (Unwörter & Modewörter)
+#   - Unwort des Jahres (Jury der Sprachkritik, seit 1991), www.unwortdesjahres.net
+#   - Norbert Bolz: Kritik der Mediengesellschaft (2001)
+extends: existence
+message: "'%s' ist ein Buzzword / Modewort — konkreter formulieren?"
+level: suggestion
+ignorecase: true
+tokens:
+  # --- Unternehmens-Buzzwords (Schneider; GfdS Unwörter) ---
+  - Mehrwert
+  - Synergien
+  - Synergie
+  - Synergieeffekte
+  - Paradigmenwechsel
+  - Disruption
+  - disruptiv
+  - Transformation
+  - transformativ
+  - Digitalisierung
+  - \bdigital transformieren\b
+  - Agilität
+  - \bagil\b
+  - Roadmap
+  - Milestone
+  - Milestones
+  - \bKPI\b
+  - KPIs
+  - \bUSP\b
+  - \bROI\b
+  - \bWin-Win\b
+  - \bBest Practice\b
+  - \bBest Practices\b
+  - \bState of the Art\b
+  - Benchmark
+  - Benchmarks
+  - benchmarken
+  - Ökosystem
+  - Skalierung
+  - skalierbar
+  - skalieren
+  - \bPivot\b
+  - pivotieren
+  - Stakeholder
+  - Stakeholders
+  - \bBonus-Malus\b
+  - \bLean\b
+  - \bScrum\b
+  - Agilisierung
+  - \bNew Work\b
+  - \bWork-Life-Balance\b
+
+  # --- Politische Modewörter (GfdS Unwort; Schneider) ---
+  - Leitkultur
+  - alternativlos
+  - Schuldenbremse
+  - evidenzbasiert
+  - Resilienz
+  - resilient
+  - \bNachhaltigkeit\b
+  - \bnachhaltig\b
+  - Vernetzung
+  - \bvernetzen\b
+  - \bvernetzt\b
+  - \baufgestellt\b
+  - \bgut aufgestellt\b
+  - \bbreit aufgestellt\b
+  - Leuchtturm
+  - Leuchtturmprojekt
+  - Leuchttürme
+
+  # --- Vage Positivadjektive (Schneider; Sick) ---
+  - \binnovativ\b
+  - Innovation
+  - Innovationen
+  - \bganzheitlich\b
+  - zukunftsorientiert
+  - kundenorientiert
+  - \bproaktiv\b
+  - \boutstanding\b
+  - \bexzellent\b
+  - Exzellenz
+  - \bKompetenz\b
+  - Kompetenzen
+  - \bQualität leben\b
+  - \bLeidenschaft\b
+  - \bHerzblut\b
+  - \bmit Passion\b
+  - \bBegeisterung\b
+  - \bkompetent\b
+  - \bmotiviert\b
+  - \bengagiert\b
+  - \bdynamisch\b
+  - \bflexibel\b
+  - \bmodern\b
+  - \bzukunftsweisend\b
+  - \bfortschrittlich\b
+  - \bzukunftsfähig\b
+  - \bintelligent\b
+  - \bsmart\b
+  - \bdigital\b
+
+  # --- Unternehmensphrasen (Sick; Schneider) ---
+  - \bauf Augenhöhe\b
+  - \baus einer Hand\b
+  - \brund um die Uhr\b
+  - \büber den Tellerrand\b
+  - \bdie Extrameile\b
+  - \bextra Meile\b
+  - \bdie Extrameile gehen\b
+  - \bwir leben\b
+  - \bwir stehen für\b
+  - \bwir setzen auf\b
+  - \bMehrwert schaffen\b
+  - \bMehrwert bieten\b
+  - \bSynergien heben\b
+  - \bSynergien nutzen\b
+  - \bSynergien erschließen\b
+  - \bauf ein neues Level\b
+  - \bnächstes Level\b
+  - \bauf das nächste Level\b
+  - \bGame Changer\b
+  - \bGame-Changer\b
+
+  # --- Füllende Superlative (Schneider) ---
+  - \bweltbeste\b
+  - \beinzigartig\b
+  - \beinmalig\b
+  - \bphänomenal\b
+  - \bbahnbrechend\b
+  - \brevolutionär\b
+  - \bspektakulär\b
+  - \bepochemachend\b
+  - \bwegweisend\b
+  - \brichtungsweisend\b
+  - \bhistorisch\b
+  - \bhistorischer Moment\b
+  - \bungekannte Ausmaße\b
+  - \bexklusiv\b
+  - \bpremium\b
+  - \bprestigeträchtig\b

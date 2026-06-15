@@ -1,0 +1,157 @@
+# Quellen / Sources:
+#   - Bastian Sick: "Der Dativ ist dem Genitiv sein Tod", Bd. 1-3 (Kiepenheuer & Witsch, 2004-)
+#   - Bastian Sick: Zwiebelfisch-Kolumnen (Spiegel Online)
+#   - Wolf Schneider: "Deutsch fürs Leben" (Rowohlt, 1994)
+#   - Wolf Schneider: "Deutsch! Das Handbuch für attraktives Schreiben" (Rowohlt, 2005)
+#   - Gesellschaft für deutsche Sprache (GfdS): Empfehlungen zu Anglizismen
+#   - Verein Deutsche Sprache (VDS): Anglizismen-Index, www.vds-ev.de/anglizismenindex
+extends: substitution
+message: "Anglizismus: '%s' — deutsche Alternative: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Business / Büro (Sick; Schneider; GfdS) ---
+  Meeting: Besprechung
+  Meetings: Besprechungen
+  Event: Veranstaltung
+  Events: Veranstaltungen
+  Workshop: Seminar
+  Workshops: Seminare
+  Deadline: Abgabetermin
+  Deadlines: Abgabetermine
+  Feedback: Rückmeldung
+  Update: Aktualisierung
+  Updates: Aktualisierungen
+  Upgrade: Verbesserung
+  Upgrades: Verbesserungen
+  Backup: Sicherungskopie
+  Backups: Sicherungskopien
+  Job: Stelle
+  Jobs: Stellen
+  Manager: Leiter
+  Managerin: Leiterin
+  Management: Unternehmensführung
+  Marketing: Vermarktung
+  Controlling: Kostenkontrolle
+  Reporting: Berichtswesen
+  Brainstorming: Ideensammlung
+  Coaching: Betreuung
+  Coach: Trainer
+  Headquarter: Zentrale
+  Headquarters: Zentrale
+  Newsletter: Rundschreiben
+  Sponsoring: Förderung
+  Sponsor: Förderer
+  Sponsors: Förderer
+  Interview: Gespräch
+  Interviews: Gespräche
+  Präsentation: Vortrag
+
+  # --- Digital / Technik (VDS Anglizismen-Index; GfdS) ---
+  Content: Inhalt
+  App: Anwendung
+  Apps: Anwendungen
+  Link: Verweis
+  Links: Verweise
+  Homepage: Startseite
+  Download: Herunterladen
+  Downloads: Herunterladen
+  Upload: Hochladen
+  Uploads: Hochladen
+  Login: Anmeldung
+  Logout: Abmeldung
+  Account: Konto
+  Accounts: Konten
+  Username: Benutzername
+  Usernames: Benutzernamen
+  Password: Passwort
+  Passwords: Passwörter
+  Browser: Webbrowser
+  Stream: Datenstrom
+  Streams: Datenströme
+  Streaming: Übertragung
+  Hashtag: Schlagwort
+  Hashtags: Schlagwörter
+  Post: Beitrag
+  Posts: Beiträge
+  Clip: Kurzfilm
+  Clips: Kurzfilme
+  Trailer: Vorschau
+  Trailers: Vorschauen
+  Chat: Gespräch
+
+  # --- Alltag / Lifestyle (Sick; Schneider) ---
+  Kids: Kinder
+  Teenager: Jugendliche
+  Lifestyle: Lebensstil
+  Party: Feier
+  Partys: Feiern
+  Shopping: Einkaufen
+  Sale: Ausverkauf
+  Sales: Ausverkauf
+  Ticket: Karte
+  Tickets: Karten
+  Outlet: Fabrikverkauf
+  Outlets: Fabrikverkäufe
+  Entertainment: Unterhaltung
+  Show: Vorführung
+  Shows: Vorführungen
+  Hit: Schlager
+  Hits: Schlager
+  Date: Verabredung
+  Dates: Verabredungen
+  Story: Geschichte
+  Stories: Geschichten
+  Feeling: Gefühl
+  Feelings: Gefühle
+  Timing: Zeitpunkt
+  Look: Aussehen
+  Outfit: Kleidung
+  Outfits: Kleidung
+  Trend: Tendenz
+  Trends: Tendenzen
+  Casting: Vorauswahl
+  Talkshow: Gesprächssendung
+  Talkshows: Gesprächssendungen
+  Fan: Anhänger
+  Fans: Anhänger
+  Star: Berühmtheit
+  Stars: Berühmtheiten
+
+  # --- Verben (VDS; Sick) ---
+  updaten: aktualisieren
+  geupdate: aktualisiert
+  geupdated: aktualisiert
+  geupdatet: aktualisiert
+  downloaden: herunterladen
+  gedownloadet: heruntergeladen
+  downloadt: lädt herunter
+  uploaden: hochladen
+  uploaded: hochgeladen
+  uploadt: lädt hoch
+  chatten: sich unterhalten
+  gechatte: unterhalten
+  posten: veröffentlichen
+  gepostet: veröffentlicht
+  sharen: teilen
+  geshare: geteilt
+  streamen: übertragen
+  gestreamt: übertragen
+  booten: starten
+  geboote: gestartet
+  crashen: abstürzen
+  gecrasht: abgestürzt
+  checken: prüfen
+  gecheckt: geprüft
+  fixen: beheben
+  gefixte: behoben
+  tracken: nachverfolgen
+  getrackt: nachverfolgt
+  monitoren: überwachen
+  managen: leiten
+  gemanagt: geleitet
+
+  # --- Adjektive (Sick; GfdS) ---
+  trendy: modisch
+  fancy: aufwendig
+  nerdy: fachversessen
