@@ -52,7 +52,6 @@ function AlertCard({ alert, onJumpTo }: { alert: ValeAlert; onJumpTo?: (matched:
           <p className="leading-snug text-foreground">{alert.Message}</p>
           <p className="text-muted-foreground mt-0.5 truncate">
             <span className="font-mono">{alert.Match}</span>
-            <span className="ml-1.5 opacity-60">· line {alert.Line}</span>
             <span className="ml-1.5 opacity-50">· {pkg}<span className="text-foreground/40">.</span>{ruleName}</span>
           </p>
         </div>
