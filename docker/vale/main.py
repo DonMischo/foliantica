@@ -32,16 +32,21 @@ def _lang(language: str | None) -> str:
 
 
 def _build_config(lang: str, has_foliantica: bool) -> str:
-    lines = ["StylesPath = styles", "MinAlertLevel = suggestion", ""]
     if lang in ("en", ""):
         based_on = "Vale, write-good, proselint"
         if has_foliantica:
             based_on += ", Foliantica"
     else:
-        lines.insert(2, "Vale.Spelling = NO")
-        based_on = "Vale, Foliantica" if has_foliantica else "Vale"
-    lines += ["[*.md]", f"BasedOnStyles = {based_on}"]
-    return "\n".join(lines) + "\n"
+        # Non-English: skip Vale built-ins (English spelling + style) entirely.
+        # Use only our Foliantica rules; fall back to bare Vale if none loaded.
+        based_on = "Foliantica" if has_foliantica else "Vale"
+    return (
+        "StylesPath = styles\n"
+        "MinAlertLevel = suggestion\n"
+        "\n"
+        "[*.md]\n"
+        f"BasedOnStyles = {based_on}\n"
+    )
 
 
 @app.post("/check")

@@ -118,13 +118,19 @@ def _check_system(text: str, config_path: str | None, language: str | None = Non
         if config_path:
             cmd += ["--config", config_path]
         else:
-            ini_parts = ["StylesPath = styles", "MinAlertLevel = suggestion", ""]
-            if not lang.startswith("en"):
-                ini_parts.insert(2, "Vale.Spelling = NO")
-            based_on = "Vale"
-            if styles:
-                based_on += ", Foliantica"
-            ini_parts += ["[*.md]", f"BasedOnStyles = {based_on}"]
+            if lang.startswith("en") or not lang:
+                based_on = "Vale"
+                if styles:
+                    based_on += ", Foliantica"
+            else:
+                based_on = "Foliantica" if styles else "Vale"
+            ini_parts = [
+                "StylesPath = styles",
+                "MinAlertLevel = suggestion",
+                "",
+                "[*.md]",
+                f"BasedOnStyles = {based_on}",
+            ]
             ini = Path(tmp) / ".vale.ini"
             ini.write_text("\n".join(ini_parts) + "\n", encoding="utf-8")
             cmd += ["--config", str(ini)]
