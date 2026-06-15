@@ -1,0 +1,240 @@
+# Fuentes / Sources:
+#   - Fundación del Español Urgente (FundéU): fundeu.es — recomendaciones de estilo
+#   - Real Academia Española (RAE): "Diccionario panhispánico de dudas" (DPD, 2005)
+#   - Álex Grijelmo: "Defensa apasionada del idioma español" (Taurus, 1998)
+#   - Álex Grijelmo: "El estilo del periodista" (Taurus, 1997)
+#   - Fernando Lázaro Carreter: "El dardo en la palabra" (Galaxia Gutenberg, 1997)
+#   - Libro de estilo de El País (Ediciones El País, 2014)
+#   - RAE/ASALE: "Diccionario de americanismos" (Santillana, 2010)
+extends: substitution
+message: "Anglicismo: '%s' — ¿en español: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Reuniones y organización empresarial (FundéU; Grijelmo) ---
+  meeting: reunión
+  meetings: reuniones
+  briefing: resumen informativo
+  briefings: resúmenes informativos
+  brainstorming: lluvia de ideas
+  workshop: taller
+  workshops: talleres
+  deadline: fecha límite
+  deadlines: fechas límite
+  networking: creación de contactos
+  staff: personal
+  manager: gerente
+  managers: gerentes
+  management: gestión
+  holding: grupo empresarial
+  outsourcing: externalización
+  freelance: autónomo
+  freelancer: autónomo
+  startup: empresa emergente
+  startups: empresas emergentes
+  pitch: presentación de proyecto
+  pitching: presentación de proyectos
+  feedback: retroalimentación
+  sponsor: patrocinador
+  sponsors: patrocinadores
+  sponsorship: patrocinio
+  newsletter: boletín informativo
+  newsletters: boletines informativos
+  ranking: clasificación
+  rankings: clasificaciones
+  lobbying: cabildeo
+  lobby: grupo de presión
+  leasing: arrendamiento financiero
+  royalty: canon
+  royalties: cánones
+  know-how: conocimientos técnicos
+  joint venture: empresa conjunta
+  dumping: competencia desleal
+  copyright: derechos de autor
+  target: objetivo
+  targets: objetivos
+
+  # --- Tecnología y medios digitales (FundéU; RAE DPD) ---
+  link: enlace
+  links: enlaces
+  login: inicio de sesión
+  logout: cierre de sesión
+  password: contraseña
+  passwords: contraseñas
+  username: nombre de usuario
+  usernames: nombres de usuario
+  email: correo electrónico
+  e-mail: correo electrónico
+  spam: correo no deseado
+  download: descarga
+  downloads: descargas
+  upload: subida
+  uploads: subidas
+  update: actualización
+  updates: actualizaciones
+  backup: copia de seguridad
+  backups: copias de seguridad
+  hardware: equipos informáticos
+  software: programas informáticos
+  app: aplicación
+  apps: aplicaciones
+  smartphone: teléfono inteligente
+  smartphones: teléfonos inteligentes
+  tablet: tableta
+  tablets: tabletas
+  hashtag: etiqueta
+  hashtags: etiquetas
+  selfie: autofoto
+  selfies: autofotos
+  streaming: transmisión en línea
+  blog: bitácora
+  blogs: bitácoras
+  blogger: bloguero
+  bloggers: blogueros
+  podcast: ... (podcast es ya ampliamente aceptado)
+  influencer: influidor
+  influencers: influidores
+  troll: provocador
+  trolls: provocadores
+  hacker: pirata informático
+  hackers: piratas informáticos
+  click: clic
+  clicks: clics
+  chat: conversación en línea
+  chats: conversaciones en línea
+  chatbot: agente conversacional
+  chatbots: agentes conversacionales
+  trending: tendencia
+  trend: tendencia
+  trends: tendencias
+  viral: viral (aceptado por RAE)
+  meme: meme (aceptado)
+  tuit: tuit (forma españolizada aceptada por RAE)
+  tweet: tuit
+  tweets: tuits
+  tuitear: tuitear (aceptado)
+  googlear: buscar en internet
+  wifi: red inalámbrica
+
+  # --- Medios y espectáculos (FundéU; Libro de estilo El País) ---
+  show: espectáculo
+  shows: espectáculos
+  casting: selección de actores
+  reality show: telerrealidad
+  reality: telerrealidad
+  talk show: programa de entrevistas
+  late show: programa nocturno
+  prime time: horario de máxima audiencia
+  spot: anuncio
+  spots: anuncios
+  clip: videoclip
+  clips: videoclips
+  trailer: avance
+  trailers: avances
+  flyer: folleto
+  flyers: folletos
+  remake: nueva versión
+  spin-off: derivación
+  franchise: franquicia
+  franchises: franquicias
+  playlist: lista de reproducción
+  playlists: listas de reproducción
+  single: sencillo
+  singles: sencillos
+  hit: éxito
+  selfie: autofoto
+
+  # --- Moda, estilo y consumo (Grijelmo; FundéU) ---
+  look: aspecto
+  outfit: atuendo
+  outfits: atuendos
+  fashion: moda
+  vintage: clásico
+  brand: marca
+  brands: marcas
+  branding: imagen de marca
+  shopping: compras
+  shop: tienda
+  stock: existencias
+  stocks: existencias
+  ticket: entrada
+  tickets: entradas
+  voucher: vale
+  vouchers: vales
+  premium: de primera calidad
+  low cost: de bajo coste
+
+  # --- Alimentación y hostelería (FundéU) ---
+  brunch: almuerzo tardío
+  catering: servicio de banquetes
+  food truck: furgoneta de comida
+  fast food: comida rápida
+  happy hour: hora de descuentos
+  bar: bar (aceptado)
+  chef: cocinero jefe
+  gourmet: gastrónomo
+
+  # --- Ocio, deporte y bienestar (FundéU; RAE DPD) ---
+  running: carrera a pie
+  fitness: forma física
+  wellness: bienestar
+  spa: balneario
+  check in: registro
+  check-in: registro
+  check out: salida
+  check-out: salida
+  resort: complejo turístico
+  camping: campamento
+  hobby: afición
+  fan: aficionado
+  fans: aficionados
+  coach: entrenador
+  coaches: entrenadores
+  coaching: orientación
+  crack: as
+  record: marca
+  records: marcas
+
+  # --- Anglicismos verbales (FundéU; Grijelmo) ---
+  clickar: hacer clic
+  cliquear: hacer clic
+  deletear: eliminar
+  chequear: verificar
+  customizar: personalizar
+  resetear: reiniciar
+  bikear: andar en bici
+  surfear: navegar
+  twittear: tuitear
+  tweetear: tuitear
+  postear: publicar
+  linkear: enlazar
+  formatear: dar formato
+  scrollear: desplazarse
+  taggear: etiquetar
+  loguear: iniciar sesión
+  chatear: conversar en línea
+  mailing: envío de correos
+  printear: imprimir
+  googlear: buscar en internet
+  rentar: alquilar
+  stockear: almacenar
+  marquetear: comercializar
+  liderar: dirigir
+
+  # --- Publicidad y marketing (Libro de estilo El País; FundéU) ---
+  banner: pancarta publicitaria
+  banners: pancartas publicitarias
+  landing page: página de destino
+  landing: página de destino
+  claim: eslogan
+  claims: eslóganes
+  copywriting: redacción publicitaria
+  storytelling: narración
+  engagement: participación
+  reach: alcance
+  awareness: conocimiento de marca
+  brochure: folleto
+  brochures: folletos
+  press release: nota de prensa
+  off the record: extraoficialmente
+  background: antecedentes

@@ -1,11 +1,122 @@
+# Sources :
+#   - Maurice Grevisse / André Goosse : « Le Bon Usage » (De Boeck, 15e éd., 2011)
+#   - Jean Girodet : « Dictionnaire des pièges et difficultés de la langue française » (Bordas, 1988)
+#   - Académie française : recommandations officielles
+#   - Office québécois de la langue française (OQLF) : Grand dictionnaire terminologique
+#   - Commission générale de terminologie et de néologie : Journal officiel
 extends: substitution
-message: "'%s' est redondant — préférer '%s'."
-level: warning
+message: "Pléonasme / redondance : '%s' — un mot de trop. Préférer '%s' ?"
+level: suggestion
+ignorecase: true
 swap:
+  # --- Redondances directionnelles (Grevisse ; Girodet) ---
   monter en haut: monter
   descendre en bas: descendre
+  entrer dedans: entrer
+  entrer à l'intérieur: entrer
+  sortir dehors: sortir
+  sortir à l'extérieur: sortir
   reculer en arrière: reculer
   avancer en avant: avancer
+  ajouter en plus: ajouter
+  revenir en arrière: revenir
+
+  # --- Redondances verbales (Grevisse ; Girodet) ---
   répéter à nouveau: répéter
+  répéter de nouveau: répéter
+  répéter encore une fois: répéter
+  réitérer à nouveau: réitérer
+  recommencer à nouveau: recommencer
+  reconsidérer à nouveau: reconsidérer
+  prédire à l'avance: prédire
   prévoir à l'avance: prévoir
+  anticiper à l'avance: anticiper
+  planifier à l'avance: planifier
+  réserver à l'avance: réserver
+  réservation préalable: réservation
+  avertissement préalable: avertissement
+  avance préalable: avance
+  autorisation préalable: autorisation
+
+  # --- Tautologies nominales (Girodet ; Académie française) ---
+  consensus général: consensus
+  consensus commun: consensus
   collaborer ensemble: collaborer
+  coopérer ensemble: coopérer
+  réunir ensemble: réunir
+  se réunir ensemble: se réunir
+  résultat final: résultat
+  conclusion finale: conclusion
+  bilan définitif: bilan
+  monopole exclusif: monopole
+  panacée universelle: panacée
+  hasard imprévu: hasard
+  voire même: voire
+  s'avérer vrai: s'avérer
+  s'avérer faux: se révéler faux
+  prémisse de base: prémisse
+  alternative entre deux options: alternative
+  danger potentiel: danger
+  risque potentiel: risque
+  bénéfice additionnel supplémentaire: bénéfice supplémentaire
+  mélange de différents: mélange
+  première priorité: priorité
+  priorité principale: priorité
+  seul et unique: seul
+  raison de la cause: raison
+  au jour d'aujourd'hui: aujourd'hui
+  une belle apparence esthétique: une belle apparence
+  éruption volcanique du volcan: éruption volcanique
+  acteur actif: acteur
+
+  # --- Redondances temporelles (Girodet ; Grevisse) ---
+  moment présent actuel: moment présent
+  période de temps: période
+  à l'heure actuelle en ce moment: en ce moment
+  jamais au grand jamais: jamais
+  toujours et à tout moment: toujours
+  dès à présent maintenant: maintenant
+
+  # --- Syndrome RAS — acronymes avec le mot redondant (OQLF ; Girodet) ---
+  # PIN = Personal Identification Number (Numéro d'Identification Personnel)
+  numéro PIN: PIN
+  code PIN numéro: code PIN
+  # VIH = Virus de l'Immunodéficience Humaine
+  virus VIH: VIH
+  VIH virus: VIH
+  # SIDA = Syndrome d'ImmunoDéficience Acquise
+  syndrome SIDA: SIDA
+  SIDA syndrome: SIDA
+  # ONG = Organisation Non Gouvernementale
+  organisation ONG: ONG
+  ONG organisation: ONG
+  # RAM = Random Access Memory (mémoire vive)
+  mémoire RAM: RAM
+  RAM mémoire: RAM
+  # DVD = Digital Versatile Disc
+  disque DVD: DVD
+  DVD disque: DVD
+  # CD = Compact Disc
+  disque CD: CD
+  CD disque: CD
+  # PDF = Portable Document Format
+  format PDF: PDF
+  PDF format: PDF
+  # GPS = Global Positioning System
+  système GPS: GPS
+  GPS système: GPS
+  # TVA = Taxe sur la Valeur Ajoutée
+  taxe TVA: TVA
+  TVA taxe: TVA
+  # ISBN = International Standard Book Number
+  numéro ISBN: ISBN
+  ISBN numéro: ISBN
+  # HTML = HyperText Markup Language
+  langage HTML: HTML
+  HTML langage: HTML
+  # ADSL = Asymmetric Digital Subscriber Line
+  ligne ADSL: ADSL
+  ADSL ligne: ADSL
+  # USB = Universal Serial Bus
+  câble USB: USB
+  USB câble: USB

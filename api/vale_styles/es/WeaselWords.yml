@@ -1,7 +1,16 @@
+# Fuentes / Sources:
+#   - Fernando Lázaro Carreter: "El dardo en la palabra" (Galaxia Gutenberg, 1997)
+#   - Álex Grijelmo: "El estilo del periodista" (Taurus, 1997)
+#   - Álex Grijelmo: "Defensa apasionada del idioma español" (Taurus, 1998)
+#   - Fundación del Español Urgente (FundéU): fundeu.es — recomendaciones de estilo
+#   - Libro de estilo de El País (Ediciones El País, 2014)
+#   - Real Academia Española (RAE): "Diccionario panhispánico de dudas" (DPD, 2005)
 extends: existence
-message: "'%s' es un término vago — ¿más concreto?"
+message: "'%s' es un término vago o relleno — ¿más concreto?"
 level: warning
+ignorecase: true
 tokens:
+  # --- Intensificadores que debilitan (Grijelmo; Lázaro Carreter) ---
   - \bmuy\b
   - \brealmente\b
   - \bbastante\b
@@ -15,3 +24,132 @@ tokens:
   - \bclaramente\b
   - \btotalmente\b
   - \befectivamente\b
+  - \babsolutamente\b
+  - \bcompletamente\b
+  - \bplenamente\b
+  - \benteramente\b
+  - \bperfectamente\b
+  - \bexactamente\b
+  - \bprecisamente\b
+  - \binnegablemente\b
+  - \bindudablemente\b
+  - \bindiscutiblemente\b
+
+  # --- Evidenciales vacíos (Lázaro Carreter; Grijelmo) ---
+  - \bevidentemente\b
+  - \bnaturalmente\b
+  - \blógicamente\b
+  - \bincuestionablemente\b
+  - \bobviamente\b
+  - \bsin duda\b
+  - \bsin lugar a dudas\b
+  - \bsabido es que\b
+  - \btodo el mundo sabe\b
+  - \bes bien sabido\b
+  - \bes notorio que\b
+  - \bes obvio que\b
+
+  # --- Palabras comodín (Grijelmo: "palabras que sirven para todo") ---
+  - \btema\b
+  - \bcosa\b
+  - \basunto\b
+  - \bcuestión\b
+  - \bproblema\b
+  - \bsituación\b
+  - \baspectos\b
+  - \baspecto\b
+  - \bcontexto\b
+  - \bmarco\b
+  - ámbito
+  - \bentorno\b
+  - \bparámetros\b
+  - \bparámetro\b
+  - \bdimensión\b
+
+  # --- Cuantificadores vagos (FundéU; Grijelmo) ---
+  - \bvarios\b
+  - \bdiferentes\b
+  - \bdiversos\b
+  - \bnumerosos\b
+  - \bciertos\b
+  - \bdeterminados\b
+  - \balgún que otro\b
+  - \buna serie de\b
+  - \bun conjunto de\b
+  - \bun grupo de\b
+  - \bun número de\b
+  - \buna cantidad de\b
+  - \bnumerosas\b
+  - \bdiferentes tipos de\b
+
+  # --- Atenuadores epistémicos (Grijelmo; RAE DPD) ---
+  - \bde alguna manera\b
+  - \bde algún modo\b
+  - \ben cierta medida\b
+  - \ben cierto modo\b
+  - \ben cierto sentido\b
+  - \bhasta cierto punto\b
+  - \bpor así decirlo\b
+  - \bpor así decir\b
+  - \bpor decirlo así\b
+  - \bde alguna forma\b
+  - \ben cierta forma\b
+
+  # --- Relleno temporal (FundéU; Libro de estilo El País) ---
+  - \ben la actualidad\b
+  - \ben estos momentos\b
+  - \ben el momento actual\b
+  - \ba día de hoy\b
+  - \ben el día de hoy\b
+  - \ba fecha de hoy\b
+  - \ben el presente\b
+  - \bactualmente\b
+  - \bhoy en día\b
+  - \ben nuestros días\b
+  - \ben los tiempos actuales\b
+  - \bnos encontramos\b
+  - \bpróximamente\b
+  - \ben breve\b
+  - \ba corto plazo\b
+  - \ba medio plazo\b
+  - \ba largo plazo\b
+  - \ben un futuro próximo\b
+  - \bcuanto antes\b
+  - \ba la mayor brevedad\b
+
+  # --- Relleno burocrático / administrativo (Libro de estilo El País; FundéU) ---
+  - \bpor parte de\b
+  - \ba nivel de\b
+  - \ben el ámbito de\b
+  - \ben términos de\b
+  - \ben el marco de\b
+  - \ben el seno de\b
+  - \bdesde la perspectiva de\b
+  - \bes por ello que\b
+  - \bes por esto que\b
+  - \bes por eso que\b
+  - \ben el sentido de que\b
+  - \bcabe destacar\b
+  - \bcabe señalar\b
+  - \bcabe mencionar\b
+  - \bconviene señalar\b
+  - \bconviene destacar\b
+  - \bhay que señalar\b
+  - \bhay que destacar\b
+  - \bponer de manifiesto\b
+  - \bhacer hincapié\b
+  - \bel hecho de que\b
+  - \bla razón de que\b
+  - \bla circunstancia de que\b
+
+  # --- Perspectivas-coletilla (Grijelmo: no atenúes tu propia voz) ---
+  - \bdesde mi punto de vista\b
+  - \ben mi opinión\b
+  - \ba mi modo de ver\b
+  - \ba mi entender\b
+  - \ba mi juicio\b
+  - \bdesde mi perspectiva\b
+  - \bdesde mi visión\b
+  - \bpersonalmente creo\b
+  - \bpersonalmente pienso\b
+  - \bpersonalmente considero\b

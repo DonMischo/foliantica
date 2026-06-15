@@ -1,6 +1,41 @@
+# Fuentes / Sources:
+#   - Álex Grijelmo: "El estilo del periodista" (Taurus, 1997)
+#   - Fernando Lázaro Carreter: "El dardo en la palabra" (Galaxia Gutenberg, 1997)
+#   - Fundación del Español Urgente (FundéU): fundeu.es — recomendaciones de estilo
+#   - RAE/ASALE: "Nueva gramática de la lengua española" (Espasa, 2009)
 extends: existence
-message: "Posible voz pasiva — considera la voz activa."
+message: "Posible voz pasiva ('%s') — considera la voz activa para más claridad"
 level: suggestion
+ignorecase: true
 tokens:
+  # --- Pasiva perifrástica con "ser" (Grijelmo: la pasiva con ser suena artificial en español) ---
+  # Pretérito indefinido / imperfecto (las más comunes)
   - \bfue\b
   - \bfueron\b
+  - \bfuera\b
+  - \bfuesen\b
+
+  # Pretérito perfecto compuesto (ha/han sido)
+  - \bha sido\b
+  - \bhan sido\b
+
+  # Pretérito pluscuamperfecto (había/habían sido)
+  - \bhabía sido\b
+  - \bhabían sido\b
+
+  # Futuro simple (será/serán)
+  - \bserá\b
+  - \bserán\b
+
+  # Condicional (sería/serían)
+  - \bsería\b
+  - \bserían\b
+
+  # --- Pasiva progresiva "estar siendo" (calco del inglés "is being done", criticado por FundéU) ---
+  # "El proyecto está siendo revisado" → "Se está revisando el proyecto"
+  - \bestá siendo\b
+  - \bestán siendo\b
+  - \bestaba siendo\b
+  - \bestaban siendo\b
+  - \bestará siendo\b
+  - \bestarán siendo\b

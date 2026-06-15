@@ -1,0 +1,208 @@
+# Fuentes / Sources:
+#   - Álex Grijelmo: "El estilo del periodista" (Taurus, 1997)
+#   - Fernando Lázaro Carreter: "El dardo en la palabra" (Galaxia Gutenberg, 1997)
+#   - Fundación del Español Urgente (FundéU): fundeu.es — recomendaciones de estilo
+#   - Libro de estilo de El País (Ediciones El País, 2014)
+#   - Real Academia Española (RAE): "Diccionario panhispánico de dudas" (DPD, 2005)
+#   - Fundéu: "El español urgente" (Aguilar, 2014)
+#   - Grijelmo: "La seducción de las palabras" (Taurus, 2000)
+extends: existence
+message: "'%s' es una palabra de moda / jerga — ¿más concreto?"
+level: suggestion
+ignorecase: true
+tokens:
+  # --- Jerga empresarial y corporativa (Grijelmo; FundéU) ---
+  - \bsinergias\b
+  - \bsinergia\b
+  - \bsinérgico\b
+  - \bparadigma\b
+  - \bparadigmas\b
+  - \bparadigmático\b
+  - \bdisrupción\b
+  - \bdisruptivo\b
+  - \bdisruptiva\b
+  - \bdisruptivos\b
+  - \btransformación digital\b
+  - \btransformación\b
+  - \btransformador\b
+  - \btransformadora\b
+  - resiliencia
+  - \bresiliente\b
+  - \bresilienteS\b
+  - empoderamiento
+  - \bempoderar\b
+  - \bempoderando\b
+  - \bempoderamiento\b
+  - sostenibilidad
+  - \bsostenible\b
+  - \bsostenibles\b
+  - \becosistema\b
+  - \becosistemas\b
+  - escalabilidad
+  - \bescalable\b
+  - \bescalables\b
+  - \bescalar\b
+  - \bagilidad\b
+  - \bágil\b
+  - \bágiles\b
+  - \bpivote\b
+  - \bpivot\b
+  - \bpivotando\b
+  - \bpivotear\b
+  - \bstakeholder\b
+  - \bstakeholders\b
+  - \bbenchmark\b
+  - \bbenchmarks\b
+  - \bbenchmarking\b
+  - \bbest practice\b
+  - \bbest practices\b
+  - \blean\b
+  - \bscrum\b
+  - \bagile\b
+  - \bkanban\b
+  - \bsprints\b
+  - \bsprint\b
+  - \bKPI\b
+  - \bKPIs\b
+  - \bROI\b
+  - \bOKR\b
+  - \bOKRs\b
+  - \bUSP\b
+  - \bwin-win\b
+  - \bNew Work\b
+  - \bwork-life balance\b
+  - \broadmap\b
+  - \bhoja de ruta\b
+  - \bmilestone\b
+  - \bmilestones\b
+  - \btracción\b
+  - propuesta de valor
+  - \bvalor añadido\b
+  - \bvalor agregado\b
+  - \bgenerar valor\b
+  - \bañadir valor\b
+  - \bagregar valor\b
+  - \bcrear valor\b
+  - \baportar valor\b
+  - \bpalanca\b
+  - \bpalancas\b
+
+  # --- Startups y tecnología (FundéU; Grijelmo) ---
+  - \bstartup\b
+  - \bstartups\b
+  - \bscale-up\b
+  - \bunicornio\b
+  - \bunicornios\b
+  - \bfintech\b
+  - \bedtech\b
+  - \bhealthtech\b
+  - \bgreentech\b
+  - \bdeep tech\b
+  - \bspin-off\b
+  - \bspin off\b
+  - \bdisruptor\b
+  - \bdisruptores\b
+  - \binnovación abierta\b
+  - \bopen innovation\b
+
+  # --- Palabras políticas y sociales de moda (FundéU; Lázaro Carreter) ---
+  - \balternativlos\b
+  - \bevidencia\b
+  - \bbasado en evidencia\b
+  - \bevidenciado\b
+  - \bnueva normalidad\b
+  - \bnuevo normal\b
+  - \bnueva realidad\b
+  - \bcambio de paradigma\b
+  - \bnarrative\b
+  - \bnarrativa\b
+  - \brelato\b
+  - \bdiscurso\b
+  - \bagenda\b
+  - \bventana de oportunidad\b
+  - \bfoja de servicios\b
+  - \bactores\b
+
+  # --- Adjetivos vacíos (Grijelmo; Lázaro Carreter) ---
+  - \binnovador\b
+  - \binnovadora\b
+  - \binnovadores\b
+  - \binnovación\b
+  - \bvanguardista\b
+  - \bvanguardistas\b
+  - \bpuntero\b
+  - \bpuntera\b
+  - \bpunteros\b
+  - \bpunteras\b
+  - \bholístico\b
+  - \bholística\b
+  - \bglobal\b
+  - \bproactivo\b
+  - \bproactiva\b
+  - \bproactivos\b
+  - \bdinámico\b
+  - \bdinámica\b
+  - \bdinámicos\b
+  - \bflexible\b
+  - \bflexibles\b
+  - excelencia
+  - \bexcelente\b
+  - \bexcelentes\b
+  - compromiso
+  - \bcompromiso\b
+  - \bcomprometidos\b
+  - \bcomprometido\b
+  - \btransparente\b
+  - \btransparentes\b
+  - \btransparencia\b
+  - \bincluyente\b
+  - \binclusivo\b
+  - \binclusiva\b
+  - \binclusivos\b
+  - \bintegral\b
+  - \bintegrales\b
+  - \binterseccional\b
+
+  # --- Frases corporativas (Grijelmo; FundéU) ---
+  - \ba nivel de\b
+  - \bponer en valor\b
+  - \bgenerar impacto\b
+  - \btener impacto\b
+  - \bcrecer de forma exponencial\b
+  - \bcrece exponencialmente\b
+  - \bescalar el negocio\b
+  - \bpensar fuera de la caja\b
+  - \bfuera de la caja\b
+  - \bzona de confort\b
+  - \bzona de confort\b
+  - \bextraordinario\b
+  - \bexcepcional\b
+  - \bsin precedentes\b
+  - \bhistórico\b
+  - \bhistórica\b
+  - \bhistóricos\b
+  - \bépico\b
+  - \bépica\b
+  - \bépicos\b
+  - \bparadigmático\b
+  - \bpionero\b
+  - \bpionera\b
+  - \bpioneros\b
+  - \brevolucionario\b
+  - \brevolucionaria\b
+  - \bde primer nivel\b
+  - \bde primera categoría\b
+  - \bde primera línea\b
+  - \bde vanguardia\b
+  - \bde talla mundial\b
+  - \bde clase mundial\b
+  - \bpotenciar\b
+  - \bimpulsar\b
+  - \barticular\b
+  - \bvertebrar\b
+  - \bimplementar\b
+  - \bvisibilizar\b
+  - \btransversalizar\b
+  - \bimpactar\b
+  - capitalizar
+  - \bvehiculizar\b

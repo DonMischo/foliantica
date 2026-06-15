@@ -1,0 +1,95 @@
+# Sources :
+#   - Maurice Grevisse / André Goosse : « Le Bon Usage » (De Boeck, 15e éd., 2011)
+#   - Jean Girodet : « Dictionnaire des pièges et difficultés de la langue française » (Bordas, 1988)
+#   - Académie française : recommandations officielles
+#   - Office québécois de la langue française (OQLF) : Grand dictionnaire terminologique
+#   - Commission générale de terminologie et de néologie : Journal officiel
+extends: existence
+message: "'%s' — risque de confusion ou emploi critiqué : vérifier"
+level: warning
+ignorecase: false
+tokens:
+  # --- « éventuellement » ≠ « eventually » (Girodet ; Grevisse) ---
+  # En français : « éventuellement » = « le cas échéant, si l'occasion se présente »
+  # ≠ anglais « eventually » = « finalement, avec le temps, à terme »
+  # Calque très fréquent dans les textes influencés par l'anglais.
+  - éventuellement\b
+  - éventuel\b
+  - éventuelle\b
+
+  # --- « actuellement » ≠ « actually » (Girodet) ---
+  # En français : « actuellement » = « en ce moment, à l'heure actuelle »
+  # ≠ anglais « actually » = « en réalité, en fait »
+  # Emploi comme équivalent de « actually » est un anglicisme courant.
+  - \bactuellement\b
+
+  # --- « pallier à » — faute très répandue (Académie française ; Grevisse) ---
+  # « pallier » est transitif direct : « pallier un inconvénient » (sans « à »)
+  # « pallier à » est incorrect.
+  - \bpallier à\b
+  - \bpallie à\b
+  - \bpallient à\b
+  - \bpallié à\b
+  - \bpalliait à\b
+
+  # --- « s'avérer être » / « s'avérer vrai » (Grevisse ; Académie française) ---
+  # « s'avérer » signifie déjà « se révéler être » — la précision est redondante.
+  # « Il s'avère être faux » → « Il s'avère faux »
+  # « Il s'avère vrai » → « Il s'avère »
+  - \bs'avérer être\b
+  - \bs'avère être\b
+  - \bs'avèrent être\b
+  - \bs'avérait être\b
+  - \bs'avérer vrai\b
+  - \bs'avère vrai\b
+  - \bs'avèrent vrais\b
+
+  # --- « suite à » — emploi contesté (Académie française) ---
+  # L'Académie française déconseille « suite à » comme locution prépositive.
+  # Préférer : « à la suite de », « après », « en raison de », « par suite de »
+  - \bsuite à\b
+  - \bsuite au\b
+  - \bsuite aux\b
+
+  # --- « au niveau de » — emploi trop large (Girodet ; Académie française) ---
+  # « au niveau de » ne doit s'employer que dans un sens spatial ou hiérarchique.
+  # Critiqué quand utilisé à la place de « dans », « en », « sur », « quant à ».
+  - \bau niveau de\b
+  - \bau niveau du\b
+  - \bau niveau des\b
+
+  # --- Comparatif avec « comme » au lieu de « que » (Grevisse) ---
+  # « plus grand que » — non « plus grand comme » (influence dialectale / germanique)
+  - plus grand comme
+  - plus petit comme
+  - plus vieux comme
+  - plus jeune comme
+  - plus fort comme
+  - plus rapide comme
+  - meilleur comme
+  - pire comme
+  - plus long comme
+  - plus court comme
+
+  # --- « rester » ≠ « se reposer » (faux ami avec l'anglais « to rest ») ---
+  # Parfois confondu dans des textes bilingues / traductions.
+  # « Il reste » = he stays, not « il se repose » (he rests)
+  # (difficile à automatiser sans faux positifs — signalement conservatoire)
+
+  # --- Accord du verbe « être » avec l'attribut au lieu du sujet (Grevisse) ---
+  # « c'est eux » (courant) vs « ce sont eux » (norme écrite soutenue)
+  - \bc'est eux\b
+  - \bc'est elles\b
+  - \bc'est nous\b
+  - \bc'est vous\b
+
+  # --- Perspectivations-coûte — signalement (Girodet) ---
+  # Hedging personnel qui affaiblit inutilement le propos.
+  - \bde mon point de vue\b
+  - à mon avis
+  - \bselon moi\b
+  - à mon sens
+  - \bpour ma part\b
+  - \bpersonnellement je pense\b
+  - \bpersonnellement je crois\b
+  - \bà mon humble avis\b

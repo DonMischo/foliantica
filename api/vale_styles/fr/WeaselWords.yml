@@ -1,17 +1,171 @@
+# Sources :
+#   - Maurice Grevisse / André Goosse : « Le Bon Usage » (De Boeck, 15e éd., 2011)
+#   - Jean Girodet : « Dictionnaire des pièges et difficultés de la langue française » (Bordas, 1988)
+#   - Académie française : recommandations officielles et mises en garde
+#   - Office québécois de la langue française (OQLF) : Grand dictionnaire terminologique
+#   - Commission générale de terminologie et de néologie : enrichissement du français
 extends: existence
-message: "'%s' est un terme vague — formuler plus précisément ?"
+message: "'%s' est un terme vague ou remplissage — formuler plus précisément ?"
 level: warning
+ignorecase: true
 tokens:
+  # --- Intensificateurs qui affaiblissent (Grevisse ; Girodet) ---
   - \btrès\b
   - \bvraiment\b
   - \bassez\b
   - \bplutôt\b
   - \bsimplement\b
-  - \bévidemment\b
-  - \bvisiblement\b
-  - \bapparemment\b
-  - \bfranchement\b
-  - \bclairement\b
+  - \bcomplètement\b
   - \btotalement\b
-  - \bcarrément\b
   - \babsolument\b
+  - \bcarrément\b
+  - \bfranchement\b
+  - \bentièrement\b
+  - \bpleinement\b
+  - \bparfaitement\b
+  - \bexactement\b
+  - \bprécisément\b
+  - \bnettement\b
+  - \bformidablement\b
+  - \bterriblement\b
+  - \bextrêmement\b
+  - \bincroyablement\b
+  - \bproprement\b
+
+  # --- Évidentiels vides (Girodet ; Académie française) ---
+  - évidemment\b
+  - \bclairement\b
+  - \bmanifestement\b
+  - \bapparemment\b
+  - \bvisiblement\b
+  - \bindéniablement\b
+  - \bindiscutablement\b
+  - \bincontestablement\b
+  - \bnaturellement\b
+  - \blogiquement\b
+  - \bforcément\b
+  - \bnécessairement\b
+  - \bsans aucun doute\b
+  - à l'évidence
+  - de toute évidence
+  - \bil est clair que\b
+  - \bil est évident que\b
+  - \bil va de soi que\b
+  - \bil va sans dire que\b
+  - \bil est indéniable que\b
+  - \bcela va sans dire\b
+  - \btout le monde sait que\b
+  - \bil est bien connu que\b
+  - \bil est notoire que\b
+  - \bon sait que\b
+
+  # --- Mots-valises / mots fourre-tout (Girodet ; Grevisse) ---
+  - \bchose\b
+  - \btruc\b
+  - \bmachin\b
+  - \baspect\b
+  - \bdimension\b
+  - \bproblématique\b
+  - \bthématique\b
+  - \bquestion\b
+  - \bsujet\b
+  - \bcontexte\b
+  - \bdomaine\b
+  - \bsecteur\b
+  - \bniveau\b
+  - \bcadre\b
+  - \benjeu\b
+  - démarche
+  - \bapproche\b
+  - \bproblème\b
+  - \bsituation\b
+  - \bcas de figure\b
+
+  # --- Quantificateurs vagues (Grevisse ; OQLF) ---
+  - \bcertains\b
+  - \bcertaines\b
+  - \bquelques\b
+  - \bplusieurs\b
+  - \bdivers\b
+  - \bdiverses\b
+  - \bdifférents\b
+  - \bdifférentes\b
+  - \bnombreux\b
+  - \bnombreuses\b
+  - \bune série de\b
+  - \bun ensemble de\b
+  - \bun certain nombre de\b
+  - \bun grand nombre de\b
+  - \bune multitude de\b
+  - \bune variété de\b
+  - \bune panoplie de\b
+
+  # --- Atténuateurs épistémiques (Girodet ; Grevisse) ---
+  - \bd'une certaine façon\b
+  - \bd'une certaine manière\b
+  - \ben quelque sorte\b
+  - \bpour ainsi dire\b
+  - \bdans un sens\b
+  - \ben un sens\b
+  - \bjusqu'à un certain point\b
+  - \bdans une certaine mesure\b
+  - \ben quelque manière\b
+
+  # --- Remplissage temporel (Girodet ; Académie française) ---
+  - \bactuellement\b
+  - à l'heure actuelle
+  - à l'heure où nous parlons
+  - \baujourd'hui\b
+  - \ben ce moment\b
+  - à ce stade
+  - à ce jour
+  - \bprésentement\b
+  - \bdans un avenir proche\b
+  - \bprochainement\b
+  - \bbientôt\b
+  - \bdans les meilleurs délais\b
+  - \bau plus tôt\b
+  - \bau plus vite\b
+  - \bdans les plus brefs délais\b
+  - à terme
+  - à moyen terme
+  - à long terme
+  - à court terme
+  - dans l'immédiat
+
+  # --- Remplissage bureaucratique / administratif (Commission de terminologie ; OQLF) ---
+  - \ben ce qui concerne\b
+  - \bpar rapport à\b
+  - \bau niveau de\b
+  - \bdans le cadre de\b
+  - à cet égard
+  - \bil convient de noter\b
+  - \bil y a lieu de\b
+  - \bil est à noter que\b
+  - \bpour information\b
+  - à titre informatif
+  - \bpour rappel\b
+  - \bà titre de rappel\b
+  - \bil est important de souligner\b
+  - \bil convient de souligner\b
+  - \bil convient de préciser\b
+  - \bil importe de noter\b
+  - \bforce est de constater\b
+  - \bon notera que\b
+  - \bon précisera que\b
+
+  # --- Perspectivations-coûte (Girodet : ne pas affaiblir sa propre voix) ---
+  - \bde mon point de vue\b
+  - à mon avis
+  - \bselon moi\b
+  - à mon sens
+  - \bpour ma part\b
+  - \bpersonnellement je pense\b
+  - \bpersonnellement je crois\b
+  - \bà mon humble avis\b
+  - \bje pense que\b
+  - \bje crois que\b
+  - \bje trouve que\b
+  - \bje considère que\b
+  - \bselon moi\b
+  - \bà mon avis\b

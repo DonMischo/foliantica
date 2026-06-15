@@ -1,0 +1,134 @@
+# Sources :
+#   - Maurice Grevisse / André Goosse : « Le Bon Usage » (De Boeck, 15e éd., 2011)
+#   - Jean Girodet : « Dictionnaire des pièges et difficultés de la langue française » (Bordas, 1988)
+#   - Académie française : recommandations de style pour la clarté et la concision
+#   - Office québécois de la langue française (OQLF) : Guide de rédaction administrative
+#   - Commission générale de terminologie et de néologie : Journal officiel
+extends: substitution
+message: "Style nominal : '%s' — plus direct : '%s' ?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- « procéder à » (Girodet : le verbe simple est toujours préférable) ---
+  procéder à l'examen de: examiner
+  procéder à la vérification de: vérifier
+  procéder à la mise en place de: mettre en place
+  procéder à la signature de: signer
+  procéder à l'ouverture de: ouvrir
+  procéder à la fermeture de: fermer
+  procéder au règlement de: régler
+  procéder au paiement de: payer
+  procéder à la lecture de: lire
+  procéder à la livraison de: livrer
+  procéder à la révision de: réviser
+  procéder à l'analyse de: analyser
+  procéder à l'évaluation de: évaluer
+  procéder à la sélection de: sélectionner
+  procéder à la nomination de: nommer
+
+  # --- « effectuer » comme Streckverb (Girodet ; OQLF) ---
+  effectuer un paiement: payer
+  effectuer un contrôle: contrôler
+  effectuer une visite: visiter
+  effectuer un déplacement: se déplacer
+  effectuer une évaluation: évaluer
+  effectuer un achat: acheter
+  effectuer une vente: vendre
+  effectuer une réservation: réserver
+  effectuer une modification: modifier
+  effectuer un transfert: transférer
+  effectuer un investissement: investir
+  effectuer un retrait: retirer
+  effectuer un dépôt: déposer
+  effectuer une recherche: rechercher
+
+  # --- « réaliser » comme Streckverb (Académie française ; Girodet) ---
+  réaliser une étude: étudier
+  réaliser une analyse: analyser
+  réaliser un investissement: investir
+  réaliser un achat: acheter
+  réaliser une vente: vendre
+  réaliser une enquête: enquêter
+  réaliser un sondage: sonder
+  réaliser une évaluation: évaluer
+  réaliser une visite: visiter
+  réaliser un audit: auditer
+
+  # --- « mener » comme Streckverb (Girodet) ---
+  mener à bien: réussir
+  mener une réflexion: réfléchir
+  mener une étude: étudier
+  mener une enquête: enquêter
+  mener une analyse: analyser
+  mener des négociations: négocier
+  mener une action: agir
+
+  # --- « apporter » comme Streckverb (Girodet ; Académie française) ---
+  apporter une solution à: résoudre
+  apporter un soutien à: soutenir
+  apporter une contribution à: contribuer
+  apporter une aide à: aider
+  apporter une réponse à: répondre
+  apporter une modification à: modifier
+
+  # --- « assurer » comme Streckverb (OQLF ; Girodet) ---
+  assurer la gestion de: gérer
+  assurer la coordination de: coordonner
+  assurer le suivi de: suivre
+  assurer la réalisation de: réaliser
+  assurer le financement de: financer
+  assurer la promotion de: promouvoir
+  assurer le maintien de: maintenir
+
+  # --- « prendre » + substantif (Grevisse ; Girodet) ---
+  prendre la décision de: décider
+  prendre connaissance de: lire / consulter
+  prendre en considération: considérer
+  prendre en compte: tenir compte de
+  prendre en charge: charger de / assumer
+
+  # --- « avoir » + substantif abstrait (Girodet ; Grevisse) ---
+  avoir connaissance de: connaître
+  avoir conscience de: être conscient de
+  avoir la certitude de: être certain de
+  avoir la conviction de: être convaincu de
+  avoir la possibilité de: pouvoir
+  avoir la capacité de: pouvoir
+  avoir l'opportunité de: pouvoir
+  avoir recours à: recourir à
+  avoir pour objectif de: viser à
+  avoir l'intention de: vouloir
+
+  # --- « donner » + substantif (Girodet ; Académie française) ---
+  donner lieu à: entraîner
+  donner suite à: répondre à
+  donner accès à: permettre d'accéder à
+  donner naissance à: créer / engendrer
+  donner l'impression de: sembler
+
+  # --- « mettre » + substantif (Girodet ; Commission de terminologie) ---
+  mettre en œuvre: appliquer
+  mettre en place: établir
+  mettre en évidence: montrer
+  mettre en lumière: souligner
+  mettre en avant: souligner
+  mettre en question: questionner
+  mettre en cause: remettre en cause
+  mettre fin à: terminer
+  mettre à profit: exploiter
+
+  # --- « faire » + substantif (Girodet ; Grevisse) ---
+  faire état de: indiquer
+  faire part de: communiquer
+  faire preuve de: montrer
+  faire l'objet de: être soumis à
+  faire référence à: se référer à
+  faire usage de: utiliser
+  faire mention de: mentionner
+  faire allusion à: évoquer
+
+  # --- « émettre » comme Streckverb (OQLF) ---
+  émettre un avis sur: donner son avis sur
+  émettre un jugement sur: juger
+  émettre une opinion sur: donner son opinion sur
+  émettre un communiqué: communiquer

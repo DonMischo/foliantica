@@ -1,16 +1,158 @@
+# Fontes / Sources:
+#   - Celso Cunha / Lindley Cintra: "Nova Gramática do Português Contemporâneo" (João Sá da Costa, 1984/2014)
+#   - Cláudio Moreno: "Guia Prático de Estilo" (L&PM, 2009) — Brasil
+#   - Eduardo Martins: "Manual de Redação e Estilo de O Estado de S. Paulo" (1997)
+#   - Academia Brasileira de Letras (ABL): volp.academia.org.br
+#   - Academia das Ciências de Lisboa (ACL): academia.pt
+#   - Vocabulário Ortográfico Comum (VOC): vocabulario.cplp.org (Acordo Ortográfico 2009)
+#   - José Luís Nunes Moura: "Escrever em Português" (Presença, 2009) — Portugal
 extends: existence
-message: "'%s' é um termo vago — formular com mais precisão?"
+message: "'%s' é um termo vago ou de enchimento — formular de forma mais precisa?"
 level: warning
+ignorecase: true
 tokens:
+  # --- Intensificadores que enfraquecem (Moreno; Martins) ---
   - \bmuito\b
-  - \brealmente\b
   - \bbastante\b
+  - \bdeveras\b
+  - \bsobremaneira\b
   - \bsimplesmente\b
-  - \bobviamente\b
-  - \bbasicamente\b
-  - \btalvez\b
-  - \bcertamente\b
-  - \baparentemente\b
-  - \bdefinitivamente\b
-  - \bclaramente\b
+  - \bcompletamente\b
   - \btotalmente\b
+  - \babsolutamente\b
+  - \bdecididamente\b
+  - \bcertamente\b
+  - \bseguramente\b
+  - \bplenamente\b
+  - \binteiramente\b
+  - \bperfeitamente\b
+  - \bexatamente\b
+  - \bprecisamente\b
+  - \bnitidamente\b
+  - \bincrivelmente\b
+  - \bextraordinariamente\b
+  - \brealmente\b
+  - \bverdadeiramente\b
+  - \befetivamente\b
+
+  # --- Evidenciais vazios (Cunha/Cintra; Moreno) ---
+  - \bevidentemente\b
+  - \bclaramente\b
+  - \bmanifestamente\b
+  - \baparentemente\b
+  - \bvisivelmente\b
+  - \bindubitavelmente\b
+  - \bindiscutivelmente\b
+  - \binnegavelmente\b
+  - \bnaturalmente\b
+  - \blogicamente\b
+  - \bovviamente\b
+  - \bnotoriamente\b
+  - \bsem dúvida\b
+  - \bé claro que\b
+  - \bé evidente que\b
+  - \bé óbvio que\b
+  - \bé notório que\b
+  - \bcomo é sabido\b
+  - \bcomo todos sabem\b
+  - \bé sabido que\b
+
+  # --- Palavras-recipiente / coringas (Moreno; Martins) ---
+  - \bcoisa\b
+  - \bnegócio\b
+  - \baspecto\b
+  - \bdimensão\b
+  - \bproblemática\b
+  - \btemática\b
+  - \bquestão\b
+  - \bponto\b
+  - \bcontexto\b
+  - \bsetor\b
+  - âmbito
+  - \bnível\b
+  - \bquadro\b
+  - \bpanorama\b
+  - \bcenário\b
+  - \bsituação\b
+  - \bconjuntura\b
+  - \bvetor\b
+
+  # --- Quantificadores vagos (Cunha/Cintra; Moreno) ---
+  - \balguns\b
+  - \balgumas\b
+  - \bvários\b
+  - \bvárias\b
+  - \bdiversos\b
+  - \bdiversas\b
+  - \bnumerosos\b
+  - \bnumerosas\b
+  - \buma série de\b
+  - \bum conjunto de\b
+  - \bum certo número de\b
+  - \bum grande número de\b
+  - \buma multiplicidade de\b
+  - \buma variedade de\b
+  - \buma ampla gama de\b
+
+  # --- Atenuadores epistémicos (Cunha/Cintra; Moreno) ---
+  - \bde certa forma\b
+  - \bde alguma forma\b
+  - \bde certa maneira\b
+  - \bde alguma maneira\b
+  - \bpor assim dizer\b
+  - \bde certo modo\b
+  - \bpor certos ângulos\b
+  - \bsob certos aspetos\b
+  - \bsob certos aspectos\b
+
+  # --- Enchimentos temporais (Moreno; Martins) ---
+  - \batualmente\b
+  - \bno momento atual\b
+  - \bneste momento\b
+  - \bnos dias de hoje\b
+  - \bna atualidade\b
+  - \bna actualidade\b
+  - \bno dia de hoje\b
+  - \bhodiernamente\b
+  - \bo mais brevemente possível\b
+  - \bnum futuro próximo\b
+  - \ba curto prazo\b
+  - \ba médio prazo\b
+  - \ba longo prazo\b
+  - \bno imediato\b
+
+  # --- Enchimentos burocráticos (Moreno; VOC; Martins) ---
+  - \bno âmbito de\b
+  - \bem sede de\b
+  - \bno que concerne a\b
+  - \bno que diz respeito a\b
+  - \bno que se refere a\b
+  - \brelativamente a\b
+  - \bem relação a\b
+  - \bcom referência a\b
+  - \bcom respeito a\b
+  - \bentende-se que\b
+  - \bconsidere-se que\b
+  - \bconsidera-se que\b
+  - \bsalienta-se que\b
+  - \brefere-se que\b
+  - \bprecisa-se que\b
+  - \bsublinhe-se que\b
+  - \bdiga-se que\b
+  - \bimporta referir que\b
+  - \bcumpre referir que\b
+  - \bcumpre salientar que\b
+  - \bcumpre notar que\b
+  - \bpara os devidos efeitos\b
+  - \bpela presente\b
+
+  # --- Perspectivas-cobertura (Moreno: não enfraquecer a própria voz) ---
+  - \bao meu ver\b
+  - \bno meu entender\b
+  - \bdo meu ponto de vista\b
+  - \bna minha opinião\b
+  - \bpessoalmente entendo\b
+  - \bpessoalmente creio\b
+  - \bpessoalmente penso\b
+  - \bentendo que\b
+  - \bcreio que\b

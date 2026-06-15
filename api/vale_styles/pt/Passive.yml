@@ -1,6 +1,52 @@
+# Fontes / Sources:
+#   - Celso Cunha / Lindley Cintra: "Nova Gramática do Português Contemporâneo" (João Sá da Costa, 1984/2014)
+#   - Cláudio Moreno: "Guia Prático de Estilo" (L&PM, 2009)
+#   - Eduardo Martins: "Manual de Redação e Estilo de O Estado de S. Paulo" (1997)
+#   - Academia Brasileira de Letras (ABL)
 extends: existence
-message: "Possível voz passiva — prefira a voz ativa."
+message: "Possível forma passiva ('%s') — preferir a forma ativa para maior clareza"
 level: suggestion
+ignorecase: true
 tokens:
+  # --- Passiva perifrástica com "ser" (Cunha/Cintra: o passivo pesa no estilo) ---
+  # Pretérito perfeito / imperfeito (os mais frequentes)
   - \bfoi\b
   - \bforam\b
+  - \bera\b
+  - \beram\b
+
+  # Pretérito mais-que-perfeito
+  - \btinha sido\b
+  - \btinham sido\b
+  - \bfora\b
+  - \bforam sido\b
+
+  # Pretérito perfeito composto (passiva resultante)
+  - \btem sido\b
+  - \btêm sido\b
+
+  # Futuro do presente
+  - \bserá\b
+  - \bserão\b
+
+  # Condicional
+  - \bseria\b
+  - \bseriam\b
+
+  # Presente do indicativo
+  - \bé\b
+  - \bsão\b
+
+  # --- Passiva perifrástica com "estar" + gerúndio (Moreno: calco do inglês progressivo) ---
+  # "O projeto está sendo analisado" — criticado por gramáticos normativos,
+  # especialmente em Portugal; aceite coloquialmente no Brasil.
+  - \bestá sendo\b
+  - \bestão sendo\b
+  - \bestava sendo\b
+  - \bestavam sendo\b
+  - \bestará sendo\b
+  - \bestarão sendo\b
+
+  # --- Passiva com "ficar" (construção popular) ---
+  - \bficou\b
+  - \bficaram\b

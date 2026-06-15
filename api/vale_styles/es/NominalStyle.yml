@@ -1,0 +1,172 @@
+# Fuentes / Sources:
+#   - Álex Grijelmo: "El estilo del periodista" (Taurus, 1997)
+#   - Fernando Lázaro Carreter: "El dardo en la palabra" (Galaxia Gutenberg, 1997)
+#   - Fundación del Español Urgente (FundéU): fundeu.es — recomendaciones de estilo
+#   - Libro de estilo de El País (Ediciones El País, 2014)
+#   - Real Academia Española (RAE): "Diccionario panhispánico de dudas" (DPD, 2005)
+#   - José Martínez de Sousa: "Manual de estilo de la lengua española" (Trea, 2000)
+extends: substitution
+message: "Perífrasis nominal: '%s' — ¿más directo: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- "llevar a cabo" (Grijelmo: el verbo simple siempre es preferible) ---
+  llevar a cabo: realizar
+  llevó a cabo: realizó
+  llevaron a cabo: realizaron
+  lleva a cabo: realiza
+  llevan a cabo: realizan
+  llevará a cabo: realizará
+  llevarán a cabo: realizarán
+  ha llevado a cabo: ha realizado
+  han llevado a cabo: han realizado
+
+  # --- "tener lugar" (FundéU; Grijelmo) ---
+  tener lugar: ocurrir
+  tuvo lugar: ocurrió
+  tuvieron lugar: ocurrieron
+  tiene lugar: ocurre
+  tienen lugar: ocurren
+  tendrá lugar: ocurrirá
+  tendrán lugar: ocurrirán
+
+  # --- "hacer hincapié" (Grijelmo; Lázaro Carreter) ---
+  hacer hincapié en: subrayar
+  hace hincapié en: subraya
+  hizo hincapié en: subrayó
+  haciendo hincapié: subrayando
+
+  # --- "tomar la decisión" (Grijelmo; FundéU) ---
+  tomar la decisión de: decidir
+  toma la decisión de: decide
+  tomó la decisión de: decidió
+  tomaron la decisión de: decidieron
+  tomar una decisión: decidir
+  tomó una decisión: decidió
+
+  # --- "poner de manifiesto" (Grijelmo; Lázaro Carreter) ---
+  poner de manifiesto: mostrar
+  pone de manifiesto: muestra
+  puso de manifiesto: mostró
+  pusieron de manifiesto: mostraron
+  poniendo de manifiesto: mostrando
+
+  # --- "hacer referencia a" (FundéU; Libro de estilo El País) ---
+  hacer referencia a: mencionar
+  hace referencia a: menciona
+  hizo referencia a: mencionó
+  haciendo referencia a: mencionando
+
+  # --- "tener en cuenta" (FundéU; Grijelmo) ---
+  tener en cuenta: considerar
+  tiene en cuenta: considera
+  tuvo en cuenta: consideró
+  tuvieron en cuenta: consideraron
+  teniendo en cuenta: considerando
+
+  # --- "hacer uso de" (Grijelmo; Lázaro Carreter) ---
+  hacer uso de: usar
+  hace uso de: usa
+  hizo uso de: usó
+  haciendo uso de: usando
+
+  # --- "dar lugar a" (FundéU) ---
+  dar lugar a: causar
+  da lugar a: causa
+  dio lugar a: causó
+  dieron lugar a: causaron
+  dando lugar a: causando
+
+  # --- "dar a conocer" (Libro de estilo El País; FundéU) ---
+  dar a conocer: comunicar
+  da a conocer: comunica
+  dio a conocer: comunicó
+  dieron a conocer: comunicaron
+  dando a conocer: comunicando
+
+  # --- "poner en práctica" (Grijelmo; FundéU) ---
+  poner en práctica: aplicar
+  pone en práctica: aplica
+  puso en práctica: aplicó
+  pusieron en práctica: aplicaron
+  poniendo en práctica: aplicando
+
+  # --- "poner fin a" (Grijelmo) ---
+  poner fin a: terminar
+  pone fin a: termina
+  puso fin a: terminó
+  pusieron fin a: terminaron
+
+  # --- "hacer frente a" (Grijelmo; Lázaro Carreter) ---
+  hacer frente a: afrontar
+  hace frente a: afronta
+  hizo frente a: afrontó
+  hicieron frente a: afrontaron
+  haciendo frente a: afrontando
+
+  # --- Perífrasis con "realizar" (FundéU: prefiere el verbo simple) ---
+  realizar una visita a: visitar
+  realizar una llamada a: llamar
+  realizar un pago: pagar
+  realizar una compra: comprar
+  realizar una investigación: investigar
+  realizar un análisis de: analizar
+  realizar una evaluación de: evaluar
+  realizar un seguimiento de: hacer seguimiento de
+  realizar una consulta: consultar
+  realizar un estudio: estudiar
+
+  # --- Perífrasis con "efectuar" (Libro de estilo El País; FundéU) ---
+  efectuar un pago: pagar
+  efectuar una llamada: llamar
+  efectuar cambios: cambiar
+  efectuar una visita: visitar
+  efectuar una compra: comprar
+
+  # --- "proceder a" (FundéU: burocrático y redundante) ---
+  proceder a la firma de: firmar
+  proceder al pago de: pagar
+  proceder a la evaluación de: evaluar
+  proceder a la apertura de: abrir
+  proceder al cierre de: cerrar
+  proceder a la lectura de: leer
+  proceder a la entrega de: entregar
+  proceder a la revisión de: revisar
+
+  # --- "prestar" (Grijelmo; FundéU) ---
+  prestar ayuda a: ayudar
+  prestar apoyo a: apoyar
+  prestar atención a: atender
+  prestar servicio a: servir
+
+  # --- "tener" + sustantivo abstracto (Grijelmo) ---
+  tener conocimiento de: conocer
+  tener consciencia de: ser consciente de
+  tener la certeza de: estar seguro de
+  tener la sensación de: sentir
+  tener la intención de: pretender
+  tener la convicción de: estar convencido de
+  tener la obligación de: deber
+  tener la posibilidad de: poder
+  tener la oportunidad de: poder
+
+  # --- "dar" + sustantivo (Grijelmo; Lázaro Carreter) ---
+  dar respuesta a: responder
+  dar solución a: resolver
+  dar continuidad a: continuar
+  dar apoyo a: apoyar
+  dar comienzo a: iniciar
+  dar inicio a: iniciar
+  dar fin a: terminar
+
+  # --- "emitir" como Streckverb (Grijelmo; Libro de estilo El País) ---
+  emitir un juicio sobre: juzgar
+  emitir una opinión sobre: opinar
+  emitir un comunicado: comunicar
+  emitir un veredicto: dictaminar
+
+  # --- "establecer un" (FundéU; Grijelmo) ---
+  establecer un contacto con: contactar
+  establecer una relación con: relacionarse con
+  establecer una comparación entre: comparar
+  establecer una distinción entre: distinguir

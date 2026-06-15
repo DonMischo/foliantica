@@ -1,12 +1,131 @@
+# Fuentes / Sources:
+#   - Álex Grijelmo: "El estilo del periodista" (Taurus, 1997)
+#   - Álex Grijelmo: "Defensa apasionada del idioma español" (Taurus, 1998)
+#   - Fernando Lázaro Carreter: "El dardo en la palabra" (Galaxia Gutenberg, 1997)
+#   - Fundación del Español Urgente (FundéU): fundeu.es — recomendaciones de estilo
+#   - Real Academia Española (RAE): "Diccionario panhispánico de dudas" (DPD, 2005)
+#   - Manuel Seco: "Diccionario de dudas y dificultades de la lengua española" (Espasa, 1998)
 extends: substitution
-message: "'%s' es redundante — considera '%s'."
-level: warning
+message: "Pleonasmo / redundancia: '%s' — sobra una palabra. ¿'%s'?"
+level: suggestion
+ignorecase: true
 swap:
+  # --- Redundancias direccionales (Grijelmo; Lázaro Carreter) ---
   subir arriba: subir
   bajar abajo: bajar
   entrar adentro: entrar
   salir afuera: salir
+  pasar adelante: pasar
+  retroceder atrás: retroceder
+  volver atrás: volver
+  adelantar hacia adelante: adelantar
+  bajar hacia abajo: bajar
+
+  # --- Redundancias verbales (Grijelmo; FundéU) ---
   volver a repetir: repetir
-  el día de hoy: hoy
-  en la actualidad actualmente: actualmente
+  repetir de nuevo: repetir
+  repetir otra vez: repetir
+  volver a reiterar: reiterar
+  volver a insistir: insistir
+  volver a comenzar de nuevo: recomenzar
+  volver a empezar de nuevo: reempezar
+  comenzar de cero desde el principio: empezar de cero
+  prever de antemano: prever
+  planificar de antemano: planificar
+  planear de antemano: planear
+  anticipar de antemano: anticipar
+  reservar previamente: reservar
+  citar previamente: citar
+
+  # --- Tautologías de sustantivos (Grijelmo; RAE DPD; Lázaro Carreter) ---
+  protagonista principal: protagonista
+  actor principal protagonista: actor principal
+  primer debut: debut
+  debut inicial: debut
+  novedad nueva: novedad
+  innovación nueva: innovación
+  primicia exclusiva: primicia
+  sorpresa inesperada: sorpresa
+  imprevisto inesperado: imprevisto
+  mentira falsa: mentira
+  verdad verídica: verdad
+  posible eventualidad: eventualidad
+  colaborar juntos: colaborar
+  cooperar mutuamente: cooperar
+  consenso mutuo: consenso
+  vuelta de regreso: regreso
+  regreso de vuelta: regreso
+  subida al alza: subida
+  bajada a la baja: bajada
+  resultado final: resultado
+  conclusión final: conclusión
+  crisis grave: crisis
+  desastre catastrófico: desastre
+  éxito rotundo: éxito
+  fracaso estrepitoso: fracaso
+  herencia del pasado: herencia
+  recuerdo del pasado: recuerdo
+  libre de cargo gratuito: gratuito
+  libre de cargos gratuitamente: gratuitamente
+  gratis de forma gratuita: gratis
+  lapsus de memoria: lapsus
   viejo anciano: anciano
+
+  # --- Redundancias temporales (FundéU; Grijelmo) ---
+  en la actualidad actualmente: actualmente
+  actualmente en la actualidad: actualmente
+  el día de hoy: hoy
+  siempre y en todo momento: siempre
+  nunca jamás: nunca
+  jamás nunca: jamás
+
+  # --- RAS-Síndrome — acrónimos con la palabra redundante (FundéU; RAE DPD) ---
+  # PIN = Número de Identificación Personal
+  número PIN: PIN
+  PIN número: PIN
+  # VIH = Virus de Inmunodeficiencia Humana
+  virus VIH: VIH
+  VIH virus: VIH
+  # SIDA = Síndrome de InmunoDeficiencia Adquirida
+  síndrome SIDA: SIDA
+  SIDA síndrome: SIDA
+  # ONG = Organización No Gubernamental
+  organización ONG: ONG
+  ONG organización: ONG
+  # ISBN = International Standard Book Number
+  número ISBN: ISBN
+  ISBN número: ISBN
+  # PDF = Portable Document Format
+  formato PDF: PDF
+  PDF formato: PDF
+  # RAM = Random Access Memory
+  memoria RAM: RAM
+  RAM memoria: RAM
+  # ATM = Automated Teller Machine (cajero automático)
+  ATM cajero: cajero automático
+  # CD = Compact Disc
+  disco CD: CD
+  CD disco: CD
+  # DVD = Digital Versatile Disc
+  disco DVD: DVD
+  DVD disco: DVD
+  # GPS = Global Positioning System
+  sistema GPS: GPS
+  GPS sistema: GPS
+  # HTML = HyperText Markup Language
+  lenguaje HTML: HTML
+  HTML lenguaje: HTML
+  # IVA = Impuesto sobre el Valor Añadido
+  impuesto IVA: IVA
+  IVA impuesto: IVA
+  # DNI = Documento Nacional de Identidad
+  documento DNI: DNI
+  DNI documento: DNI
+  # NIF = Número de Identificación Fiscal
+  número NIF: NIF
+  NIF número: NIF
+  # ADSL = Asymmetric Digital Subscriber Line
+  línea ADSL: ADSL
+  ADSL línea: ADSL
+  # USB = Universal Serial Bus
+  USB cable: USB

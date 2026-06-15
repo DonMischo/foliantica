@@ -1,6 +1,46 @@
+# Sources :
+#   - Maurice Grevisse / André Goosse : « Le Bon Usage » (De Boeck, 15e éd., 2011)
+#   - Jean Girodet : « Dictionnaire des pièges et difficultés de la langue française » (Bordas, 1988)
+#   - Académie française : recommandations de style
+#   - Commission générale de terminologie et de néologie : Journal officiel
 extends: existence
-message: "Voix passive possible — préférez la voix active."
+message: "Voix passive possible ('%s') — préférez la voix active pour plus de clarté"
 level: suggestion
+ignorecase: true
 tokens:
+  # --- Passif périphrastique avec « être » (Grevisse : la voix passive alourdit le style) ---
+  # Passé simple / passé composé (les plus fréquents)
   - \bfut\b
   - \bfurent\b
+  - \ba été\b
+  - \bont été\b
+
+  # Plus-que-parfait (avait/avaient été)
+  - \bavait été\b
+  - \bavaient été\b
+
+  # Passé antérieur
+  - \beut été\b
+  - \beurent été\b
+
+  # Présent (est/sont + participe)
+  - \best [a-zàâäéèêëîïôùûüÿç]+é\b
+  - \best [a-zàâäéèêëîïôùûüÿç]+ie\b
+  - \bsont [a-zàâäéèêëîïôùûüÿç]+és\b
+  - \bsont [a-zàâäéèêëîïôùûüÿç]+ées\b
+
+  # Imparfait (était/étaient)
+  - \bétait\b
+  - \bétaient\b
+
+  # Futur (sera/seront)
+  - \bsera\b
+  - \bseront\b
+
+  # Conditionnel (serait/seraient)
+  - \bserait\b
+  - \bseraient\b
+
+  # --- Passif progressif — « en train d'être » (calque de l'anglais, critiqué par l'Académie) ---
+  # « Le projet est en train d'être examiné » → « On examine le projet »
+  - \ben train d'être\b

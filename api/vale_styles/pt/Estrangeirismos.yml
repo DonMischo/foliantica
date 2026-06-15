@@ -1,0 +1,190 @@
+# Fontes / Sources:
+#   - Academia Brasileira de Letras (ABL): Vocabulário Ortográfico da Língua Portuguesa (VOLP) — volp.academia.org.br
+#   - Academia das Ciências de Lisboa (ACL): Vocabulário Ortográfico do Português — academia.pt
+#   - Vocabulário Ortográfico Comum (VOC) — Acordo Ortográfico 2009: vocabulario.cplp.org
+#   - Cláudio Moreno: "Guia Prático de Estilo" (L&PM, 2009) — estrangeirismos desnecessários
+#   - Eduardo Martins: "Manual de Redação e Estilo de O Estado de S. Paulo" (1997)
+#   - José Luís Nunes Moura: "Escrever em Português" (Presença, 2009)
+#   - Celso Cunha / Lindley Cintra: "Nova Gramática do Português Contemporâneo" (2014)
+extends: substitution
+message: "Estrangeirismo: '%s' — em português: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Reuniões e organização empresarial (Moreno; Martins) ---
+  meeting: reunião
+  meetings: reuniões
+  briefing: reunião informativa / resumo
+  debriefing: resumo / balanço
+  brainstorming: brainstorming (aceite) / tempestade de ideias
+  workshop: oficina / seminário
+  workshops: oficinas / seminários
+  deadline: prazo
+  deadlines: prazos
+  networking: criação de redes / fazer networking
+  staff: pessoal / equipa / equipe
+  manager: gestor / responsável
+  managers: gestores / responsáveis
+  management: gestão / direção
+  outsourcing: externalização / terceirização
+  freelance: trabalhador independente / freelancer
+  startup: empresa nascente / startup (aceite)
+  startups: empresas nascentes
+  pitch: apresentação
+  feedback: retorno / resposta / avaliação
+  sponsor: patrocinador
+  sponsoring: patrocínio
+  newsletter: boletim informativo / newsletter (aceite)
+  newsletters: boletins
+  ranking: classificação
+  rankings: classificações
+  lobbying: pressão / lobbying (aceite)
+  leasing: locação financeira / arrendamento financeiro
+  royalty: direito de autor / royalty (aceite)
+  royalties: direitos de autor
+  know-how: know-how (aceite) / saber-fazer
+  joint venture: empreendimento conjunto
+  dumping: concorrência desleal / dumping (aceite)
+  copyright: direitos de autor
+  target: objetivo / destinatário / público-alvo
+  targets: objetivos / públicos-alvo
+  holding: holding (aceite) / grupo empresarial
+  benchmark: referência / parâmetro
+  benchmarking: análise comparativa
+
+  # --- Tecnologia e digital (ABL; VOC; Moreno) ---
+  email: correio eletrónico / e-mail (aceite)
+  e-mail: correio eletrónico
+  spam: lixo eletrónico / spam (aceite)
+  link: ligação / hiperligação / link (aceite)
+  links: ligações / hiperligações
+  login: acesso / login (aceite)
+  logout: saída / terminar sessão
+  password: palavra-passe / senha
+  passwords: palavras-passe / senhas
+  username: nome de utilizador / nome de usuário
+  download: descarregamento / download (aceite)
+  upload: carregamento / upload (aceite)
+  update: atualização
+  updates: atualizações
+  backup: cópia de segurança / backup (aceite)
+  backups: cópias de segurança
+  hardware: hardware (aceite) / suporte físico
+  software: software (aceite) / programa
+  app: aplicação / app (aceite)
+  apps: aplicações
+  smartphone: smartphone (aceite) / telefone inteligente
+  smartphones: smartphones
+  tablet: tablet (aceite)
+  hashtag: hashtag (aceite) / etiqueta
+  hashtags: hashtags / etiquetas
+  selfie: selfie (aceite) / autorretrato
+  selfies: selfies / autorretratos
+  streaming: streaming (aceite) / transmissão em fluxo
+  blog: blogue / blog (aceite)
+  blogs: blogues / blogs
+  blogger: blogueiro / blogger (aceite)
+  influencer: influenciador / influencer (aceite)
+  influencers: influenciadores
+  troll: troll (aceite) / provocador
+  hacker: pirata informático / hacker (aceite)
+  hackers: piratas informáticos
+  click: clique
+  clicks: cliques
+  chat: conversa online / chat (aceite)
+  chatbot: agente conversacional / chatbot (aceite)
+  chatbots: agentes conversacionais
+  trending: em tendência
+  trend: tendência
+  trends: tendências
+  tweet: tweet (aceite)
+  tweets: tweets
+  cloud: nuvem / cloud (aceite)
+  big data: megadados / big data (aceite)
+  webinar: webinar (aceite) / seminário online
+  e-commerce: comércio eletrónico
+
+  # --- Media e espetáculo (Moreno; Martins) ---
+  show: espetáculo / show (aceite)
+  shows: espetáculos
+  casting: seleção / audição
+  reality show: reality (aceite) / programa de realidade
+  talk show: talk show (aceite) / programa de entrevistas
+  prime time: horário nobre
+  spot: anúncio publicitário / spot (aceite)
+  spots: anúncios publicitários
+  clip: videoclip / clip (aceite)
+  clips: videoclips
+  trailer: trailer (aceite) / antevisão
+  trailers: trailers / antevisões
+  flyer: folheto / panfleto
+  flyers: folhetos
+  remake: refacção / remake (aceite)
+  playlist: lista de reprodução / playlist (aceite)
+  playlists: listas de reprodução
+  live: ao vivo / em direto / em directo
+
+  # --- Moda, estilo e consumo (Moreno; Martins) ---
+  look: visual / look (aceite)
+  outfit: conjunto / look
+  outfits: conjuntos
+  fashion: moda / fashion (aceite)
+  brand: marca / brand (aceite)
+  brands: marcas
+  branding: imagem de marca
+  shopping: compras / centro comercial
+  stock: existências / stock (aceite)
+  ticket: bilhete
+  tickets: bilhetes
+  voucher: vale
+  vouchers: vales
+  premium: de qualidade superior / premium (aceite)
+
+  # --- Alimentação e hospitalidade (Moreno) ---
+  brunch: brunch (aceite) / almoço-pequeno-almoço
+  catering: catering (aceite) / serviço de refeições
+  food truck: camião de comida
+  fast food: fast food (aceite) / comida rápida
+  happy hour: hora feliz / happy hour (aceite)
+  chef: chef (aceite) / cozinheiro
+  check-in: registo / check-in (aceite)
+  check-out: saída / check-out (aceite)
+  resort: resort (aceite) / complexo turístico
+
+  # --- Desporto, saúde e bem-estar (Moreno; ABL) ---
+  running: corrida / running (aceite)
+  fitness: condição física / fitness (aceite)
+  wellness: bem-estar
+  spa: spa (aceite) / centro de bem-estar
+  hobby: passatempo / hobby (aceite)
+  fan: adepto / fã / fan (aceite)
+  fans: adeptos / fãs
+  coach: treinador / coach (aceite)
+  coaching: tutoria / coaching (aceite)
+  record: recorde / récord
+  cool: fixe / guei / na moda
+
+  # --- Marketing e publicidade (Moreno; Martins) ---
+  banner: banner (aceite) / faixa publicitária
+  landing page: página de destino
+  claim: slogan
+  copywriting: redação publicitária
+  storytelling: narrativa / storytelling (aceite)
+  engagement: envolvimento / engagement (aceite)
+  reach: alcance
+  awareness: notoriedade / consciencialização
+  press release: comunicado de imprensa
+  off the record: extraoficialmente
+  background: contexto / antecedentes
+
+  # --- Estrangeirismos verbais (ABL; Moreno) ---
+  googlar: pesquisar na internet
+  googlear: pesquisar na internet
+  chatear: conversar online
+  postar: publicar
+  tweetar: publicar / twittar
+  linkar: ligar / hiperligar
+  clicar: clicar
+  logar: iniciar sessão
+  deletar: eliminar / apagar
+  printar: imprimir

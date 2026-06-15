@@ -1,0 +1,131 @@
+# Fontes / Sources:
+#   - Celso Cunha / Lindley Cintra: "Nova Gramática do Português Contemporâneo" (João Sá da Costa, 1984/2014)
+#   - Cláudio Moreno: "Guia Prático de Estilo" (L&PM, 2009)
+#   - Eduardo Martins: "Manual de Redação e Estilo de O Estado de S. Paulo" (1997)
+#   - José Luís Nunes Moura: "Escrever em Português" (Presença, 2009)
+#   - Presidência do Conselho de Ministros (Portugal): "Guia de Boas Práticas de Linguagem Administrativa"
+extends: substitution
+message: "Estilo nominal: '%s' — mais direto: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- "proceder a" (Moreno; Cunha/Cintra: preferir o verbo simples) ---
+  proceder à análise de: analisar
+  proceder à verificação de: verificar
+  proceder à assinatura de: assinar
+  proceder à abertura de: abrir
+  proceder ao encerramento de: encerrar
+  proceder ao pagamento de: pagar
+  proceder à leitura de: ler
+  proceder à entrega de: entregar
+  proceder à revisão de: rever
+  proceder à avaliação de: avaliar
+  proceder à seleção de: selecionar
+  proceder à seleção de: selecionar
+  proceder à nomeação de: nomear
+  proceder à aprovação de: aprovar
+  proceder ao envio de: enviar
+  proceder à elaboração de: elaborar
+
+  # --- "efetuar / efectuar" como verbo genérico (Moreno; Martins) ---
+  efetuar um pagamento: pagar
+  efetuar um controlo: controlar
+  efetuar um controle: controlar
+  efetuar uma visita: visitar
+  efetuar uma avaliação: avaliar
+  efetuar uma compra: comprar
+  efetuar uma venda: vender
+  efetuar uma reserva: reservar
+  efetuar uma alteração: alterar
+  efetuar uma transferência: transferir
+  efetuar um investimento: investir
+  efetuar um levantamento: levantar
+  efetuar um depósito: depositar
+  efetuar uma pesquisa: pesquisar
+  efetuar uma análise: analisar
+  efetuar uma vistoria: vistoriar
+
+  # --- "realizar" como verbo genérico (Moreno; Academia Brasileira) ---
+  realizar uma análise: analisar
+  realizar uma avaliação: avaliar
+  realizar uma investigação: investigar
+  realizar uma compra: comprar
+  realizar uma venda: vender
+  realizar um estudo: estudar
+  realizar uma visita: visitar
+
+  # --- "levar a cabo" / "levar a efeito" (Moreno) ---
+  levar a cabo: executar
+  levar a efeito: executar
+  levar a bom termo: concluir
+  levar à prática: praticar
+
+  # --- "dar" + substantivo (Cunha/Cintra; Moreno) ---
+  dar início a: iniciar
+  dar começo a: começar
+  dar seguimento a: prosseguir
+  dar cumprimento a: cumprir
+  dar resposta a: responder
+  dar solução a: resolver
+  dar apoio a: apoiar
+  dar suporte a: suportar
+  dar conhecimento de: comunicar
+  dar conta de: relatar
+  dar lugar a: causar
+  dar origem a: originar
+  dar contributo para: contribuir para
+  dar contribuição para: contribuir para
+
+  # --- "fazer" + substantivo (Moreno; Martins) ---
+  fazer referência a: referir
+  fazer alusão a: aludir a
+  fazer menção a: mencionar
+  fazer uso de: usar
+  fazer parte de: integrar
+  fazer frente a: enfrentar
+  fazer a ligação entre: ligar
+  fazer uma escolha: escolher
+  fazer uma análise: analisar
+  fazer uma avaliação: avaliar
+
+  # --- "pôr" + substantivo (Cunha/Cintra) ---
+  pôr em prática: praticar
+  pôr em funcionamento: fazer funcionar
+  pôr em causa: questionar
+  pôr em evidência: evidenciar
+  pôr em destaque: destacar
+  pôr em marcha: iniciar
+  pôr em execução: executar
+  pôr em relevo: destacar
+
+  # --- "tomar" + substantivo (Moreno; Martins) ---
+  tomar uma decisão: decidir
+  tomar conhecimento de: tomar nota de → inteirar-se de
+  tomar nota de: anotar
+  tomar consciência de: tornar-se consciente de
+  tomar a iniciativa de: iniciar
+  tomar medidas: agir
+
+  # --- "ter" + substantivo abstrato (Moreno; Cunha/Cintra) ---
+  ter a possibilidade de: poder
+  ter a necessidade de: precisar de
+  ter a capacidade de: ser capaz de
+  ter consciência de: estar consciente de
+  ter conhecimento de: saber
+  ter a certeza de: ter a certeza → estar certo de
+  ter a convicção de: estar convicto de
+  ter a intenção de: pretender
+  ter recurso a: recorrer a
+
+  # --- "prestar" + substantivo (Moreno; Presidência do Conselho) ---
+  prestar assistência a: assistir
+  prestar apoio a: apoiar
+  prestar informações a: informar
+  prestar esclarecimentos a: esclarecer
+  prestar declarações: declarar
+
+  # --- "exercer" + substantivo (Moreno) ---
+  exercer uma influência sobre: influenciar
+  exercer pressão sobre: pressionar
+  exercer uma função de: desempenhar
+  exercer um papel de: desempenhar

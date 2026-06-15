@@ -1,0 +1,172 @@
+# Sources :
+#   - Maurice Grevisse / André Goosse : « Le Bon Usage » (De Boeck, 15e éd., 2011)
+#   - Jean Girodet : « Dictionnaire des pièges et difficultés de la langue française » (Bordas, 1988)
+#   - Académie française : mises en garde contre le jargon managérial
+#   - Commission générale de terminologie et de néologie : Journal officiel
+#   - FranceTerme : france-terme.culture.fr — termes officiels recommandés
+extends: existence
+message: "'%s' est un mot à la mode / jargon — formuler plus concrètement ?"
+level: suggestion
+ignorecase: true
+tokens:
+  # --- Jargon d'entreprise et de management (Girodet ; Académie française) ---
+  - \bsynergie\b
+  - \bsynergies\b
+  - \bsynergique\b
+  - \bparadigme\b
+  - \bparadigmes\b
+  - \bparadigmatique\b
+  - \bdisruption\b
+  - \bdisruptif\b
+  - \bdisruptive\b
+  - \bdisruptifs\b
+  - \btransformation digitale\b
+  - \btransformation numérique\b
+  - \btransformation\b
+  - résilience
+  - \brésilient\b
+  - \brésiliente\b
+  - \brésilients\b
+  - écosystème
+  - \bécosystèmes\b
+  - scalabilité
+  - \bscalable\b
+  - agilité
+  - \bagile\b
+  - \bagiles\b
+  - \bpivot\b
+  - \bpivoter\b
+  - \bstakeholder\b
+  - \bstakeholders\b
+  - \bbenchmark\b
+  - \bbenchmarks\b
+  - \bbenchmarking\b
+  - \bbest practice\b
+  - \bbest practices\b
+  - \bbonne pratique\b
+  - \blean\b
+  - \bscrum\b
+  - \bagile\b
+  - \bkanban\b
+  - \bsprint\b
+  - \bsprints\b
+  - \bKPI\b
+  - \bKPIs\b
+  - \bROI\b
+  - \bOKR\b
+  - \bOKRs\b
+  - \bUSP\b
+  - \bwin-win\b
+  - \breadmap\b
+  - \bfeuille de route\b
+  - \bmilestone\b
+  - \bmilestones\b
+  - \btraction\b
+  - valeur ajoutée
+  - \bcréer de la valeur\b
+  - \bajouter de la valeur\b
+  - \bapporter de la valeur\b
+  - \blevier\b
+  - \bleviers\b
+  - \bleviers de croissance\b
+
+  # --- Startups et technologie (Commission de terminologie ; Académie française) ---
+  - \bstartup\b
+  - \bstartups\b
+  - \blicorne\b
+  - \blicornes\b
+  - \bgrowth hacking\b
+  - \bgrowth\b
+  - \bscale-up\b
+  - \bpitch\b
+  - \bpitching\b
+  - \bincubateur\b
+  - accélérateur
+  - \bopen innovation\b
+  - \bhackathon\b
+  - \bhackathons\b
+
+  # --- Mots politiques et sociaux à la mode (Académie française ; Girodet) ---
+  - \bgouvernance\b
+  - \bpilotage\b
+  - \bconduite du changement\b
+  - \btransversalité\b
+  - \btransversal\b
+  - \btransversaux\b
+  - \bco-construction\b
+  - \bco-créer\b
+  - \bco-création\b
+  - empowerment
+  - bienveillance
+  - \bmanagement bienveillant\b
+  - \bmontée en compétences\b
+  - \bADN de l'entreprise\b
+  - \braison d'être\b
+  - \bpurpose\b
+  - \bnarratif\b
+  - \bnarrative\b
+  - \bstartup nation\b
+  - \bnouvelle normalité\b
+  - \bnouvelle réalité\b
+
+  # --- Adjectifs creux (Girodet ; Grevisse) ---
+  - \binnovant\b
+  - \binnovante\b
+  - \binnovants\b
+  - innovation
+  - \bd'avant-garde\b
+  - \bde pointe\b
+  - \bhorizontal\b
+  - \bholistique\b
+  - \bglobal\b
+  - \bproactif\b
+  - \bproactive\b
+  - \bdynamique\b
+  - \bflexible\b
+  - \bflexibles\b
+  - \bexcellence\b
+  - \bexcellent\b
+  - \bexcellente\b
+  - \bengagement\b
+  - \bengagé\b
+  - \btransparent\b
+  - \btransparente\b
+  - \btransparence\b
+  - \binclusif\b
+  - \binclusive\b
+  - inclusivité
+  - \bintégral\b
+  - \bintégraux\b
+
+  # --- Phrases corporatives (Girodet ; Académie française) ---
+  - \bcréer de l'impact\b
+  - \bgénérer de l'impact\b
+  - \bavoir de l'impact\b
+  - \bdonner du sens\b
+  - \bmettre l'humain au cœur\b
+  - \bmettre l'humain au centre\b
+  - \bsortir de sa zone de confort\b
+  - \bzone de confort\b
+  - \bpenser hors des sentiers battus\b
+  - \bgame changer\b
+  - \bgame-changer\b
+  - \bsans précédent\b
+  - \bhistorique\b
+  - \bhistoriques\b
+  - \bépique\b
+  - \bévolutionnaire\b
+  - \bde classe mondiale\b
+  - \bde niveau mondial\b
+  - \bde premier plan\b
+  - \bde premier rang\b
+  - \bpotentialiser\b
+  - \boptimiser\b
+  - \bmaximiser\b
+  - \bminimiser\b
+  - \bvaloriser\b
+  - \bcatalyseur\b
+  - \bvecteur\b
+  - \bvecteurs\b
+  - \baxe\b
+  - \baxes\b
+  - \bporteur\b

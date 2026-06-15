@@ -1,11 +1,119 @@
+# Fontes / Sources:
+#   - Celso Cunha / Lindley Cintra: "Nova Gramática do Português Contemporâneo" (João Sá da Costa, 1984/2014)
+#   - Cláudio Moreno: "Guia Prático de Estilo" (L&PM, 2009)
+#   - Eduardo Martins: "Manual de Redação e Estilo de O Estado de S. Paulo" (1997)
+#   - Valter de Aguiar Filho: "Estilo em Jornalismo" (2005)
+#   - Academia Brasileira de Letras (ABL): volp.academia.org.br
+#   - Academia das Ciências de Lisboa (ACL): academia.pt
 extends: substitution
-message: "'%s' é redundante — considerar '%s'."
-level: warning
+message: "Pleonasmo / redundância: '%s' — uma palavra a mais. Preferir '%s'?"
+level: suggestion
+ignorecase: true
 swap:
+  # --- Redundâncias direcionais (Cunha/Cintra; Moreno) ---
   subir para cima: subir
+  subir acima: subir
   descer para baixo: descer
+  descer abaixo: descer
   entrar para dentro: entrar
+  entrar dentro: entrar
   sair para fora: sair
+  sair fora: sair
+  voltar para trás: voltar
+  voltar atrás: voltar
+  prosseguir em frente: prosseguir
+  recuar para trás: recuar
+  aproximar-se perto: aproximar-se
+  afastar-se longe: afastar-se
+  levantar-se em pé: levantar-se
+
+  # --- Redundâncias verbais (Moreno; Martins) ---
   repetir de novo: repetir
-  prever antecipadamente: prever
+  repetir outra vez: repetir
+  repetir novamente: repetir
+  reiterar de novo: reiterar
+  recomeçar de novo: recomeçar
+  recomeçar outra vez: recomeçar
+  prever com antecedência: prever
+  antecipar com antecedência: antecipar
+  planear com antecedência: planear
+  planejar antecipadamente: planejar
+  agendar com antecedência: agendar
+  reservar com antecedência: reservar
+  avisar com antecedência: avisar
+
+  # --- Tautologias nominais (Moreno; Cunha/Cintra; Academia das Ciências) ---
+  protagonista principal: protagonista
+  primeira estreia: estreia
+  novidade nova: novidade
+  surpresa inesperada: surpresa
+  imprevisto inesperado: imprevisto
+  mentira falsa: mentira
+  verdade verdadeira: verdade
   colaborar em conjunto: colaborar
+  cooperar em conjunto: cooperar
+  reunir em conjunto: reunir
+  consenso geral: consenso
+  consenso comum: consenso
+  resultado final: resultado
+  conclusão final: conclusão
+  balanço definitivo: balanço
+  monopólio exclusivo: monopólio
+  panaceia universal: panaceia
+  único e exclusivo: único
+  só e único: só
+  livre e gratuito: gratuito
+  gratuito e sem custos: gratuito
+  perigo iminente: perigo
+  risco potencial: risco
+  problema potencial: problema
+  opção alternativa: alternativa
+  apêndice adicional: apêndice
+  hemorragia de sangue: hemorragia
+  elo de ligação: elo
+
+  # --- Redundâncias temporais (Moreno; Martins) ---
+  ontem o dia anterior: ontem
+  amanhã o dia seguinte: amanhã
+  agora neste momento: agora
+  nunca jamais: nunca
+  sempre em qualquer caso: sempre
+  já anteriormente: já
+
+  # --- Síndrome RAS — acrónimos com a palavra redundante (ABL; ACL; Moreno) ---
+  número PIN: PIN
+  código PIN número: código PIN
+  vírus HIV: HIV
+  HIV vírus: HIV
+  síndrome SIDA: SIDA
+  SIDA síndrome: SIDA
+  síndrome AIDS: AIDS
+  AIDS síndrome: AIDS
+  organização ONG: ONG
+  ONG organização: ONG
+  memória RAM: RAM
+  RAM memória: RAM
+  disco DVD: DVD
+  DVD disco: DVD
+  disco CD: CD
+  CD disco: CD
+  formato PDF: PDF
+  PDF formato: PDF
+  sistema GPS: GPS
+  GPS sistema: GPS
+  imposto IVA: IVA
+  IVA imposto: IVA
+  número ISBN: ISBN
+  ISBN número: ISBN
+  linguagem HTML: HTML
+  HTML linguagem: HTML
+  linha ADSL: ADSL
+  ADSL linha: ADSL
+  cabo USB: USB
+  USB cabo: USB
+  rede Wi-Fi: Wi-Fi
+  Wi-Fi rede: Wi-Fi
+  número NIF: NIF
+  NIF número: NIF
+  número CPF: CPF
+  CPF número: CPF
