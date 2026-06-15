@@ -14,7 +14,8 @@ _DEFAULT_INI = Path(__file__).parent / "default.ini"
 
 class CheckRequest(BaseModel):
     text: str
-    config: str | None = None  # .vale.ini content; None → use default.ini
+    config: str | None = None      # .vale.ini content; None → use default.ini
+    language: str | None = None    # e.g. "en-US", "de-DE", "auto"
 
 
 @app.get("/health")
@@ -33,7 +34,18 @@ def check(req: CheckRequest):
             cfg.write_text(req.config, encoding="utf-8")
             cfg_path = str(cfg)
         else:
-            cfg_path = str(_DEFAULT_INI)
+            # Disable built-in spell-check for non-English content — Vale only
+            # ships an English dictionary, so every foreign word becomes an error.
+            is_english = (req.language or "").lower().startswith("en")
+            if not is_english:
+                cfg = Path(tmp) / ".vale.ini"
+                cfg.write_text(
+                    _DEFAULT_INI.read_text(encoding="utf-8") + "\nVale.Spelling = NO\n",
+                    encoding="utf-8",
+                )
+                cfg_path = str(cfg)
+            else:
+                cfg_path = str(_DEFAULT_INI)
 
         result = subprocess.run(
             ["vale", "--config", cfg_path, "--output=JSON", str(src)],

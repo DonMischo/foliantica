@@ -666,8 +666,8 @@ export const useGrammarCheck = () =>
   });
 
 export const useValeCheck = () =>
-  useMutation<ValeCheckResult, Error, { text: string }>({
-    mutationFn: ({ text }) => valeApi.check(text),
+  useMutation<ValeCheckResult, Error, { text: string; language?: string }>({
+    mutationFn: ({ text, language }) => valeApi.check(text, language),
   });
 
 export const usePandocFonts = (enabled = true) =>

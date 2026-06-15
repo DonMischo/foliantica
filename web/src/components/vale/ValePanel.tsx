@@ -96,12 +96,13 @@ function AlertCard({ alert }: { alert: ValeAlert }) {
 
 interface Props {
   text: string;
+  language?: string;
   onClose: () => void;
 }
 
 const SEVERITIES: ValeAlert["Severity"][] = ["error", "warning", "suggestion"];
 
-export function ValePanel({ text, onClose }: Props) {
+export function ValePanel({ text, language, onClose }: Props) {
   const check = useValeCheck();
 
   const byGroup = (check.data?.alerts ?? []).reduce<Record<string, ValeAlert[]>>(
@@ -177,7 +178,7 @@ export function ValePanel({ text, onClose }: Props) {
         <Button
           size="sm"
           className="w-full"
-          onClick={() => check.mutate({ text })}
+          onClick={() => check.mutate({ text, language })}
           disabled={check.isPending}
         >
           {check.isPending

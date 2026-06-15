@@ -787,6 +787,7 @@ export default function ScenePage() {
         {valePanelOpen && (
           <ValePanel
             text={content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()}
+            language={project?.book_meta?.language ?? undefined}
             onClose={() => setValePanelOpen(false)}
           />
         )}

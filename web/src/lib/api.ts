@@ -682,10 +682,10 @@ export interface ValeCheckResult {
 }
 
 export const valeApi = {
-  check: (text: string) =>
+  check: (text: string, language?: string) =>
     req<ValeCheckResult>("/vale/check", {
       method: "POST",
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, language }),
       signal: AbortSignal.timeout(60_000),
     }),
 };
