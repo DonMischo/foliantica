@@ -1,0 +1,91 @@
+# Bronnen / Sources:
+#   - Jan Renkema: "Schrijfwijzer" (4e druk, Boom, 2012)
+#   - Genootschap Onze Taal: taaladvies.net
+#   - ANS: "Algemene Nederlandse Spraakkunst" (2e druk, 1997 / online 2016)
+#   - Van Dale: "Groot woordenboek van de Nederlandse taal" (15e druk, 2015)
+#   - Henk Pander Maat / Leo Lentz: "Schrijven voor lezers" (Boom, 2010)
+#   - Nederlandse Taalunie (NTU): taalunie.org
+extends: existence
+message: "'%s' — mogelijk onjuist of ambigu gebruik: controleer"
+level: warning
+ignorecase: false
+tokens:
+  # --- "momenteel" vs. "currently" (Genootschap; Van Dale) ---
+  # "Momenteel" = op dit moment (correct)
+  # Wordt vaak overgebruikt als opvulwoord; bij twijfel: weglaten.
+  - \bmomenteel\b
+
+  # --- "implementeren" als calque van "to implement" (Genootschap; NTU) ---
+  # In het Nederlands: "invoeren", "uitvoeren", "toepassen", "in gebruik nemen"
+  # "Implementeren" is ingeburgerd maar de Genootschap beveelt het Nederlandse alternatief aan.
+  - \bimplementeren\b
+  - \bimplementatie\b
+  - \bgeïmplementeerd\b
+  - \bgeïmplementeerde\b
+
+  # --- "faciliteren" als leeg werkwoord (Genootschap; Renkema) ---
+  # Vaak gebruikt waar "mogelijk maken", "helpen bij" of "zorgen voor" beter is.
+  - \bfaciliteren\b
+  - \bfaciliterende\b
+  - \bgefaciliteerd\b
+
+  # --- "benutten" als anglicisme / modewoord (Genootschap) ---
+  # "Benutten" is correct maar wordt overgebruikt; "gebruiken" of "gebruikmaken van" is eenvoudiger.
+  - \bbenutten\b
+  - \bbenuttend\b
+  - \bbenut\b
+
+  # --- "realiseren" als calque (Genootschap; Renkema) ---
+  # "Realiseren" in de zin van "beseffen" is een anglicisme (to realize = inzien).
+  # Correct gebruik: "realiseren" = tot stand brengen, uitvoeren.
+  # "Hij realiseerde dat hij laat was" → "Hij besefte dat hij laat was"
+  - \brealiseerde dat\b
+  - \brealiseer me dat\b
+  - \brealiseer ik me dat\b
+  - \brealiseer je dat\b
+  - \bje realiseert je\b
+
+  # --- "Dit betekent dat" als riedel (Renkema; Pander Maat) ---
+  # Overgebruikt; vaak te vervangen door een directer verband.
+  - \bdit betekent dat\b
+  - \bdat betekent dat\b
+
+  # --- "In het kader van" overgebruik (Renkema; NTU) ---
+  - \bin het kader van\b
+
+  # --- Dubbele ontkenning (ANS; Van Dale) ---
+  # Niet standaard in het Nederlands; verschilt van Duits/Frans.
+  - \bniet\b
+
+  # --- "Alhoewel" vs. "hoewel" (ANS; Genootschap) ---
+  # "Alhoewel" is geaccepteerd maar "hoewel" heeft de voorkeur in formeel schrijven.
+  - \balhoewel\b
+
+  # --- "Doch" als archaïsme (Genootschap; Van Dale) ---
+  # "Doch" is sterk verouderd; "maar" of "echter" is beter.
+  - \bdoch\b
+
+  # --- "Alsook" vs. "en ook" (ANS; Genootschap) ---
+  # "Alsook" is formeel-ambtelijk; "en ook", "en" of "evenals" is eenvoudiger.
+  - \balsook\b
+
+  # --- "Tevens" overgebruik (Renkema; Genootschap) ---
+  # "Tevens" = ook, eveneens. Wordt als opvulwoord gebruikt; weglaten of vervangen.
+  - \btevens\b
+
+  # --- "Teneinde" vs. "om te" (ANS; NTU) ---
+  # "Teneinde" is sterk formeel-ambtelijk. "Om te" of "met als doel" is beter.
+  - \bteneinde\b
+
+  # --- "Hetgeen" vs. "wat" (ANS; Genootschap) ---
+  # "Hetgeen" is sterk formeel. In de meeste gevallen: "wat".
+  - \bhetgeen\b
+
+  # --- Perspectiefdekking (Renkema: versterk je stem) ---
+  - \bnaar mijn mening\b
+  - \bnaar mijn idee\b
+  - \bnaar mijn oordeel\b
+  - \bik ben van mening dat\b
+  - \bik ben van oordeel dat\b
+  - \bpersoonlijk vind ik\b
+  - \bpersoonlijk denk ik\b

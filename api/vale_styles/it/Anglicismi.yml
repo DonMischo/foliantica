@@ -1,0 +1,191 @@
+# Fonti / Sources:
+#   - Accademia della Crusca (Firenze, 1583): pareri e consulenze sugli anglicismi — accademicadellacrusca.it
+#   - Tullio De Mauro: "Grande dizionario italiano dell'uso" (GRADIT, UTET, 1999)
+#   - Valeria Della Valle / Giuseppe Patota: "Viva l'italiano!" (Sperling & Kupfer, 2009)
+#   - Luca Serianni: "Guida all'italiano" (BUR, 2007)
+#   - Beppe Severgnini: "L'italiano: lezioni semiserie" (Rizzoli, 2007)
+#   - Ministero per la pubblica amministrazione: "Guida alla semplificazione del linguaggio amministrativo"
+extends: substitution
+message: "Anglicismo: '%s' — in italiano: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Riunioni e organizzazione aziendale (Accademia della Crusca; Della Valle/Patota) ---
+  meeting: riunione
+  meetings: riunioni
+  briefing: riunione informativa / resoconto
+  debriefing: resoconto / bilancio
+  brainstorming: brainstorming (accettato) / tempesta di idee
+  workshop: laboratorio / seminario
+  workshops: laboratori / seminari
+  deadline: scadenza
+  deadlines: scadenze
+  networking: creazione di reti / fare rete
+  staff: personale
+  manager: dirigente / responsabile
+  managers: dirigenti / responsabili
+  management: gestione / direzione
+  outsourcing: esternalizzazione
+  freelance: libero professionista
+  freelancer: libero professionista
+  startup: impresa nascente / startup (accettato)
+  startups: imprese nascenti
+  pitch: presentazione
+  feedback: riscontro / risposta
+  sponsor: sponsor (accettato) / finanziatore / patrocinatore
+  sponsoring: patrocinio / sponsorizzazione
+  newsletter: notiziario / bollettino
+  newsletters: notiziari
+  ranking: classifica / graduatoria
+  rankings: classifiche
+  lobbying: attività di lobbying / rappresentanza di interessi
+  leasing: locazione finanziaria
+  royalty: diritto d'autore / canone
+  royalties: diritti d'autore / canoni
+  know-how: know-how (accettato) / competenze
+  joint venture: impresa comune
+  dumping: concorrenza sleale
+  copyright: diritto d'autore
+  target: obiettivo / destinatario
+  targets: obiettivi / destinatari
+  holding: gruppo aziendale
+  benchmark: riferimento / parametro di riferimento
+  benchmarking: analisi comparativa
+
+  # --- Tecnologia e digitale (Accademia della Crusca; De Mauro) ---
+  email: posta elettronica / e-mail (accettato)
+  e-mail: posta elettronica
+  spam: posta indesiderata / spam (accettato)
+  link: collegamento / link (accettato)
+  links: collegamenti
+  login: accesso / login (accettato)
+  logout: disconnessione
+  password: parola d'ordine / password (accettato)
+  passwords: parole d'ordine
+  username: nome utente
+  download: scaricamento / download (accettato)
+  upload: caricamento / upload (accettato)
+  update: aggiornamento
+  updates: aggiornamenti
+  backup: copia di sicurezza / backup (accettato)
+  backups: copie di sicurezza
+  hardware: hardware (accettato) / componenti fisici
+  software: software (accettato) / programma
+  app: applicazione / app (accettato)
+  apps: applicazioni
+  smartphone: smartphone (accettato) / telefono intelligente
+  smartphones: smartphone
+  tablet: tablet (accettato)
+  hashtag: hashtag (accettato) / etichetta
+  hashtags: hashtag / etichette
+  selfie: autoscatto / selfie (accettato)
+  selfies: autoscatti
+  streaming: streaming (accettato) / trasmissione in flusso
+  blog: blog (accettato) / diario in rete
+  blogs: blog
+  blogger: blogger (accettato)
+  influencer: influencer (accettato) / influente
+  influencers: influencer
+  troll: troll (accettato) / provocatore
+  hacker: pirata informatico / hacker (accettato)
+  hackers: pirati informatici
+  click: clic
+  clicks: clic
+  chat: chat (accettato) / conversazione in rete
+  chatbot: agente conversazionale / chatbot (accettato)
+  chatbots: agenti conversazionali
+  trending: di tendenza
+  trend: tendenza
+  trends: tendenze
+  tweet: tweet (accettato) / cinguettio
+  tweets: tweet / cinguettii
+  cloud: cloud (accettato) / nuvola informatica
+  big data: megadati / big data (accettato)
+  data: dati
+  webinar: webinar (accettato) / seminario online
+  e-commerce: commercio elettronico
+
+  # --- Media e spettacolo (Della Valle/Patota; Severgnini) ---
+  show: spettacolo / show (accettato)
+  shows: spettacoli
+  casting: selezione / audizione
+  reality show: reality (accettato) / programma di realtà
+  talk show: talk show (accettato) / programma di interviste
+  prime time: prima serata
+  spot: spot pubblicitario / annuncio
+  spots: spot pubblicitari
+  clip: video clip / clip (accettato)
+  clips: video clip
+  trailer: trailer (accettato) / anteprima
+  trailers: trailer / anteprime
+  flyer: volantino
+  flyers: volantini
+  remake: rifacimento / remake (accettato)
+  playlist: playlist (accettato) / lista di riproduzione
+  playlists: playlist
+  single: singolo / single (accettato)
+  live: dal vivo / in diretta
+
+  # --- Moda, stile e consumo (Severgnini; Della Valle/Patota) ---
+  look: look (accettato) / stile / aspetto
+  outfit: tenuta / outfit (accettato)
+  outfits: tenute
+  fashion: moda / fashion (accettato)
+  brand: marchio / brand (accettato)
+  brands: marchi
+  branding: immagine di marca
+  shopping: acquisti / shopping (accettato)
+  stock: scorte / stock (accettato)
+  ticket: biglietto
+  tickets: biglietti
+  voucher: buono
+  vouchers: buoni
+  premium: di prima qualità / premium (accettato)
+
+  # --- Alimentazione e ospitalità (Accademia della Crusca) ---
+  brunch: brunch (accettato) / colazione-pranzo
+  catering: catering (accettato) / servizio di ristorazione
+  food truck: camion cucina
+  fast food: fast food (accettato) / cibo veloce
+  happy hour: aperitivo / happy hour (accettato)
+  chef: chef (accettato) / cuoco
+  check-in: registrazione / check-in (accettato)
+  check-out: partenza / check-out (accettato)
+  resort: resort (accettato) / complesso turistico
+
+  # --- Sport, salute e benessere (Della Valle/Patota) ---
+  running: corsa / running (accettato)
+  fitness: forma fisica / fitness (accettato)
+  wellness: benessere
+  spa: spa (accettato) / centro benessere
+  hobby: passatempo / hobby (accettato)
+  fan: tifoso / fan (accettato)
+  fans: tifosi / fan
+  coach: allenatore / coach (accettato)
+  coaching: tutoraggio / coaching (accettato)
+  record: record (accettato) / primato
+  cool: figo / in / trendy
+
+  # --- Marketing e pubblicità (Accademia della Crusca; Piemontese) ---
+  banner: banner (accettato) / striscione pubblicitario
+  landing page: pagina di destinazione
+  claim: slogan
+  copywriting: scrittura pubblicitaria
+  storytelling: narrazione / storytelling (accettato)
+  engagement: coinvolgimento / engagement (accettato)
+  reach: portata
+  awareness: notorietà / consapevolezza
+  press release: comunicato stampa
+  off the record: ufficiosamente
+  background: contesto / retroscena
+
+  # --- Anglicismi verbali (Accademia della Crusca; Severgnini) ---
+  googlare: cercare su internet
+  chattare: conversare in rete
+  postare: pubblicare
+  taggare: etichettare
+  linkare: collegare
+  cliccare: fare clic
+  loggare: accedere
+  uplodare: caricare
+  downlodare: scaricare

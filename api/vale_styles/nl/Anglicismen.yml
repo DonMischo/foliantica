@@ -1,0 +1,188 @@
+# Bronnen / Sources:
+#   - Genootschap Onze Taal: taaladvies.net — anglicismenadvies
+#   - Nederlandse Taalunie (NTU): taalunie.org — "Taaladvies" en "Woordenboek der Nederlandse Taal"
+#   - Van Dale: "Groot woordenboek van de Nederlandse taal" (15e druk, 2015)
+#   - Jan Renkema: "Schrijfwijzer" (4e druk, Boom, 2012)
+#   - Instituut voor de Nederlandse Taal (INT): ivdnt.org
+extends: substitution
+message: "Anglicisme: '%s' — in het Nederlands: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Vergaderingen en bedrijfsorganisatie (Genootschap; NTU) ---
+  meeting: vergadering / bijeenkomst
+  meetings: vergaderingen
+  briefing: briefing (geaccepteerd) / toelichting
+  debriefing: nabespreking / evaluatie
+  brainstorming: brainstormen (geaccepteerd) / ideeënsessie
+  workshop: workshop (geaccepteerd) / werksessie
+  workshops: werksessies
+  deadline: deadline (geaccepteerd) / uiterste termijn
+  deadlines: uiterste termijnen
+  networking: netwerken (geaccepteerd)
+  staff: personeel / medewerkers
+  manager: manager (geaccepteerd) / leidinggevende
+  managers: leidinggevenden
+  management: management (geaccepteerd) / leiding / beheer
+  outsourcing: uitbesteding
+  freelance: freelance (geaccepteerd) / zelfstandige
+  startup: startup (geaccepteerd) / startend bedrijf
+  startups: startende bedrijven
+  pitch: pitch (geaccepteerd) / presentatie
+  feedback: feedback (geaccepteerd) / terugkoppeling
+  sponsor: sponsor (geaccepteerd) / financier
+  sponsoring: sponsoring (geaccepteerd) / sponsorschap
+  newsletter: nieuwsbrief
+  newsletters: nieuwsbrieven
+  ranking: ranglijst / klassement
+  rankings: ranglijsten
+  lobbying: lobbyen (geaccepteerd) / belangenbehartiging
+  leasing: leasing (geaccepteerd) / financiële huur
+  royalty: royalty (geaccepteerd) / auteursrecht
+  royalties: royalties / auteursrechten
+  know-how: know-how (geaccepteerd) / kennis en ervaring
+  joint venture: joint venture (geaccepteerd) / samenwerkingsverband
+  dumping: dumping (geaccepteerd) / oneerlijke concurrentie
+  copyright: auteursrecht
+  target: doel / doelgroep
+  targets: doelen / doelgroepen
+  holding: holding (geaccepteerd) / moederbedrijf
+  benchmark: benchmark (geaccepteerd) / referentiepunt
+  benchmarking: benchmarking (geaccepteerd) / vergelijkende analyse
+
+  # --- Technologie en digitaal (Genootschap; INT; NTU) ---
+  email: e-mail (geaccepteerd) / elektronische post
+  e-mail: e-mail (geaccepteerd)
+  spam: spam (geaccepteerd) / ongewenste mail
+  link: link (geaccepteerd) / koppeling / hyperlink
+  links: koppelingen / hyperlinks
+  login: inloggen (het inloggen)
+  logout: uitloggen
+  password: wachtwoord
+  passwords: wachtwoorden
+  username: gebruikersnaam
+  download: download (geaccepteerd) / downloaden
+  upload: upload (geaccepteerd) / uploaden
+  update: update (geaccepteerd) / bijwerken
+  updates: updates / bijwerkingen
+  backup: back-up (geaccepteerd) / reservekopie
+  backups: back-ups / reservekopieën
+  hardware: hardware (geaccepteerd) / apparatuur
+  software: software (geaccepteerd) / programmatuur
+  app: app (geaccepteerd) / toepassing
+  apps: apps / toepassingen
+  smartphone: smartphone (geaccepteerd) / mobieltje
+  smartphones: smartphones
+  tablet: tablet (geaccepteerd)
+  hashtag: hashtag (geaccepteerd) / hekjeswoord
+  hashtags: hashtags / hekjeswoorden
+  selfie: selfie (geaccepteerd) / zelfportret
+  selfies: selfies / zelfportretten
+  streaming: streaming (geaccepteerd) / gestreamde media
+  blog: blog (geaccepteerd) / weblog
+  blogs: blogs / weblogs
+  blogger: blogger (geaccepteerd) / weblogger
+  influencer: influencer (geaccepteerd) / beïnvloeder
+  influencers: influencers / beïnvloeders
+  troll: troll (geaccepteerd) / treiterkop
+  hacker: hacker (geaccepteerd) / computerkraker
+  hackers: hackers / computerkrakers
+  click: klik
+  clicks: klikken
+  chat: chat (geaccepteerd) / gesprek
+  chatbot: chatbot (geaccepteerd) / gespreksrobot
+  chatbots: chatbots / gespreksrobots
+  trending: trending (geaccepteerd) / trending zijn → populair
+  trend: trend (geaccepteerd) / tendens
+  trends: trends / tendensen
+  tweet: tweet (geaccepteerd) / bericht
+  tweets: tweets / berichten
+  cloud: cloud (geaccepteerd) / de cloud → de wolk
+  big data: big data (geaccepteerd) / grootschalige gegevens
+  webinar: webinar (geaccepteerd) / online seminar
+  e-commerce: e-commerce (geaccepteerd) / elektronische handel
+
+  # --- Media en entertainment (Genootschap; NTU) ---
+  show: show (geaccepteerd) / voorstelling
+  shows: shows / voorstellingen
+  casting: casting (geaccepteerd) / selectie
+  reality show: realityshow (geaccepteerd) / werkelijkheidsprogramma
+  talk show: talkshow (geaccepteerd) / praatprogramma
+  prime time: prime time (geaccepteerd) / spitsuur / beste kijktijd
+  spot: spot (geaccepteerd) / reclamefilmpje
+  spots: spots / reclamefilmpjes
+  clip: clip (geaccepteerd) / videoclip
+  clips: clips / videoclips
+  trailer: trailer (geaccepteerd) / voorfilm / filmtrailer
+  trailers: trailers / voorfilms
+  flyer: flyer (geaccepteerd) / folder / strooibriefje
+  flyers: flyers / folders
+  remake: remake (geaccepteerd) / herverfilming
+  playlist: afspeellijst
+  playlists: afspeellijsten
+  live: live (geaccepteerd) / rechtstreeks / in levenden lijve
+
+  # --- Mode, stijl en consumptie (Genootschap; Van Dale) ---
+  look: look (geaccepteerd) / uiterlijk / stijl
+  outfit: outfit (geaccepteerd) / kleding / uitrusting
+  outfits: outfits / kledingsets
+  fashion: mode / fashion (geaccepteerd)
+  brand: merk / brand (geaccepteerd)
+  brands: merken
+  branding: merkidentiteit
+  shopping: winkelen / shoppen (geaccepteerd)
+  stock: voorraad / stock (geaccepteerd)
+  ticket: kaartje / ticket (geaccepteerd)
+  tickets: kaartjes
+  voucher: voucher (geaccepteerd) / tegoedbon
+  vouchers: tegoedbonnen
+  premium: premium (geaccepteerd) / hoogwaardig
+
+  # --- Eten en horeca (Van Dale; Genootschap) ---
+  brunch: brunch (geaccepteerd) / laat ontbijt
+  catering: catering (geaccepteerd) / cateringservice
+  food truck: foodtruck (geaccepteerd) / rijdende keuken
+  fast food: fastfood (geaccepteerd) / sneleten
+  happy hour: happy hour (geaccepteerd) / goedkope-drankjesuur
+  chef: chef (geaccepteerd) / kok / chefkok
+  check-in: check-in (geaccepteerd) / inchecken
+  check-out: check-out (geaccepteerd) / uitchecken
+  resort: resort (geaccepteerd) / vakantiecomplex
+
+  # --- Sport, gezondheid en welzijn (Van Dale; Genootschap) ---
+  running: hardlopen / joggen
+  fitness: fitness (geaccepteerd) / lichamelijke conditie
+  wellness: wellness (geaccepteerd) / welzijn
+  spa: spa (geaccepteerd) / kuurcentrum
+  hobby: hobby (geaccepteerd) / liefhebberij
+  fan: fan (geaccepteerd) / supporter / bewonderaar
+  fans: fans / supporters
+  coach: coach (geaccepteerd) / trainer / begeleider
+  coaching: coaching (geaccepteerd) / begeleiding
+  record: record (geaccepteerd) / topprestatie
+  cool: cool (geaccepteerd) / stoer / gaaf
+
+  # --- Marketing en reclame (Genootschap; NTU) ---
+  banner: banner (geaccepteerd) / spandoek / reclamebanner
+  landing page: bestemmingspagina
+  claim: slogan / reclameboodschap
+  copywriting: reclameschrijven / tekstschrijven
+  storytelling: storytelling (geaccepteerd) / verhalen vertellen
+  engagement: betrokkenheid / engagement (geaccepteerd)
+  reach: bereik
+  awareness: bewustzijn / bekendheid
+  press release: persbericht
+  off the record: buiten de pers om / informeel
+  background: achtergrond / context
+
+  # --- Anglicistische werkwoorden (Genootschap; NTU) ---
+  googelen: zoeken op internet / googelen (geaccepteerd)
+  googlen: zoeken op internet
+  chatten: chatten (geaccepteerd) / online praten
+  posten: posten (geaccepteerd) / plaatsen
+  tweeten: tweeten (geaccepteerd) / berichten plaatsen
+  linken: koppelen / doorlinken
+  klikken: klikken
+  inloggen: inloggen
+  uploaden: uploaden (geaccepteerd) / opladen
+  downloaden: downloaden (geaccepteerd) / ophalen

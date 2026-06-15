@@ -1,0 +1,98 @@
+# Fonti / Sources:
+#   - Luca Serianni: "Italiano" (Garzanti, 1988/2000)
+#   - Luca Serianni: "Guida all'italiano" (BUR, 2007)
+#   - Accademia della Crusca: consulenze linguistiche — accademicadellacrusca.it
+#   - Tullio De Mauro: "Grande dizionario italiano dell'uso" (GRADIT, UTET, 1999)
+#   - Valeria Della Valle / Giuseppe Patota: "Viva l'italiano!" (Sperling & Kupfer, 2009)
+#   - Beppe Severgnini: "L'italiano: lezioni semiserie" (Rizzoli, 2007)
+extends: existence
+message: "'%s' — possibile errore o uso ambiguo: verificare"
+level: warning
+ignorecase: false
+tokens:
+  # --- "eventualmente" ≠ "eventually" (Serianni; Accademia della Crusca) ---
+  # In italiano: "eventualmente" = "semmai, nel caso in cui, se del caso"
+  # ≠ inglese "eventually" = "alla fine, col tempo, prima o poi"
+  # Errore frequente in testi influenzati dall'inglese.
+  - eventualmente\b
+  - eventuale\b
+  - eventuali\b
+
+  # --- "attualmente" ≠ "actually" (Serianni; De Mauro) ---
+  # In italiano: "attualmente" = "al momento presente, in questo periodo"
+  # ≠ inglese "actually" = "in realtà, effettivamente, anzi"
+  # Calco frequente nei testi bilingui.
+  - \battualmente\b
+
+  # --- "piuttosto che" usato come "o" (Accademia della Crusca) ---
+  # L'Accademia della Crusca segnala che "piuttosto che" in senso disgiuntivo
+  # (come sinonimo di "o, oppure") è un uso improprio ma molto diffuso.
+  # "Preferisce il caffè piuttosto che il tè" → "...o il tè"
+  # Il significato corretto è avversativo-comparativo: "invece di, anziché"
+  - \bpiuttosto che\b
+
+  # --- "presupposto" usato come "premessa" (Accademia della Crusca) ---
+  # "Presupposto" (= precondizione logica implicita) viene spesso usato
+  # erroneamente al posto di "premessa" o "ipotesi".
+  - \bpresupposto\b
+
+  # --- "implementare" usato come "realizzare/attuare" (Accademia della Crusca) ---
+  # "Implementare" in italiano originariamente significava "integrare, completare".
+  # Viene usato sempre più come calco dell'inglese "to implement" = "attuare, realizzare".
+  # L'Accademia della Crusca segnala questo uso come anglicismo penetrante.
+  - \bimplementare\b
+  - \bimplementazione\b
+  - \bimplementato\b
+  - \bimplementata\b
+
+  # --- "in quanto tale" usato come riempitivo (Serianni; Calvino) ---
+  # Spesso usato senza valore aggiunto logico, come riempitivo.
+  - \bin quanto tale\b
+  - \bin quanto tali\b
+
+  # --- Comparative con "come" invece di "di" o "che" (Serianni; De Mauro) ---
+  # In italiano il comparativo richiede "di" o "che", non "come".
+  # "più grande come" → "più grande di"
+  - più grande come
+  - più piccolo come
+  - più vecchio come
+  - più giovane come
+  - più forte come
+  - più rapido come
+  - meglio come
+  - peggio come
+  - più lungo come
+  - più corto come
+  - più bello come
+  - più brutto come
+
+  # --- "da quando" usato impropriamente per durata (Serianni) ---
+  # "Da quando" introduce un punto temporale, non una durata.
+  # "Studio italiano da tre anni" — corretto; "da quando tre anni" — sbagliato.
+  # (Segnalazione conservativa — false positives possibili)
+
+  # --- Doppia negazione rafforzativa non standard (Serianni; Accademia della Crusca) ---
+  # "Non ho visto niente" è corretto; "Non ho visto nulla di niente" — ridondante.
+  - \bnulla di niente\b
+  - \bnessun niente\b
+  - \bniente di nulla\b
+
+  # --- "ovviamente" e varianti usati come tic linguistici (Calvino; Serianni) ---
+  - \bovviamente\b
+  - \bovvio che\b
+  - \bè ovvio\b
+
+  # --- "il fatto che" — costruzione pesante (Serianni; Piemontese) ---
+  # Spesso può essere sostituito da una subordinata più diretta.
+  # "Il fatto che lui sia partito mi sorprende" → "Che lui sia partito mi sorprende"
+  - \bil fatto che\b
+  - \bil fatto di\b
+
+  # --- Prospettive-copertina (Serianni: non indebolire la propria voce) ---
+  - \ba mio avviso\b
+  - \ba mio parere\b
+  - \bsecondo me\b
+  - \bdal mio punto di vista\b
+  - \bpersonalmente ritengo\b
+  - \bpersonalmente credo\b
+  - \bpersonalmente penso\b

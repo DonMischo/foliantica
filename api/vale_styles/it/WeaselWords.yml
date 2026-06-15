@@ -1,0 +1,157 @@
+# Fonti / Sources:
+#   - Luca Serianni: "Italiano" (Garzanti, 1988/2000) — grammatica di riferimento
+#   - Luca Serianni: "Guida all'italiano" (BUR, 2007)
+#   - Accademia della Crusca (Firenze, 1583): consulenze linguistiche — accademicadellacrusca.it
+#   - Tullio De Mauro: "Grande dizionario italiano dell'uso" (GRADIT, UTET, 1999)
+#   - Maurizio Piemontese: "Manuale di stile" (Presidenza del Consiglio dei Ministri, 1997)
+#   - Italo Calvino: "L'antilingua" (Il Giorno, 1965) — critica allo stile burocratico
+extends: existence
+message: "'%s' è un termine vago o riempitivo — formulare in modo più preciso?"
+level: warning
+ignorecase: true
+tokens:
+  # --- Intensificatori che indeboliscono (Serianni; Calvino) ---
+  - \bmolto\b
+  - \bdavvero\b
+  - \bbastanza\b
+  - \bpiuttosto\b
+  - \bsemplicemente\b
+  - \bcompletamente\b
+  - \btotalmente\b
+  - \babsolutamente\b
+  - \bassolutamente\b
+  - \baddirittura\b
+  - \bdecisamente\b
+  - \bcertamente\b
+  - \bsicuramente\b
+  - \bpienamente\b
+  - \binteramente\b
+  - \bperfettamente\b
+  - \besattamente\b
+  - \bprecisamente\b
+  - \bnettamente\b
+  - \bincredibilmente\b
+  - \bstraordinariamente\b
+
+  # --- Evidenziali vuoti (Serianni; De Mauro) ---
+  - \bevidentemente\b
+  - \bchiaramente\b
+  - \bmanifestamente\b
+  - \bapparentemente\b
+  - \bvisibilmente\b
+  - \bindubbiamente\b
+  - \bindiscutibilmente\b
+  - \binnegabilmente\b
+  - \bnaturalmente\b
+  - \blogicamente\b
+  - \bovviamente\b
+  - \bnotoriamente\b
+  - \bsenza dubbio\b
+  - \bè chiaro che\b
+  - \bè evidente che\b
+  - \bva da sé che\b
+  - \bè ovvio che\b
+  - \bè noto che\b
+  - \bcome tutti sanno\b
+  - \bcome è noto\b
+  - \bcom'è noto\b
+  - \bè risaputo che\b
+
+  # --- Parole-contenitore / jolly (Calvino: "L'antilingua"; Serianni) ---
+  - \bcosa\b
+  - \broba\b
+  - \baspetto\b
+  - \bdimensione\b
+  - \bproblematica\b
+  - \btematica\b
+  - \bquestione\b
+  - \bargomento\b
+  - \bcontesto\b
+  - \bsettore\b
+  - \bambito\b
+  - \blivello\b
+  - \bquadro\b
+  - \bpanorama\b
+  - \bscenario\b
+  - \bsituazione\b
+  - \bfrangente\b
+  - \bcaso di specie\b
+
+  # --- Quantificatori vaghi (Serianni; De Mauro) ---
+  - \btaluni\b
+  - \btalune\b
+  - \bvari\b
+  - \bvarie\b
+  - \bdiversi\b
+  - \bdiverse\b
+  - \bnumerosi\b
+  - \bnumerose\b
+  - \bune serie di\b
+  - \buna serie di\b
+  - \bun insieme di\b
+  - \bun certo numero di\b
+  - \bun gran numero di\b
+  - \buna moltitudine di\b
+  - \buna varietà di\b
+  - \bun'ampia gamma di\b
+
+  # --- Attenuatori epistemici (Serianni; Calvino) ---
+  - \bin un certo senso\b
+  - \bin qualche modo\b
+  - \bin qualche misura\b
+  - \bin una certa misura\b
+  - \bper così dire\b
+  - \bin un certo qual modo\b
+  - \bper certi versi\b
+  - \bsotto certi aspetti\b
+
+  # --- Riempitivi temporali (Piemontese; Calvino) ---
+  - \battualmente\b
+  - \bal momento attuale\b
+  - \bin questo momento\b
+  - \boggigiorno\b
+  - \bal giorno d'oggi\b
+  - \bad oggi\b
+  - \ballo stato attuale\b
+  - \ballo stato delle cose\b
+  - \bal più presto\b
+  - \bquanto prima\b
+  - \bin tempi brevi\b
+  - \ba breve\b
+  - \bnell'immediato\b
+  - \ba breve termine\b
+  - \ba medio termine\b
+  - \ba lungo termine\b
+  - \bnel prossimo futuro\b
+  - \bin un futuro prossimo\b
+
+  # --- Riempitivi burocratici (Piemontese; Calvino: "L'antilingua") ---
+  - \bnell'ambito di\b
+  - \bin merito a\b
+  - \bper quanto riguarda\b
+  - \brelativamente a\b
+  - \bin relazione a\b
+  - \bcon riferimento a\b
+  - \bcon riguardo a\b
+  - \bsi ritiene opportuno\b
+  - \bsi evidenzia che\b
+  - \bsi precisa che\b
+  - \bsi sottolinea che\b
+  - \bsi fa presente che\b
+  - \bsi rende noto che\b
+  - \bsi segnala che\b
+  - \bsi rappresenta che\b
+  - \bè da ritenersi\b
+  - \bè da considerarsi\b
+  - \bper quanto di competenza\b
+
+  # --- Prospettive-copertina (Serianni: non indebolire la propria voce) ---
+  - \ba mio avviso\b
+  - \ba mio parere\b
+  - \bsecondo me\b
+  - \bdal mio punto di vista\b
+  - \ba mia opinione\b
+  - \bpersonalmente ritengo\b
+  - \bpersonalmente credo\b
+  - \bpersonalmente penso\b
+  - \britengo che\b

@@ -1,0 +1,61 @@
+# Bronnen / Sources:
+#   - Jan Renkema: "Schrijfwijzer" (4e druk, Boom, 2012) — passief spaarzaam gebruiken
+#   - ANS: "Algemene Nederlandse Spraakkunst" (2e druk, 1997 / online 2016)
+#   - Genootschap Onze Taal: taaladvies.net
+#   - Henk Pander Maat / Leo Lentz: "Schrijven voor lezers" (Boom, 2010)
+extends: existence
+message: "Mogelijke passieve constructie ('%s') — actieve formulering verdient de voorkeur"
+level: suggestion
+ignorecase: true
+tokens:
+  # --- Worden-passief (Renkema: het meest voorkomende passief in het Nederlands) ---
+  # Tegenwoordige tijd
+  - \bwordt\b
+  - \bworden\b
+
+  # Verleden tijd
+  - \bwerd\b
+  - \bwerden\b
+
+  # Voltooid tegenwoordige tijd
+  - \bis geworden\b
+  - \bzijn geworden\b
+
+  # Meer dan verleden tijd
+  - \bwas geworden\b
+  - \bwaren geworden\b
+
+  # Toekomende tijd
+  - \bzal worden\b
+  - \bzullen worden\b
+
+  # Voorwaardelijk
+  - \bzou worden\b
+  - \bzouden worden\b
+
+  # --- Zijn-passief (resultaat / toestand) (ANS; Renkema) ---
+  # Tegenwoordige tijd
+  - \bis\b
+  - \bzijn\b
+
+  # Verleden tijd
+  - \bwas\b
+  - \bwaren\b
+
+  # Voltooid tegenwoordige tijd
+  - \bis geweest\b
+  - \bzijn geweest\b
+
+  # Toekomende tijd
+  - \bzal zijn\b
+  - \bzullen zijn\b
+
+  # --- Men-constructie (onpersoonlijk passief, Renkema: vermijden) ---
+  - \bmen\b
+
+  # --- Er-passief (Renkema; ANS: aanvaardbaar maar nadrukkelijk) ---
+  - \ber wordt\b
+  - \ber worden\b
+  - \ber werd\b
+  - \ber werden\b
+  - \ber zal worden\b

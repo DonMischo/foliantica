@@ -1,0 +1,128 @@
+# Fonti / Sources:
+#   - Luca Serianni: "Italiano" (Garzanti, 1988/2000)
+#   - Luca Serianni: "Guida all'italiano" (BUR, 2007)
+#   - Accademia della Crusca: consulenze linguistiche — accademicadellacrusca.it
+#   - Tullio De Mauro: "Grande dizionario italiano dell'uso" (GRADIT, UTET, 1999)
+#   - Valeria Della Valle / Giuseppe Patota: "Viva l'italiano!" (Sperling & Kupfer, 2009)
+extends: substitution
+message: "Pleonasmo / ridondanza: '%s' — una parola di troppo. Preferire '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Ridondanze direzionali (Serianni; Della Valle/Patota) ---
+  salire su: salire
+  scendere giù: scendere
+  entrare dentro: entrare
+  entrare all'interno: entrare
+  uscire fuori: uscire
+  uscire all'esterno: uscire
+  tornare indietro: tornare
+  proseguire avanti: proseguire
+  retrocedere indietro: retrocedere
+  avvicinarsi vicino: avvicinarsi
+  allontanarsi lontano: allontanarsi
+  alzarsi in piedi: alzarsi
+
+  # --- Ridondanze verbali (Serianni; Accademia della Crusca) ---
+  ripetere di nuovo: ripetere
+  ripetere ancora una volta: ripetere
+  ribadire di nuovo: ribadire
+  reiterare di nuovo: reiterare
+  ripartire di nuovo da capo: ripartire da capo
+  ricominciare di nuovo: ricominciare
+  prevedere in anticipo: prevedere
+  anticipare in anticipo: anticipare
+  pianificare in anticipo: pianificare
+  programmare in anticipo: programmare
+  prenotare in anticipo: prenotare
+  avvisare in anticipo: avvisare
+
+  # --- Tautologie nominali (Serianni; De Mauro; Della Valle/Patota) ---
+  protagonista principale: protagonista
+  primo debutto: debutto
+  debutto iniziale: debutto
+  novità nuova: novità
+  iniziativa innovativa nuova: iniziativa innovativa
+  sorpresa inaspettata: sorpresa
+  imprevisto inaspettato: imprevisto
+  bugia falsa: bugia
+  verità vera: verità
+  collaborare insieme: collaborare
+  cooperare insieme: cooperare
+  riunirsi insieme: riunirsi
+  consenso generale: consenso
+  consenso comune: consenso
+  risultato finale: risultato
+  conclusione finale: conclusione
+  bilancio definitivo: bilancio
+  monopolio esclusivo: monopolio
+  panacea universale: panacea
+  precedente storico unico: precedente storico
+  caso unico ed eccezionale: caso eccezionale
+  unico ed esclusivo: unico
+  solo ed unico: solo
+  libero e gratuito: gratuito
+  gratuito e senza costi: gratuito
+  pericolo imminente che incombe: pericolo imminente
+  rischio potenziale: rischio
+  pericolo potenziale: pericolo
+  problema potenziale: problema
+  scelta opzionale: scelta
+  opzione alternativa: alternativa
+  appendice aggiuntiva: appendice
+
+  # --- Ridondanze temporali (Serianni; Accademia della Crusca) ---
+  ieri il giorno precedente: ieri
+  domani il giorno seguente: domani
+  ora in questo momento: ora
+  adesso in questo momento: adesso
+  mai e poi mai: mai
+  sempre e comunque: sempre
+
+  # --- Sindrome RAS — acronimi con la parola ridondante (Accademia della Crusca; De Mauro) ---
+  # PIN = Personal Identification Number (Numero di Identificazione Personale)
+  numero PIN: PIN
+  codice PIN numero: codice PIN
+  # HIV = Human Immunodeficiency Virus (Virus dell'Immunodeficienza Umana)
+  virus HIV: HIV
+  HIV virus: HIV
+  # AIDS = Acquired Immune Deficiency Syndrome (Sindrome da immunodeficienza acquisita)
+  sindrome AIDS: AIDS
+  AIDS sindrome: AIDS
+  # ONG = Organizzazione Non Governativa
+  organizzazione ONG: ONG
+  ONG organizzazione: ONG
+  # RAM = Random Access Memory (memoria ad accesso casuale)
+  memoria RAM: RAM
+  RAM memoria: RAM
+  # DVD = Digital Versatile Disc
+  disco DVD: DVD
+  DVD disco: DVD
+  # CD = Compact Disc
+  disco CD: CD
+  CD disco: CD
+  # PDF = Portable Document Format
+  formato PDF: PDF
+  PDF formato: PDF
+  # GPS = Global Positioning System
+  sistema GPS: GPS
+  GPS sistema: GPS
+  # IVA = Imposta sul Valore Aggiunto
+  imposta IVA: IVA
+  IVA imposta: IVA
+  tassa IVA: IVA
+  # ISBN = International Standard Book Number
+  numero ISBN: ISBN
+  ISBN numero: ISBN
+  # HTML = HyperText Markup Language
+  linguaggio HTML: HTML
+  HTML linguaggio: HTML
+  # ADSL = Asymmetric Digital Subscriber Line
+  linea ADSL: ADSL
+  ADSL linea: ADSL
+  # USB = Universal Serial Bus
+  cavo USB: USB
+  USB cavo: USB
+  # WiFi = Wireless Fidelity
+  rete WiFi: WiFi
+  WiFi rete: WiFi

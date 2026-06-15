@@ -1,0 +1,54 @@
+# Fonti / Sources:
+#   - Luca Serianni: "Italiano" (Garzanti, 1988/2000)
+#   - Maurizio Piemontese: "Manuale di stile" (Presidenza del Consiglio dei Ministri, 1997)
+#   - Accademia della Crusca: consulenze linguistiche
+#   - Italo Calvino: "L'antilingua" (Il Giorno, 1965)
+extends: existence
+message: "Possibile forma passiva ('%s') — preferire la forma attiva per maggiore chiarezza"
+level: suggestion
+ignorecase: true
+tokens:
+  # --- Passivo perifrastico con "essere" (Serianni: il passivo appesantisce lo stile) ---
+  # Passato remoto / prossimo (i più frequenti)
+  - \bfu\b
+  - \bfurono\b
+  - \bè stato\b
+  - \bè stata\b
+  - \bsono stati\b
+  - \bsono state\b
+
+  # Trapassato prossimo
+  - \bera stato\b
+  - \bera stata\b
+  - \berano stati\b
+  - \berano state\b
+
+  # Presente (viene/vengono + participio — passivo perifrastico con "venire")
+  - \bviene\b
+  - \bvengono\b
+
+  # Imperfetto (veniva/venivano)
+  - \bveniva\b
+  - \bvenivano\b
+
+  # Futuro (sarà/saranno)
+  - \bsarà\b
+  - \bsaranno\b
+
+  # Condizionale (sarebbe/sarebbero)
+  - \bsarebbe\b
+  - \bsarebbero\b
+
+  # --- Passivo con "andare" (obbligo / necessità) ---
+  # "va esaminato" = "deve essere esaminato" — comune nel burocratico
+  - \bva\b
+  - \bvanno\b
+  - \bandava\b
+  - \bandavano\b
+
+  # --- Passivo progressivo — "sta venendo" (calco dell'inglese, criticato da Calvino) ---
+  # "Il progetto sta venendo esaminato" → "Si sta esaminando il progetto"
+  - \bsta venendo\b
+  - \bstanno venendo\b
+  - \bstava venendo\b
+  - \bstavano venendo\b
