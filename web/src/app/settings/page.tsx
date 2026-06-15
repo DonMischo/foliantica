@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Fragment } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database } from "lucide-react";
+import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -147,6 +147,7 @@ export default function SettingsPage() {
   const [valeDetecting, setValeDetecting]   = useState(false);
   const [valeDetectResult, setValeDetectResult] = useState<{ system: boolean; docker: boolean } | null>(null);
   const [valeHelpOpen, setValeHelpOpen]     = useState(false);
+  const [valeSourcesOpen, setValeSourcesOpen] = useState(false);
   const [valeHelpOs, setValeHelpOs]         = useState<"windows" | "mac" | "linux">("windows");
   const [showServiceStatus, setShowServiceStatus] = useState(false);
   const { data: serviceStatus, isLoading: statusLoading, refetch: refetchStatus } =
@@ -1755,6 +1756,50 @@ export default function SettingsPage() {
                 Docker: {valeDetectResult.docker ? "✓ service responding" : "✗ not responding"}
               </p>
             )}
+
+            {/* Built-in style rule sources */}
+            <div className="border border-border/60 rounded-md overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setValeSourcesOpen(o => !o)}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+              >
+                <Info className="h-3.5 w-3.5 shrink-0 text-blue-400" />
+                <span className="flex-1 text-left">Built-in Foliantica style rules — sources &amp; attribution</span>
+                {valeSourcesOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </button>
+              {valeSourcesOpen && (
+                <div className="px-3 pb-3 pt-1 space-y-2 border-t border-border/60 bg-muted/20">
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Foliantica bundles prose style rules for German and other languages, derived from the following authoritative sources:
+                  </p>
+                  <ul className="space-y-1.5 text-[11px]">
+                    {[
+                      { author: "Wolf Schneider", work: "Deutsch fürs Leben", year: "1994", note: "WeaselWords, NominalStyle, WordyPhrases" },
+                      { author: "Bastian Sick", work: "Der Dativ ist dem Genitiv sein Tod (Zwiebelfisch, Der Spiegel)", year: "2004–", note: "Redundancy, WeaselWords" },
+                      { author: "Ludwig Reiners", work: "Stilkunst", year: "1944 / rev. 1991", note: "NominalStyle (Funktionsverbgefüge)" },
+                      { author: "Bundesverwaltungsamt", work: "Handbuch für Leichte Sprache", year: "2022", note: "WordyPhrases, Passive (Amtsdeutsch)" },
+                      { author: "Duden", work: "Stilwörterbuch der deutschen Sprache", year: "9. Aufl. 2010", note: "Redundancy" },
+                      { author: "Wikipedia", work: "Liste der Pleonasmen (de.wikipedia.org/wiki/Pleonasmus)", year: "", note: "Redundancy" },
+                    ].map(({ author, work, year, note }) => (
+                      <li key={author} className="flex gap-2">
+                        <span className="text-muted-foreground shrink-0">·</span>
+                        <span>
+                          <span className="font-medium text-foreground/80">{author}</span>
+                          {" – "}
+                          <span className="italic">{work}</span>
+                          {year && <span className="text-muted-foreground"> ({year})</span>}
+                          <span className="text-muted-foreground"> — {note}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-[10px] text-muted-foreground/70 pt-1">
+                    Rules are suggestions only. All credit for the underlying style guidance belongs to the original authors.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* PostgreSQL Database */}
