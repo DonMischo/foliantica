@@ -29,10 +29,14 @@ function AlertCard({ alert, onJumpTo }: { alert: ValeAlert; onJumpTo?: (matched:
     setTimeout(() => setCopied(null), 1500);
   };
 
+  const hasDetails =
+    !!alert.Description ||
+    (alert.Action.Name === "replace" && alert.Action.Params.length > 0) ||
+    !!alert.Link;
+
   const handleClick = () => {
-    const next = !expanded;
-    setExpanded(next);
-    if (next) onJumpTo?.(alert.Match, alert.Span[0] - 1);
+    if (hasDetails) setExpanded(e => !e);
+    onJumpTo?.(alert.Match, alert.Span[0] - 1);
   };
 
   // Rule name: e.g. "write-good.Weasel" → show short name "Weasel" + package "write-good"
