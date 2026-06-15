@@ -31,7 +31,8 @@ function postProcessAlerts(alerts: ValeAlert[], text: string, language: string |
 
   return alerts.map(alert => {
     if (alert.Check !== "Vale.Repetition") return alert;
-    if (!DE_RELATIVE.has(alert.Match.toLowerCase())) return alert;
+    const word = alert.Match.toLowerCase().split(/\s+/)[0];
+    if (!DE_RELATIVE.has(word)) return alert;
     // Span is 1-based column into `text`; look for a comma with only whitespace
     // between it and the start of the repeated word.
     const offset = alert.Span[0] - 1;
