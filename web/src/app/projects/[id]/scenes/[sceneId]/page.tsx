@@ -247,14 +247,18 @@ export default function ScenePage() {
 
   const { saveNow } = useAutosave({ sceneId: sceneIdNum, content, enabled: !!scene });
 
-  // ESC exits focus mode
+  // ESC exits focus mode; Ctrl/Cmd+S saves immediately
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && focusMode) setFocusMode(false);
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        saveNow();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [focusMode, setFocusMode]);
+  }, [focusMode, setFocusMode, saveNow]);
 
   // Clear session when navigating to a different scene
   useEffect(() => { clearSession(); }, [sceneIdNum]); // eslint-disable-line react-hooks/exhaustive-deps

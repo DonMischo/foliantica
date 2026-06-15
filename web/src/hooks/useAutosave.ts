@@ -96,5 +96,6 @@ export function useAutosave({ sceneId, content, enabled }: Options) {
     }
   }, [sceneId, save]);
 
-  return { saveNow: () => save(contentRef.current, sceneId) };
+  const saveNow = useCallback(() => save(contentRef.current, sceneId), [save, sceneId]);
+  return { saveNow };
 }
