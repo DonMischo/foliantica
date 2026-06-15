@@ -120,7 +120,7 @@ export function CodexSidebar({ entries, selectedId, onSelect, onClose, onAdd, on
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
         <span className="text-sm font-medium">Codex</span>
         <div className="flex items-center gap-1">
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onAdd}>
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onAdd()}>
             <Plus className="h-3.5 w-3.5" />
           </Button>
           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onClose}>
