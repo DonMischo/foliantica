@@ -2,13 +2,57 @@ extends: substitution
 message: "'%s' ist redundant — erwäge '%s'."
 level: warning
 swap:
-  bereits schon: bereits
-  alter Veteran: Veteran
+  # Klassische Pleonasmen (Duden, Zwiebelfisch / Bastian Sick)
   weißer Schimmel: Schimmel
+  schwarzer Rappe: Rappe
   tote Leiche: Leiche
-  vergangene Geschichte: Geschichte
-  persönliche Meinung: Meinung
-  kleine Miniatur: Miniatur
-  gemeinsame Zusammenarbeit: Zusammenarbeit
+  alter Greis: Greis
+  alter Veteran: Veteran
+  kleiner Zwerg: Zwerg
+  großer Riese: Riese
   runder Kreis: Kreis
-  nasse Feuchtigkeit: Feuchtigkeit
+  runde Kugel: Kugel
+  schwarzer Rabe: Rabe
+  nasser Regen: Regen
+  dunkle Nacht: Nacht
+  weibliche Bundeskanzlerin: Bundeskanzlerin
+
+  # Adjektiv-Tautologien
+  Hauptprotagonist: Protagonist
+  seltene Ausnahme: Ausnahme
+  Kurzzusammenfassung: Zusammenfassung
+  persönliche Meinung: Meinung
+  persönliche Anwesenheit: Anwesenheit
+  akute Notfallsituation: Notfall
+  gemeinsame Zusammenarbeit: Zusammenarbeit
+  Einzelindividuum: Individuum
+  manuelle Handarbeit: Handarbeit
+  genetisches Erbgut: Erbgut
+  Volksdemokratie: Demokratie
+
+  # Redundante Verben / Verbzusätze
+  zusammenaddieren: addieren
+  vorprogrammieren: programmieren
+  Rückerinnerung: Erinnerung
+
+  # Gratis / Geschenke
+  Gratis-Geschenk: Geschenk
+  kostenloses Gratis-Angebot: Gratis-Angebot
+
+  # RAS-Syndrom (Redundantes Akronym-Syndrom)
+  PIN-Nummer: PIN
+  ISBN-Nummer: ISBN
+  LCD-Display: LCD
+  HIV-Virus: HIV
+  VPN-Netzwerk: VPN
+  WLAN-Netzwerk: WLAN
+  SMS-Service: SMS
+  IT-Technik: IT
+
+  # Richtungsredundanzen
+  bereits schon: bereits
+  wieder zurück: zurück
+  vorher vorbereiten: vorbereiten
+  weiter fortfahren: fortfahren
+  kleine Miniatur: Miniatur
+  runde Vitrine aus Glas: Vitrine

@@ -1,20 +1,70 @@
 extends: existence
-message: "'%s' ist ein Füllwort — präziser formulieren?"
+message: "'%s' ist ein Füllwort — überprüfen ob weglassbar?"
 level: warning
 tokens:
-  - \bsehr\b
-  - \bwirklich\b
+  # Abschwächer / Hedges (Wolf Schneider: "Weichmacher")
   - \beigentlich\b
   - \birgendwie\b
-  - \bziemlich\b
-  - \beinfach\b
-  - \bhalt\b
-  - \beben\b
-  - \boffensichtlich\b
-  - \bnatürlich\b
-  - \bselbstverständlich\b
-  - \bjedenfalls\b
-  - \bletztendlich\b
   - \bgewissermaßen\b
   - \bsozusagen\b
   - \bquasi\b
+  - \bgleichsam\b
+  - \bim Prinzip\b
+  - \bim Grunde\b
+
+  # Intensifiers that paradoxically weaken the statement
+  - \bwirklich\b
+  - \becht\b
+  - \bsehr\b
+  - \babsolut\b
+  - \btotal\b
+  - \bvöllig\b
+  - \bgänzlich\b
+  - \bvollkommen\b
+  - \bregelrecht\b
+  - \bgeradezu\b
+  - \bschier\b
+  - \bausgesprochen\b
+  - \büberaus\b
+  - \bungemein\b
+  - \baußerordentlich\b
+  - \baußergewöhnlich\b
+  - \bmaßgeblich\b
+  - \bnachhaltig\b
+
+  # Selbstverständlichkeiten — stating the obvious
+  - \bnatürlich\b
+  - \bselbstverständlich\b
+  - \boffensichtlich\b
+  - \boffenbar\b
+  - \boffenkundig\b
+  - \baugenscheinlich\b
+  - \bbekanntlich\b
+  - \bzweifellos\b
+  - \bzweifelsohne\b
+  - \bfreilich\b
+  - \bunbestreitbar\b
+
+  # Floskeln / Meaningless framing
+  - \bletztendlich\b
+  - \bletzten Endes\b
+  - \bim Endeffekt\b
+  - \bgrundsätzlich\b
+  - \bim Wesentlichen\b
+  - \bnormalerweise\b
+  - \bgewöhnlich\b
+  - \bin diesem Zusammenhang\b
+  - \bnichtsdestotrotz\b
+  - \bnichtsdestoweniger\b
+  - \binfolgedessen\b
+  - \binzwischen\b
+  - \bübrigens\b
+
+  # Vague approximators
+  - \bziemlich\b
+  - \beinigermaßen\b
+  - \bweitgehend\b
+  - \bvergleichsweise\b
+  - \brelativ\b
+  - \bmehr oder weniger\b
+  - \bin etwa\b

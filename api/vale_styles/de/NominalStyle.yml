@@ -1,0 +1,49 @@
+extends: substitution
+message: "Nominalstil: '%s' → besser '%s'?"
+level: suggestion
+swap:
+  # Funktionsverbgefüge (Wolf Schneider, Ludwig Reiners "Stilkunst")
+  # Verb + abstraktes Nomen → einfaches Verb
+  eine Entscheidung treffen: entscheiden
+  eine Frage stellen: fragen
+  einen Antrag stellen: beantragen
+  zur Diskussion stellen: diskutieren
+  zur Verfügung stellen: bereitstellen
+  in Erscheinung treten: erscheinen
+  in Kraft treten: wirksam werden
+  in Frage stellen: bezweifeln
+  zur Sprache bringen: ansprechen
+  zum Ausdruck bringen: ausdrücken
+  zum Abschluss bringen: abschließen
+  in Angriff nehmen: anpacken
+  in Anspruch nehmen: beanspruchen
+  Rücksicht nehmen auf: berücksichtigen
+  Stellung nehmen: sich äußern
+  Einfluss nehmen auf: beeinflussen
+  Einfluss haben auf: beeinflussen
+  zur Kenntnis nehmen: beachten
+  in Kenntnis setzen: informieren
+  in Betracht ziehen: erwägen
+  in Erwägung ziehen: erwägen
+  Hilfe leisten: helfen
+  eine Antwort geben: antworten
+  einen Rat geben: raten
+  die Erlaubnis geben: erlauben
+  einen Auftrag geben: beauftragen
+  eine Lösung finden: lösen
+  Anwendung finden: angewendet werden
+  ein Gespräch führen: sprechen
+  eine Rede halten: reden
+  einen Vorschlag machen: vorschlagen
+  Kritik üben: kritisieren
+  sich Hoffnung machen: hoffen
+  Abschied nehmen: sich verabschieden
+  Vorbereitungen treffen: vorbereiten
+
+  # Streckverben (Wolf Schneider: "Strecktformen")
+  # Schwache Verben, die Aktivität verschleiern
+  zur Folge haben: bewirken
+  in Erfüllung gehen: erfüllt werden
+  zum Einsatz kommen: eingesetzt werden
+  zur Aufführung bringen: aufführen
+  in Erscheinung treten: auftreten

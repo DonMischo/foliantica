@@ -1,0 +1,44 @@
+extends: substitution
+message: "'%s' → kürzer: '%s'"
+level: suggestion
+swap:
+  # Aufgeblähte Präpositionen (Bundesverwaltungsamt, Wolf Schneider)
+  im Hinblick auf: für
+  in Bezug auf: zu
+  hinsichtlich: wegen
+  bezüglich: zu
+  mit Hilfe von: mit
+  mithilfe von: mit
+  auf Grund von: wegen
+  aufgrund von: wegen
+  infolge von: wegen
+  im Rahmen von: bei
+  im Bereich von: in
+  in Anbetracht: angesichts
+  mit Rücksicht auf: wegen
+  unter Berücksichtigung von: bei
+  zum Zweck der: für die
+  in Ermangelung von: mangels
+  unter Umständen: möglicherweise
+  auf der Basis von: nach
+  im Zuge von: bei
+  unter Zuhilfenahme von: mit
+  im Sinne von: nach
+  auf die Nerven gehen: nerven
+
+  # Kausale Umschreibungen (da/weil sind kürzer)
+  aufgrund der Tatsache dass: weil
+  angesichts der Tatsache dass: da
+  vor dem Hintergrund dass: da
+  in Anbetracht der Tatsache dass: da
+  mit dem Ziel dass: damit
+
+  # Vage Modalausdrücke
+  es ist davon auszugehen dass: wahrscheinlich
+  es besteht die Möglichkeit dass: möglicherweise
+  zu dem Schluss kommen dass: schließen dass
+
+  # "erfolgen" als Streckform (Wolf Schneider: stets ersetzen)
+  findet statt: geschieht
+  kommt zur Anwendung: wird angewendet
+  gelangt zur Verteilung: wird verteilt
