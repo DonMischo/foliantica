@@ -541,7 +541,7 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border px-6 py-4 flex items-center gap-3">
+      <header className="sticky top-0 z-10 bg-background border-b border-border px-6 py-4 flex items-center gap-3">
         <button onClick={() => router.back()} className="text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-4 w-4" />
         </button>
