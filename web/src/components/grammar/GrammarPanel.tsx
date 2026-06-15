@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { X, SpellCheck, ChevronDown, ChevronRight, Loader2, AlertCircle, Check, Clock } from "lucide-react";
+import { useState, useCallback } from "react";
+import { X, SpellCheck, ChevronDown, ChevronRight, Loader2, AlertCircle, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useGrammarCheck } from "@/store/queries";
 import type { GrammarMatch } from "@/lib/api";
+import { grammarApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -30,6 +30,51 @@ function issueColor(type: string) {
   return ISSUE_COLOR[type] ?? "text-muted-foreground";
 }
 
+/**
+ * Split text into ~3000-char chunks, snapping to the last sentence boundary
+ * in the second half of each chunk so we never cut mid-sentence.
+ * Returns [{text, offset}] where offset is the chunk's start in the full text.
+ */
+function splitIntoChunks(text: string, targetSize = 3000): { text: string; offset: number }[] {
+  if (!text.trim()) return [];
+  if (text.length <= targetSize) return [{ text, offset: 0 }];
+
+  const chunks: { text: string; offset: number }[] = [];
+  let start = 0;
+
+  while (start < text.length) {
+    if (text.length - start <= targetSize) {
+      chunks.push({ text: text.slice(start), offset: start });
+      break;
+    }
+
+    const slice = text.slice(start, start + targetSize);
+    // Search for the last sentence-ending punctuation followed by a space,
+    // starting from the halfway point so chunks don't get too short.
+    const halfIdx = Math.floor(targetSize / 2);
+    const sub = slice.slice(halfIdx);
+    const m = sub.match(/(.*[.!?]) /); // greedy → last boundary
+
+    let end: number;
+    if (m) {
+      end = start + halfIdx + m[1].length;
+    } else {
+      // No sentence boundary — fall back to last space
+      const lastSpace = slice.lastIndexOf(" ");
+      end = lastSpace > halfIdx ? start + lastSpace : start + targetSize;
+    }
+
+    chunks.push({ text: text.slice(start, end), offset: start });
+    // Advance past the split point, skipping any leading space on the next chunk
+    start = end;
+    while (start < text.length && text[start] === " ") start++;
+  }
+
+  return chunks;
+}
+
+// ── Match card ────────────────────────────────────────────────────────────────
+
 interface MatchCardProps {
   match: GrammarMatch;
   onApplySuggestion?: (matched: string, replacement: string, offset: number) => void;
@@ -48,7 +93,6 @@ function MatchCard({ match, onApplySuggestion, onJumpTo }: MatchCardProps) {
   const handleHeaderClick = () => {
     const next = !open;
     setOpen(next);
-    // Jump to the text in the editor when expanding
     if (next) onJumpTo?.(matched, match.offset);
   };
 
@@ -121,15 +165,44 @@ function MatchCard({ match, onApplySuggestion, onJumpTo }: MatchCardProps) {
   );
 }
 
+// ── Panel ─────────────────────────────────────────────────────────────────────
+
 export function GrammarPanel({ text, language = "auto", onClose, onApplySuggestion, onJumpTo }: Props) {
-  const check = useGrammarCheck();
+  const [matches, setMatches]     = useState<GrammarMatch[]>([]);
+  const [isChecking, setChecking] = useState(false);
+  const [progress, setProgress]   = useState<{ done: number; total: number } | null>(null);
+  const [error, setError]         = useState<string | null>(null);
+  const [hasRun, setHasRun]       = useState(false);
 
-  const handleCheck = () => {
-    check.mutate({ text, language });
-  };
+  const handleCheck = useCallback(async () => {
+    const chunks = splitIntoChunks(text);
+    if (!chunks.length) return;
 
-  const matches = check.data?.matches ?? [];
-  const hasRun = check.isSuccess || check.isError;
+    setChecking(true);
+    setError(null);
+    setMatches([]);
+    setHasRun(false);
+    setProgress(chunks.length > 1 ? { done: 0, total: chunks.length } : null);
+
+    try {
+      for (let i = 0; i < chunks.length; i++) {
+        const { text: chunkText, offset: chunkOffset } = chunks[i];
+        const result = await grammarApi.check(chunkText, language);
+
+        // Shift match offsets so they point into the full text
+        const adjusted = result.matches.map(m => ({ ...m, offset: m.offset + chunkOffset }));
+        setMatches(prev => [...prev, ...adjusted]);
+
+        if (chunks.length > 1) setProgress({ done: i + 1, total: chunks.length });
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Grammar check failed. Is LanguageTool running?");
+    } finally {
+      setChecking(false);
+      setHasRun(true);
+      setProgress(null);
+    }
+  }, [text, language]);
 
   return (
     <div className="w-72 flex flex-col border-l border-border bg-card overflow-hidden shrink-0">
@@ -147,48 +220,49 @@ export function GrammarPanel({ text, language = "auto", onClose, onApplySuggesti
         <Button
           size="sm"
           onClick={handleCheck}
-          disabled={check.isPending || !text.trim()}
+          disabled={isChecking || !text.trim()}
           className="w-full gap-2"
         >
-          {check.isPending
+          {isChecking
             ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Checking…</>
             : <><SpellCheck className="h-3.5 w-3.5" />{hasRun ? "Re-check" : "Check grammar"}</>
           }
         </Button>
 
-        {check.isPending && (
-          <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
-            <Clock className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-600 dark:text-amber-400 leading-snug">
-              Please be patient — LanguageTool is analysing your text. This may take up to a minute for longer scenes.
-            </p>
+        {/* Progress for multi-chunk scenes */}
+        {progress && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin shrink-0" />
+            <span>
+              {progress.done === 0
+                ? "Starting…"
+                : `Still checking — ${progress.done} of ${progress.total} batches done`
+              }
+            </span>
           </div>
         )}
 
-        {check.isError && (
-          <p className="text-xs text-destructive">
-            {check.error instanceof Error ? check.error.message : "Grammar check failed. Is LanguageTool running?"}
-          </p>
+        {error && <p className="text-xs text-destructive">{error}</p>}
+
+        {matches.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[11px] text-muted-foreground">
+              {matches.length} issue{matches.length !== 1 ? "s" : ""} found
+              {isChecking && " so far"}
+            </p>
+            {matches.map((m, i) => (
+              <MatchCard
+                key={i}
+                match={m}
+                onApplySuggestion={onApplySuggestion}
+                onJumpTo={onJumpTo}
+              />
+            ))}
+          </div>
         )}
 
-        {check.isSuccess && (
-          matches.length === 0
-            ? <p className="text-xs text-muted-foreground text-center py-4">No issues found.</p>
-            : (
-              <div className="space-y-2">
-                <p className="text-[11px] text-muted-foreground">
-                  {matches.length} issue{matches.length !== 1 ? "s" : ""} found
-                </p>
-                {matches.map((m, i) => (
-                  <MatchCard
-                    key={i}
-                    match={m}
-                    onApplySuggestion={onApplySuggestion}
-                    onJumpTo={onJumpTo}
-                  />
-                ))}
-              </div>
-            )
+        {hasRun && !isChecking && matches.length === 0 && !error && (
+          <p className="text-xs text-muted-foreground text-center py-4">No issues found.</p>
         )}
       </div>
     </div>

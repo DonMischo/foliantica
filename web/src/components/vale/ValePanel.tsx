@@ -114,7 +114,7 @@ export function ValePanel({ text, onClose }: Props) {
     <div className="w-72 shrink-0 border-l border-border flex flex-col h-full bg-card text-sm">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-border shrink-0">
-        <span className="font-semibold text-sm">Vale</span>
+        <span className="font-semibold text-sm">Style Checker</span>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-base leading-none px-1">
           <X className="h-4 w-4" />
         </button>

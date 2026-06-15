@@ -467,10 +467,10 @@ export default function ScenePage() {
             variant={valePanelOpen ? "secondary" : "ghost"}
             onClick={() => setValePanelOpen(v => !v)}
             className="gap-1.5 text-xs"
-            title="Vale prose check"
+            title="Style check"
           >
             <SpellCheck className="h-3.5 w-3.5" />
-            Vale
+            Style Checker
           </Button>
         )}
 
@@ -584,7 +584,7 @@ export default function ScenePage() {
                   className={cn("w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2", valePanelOpen && "text-primary")}
                 >
                   <SpellCheck className="h-3.5 w-3.5 text-muted-foreground" />
-                  Vale
+                  Style Checker
                   {valePanelOpen && <Check className="ml-auto h-3 w-3 text-primary" />}
                 </button>
               )}
@@ -683,25 +683,27 @@ export default function ScenePage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Editor */}
         <div className="flex-1 overflow-hidden flex flex-col">
-          <TipTapEditor
-            content={content}
-            onChange={handleContentChange}
-            codexEntries={codexEntries}
-            onCodexEntryClick={handleCodexEntryClick}
-            sceneId={sceneIdNum}
-            aiDisabled={aiDisabled}
-            onOpenChat={aiDisabled ? undefined : () => setChatPanelOpen(true)}
-            onOpenTimeline={() => setTimelineCommandOpen(true)}
-            onOpenLink={() => setLinkPanelOpen(true)}
-            onWordSelect={(w) => { if (w) setSelectedWord(w); }}
-            onFlagsChange={setFlags}
-            replaceWordRef={replaceWordRef}
-            applyFlagRef={applyFlagRef}
-            applyGrammarFixRef={applyGrammarFixRef}
-            jumpToGrammarMatchRef={jumpToGrammarMatchRef}
-            jumpToTextRef={jumpToTextRef}
-            onPrefillEntry={(data) => { setNewEntryInitial(data); setNewEntryDialogOpen(true); }}
-          />
+          <div className="flex-1 overflow-hidden">
+            <TipTapEditor
+              content={content}
+              onChange={handleContentChange}
+              codexEntries={codexEntries}
+              onCodexEntryClick={handleCodexEntryClick}
+              sceneId={sceneIdNum}
+              aiDisabled={aiDisabled}
+              onOpenChat={aiDisabled ? undefined : () => setChatPanelOpen(true)}
+              onOpenTimeline={() => setTimelineCommandOpen(true)}
+              onOpenLink={() => setLinkPanelOpen(true)}
+              onWordSelect={(w) => { if (w) setSelectedWord(w); }}
+              onFlagsChange={setFlags}
+              replaceWordRef={replaceWordRef}
+              applyFlagRef={applyFlagRef}
+              applyGrammarFixRef={applyGrammarFixRef}
+              jumpToGrammarMatchRef={jumpToGrammarMatchRef}
+              jumpToTextRef={jumpToTextRef}
+              onPrefillEntry={(data) => { setNewEntryInitial(data); setNewEntryDialogOpen(true); }}
+            />
+          </div>
           <StatusBar sceneWordCount={wordCount} />
         </div>
 
