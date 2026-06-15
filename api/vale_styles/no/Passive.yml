@@ -1,6 +1,40 @@
+# Kilder / Sources:
+#   - Vinje, Finn-Erik: "Moderne norsk" (Universitetsforlaget, 6. utg. 1990) — unngå passiv
+#   - Språkrådet: sprakradet.no
+#   - Lie, Svein: "Innføring i norsk syntaks" (Universitetsforlaget, 4. utg. 2003)
+#   - NTB Språk: "NTBs språkbok" — aktiv form foretrekkes
 extends: existence
-message: "Mulig passiv — foretrekk aktiv form?"
+message: "Mulig passivkonstruksjon ('%s') — aktiv formulering foretrekkes"
 level: suggestion
+ignorecase: true
 tokens:
+  # --- s-passiv, presens (Vinje; NTB Språk) ---
+  - \bskrives\b
+  - \bleses\b
+  - \bgjøres\b
+  - \bsies\b
+  - \bses\b
+  - \bhøres\b
+  - \btas\b
+  - \bgis\b
+  - \bholdes\b
+  - \bsendes\b
+  - \bkalles\b
+  - \blukkes\b
+
+  # --- Bli-passiv (Vinje; NTB Språk) ---
+  - \bbli\b
+  - \bblir\b
   - \bble\b
   - \bblitt\b
+  - \bkommer til å bli\b
+  - \bskal bli\b
+
+  # --- Være-passiv / tilstandspassiv (Lie; Vinje) ---
+  - \ber\b
+  - \bvar\b
+  - \bvære\b
+  - \bvært\b
+
+  # --- Man-konstruksjon (Vinje; Språkrådet: unngå upersonlig "man") ---
+  - \bman\b

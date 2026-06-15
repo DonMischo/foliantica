@@ -1,15 +1,119 @@
+# Kilder / Sources:
+#   - Språkrådet: sprakradet.no — bokmålsrådgivning
+#   - Vinje, Finn-Erik: "Moderne norsk" (Universitetsforlaget, 6. utg. 1990)
+#   - Bokmålsordboka: bokmaalsordboka.no
+#   - Lie, Svein: "Innføring i norsk syntaks" (Universitetsforlaget, 4. utg. 2003)
+#   - NTB Språk: "NTBs språkbok" — stilguide for norsk pressetekst
+#   - Berge, Kjell Lars m.fl.: "Å skape mening med språk" (LNU/Cappelen, 1998)
 extends: existence
-message: "'%s' er et fylleord — formuler mer presist?"
+message: "'%s' er vagt eller et fyllord — kan du formulere det mer presist?"
 level: warning
+ignorecase: true
 tokens:
+  # --- Svekkende intensiverere (Vinje; NTB Språk) ---
   - \bveldig\b
-  - \bvirkelig\b
+  - \bsvært\b
   - \bganske\b
-  - \bbare\b
+  - \brimelig\b
   - \bfaktisk\b
-  - \båpenbart\b
-  - \btydeligvis\b
-  - \bliksom\b
+  - \bvirkelig\b
+  - \babsolutt\b
+  - \bhelt\b
+  - \bfullstendig\b
+  - \btotalt\b
+  - \benormt\b
+  - \butrolig\b
+  - \bfantastisk\b
+  - \bfremragende\b
+  - \baldeles\b
+  - \bytterst\b
+  - \boverordentlig\b
   - \begentlig\b
   - \bnesten\b
+  - \bbare\b
+  - \btydeligvis\b
+  - \bliksom\b
   - \bselvfølgelig\b
+
+  # --- Tomme evidenskrav (Vinje; Bokmålsordboka) ---
+  # "åpenbart" starts with å (non-ASCII) — drop left \b
+  - åpenbart\b
+  - \bnaturligvis\b
+  - \bgivetvis\b
+  - \butvilsomt\b
+  - \bvelkjent\b
+  - \bdet er klart at\b
+  - \bsom alle vet\b
+  - \bdet er et faktum at\b
+  - \bdet sier seg selv at\b
+  - \bdet er åpenbart at\b
+  - \bsom kjent\b
+
+  # --- Beholderord (Vinje; Berge m.fl.) ---
+  - \bting\b
+  - \bsak\b
+  - \baspekt\b
+  - \bdimensjon\b
+  - \bproblematikk\b
+  - \bspørsmål\b
+  - \bpunkt\b
+  - \bkontekst\b
+  - \bsektor\b
+  - \bdomene\b
+  - \bnivå\b
+  - \bramme\b
+  - \bscenario\b
+  - \bsituasjon\b
+
+  # --- Vage kvantifiserere (Vinje; Språkrådet) ---
+  - \bnoen\b
+  - \bflere\b
+  - \bdiverse\b
+  - \btalrike\b
+  - \bet antall\b
+  - \ben rekke\b
+  - \ben mengde\b
+  - \bet bredt spektrum av\b
+  - \badskillige\b
+
+  # --- Epistemiske bløtgjørere (Vinje; Berge m.fl.) ---
+  - \bi en viss forstand\b
+  - \bpå en eller annen måte\b
+  - \bi en viss grad\b
+  - \bså å si\b
+  - \bliksom\b
+  - \bmer eller mindre\b
+  - \bi og for seg\b
+
+  # --- Tidsfyllord (Vinje; NTB Språk) ---
+  - \bfor øyeblikket\b
+  - \bfor tiden\b
+  - \bnå om dagen\b
+  - \bi dag\b
+  - \bi vår tid\b
+  - \bså raskt som mulig\b
+  - \binom en nær fremtid\b
+  - \bpå kort sikt\b
+  - \bpå lang sikt\b
+
+  # --- Byråkratiske fyllord (Språkrådet; Vinje) ---
+  - \binnenfor rammene av\b
+  - \bmed hensyn til\b
+  - \bhva angår\b
+  - \bvedrørende\b
+  - \bi denne sammenheng\b
+  - \bi den forbindelse\b
+  - \bi den anledning\b
+  - \bdet bør bemerkes at\b
+  - \bdet bør fremheves at\b
+  - \bdet kan konstateres at\b
+  - \bdet skal bemerkes at\b
+  - \bhermed\b
+  - \bherved\b
+  - \bherav\b
+
+  # --- Perspektivdekning (Vinje: stå bak teksten din) ---
+  - \bjeg er av den oppfatning at\b
+  - \bjeg er av den mening at\b
+  - \bpersonlig mener jeg\b
+  - \better min mening\b

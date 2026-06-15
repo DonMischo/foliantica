@@ -1,6 +1,53 @@
+# Källor / Sources:
+#   - Språkrådet: "Svenska skrivregler" (Liber, 4e uppl. 2017) — undvik passiv
+#   - Myndigheternas skrivregler (Norstedts Juridik, 8e uppl. 2014)
+#   - Strömquist, Siv: "Skrivboken" (Gleerups, 8e uppl. 2014)
+#   - Hellspong, Lennart / Ledin, Per: "Vägar genom texten" (Studentlitteratur, 1997)
 extends: existence
-message: "Möjligt passiv — föredra aktiv form?"
+message: "Möjlig passivkonstruktion ('%s') — aktiv formulering föredras"
 level: suggestion
+ignorecase: true
 tokens:
+  # --- s-passiv, presens (Språkrådet; Myndigheternas: undvik i löpande text) ---
+  - \bskrivs\b
+  - \bläses\b
+  - \bgörs\b
+  - \bsägs\b
+  - \bses\b
+  - \bhörs\b
+  - \btas\b
+  - \bges\b
+  - \bhålls\b
+  - \bsänds\b
+  - \bskickas\b
+  - \bkallas\b
+  - \bfinns\b
+
+  # --- s-passiv, preteritum (Strömquist) ---
+  - \bskrevs\b
+  - \bgjordes\b
+  - \bsades\b
+  - \bsågs\b
+  - \bhördes\b
+  - \btogs\b
+  - \bgavs\b
+  - \bskickades\b
+  - \bhölls\b
+
+  # --- Bli-passiv (Myndigheternas; Hellspong/Ledin) ---
+  - \bbli\b
+  - \bblir\b
   - \bblev\b
   - \bblivit\b
+  - \bska bli\b
+  - \bkommer att bli\b
+
+  # --- Vara-passiv / tillståndspassiv (Hellspong/Ledin; Strömquist) ---
+  # "är" starts with ä (non-ASCII) — drop left \b
+  - är\b
+  - \bvar\b
+  - \bvore\b
+  - \bvarit\b
+
+  # --- Man-konstruktion (Myndigheternas: undvik "man") ---
+  - \bman\b

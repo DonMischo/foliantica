@@ -1,10 +1,80 @@
+# Kilder / Sources:
+#   - Dansk Sprognævn: "Retskrivningsordbogen" (5. udg. 2012 / online: dsn.dk)
+#   - Galberg Jacobsen, Henrik / Jarvad, Pia: "Dansk Sproglære" (Gyldendal, 2010)
+#   - ODS: "Ordbog over det Danske Sprog" (ordnet.dk)
+#   - Hannemand, Bjarne: "Godt Sprog" (Gyldendal, 2009)
+#   - Lund, Jørn: "Sproget i avisen"
 extends: substitution
-message: "'%s' er redundant — overvej '%s'."
-level: warning
+message: "Pleonasme / redundans: '%s' — ét ord for meget. Forslag: '%s'?"
+level: suggestion
+ignorecase: true
 swap:
-  gammel veteran: veteran
+  # --- Retningsredundanser (Hannemand; Galberg Jacobsen) ---
+  stige op: stige
+  stige opad: stige
+  falde ned: falde
+  falde nedad: falde
   løfte op: løfte
   sænke ned: sænke
+  vende tilbage igen: vende tilbage
   tilbage igen: tilbage
-  gentage igen: gentage
   samarbejde sammen: samarbejde
+  gammel veteran: veteran
+
+  # --- Verbale redundanser (Dansk Sprognævn; Lund) ---
+  gentage igen: gentage
+  gentage på ny: gentage
+  forudsige på forhånd: forudsige
+  planlægge på forhånd: planlægge
+  reservere på forhånd: reservere
+  advare på forhånd: advare
+
+  # --- Nominale tautologier (ODS; Galberg Jacobsen; Hannemand) ---
+  hoved protagonist: protagonist
+  første debut: debut
+  ny nyhed: nyhed
+  uventet overraskelse: overraskelse
+  falsk løgn: løgn
+  sand sandhed: sandhed
+  almen konsensus: konsensus
+  slutresultat: resultat
+  definitiv konklusion: konklusion
+  eksklusivt monopol: monopol
+  potentiel risiko: risiko
+  mulig fare: fare
+  alternativt alternativ: alternativ
+  gratis og for ingenting: gratis
+
+  # --- Tidsredundanser (Hannemand) ---
+  nu for øjeblikket: nu
+  aldrig nogensinde: aldrig
+  altid og evigt: altid
+  allerede tidligere: allerede
+
+  # --- RAS-syndromet (Dansk Sprognævn; ODS) ---
+  PIN-kode: PIN
+  hiv-virus: hiv
+  HIV-virus: HIV
+  aids-syndrom: aids
+  ngo-organisation: ngo
+  NGO-organisation: NGO
+  RAM-hukommelse: RAM
+  dvd-disk: dvd
+  DVD-disk: DVD
+  cd-disk: cd
+  CD-disk: CD
+  pdf-fil: pdf
+  PDF-fil: PDF
+  gps-system: gps
+  GPS-system: GPS
+  isbn-nummer: isbn
+  ISBN-nummer: ISBN
+  html-kode: html
+  HTML-kode: HTML
+  adsl-linje: adsl
+  ADSL-linje: ADSL
+  usb-kabel: usb
+  USB-kabel: USB
+  wi-fi-netværk: wi-fi
+  Wi-Fi-netværk: Wi-Fi
+  moms-afgift: moms

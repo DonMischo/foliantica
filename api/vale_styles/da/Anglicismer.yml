@@ -1,0 +1,126 @@
+# Kilder / Sources:
+#   - Dansk Sprognævn: dsn.dk — ordrådgivning om anglicismer
+#   - Galberg Jacobsen, Henrik / Jarvad, Pia: "Dansk Sproglære" (Gyldendal, 2010)
+#   - Jarvad, Pia: "Nye ord — hvorfor og hvordan?" (Gyldendal, 1999)
+#   - ODS: "Ordbog over det Danske Sprog" (ordnet.dk)
+#   - Hannemand, Bjarne: "Godt Sprog" (Gyldendal, 2009)
+extends: substitution
+message: "Anglicisme: '%s' — på dansk: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Møder og forretningsorganisation (Dansk Sprognævn; Jarvad) ---
+  meeting: møde / samling
+  meetings: møder
+  briefing: orientering / briefing (accepteret)
+  debriefing: eftermøde / evaluering
+  brainstorming: idéstorm / brainstorming (accepteret)
+  workshop: workshop (accepteret) / arbejdsseminar
+  workshops: arbejdsseminarer
+  deadline: frist / tidsfrist
+  deadlines: frister
+  networking: netværkspleje / networking (accepteret)
+  staff: personale / medarbejdere
+  manager: leder / chef / manager (accepteret)
+  managers: ledere
+  management: ledelse / management (accepteret)
+  outsourcing: outsourcing (accepteret) / udlicitering
+  freelance: freelance (accepteret) / frilanser
+  startup: startup (accepteret) / ny virksomhed
+  pitch: pitch (accepteret) / præsentation
+  feedback: tilbagemelding / feedback (accepteret)
+  newsletter: nyhedsbrev
+  newsletters: nyhedsbreve
+  ranking: rangering / rangliste
+  lobbying: lobbyisme / lobbyvirksomhed
+  target: mål / målgruppe
+  targets: mål
+  benchmark: referencepunkt / benchmark (accepteret)
+  copyright: ophavsret
+  joint venture: joint venture (accepteret) / samarbejdsaftale
+
+  # --- Teknologi og digitalt (Dansk Sprognævn; ODS) ---
+  email: e-mail (accepteret) / elektronisk post
+  e-mail: e-mail (accepteret)
+  spam: spam (accepteret) / uønsket mail
+  link: link (accepteret) / hyperlink
+  links: links / hyperlinks
+  login: log-ind / login (accepteret)
+  logout: log-ud
+  password: adgangskode / kodeord
+  passwords: adgangskoder
+  username: brugernavn
+  download: download (accepteret) / downloading
+  upload: upload (accepteret) / uploading
+  update: opdatering
+  updates: opdateringer
+  backup: sikkerhedskopi / backup (accepteret)
+  backups: sikkerhedskopier
+  hardware: hardware (accepteret) / udstyr
+  software: software (accepteret) / programmer
+  app: app (accepteret) / applikation
+  apps: apps / applikationer
+  smartphone: smartphone (accepteret) / mobiltelefon
+  hashtag: hashtag (accepteret) / emneord
+  selfie: selfie (accepteret) / selvportræt
+  streaming: streaming (accepteret) / streamingtjeneste
+  blog: blog (accepteret)
+  blogs: blogs
+  influencer: influencer (accepteret) / meningsdanner
+  trending: trending (accepteret) / populær
+  tweet: tweet (accepteret) / opslag
+  cloud: cloud (accepteret) / sky / skycomputing
+  webinar: webinar (accepteret) / netbaseret seminar
+  chatbot: chatbot (accepteret) / samtalerobot
+
+  # --- Medier og underholdning (Dansk Sprognævn; Jarvad) ---
+  show: show (accepteret) / forestilling
+  casting: casting (accepteret) / udvælgelse
+  reality show: realityshow (accepteret) / virkelighedsshow
+  talk show: talkshow (accepteret) / snak-show
+  trailer: trailer (accepteret) / forhandsvisning
+  playlist: afspilningsliste
+  playlists: afspilningslister
+  live: live (accepteret) / direkte
+  remake: remake (accepteret) / nyindspilning
+  flyer: flyer (accepteret) / løbeseddel
+
+  # --- Mode og forbrug (ODS; Jarvad) ---
+  outfit: outfit (accepteret) / påklædning / tøj
+  fashion: mode / fashion (accepteret)
+  brand: mærke / brand (accepteret)
+  brands: mærker
+  branding: brandingstrategi / markedsføring
+  shopping: shopping (accepteret) / handel
+  ticket: billet
+  tickets: billetter
+  voucher: gavekort / voucher (accepteret)
+  premium: premium (accepteret) / førsteklasse
+
+  # --- Mad og service (ODS) ---
+  brunch: brunch (accepteret) / sen morgenmad
+  catering: catering (accepteret)
+  fast food: fastfood (accepteret) / hurtigmad
+  chef: kok / køkkenchef
+
+  # --- Sport og sundhed (Dansk Sprognævn; ODS) ---
+  running: løb / løbetræning
+  fitness: fitness (accepteret) / konditionstræning
+  wellness: wellness (accepteret) / velvære
+  coach: træner / coach (accepteret)
+  coaching: coaching (accepteret) / mentortræning
+
+  # --- Markedsføring (Dansk Sprognævn; Jarvad) ---
+  banner: banner (accepteret) / reklame
+  engagement: engagement (accepteret) / involvering
+  reach: rækkevidde
+  awareness: bevidsthed / kendskab
+  storytelling: storytelling (accepteret) / historiefortælling
+  press release: pressemeddelelse
+  background: baggrund
+
+  # --- Anglicistiske verber (Dansk Sprognævn; Jarvad) ---
+  google: søge på nettet / google (accepteret)
+  chatte: chatte (accepteret) / snakke online
+  poste: poste (accepteret) / publicere
+  tweete: tweete (accepteret) / slå op

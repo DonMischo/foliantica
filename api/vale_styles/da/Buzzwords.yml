@@ -1,0 +1,116 @@
+# Kilder / Sources:
+#   - Lund, Jørn: "Sproget i avisen" — modeord og jargon
+#   - Hannemand, Bjarne: "Godt Sprog" (Gyldendal, 2009)
+#   - Dansk Sprognævn: dsn.dk — "årets ord" / ordanbefalinger
+#   - Galberg Jacobsen, Henrik / Jarvad, Pia: "Dansk Sproglære" (Gyldendal, 2010)
+#   - ODS: "Ordbog over det Danske Sprog" (ordnet.dk)
+extends: existence
+message: "'%s' er et modeord / fagjargon — kan du udtrykke det mere konkret?"
+level: suggestion
+ignorecase: true
+tokens:
+  # --- Forretnings- og ledelsessjargon (Hannemand; Lund) ---
+  - \bsynergi\b
+  - \bsynergier\b
+  - \bsynergistisk\b
+  - \bparadigme\b
+  - \bparadigmeskift\b
+  - \bdisruption\b
+  - \bdisruptiv\b
+  - \bdigital transformation\b
+  - \btransformation\b
+  - \bresiliens\b
+  - \bresilienta\b
+  - \bøkosystem\b
+  - \bskalerbarhed\b
+  - \bskalerbar\b
+  - \bagilitet\b
+  - \bagil\b
+  - \bpivot\b
+  - \bpivotere\b
+  - \bstakeholder\b
+  - \bstakeholders\b
+  - \bbenchmark\b
+  - \bbest practice\b
+  - \bbest practices\b
+  - \blean\b
+  - \bscrum\b
+  - \bkanban\b
+  - \bsprint\b
+  - \bKPI\b
+  - \bROI\b
+  - \bOKR\b
+  - \bUSP\b
+  - \bwin-win\b
+  - \broadmap\b
+  - \bmerværdi\b
+  - \bskabe værdi\b
+  - \bgenerere værdi\b
+  - \bgearingeffekt\b
+
+  # --- Startups og teknologi (Dansk Sprognævn; Galberg Jacobsen) ---
+  - \bstartup\b
+  - \bstartups\b
+  - \benhørning\b
+  - \bgrowth hacking\b
+  - \bscale-up\b
+  - \bpitch\b
+  - \bpitche\b
+  - \binkubator\b
+  - \baccelerator\b
+  - \båben innovation\b
+  - \bhackathon\b
+  - \bfintech\b
+  - \bedtech\b
+  - \bhealthtech\b
+
+  # --- Politiske og sociale modeord (Lund; Galberg Jacobsen) ---
+  - \bgovernance\b
+  - \bco-creation\b
+  - \bempowerment\b
+  - \bborgerdialog\b
+  - \blederskab\b
+  - \bvisionært lederskab\b
+  - \borganisationens DNA\b
+  - \bpurpose\b
+  - \bnarrativ\b
+  - \bny virkelighed\b
+  - \bny normalitet\b
+
+  # --- Tomme tillægsord (Hannemand; Lund) ---
+  - \binnovativ\b
+  - \binnovative\b
+  - \binnovation\b
+  - \bbanebrydende\b
+  - \bgrænseoverskridende\b
+  - \bholistisk\b
+  - \bholistiske\b
+  - \bglobal\b
+  - \bproaktiv\b
+  - \bdynamisk\b
+  - \bfleksibel\b
+  - \bfremragende\b
+  - \bdedikation\b
+  - \btransparent\b
+  - \btransparens\b
+  - \binkluderende\b
+  - \binklusiv\b
+  - \binklusivitet\b
+  - \bintegreret\b
+  - \brobust\b
+
+  # --- Forretningsfraser (Hannemand; Lund) ---
+  - \bgøre en forskel\b
+  - \bskabe impact\b
+  - \bgå ud af sin komfortzone\b
+  - \bkomfortzone\b
+  - \btænke ud af boksen\b
+  - \bgame changer\b
+  - \bhistorisk\b
+  - \bepokegørende\b
+  - \bvejledende\b
+  - \boptimere\b
+  - \bmaksimere\b
+  - \bminimere\b
+  - \bpotentiale\b
+  - \bsystemtænkning\b

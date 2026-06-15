@@ -1,0 +1,118 @@
+# Källor / Sources:
+#   - Strömquist, Siv: "Skrivboken" (Gleerups, 8e uppl. 2014)
+#   - Josephson, Olle: "Ju" (Norstedts, 2018) — om modeord och anglicismer
+#   - Språkrådet: sprakradet.se — "Ord och ordbruk" / modeord
+#   - SAOL: "Svenska Akademiens ordlista" (14e uppl. 2015)
+#   - Hellspong, Lennart / Ledin, Per: "Vägar genom texten" (Studentlitteratur, 1997)
+extends: existence
+message: "'%s' är ett modeord / jargong — kan du uttrycka det mer konkret?"
+level: suggestion
+ignorecase: true
+tokens:
+  # --- Affärs- och managementjargong (Strömquist; Josephson) ---
+  - \bsynergi\b
+  - \bsynergier\b
+  - \bsynergistisk\b
+  - \bparadigm\b
+  - \bparadigmskifte\b
+  - \bdisruption\b
+  - \bdisruptiv\b
+  - \bdigital transformation\b
+  - \btransformation\b
+  - \bresiliens\b
+  - \bresilienta\b
+  - \bekosystem\b
+  - \bskalbarhet\b
+  - \bskalbar\b
+  - \bagilitet\b
+  - \bagilt\b
+  - \bpivot\b
+  - \bpivota\b
+  - \bstakeholder\b
+  - \bstakeholders\b
+  - \bbenchmark\b
+  - \bbest practice\b
+  - \bbest practices\b
+  - \blean\b
+  - \bscrum\b
+  - \bkanban\b
+  - \bsprint\b
+  - \bKPI\b
+  - \bROI\b
+  - \bOKR\b
+  - \bUSP\b
+  - \bwin-win\b
+  - \broadmap\b
+  - \bmervärde\b
+  - \bskapa värde\b
+  - \bgenerera värde\b
+  - \bhävstång\b
+  - \bhävstångseffekt\b
+  - \btraktionskraft\b
+
+  # --- Startups och teknik (Josephson; Språkrådet) ---
+  - \bstartup\b
+  - \bstartups\b
+  - \benhörning\b
+  - \bgrowth hacking\b
+  - \bscale-up\b
+  - \bpitch\b
+  - \bpitcha\b
+  - \binkubator\b
+  - \baccelerator\b
+  - \böppen innovation\b
+  - \bhackathon\b
+  - \bfintech\b
+  - \bedtech\b
+  - \bhealthtech\b
+
+  # --- Politiska och sociala modeord (Josephson; Språkrådet) ---
+  - \bgovernance\b
+  - \bco-creation\b
+  - \bempowerment\b
+  - \bmedborgardialog\b
+  - \bledarskap\b
+  - \bvisionärt ledarskap\b
+  - \borganisations-DNA\b
+  - \bpurpose\b
+  - \bnarrativ\b
+  - \bny verklighet\b
+  - \bny normalitet\b
+
+  # --- Tomma adjektiv (Strömquist; Hellspong/Ledin) ---
+  - \binnovativ\b
+  - \binnovativa\b
+  - \binnovation\b
+  - \bbanbrytande\b
+  - \bgränsöverskridande\b
+  - \bholistisk\b
+  - \bholistiska\b
+  - \bglobal\b
+  - \bproaktiv\b
+  - \bdynamisk\b
+  - \bflexibel\b
+  - \butmärkt\b
+  - \bhängivenhet\b
+  - \btransparent\b
+  - \btransparens\b
+  - \binkluderande\b
+  - \binklusiv\b
+  - \binklusivitet\b
+  - \bintegrerat\b
+  - \brobust\b
+
+  # --- Affärsfraser (Strömquist; Josephson) ---
+  - \bgöra skillnad\b
+  - \bskapa impact\b
+  - \bgå utanför sin komfortzon\b
+  - \bkomfortzon\b
+  - \btänka utanför boxen\b
+  - \bgame changer\b
+  - \bhistoriskt\b
+  - \bepokgörande\b
+  - \bvägledande\b
+  - \boptimera\b
+  - \bmaximera\b
+  - \bminimera\b
+  - \bpotentialisera\b
+  - \bsystemtänkande\b

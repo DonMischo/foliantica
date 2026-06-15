@@ -1,6 +1,50 @@
+# Kilder / Sources:
+#   - Dansk Sprognævn: "Retskrivningsordbogen" (5. udg. 2012 / online: dsn.dk)
+#   - Galberg Jacobsen, Henrik / Jarvad, Pia: "Dansk Sproglære" (Gyldendal, 2010)
+#   - Lund, Jørn: "Sproget i avisen" — undgå passiv i direkte kommunikation
+#   - Hannemand, Bjarne: "Godt Sprog" (Gyldendal, 2009)
 extends: existence
-message: "Mulig passiv — foretræk aktiv form?"
+message: "Mulig passivkonstruktion ('%s') — aktiv formulering foretrækkes"
 level: suggestion
+ignorecase: true
 tokens:
+  # --- s-passiv, nutid (Galberg Jacobsen; Hannemand) ---
+  - \bskrives\b
+  - \blæses\b
+  - \bgøres\b
+  - \bsiges\b
+  - \bses\b
+  - \bhøres\b
+  - \btages\b
+  - \bgives\b
+  - \bholdes\b
+  - \bsendes\b
+  - \bkaldes\b
+  - \blukkes\b
+
+  # --- s-passiv, datid (Galberg Jacobsen) ---
+  - \bskrevs\b
+  - \bgjordes\b
+  - \bsagdes\b
+  - \bsåes\b
+  - \bhørtes\b
+  - \btoges\b
+  - \bgaves\b
+  - \bholdtes\b
+
+  # --- Blive-passiv (Lund; Hannemand) ---
+  - \bblive\b
+  - \bbliver\b
   - \bblev\b
   - \bblivet\b
+  - \bkommer til at blive\b
+  - \bskal blive\b
+
+  # --- Være-passiv / tilstandspassiv (Galberg Jacobsen) ---
+  - \ber\b
+  - \bvar\b
+  - \bvære\b
+  - \bværet\b
+
+  # --- Man-konstruktion (Dansk Sprognævn; Lund: undgå upersonlig "man") ---
+  - \bman\b

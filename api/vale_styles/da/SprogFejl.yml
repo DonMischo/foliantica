@@ -1,0 +1,72 @@
+# Kilder / Sources:
+#   - Dansk Sprognævn: dsn.dk — sprogrådgivning og fejltyper
+#   - Lund, Jørn: "Sproget i avisen" — anglicismer og sprogfælder
+#   - Galberg Jacobsen, Henrik / Jarvad, Pia: "Dansk Sproglære" (Gyldendal, 2010)
+#   - Hannemand, Bjarne: "Godt Sprog" (Gyldendal, 2009)
+#   - ODS: "Ordbog over det Danske Sprog" (ordnet.dk)
+extends: existence
+message: "'%s' — mulig anglicisme eller fejlagtig brug: kontrollér"
+level: warning
+ignorecase: false
+tokens:
+  # --- "realisere" som anglicisme (Lund; Galberg Jacobsen) ---
+  # Rigtigt: realisere = virkeliggøre, sælge. Forkert: realisere = indse (to realize).
+  # "Han realiserede at han var for sent" → "Han indså at han var for sent"
+  - \brealiserede at\b
+  - \bRealiserede at\b
+  - \brealiserer at\b
+  - \brealiserer jeg at\b
+  - \brealiseret at\b
+
+  # --- "implementere" som anglicisme (Dansk Sprognævn; Hannemand) ---
+  # Bedre: gennemføre, indføre, anvende, iværksætte
+  - \bimplementere\b
+  - \bImplementere\b
+  - \bimplementering\b
+  - \bimplementeret\b
+  - \bimplementerede\b
+
+  # --- "facilitere" som tomt verbum (Lund; Galberg Jacobsen) ---
+  # Bedre: muliggøre, lette, støtte, hjælpe med
+  - \bfacilitere\b
+  - \bFacilitere\b
+  - \bfaciliteringsforløb\b
+  - \bfaciliteret\b
+  - \bfaciliterer\b
+
+  # --- "adressere" som anglicisme (Dansk Sprognævn; Lund) ---
+  # Rigtigt: adressere = skrive adresse på brev. Anglicisme: tackle et problem.
+  # "Vi adresserer problemet" → "Vi løser / tackler problemet"
+  - \badressere problemet\b
+  - \badresserer problemet\b
+  - \badresseret problemet\b
+  - \badressere spørgsmålet\b
+  - \badresserer spørgsmålet\b
+  - \badressere udfordringen\b
+
+  # --- "eventuelt" (da) ≠ "eventually" (en) (Galberg Jacobsen; Lund) ---
+  # Dansk: eventuelt = muligvis, måske (en mulig fremtidig begivenhed)
+  # Engelsk: eventually = til sidst, med tiden → dansk: "til sidst", "efterhånden"
+  - \beventuelt\b
+
+  # --- "konsistent" som anglicisme (Dansk Sprognævn) ---
+  # Dansk: konsistent = sammenhængende, logisk (korrekt). Anglicisme: = konsekvent, vedvarende.
+  - \bkonsistent\b
+  - \bkonsistente\b
+
+  # --- "supportere" som anglicisme (Dansk Sprognævn) ---
+  # Bedre: støtte, hjælpe, understøtte, bakke op
+  - \bsupportere\b
+  - \bsupporterer\b
+  - \bsupporterede\b
+
+  # --- "kompromittere" som anglicisme (Lund; ODS) ---
+  # Dansk: kompromittere = bringe i et dårligt lys. Anglicisme: = true i fare (to compromise).
+  - \bkompromittere sikkerheden\b
+  - \bkompromitterer systemet\b
+
+  # --- Perspektivdækning (Hannemand; Lund: stå ved teksten) ---
+  - \bjeg er af den opfattelse at\b
+  - \bjeg er af den mening at\b
+  - \bPersonligt mener jeg\b
+  - \bEfter min mening\b

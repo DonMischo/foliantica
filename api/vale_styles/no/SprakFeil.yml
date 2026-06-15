@@ -1,0 +1,73 @@
+# Kilder / Sources:
+#   - Vinje, Finn-Erik: "Moderne norsk" (Universitetsforlaget, 6. utg. 1990) — anglisismer og feil
+#   - Språkrådet: sprakradet.no — rådgivning om korrekt språkbruk
+#   - Bokmålsordboka: bokmaalsordboka.no
+#   - NTB Språk: "NTBs språkbok"
+#   - Lie, Svein: "Innføring i norsk syntaks" (Universitetsforlaget, 4. utg. 2003)
+extends: existence
+message: "'%s' — mulig anglisisme eller feilaktig bruk: kontrollér"
+level: warning
+ignorecase: false
+tokens:
+  # --- "realisere" som anglisisme (Vinje; Språkrådet) ---
+  # Riktig: realisere = virkeliggjøre, selge. Feil: realisere = innse (to realize).
+  # "Han realiserte at han var for sen" → "Han innså at han var for sen"
+  - \brealiserte at\b
+  - \bRealiserte at\b
+  - \brealiserer at\b
+  - \brealiserer jeg at\b
+  - \brealisert at\b
+
+  # --- "implementere" som anglisisme (Språkrådet; Vinje) ---
+  # Bedre: gjennomføre, innføre, iverksette, anvende
+  - \bimplementere\b
+  - \bImplementere\b
+  - \bimplementering\b
+  - \bimplementert\b
+  - \bimplementerte\b
+
+  # --- "fasilitere" som tomt verb (Vinje; NTB Språk) ---
+  # Bedre: muliggjøre, legge til rette for, støtte, hjelpe med
+  - \bfasilitere\b
+  - \bFasilitere\b
+  - \bfasilitering\b
+  - \bfasilitert\b
+  - \bfasiliterer\b
+
+  # --- "adressere" som anglisisme (Vinje; Språkrådet) ---
+  # Riktig: adressere = skrive adresse på konvolutt. Anglisisme: håndtere et problem.
+  # "Vi adresserer problemet" → "Vi løser / håndterer problemet"
+  - \badressere problemet\b
+  - \badresserer problemet\b
+  - \badressert problemet\b
+  - \badressere spørsmålet\b
+  - \badresserer spørsmålet\b
+  - \badressere utfordringen\b
+  - \badressere problemstillingen\b
+
+  # --- "eventuelt" (no) ≠ "eventually" (en) (Vinje; Bokmålsordboka) ---
+  # Norsk: eventuelt = muligens, kanskje (en mulig fremtidig hendelse)
+  # Engelsk: eventually = til slutt, etter hvert → norsk: "til slutt", "etter hvert"
+  - \beventuelt\b
+
+  # --- "konsistent" som anglisisme (Språkrådet) ---
+  # Norsk: konsistent = logisk sammenhengende (korrekt). Anglisisme: = konsekvent, vedvarende.
+  - \bkonsistent\b
+  - \bkonsistente\b
+
+  # --- "supportere" som anglisisme (Språkrådet; Vinje) ---
+  # Bedre: støtte, hjelpe, understøtte, backe opp
+  - \bsupportere\b
+  - \bsupporterer\b
+  - \bsupporterte\b
+
+  # --- "kompromittere" som anglisisme (Vinje; Bokmålsordboka) ---
+  # Norsk: kompromittere = sette i et dårlig lys. Anglisisme: = sette i fare (to compromise).
+  - \bkompromittere sikkerheten\b
+  - \bkompromitterer systemet\b
+
+  # --- Perspektivdekning (Vinje: stå bak teksten din) ---
+  - \bjeg er av den oppfatning at\b
+  - \bjeg er av den mening at\b
+  - \bPersonlig mener jeg\b
+  - \bEtter min mening\b

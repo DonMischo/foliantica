@@ -1,16 +1,131 @@
+# Källor / Sources:
+#   - Språkrådet: "Svenska skrivregler" (Liber, 4e uppl. 2017)
+#   - Myndigheternas skrivregler (Norstedts Juridik, 8e uppl. 2014)
+#   - Strömquist, Siv: "Skrivboken" (Gleerups, 8e uppl. 2014)
+#   - SAOL: "Svenska Akademiens ordlista" (14e uppl. 2015)
+#   - Josephson, Olle: "Ju" (Norstedts, 2018) — om svenska och anglicismer
+#   - Hellspong, Lennart / Ledin, Per: "Vägar genom texten" (Studentlitteratur, 1997)
 extends: existence
-message: "'%s' är ett fyllnadsord — formulera mer exakt?"
+message: "'%s' är vagt eller ett utfyllnadsord — kan du formulera det mer precist?"
 level: warning
+ignorecase: true
 tokens:
+  # --- Försvagande intensifierare (Strömquist; Språkrådet) ---
+  - \bväldigt\b
   - \bmycket\b
-  - \bverkligen\b
   - \bganska\b
   - \brätt\b
-  - \bbara\b
+  - \blite\b
   - \bfaktiskt\b
-  - \btydligen\b
-  - \buppenbarligen\b
-  - \bliksom\b
+  - \bverkligen\b
+  - \babsolut\b
+  - \bhelt och hållet\b
+  - \bfullständigt\b
+  - \btotalt\b
+  - \benormt\b
+  - \botroligt\b
+  - \bfantastiskt\b
+  - \butmärkt\b
+  - \bavsevärt\b
+  - \baldeles\b
+  - \bytterst\b
+  - \boverordentligt\b
+  - \bsynnerligen\b
   - \begentligen\b
   - \bnästan\b
+  - \bbara\b
+  - \btydligen\b
+
+  # --- Tomma evidensanspråk (Strömquist; Josephson; Myndigheternas) ---
+  - \buppenbarligen\b
   - \bsjälvklart\b
+  - \bgivetvis\b
+  - \bnaturligtvis\b
+  - \bförvisso\b
+  - \bostridigt\b
+  - \bvälkänt\b
+  - \bdet är klart att\b
+  - \bsom alla vet\b
+  - \bdet är ett faktum att\b
+  - \bdet säger sig självt att\b
+  - \bdet är uppenbart att\b
+  - \bsom bekant\b
+
+  # --- Behållarord (Strömquist; Hellspong/Ledin) ---
+  - \bsak\b
+  - \bfråga\b
+  - \baspekt\b
+  - \bdimension\b
+  - \bproblematik\b
+  - \btematik\b
+  - \bfrågeställning\b
+  - \bpunkt\b
+  - \bkontext\b
+  - \bsektor\b
+  - \bdomän\b
+  - \bnivå\b
+  - \bram\b
+  - \bscenario\b
+  - \bsituation\b
+
+  # --- Vaga kvantifierare (Strömquist; Språkrådet) ---
+  - \bnågra\b
+  - \bflera\b
+  - \bdiverse\b
+  - \btalrika\b
+  - \bett antal\b
+  - \ben rad\b
+  - \ben mängd\b
+  - \bett brett spektrum av\b
+  - \bett flertal\b
+  - \badskilliga\b
+
+  # --- Epistemiska mjukare (Strömquist; Hellspong/Ledin) ---
+  - \bi viss mening\b
+  - \bpå något sätt\b
+  - \bi viss grad\b
+  - \bför att säga så\b
+  - \bliksom\b
+  - \bmer eller mindre\b
+  - \bi och för sig\b
+
+  # --- Tidsutfyllnad (Myndigheternas; Strömquist) ---
+  - \bför tillfället\b
+  - \bi nuläget\b
+  - \bi dagsläget\b
+  - \bnumera\b
+  - \bnuförtiden\b
+  - \bi dag\b
+  - \bi vår tid\b
+  - \bså snart som möjligt\b
+  - \binom en snar framtid\b
+  - \bpå kort sikt\b
+  - \bpå lång sikt\b
+  - \binom kort\b
+
+  # --- Byråkratiska utfyllnadsord (Myndigheternas; Språkrådet) ---
+  - \binom ramen för\b
+  - \bmed avseende på\b
+  - \bvad gäller\b
+  - \bbeträffande\b
+  - \bifråga om\b
+  - \bangående\b
+  - \bi detta sammanhang\b
+  - \bi detta avseende\b
+  - \bi enlighet med\b
+  - \bmed anledning av\b
+  - \bi samband med\b
+  - \bmed hänsyn till\b
+  - \bdet bör påpekas att\b
+  - \bdet bör framhållas att\b
+  - \bdet kan konstateras att\b
+  - \bdet ska noteras att\b
+  - \bhärigenom\b
+  - \bhärvid\b
+  - \bhärmed\b
+
+  # --- Perspektivtäckning (Strömquist: ta ansvar för din text) ---
+  - \bjag är av den uppfattningen att\b
+  - \bjag är av den åsikten att\b
+  - \bpersonligen anser jag\b
+  - \bpersonligen tycker jag\b

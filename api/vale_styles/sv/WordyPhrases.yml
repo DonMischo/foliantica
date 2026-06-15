@@ -1,0 +1,106 @@
+# Källor / Sources:
+#   - Strömquist, Siv: "Skrivboken" (Gleerups, 8e uppl. 2014)
+#   - Myndigheternas skrivregler (Norstedts Juridik, 8e uppl. 2014)
+#   - Hellspong, Lennart / Ledin, Per: "Vägar genom texten" (Studentlitteratur, 1997)
+#   - Språkrådet: "Svenska skrivregler" (Liber, 4e uppl. 2017)
+extends: substitution
+message: "Uppblåst uttryck: '%s' — kortare: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Uppblåsta prepositioner (Myndigheternas; Strömquist) ---
+  inom ramen för: i / vid / för
+  med avseende på: om / gällande
+  vad gäller: om / gällande
+  beträffande: om
+  ifråga om: om
+  angående: om
+  med hänsyn till: med tanke på
+  i enlighet med: enligt
+  i syfte att: för att
+  i avsikt att: för att
+  med anledning av: på grund av
+  till följd av: på grund av / eftersom
+  med anledning av att: eftersom
+  till följd av att: eftersom
+  i samband med: vid / när / i
+  i och med att: eftersom / när
+  i och med: när / med
+  med hänsyn till att: eftersom
+  i fråga om: om
+  med tanke på att: eftersom
+  på basis av: utifrån / enligt
+  till följd av det faktum att: eftersom
+  med utgångspunkt i: utifrån
+  i linje med: enligt / i enlighet med
+
+  # --- Kausala omskrivningar (Strömquist; Myndigheternas) ---
+  på grund av det faktum att: eftersom
+  av den anledningen att: eftersom
+  beroende på det faktum att: p.g.a. att
+  som en följd av att: eftersom
+  i och med det faktum att: eftersom
+
+  # --- Konditionella omskrivningar (Myndigheternas; Hellspong/Ledin) ---
+  i det fall att: om
+  i händelse av att: om / ifall
+  under förutsättning att: om
+  förutsatt att: om
+  i den mån att: om / i den utsträckning
+  i den händelse att: om
+
+  # --- Temporala omskrivningar (Myndigheternas; Strömquist) ---
+  i samband med att: när / då
+  vid tillfälle då: när
+  under den tid då: medan
+  under den period som: under
+  i nuläget: nu
+  för tillfället: nu
+  i dagsläget: nu / i dag
+  i det rådande läget: nu
+  sedan tidigare: sedan
+  i ett tidigare skede: tidigare
+  vid en kommande tidpunkt: senare / framöver
+
+  # --- Undantag / begränsning (Myndigheternas; Strömquist) ---
+  med undantag av: utom / förutom
+  med undantag för: utom
+  i avsaknad av: utan
+  oavsett om: vare sig / oaktat
+
+  # --- Byråkratiska utfyllnadsord (Myndigheternas skrivregler) ---
+  det bör påpekas att: notera att
+  det bör framhållas att: viktigt att notera är att
+  det kan konstateras att: framgår att
+  det ska noteras att: notera
+  det är viktigt att betona att: viktigt är att
+  härvid: här
+  härigenom: genom detta
+  härtill: dessutom / till detta
+  härmed: med detta / därmed
+  härav: av detta
+  varav: av vilka
+  varigenom: genom vilken/vilket
+  i detta sammanhang: här
+  i detta avseende: här
+  i den meningen: dvs.
+  å ena sidan: dels
+  å andra sidan: dels / men
+
+  # --- Modale omskrivningar (Myndigheternas; Strömquist) ---
+  ha möjlighet att: kunna
+  ha förmåga att: kunna
+  vara i stånd att: kunna
+  vara berättigad att: få / ha rätt att
+  vara skyldig att: måste / är skyldig att
+  det är möjligt att: kanske
+  det kan inte uteslutas att: kanske / möjligen
+  med stor sannolikhet: troligen
+  i all sannolikhet: troligen
+
+  # --- Redaktionella chevilleser (Strömquist; Hellspong/Ledin) ---
+  som tidigare nämnts: som nämnts
+  som redan angivits: som angivits
+  som redogjorts för ovan: som beskrivits ovan
+  i korthet och sammanfattningsvis: sammanfattningsvis
+  avslutningsvis och sammanfattningsvis: avslutningsvis

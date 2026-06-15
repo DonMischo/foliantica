@@ -1,16 +1,119 @@
+# Kilder / Sources:
+#   - Dansk Sprognævn: "Retskrivningsordbogen" (5. udg. 2012 / online: dsn.dk)
+#   - Galberg Jacobsen, Henrik / Jarvad, Pia: "Dansk Sproglære" (Gyldendal, 2010)
+#   - Lund, Jørn: "Sproget i avisen" — stilistik og skriftsprog
+#   - Sprogportal.dk: Dansk Sprognævns sprogrådgivning
+#   - ODS: "Ordbog over det Danske Sprog" (ordnet.dk)
+#   - Hannemand, Bjarne: "Godt Sprog" (Gyldendal, 2009)
 extends: existence
-message: "'%s' er et fyldord — formuler mere præcist?"
+message: "'%s' er vagt eller et fyldord — kan du formulere det mere præcist?"
 level: warning
+ignorecase: true
 tokens:
+  # --- Svækkende intensiverere (Lund; Hannemand) ---
   - \bmeget\b
-  - \bvirkelig\b
-  - \bganske\b
   - \bret\b
-  - \bbare\b
+  - \bganske\b
+  - \btemmelig\b
   - \bfaktisk\b
-  - \båbenbart\b
-  - \btydeligvis\b
-  - \bligesom\b
+  - \bvirkelig\b
+  - \babsolut\b
+  - \bhelt\b
+  - \bfuldstændig\b
+  - \btotalt\b
+  - \benormt\b
+  - \butroligt\b
+  - \bfantastisk\b
+  - \bfremragende\b
+  - \baldeles\b
+  - \boverordentlig\b
+  - \byderst\b
   - \begentlig\b
   - \bnæsten\b
+  - \bbare\b
+  - \btydeligvis\b
+  - \bligesom\b
   - \bselvfølgelig\b
+
+  # --- Tomme evidenskrav (Lund; Galberg Jacobsen) ---
+  # "åbenbart" starts with å (non-ASCII) — drop left \b
+  - åbenbart\b
+  - \bnaturligvis\b
+  - \bgivetvis\b
+  - \buomtvisteligt\b
+  - \bvelkendt\b
+  - \bdet er klart at\b
+  - \bsom alle ved\b
+  - \bdet er et faktum at\b
+  - \bdet siger sig selv at\b
+  - \bdet er åbenlyst at\b
+  - \bsom bekendt\b
+
+  # --- Containerbegreber (Galberg Jacobsen; Hannemand) ---
+  - \bting\b
+  - \bsag\b
+  - \baspekt\b
+  - \bdimension\b
+  - \bproblematik\b
+  - \bspørgsmål\b
+  - \bpunkt\b
+  - \bkontekst\b
+  - \bsektor\b
+  - \bdomæne\b
+  - \bniveau\b
+  - \bramme\b
+  - \bscenarie\b
+  - \bsituation\b
+
+  # --- Vage kvantifikatorer (Dansk Sprognævn; Galberg Jacobsen) ---
+  - \bnogen\b
+  - \bflere\b
+  - \bdiverse\b
+  - \btalrige\b
+  - \bet antal\b
+  - \ben række\b
+  - \ben mængde\b
+  - \bet bredt spektrum af\b
+  - \badskillige\b
+
+  # --- Epistemiske blødgørere (Lund; Hannemand) ---
+  - \bi en vis forstand\b
+  - \bpå en eller anden måde\b
+  - \bi en vis grad\b
+  - \bså at sige\b
+  - \bsom det var\b
+  - \bmere eller mindre\b
+  - \bpå sin vis\b
+
+  # --- Tidsfyldord (Dansk Sprognævn; Lund) ---
+  - \bfor øjeblikket\b
+  - \bi øjeblikket\b
+  - \bnu til dags\b
+  - \bi dag\b
+  - \bi vores tid\b
+  - \bså hurtigt som muligt\b
+  - \binden for en nær fremtid\b
+  - \bpå kort sigt\b
+  - \bpå lang sigt\b
+
+  # --- Bureaukratiske fyldord (Dansk Sprognævn; Sprogportal) ---
+  - \binden for rammerne af\b
+  - \bmed hensyn til\b
+  - \bhvad angår\b
+  - \bvedrørende\b
+  - \bi denne sammenhæng\b
+  - \bi den forbindelse\b
+  - \bi det henseende\b
+  - \bdet bør bemærkes at\b
+  - \bdet bør fremhæves at\b
+  - \bdet kan konstateres at\b
+  - \bdet skal bemærkes at\b
+  - \bherigennem\b
+  - \bhermed\b
+  - \bheraf\b
+
+  # --- Perspektivdækning (Lund: stå ved din tekst) ---
+  - \bjeg er af den opfattelse at\b
+  - \bjeg er af den mening at\b
+  - \bpersonligt mener jeg\b
+  - \better min mening\b

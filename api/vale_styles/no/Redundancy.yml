@@ -1,10 +1,80 @@
+# Kilder / Sources:
+#   - Vinje, Finn-Erik: "Moderne norsk" (Universitetsforlaget, 6. utg. 1990)
+#   - Bokmålsordboka: bokmaalsordboka.no
+#   - Språkrådet: sprakradet.no
+#   - Lie, Svein: "Innføring i norsk syntaks" (Universitetsforlaget, 4. utg. 2003)
+#   - NTB Språk: "NTBs språkbok"
 extends: substitution
-message: "'%s' er redundant — vurder '%s'."
-level: warning
+message: "Pleonasme / redundans: '%s' — ett ord for mye. Forslag: '%s'?"
+level: suggestion
+ignorecase: true
 swap:
-  gammel veteran: veteran
+  # --- Retningsredundanser (Vinje; Bokmålsordboka) ---
+  stige opp: stige
+  stige oppover: stige
+  falle ned: falle
+  falle nedover: falle
   løfte opp: løfte
   senke ned: senke
+  vende tilbake igjen: vende tilbake
   tilbake igjen: tilbake
-  gjenta igjen: gjenta
   samarbeide sammen: samarbeide
+  gammel veteran: veteran
+
+  # --- Verbale redundanser (Vinje; Språkrådet) ---
+  gjenta igjen: gjenta
+  gjenta på nytt: gjenta
+  forutsi på forhånd: forutsi
+  planlegge på forhånd: planlegge
+  reservere på forhånd: reservere
+  varsle på forhånd: varsle
+
+  # --- Nominale tautologier (Bokmålsordboka; Vinje) ---
+  hoved protagonist: protagonist
+  første debut: debut
+  ny nyhet: nyhet
+  uventet overraskelse: overraskelse
+  falsk løgn: løgn
+  sann sannhet: sannhet
+  allmenn konsensus: konsensus
+  sluttresultat: resultat
+  definitiv konklusjon: konklusjon
+  eksklusivt monopol: monopol
+  potensiell risiko: risiko
+  mulig fare: fare
+  alternativt alternativ: alternativ
+  gratis og for ingenting: gratis
+
+  # --- Tidsredundanser (Vinje) ---
+  nå for øyeblikket: nå
+  aldri noensinne: aldri
+  alltid og evig: alltid
+  allerede tidligere: allerede
+
+  # --- RAS-syndromet (Bokmålsordboka; Språkrådet) ---
+  PIN-kode: PIN
+  hiv-virus: hiv
+  HIV-virus: HIV
+  aids-syndrom: aids
+  ngo-organisasjon: ngo
+  NGO-organisasjon: NGO
+  RAM-minne: RAM
+  dvd-plate: dvd
+  DVD-plate: DVD
+  cd-plate: cd
+  CD-plate: CD
+  pdf-fil: pdf
+  PDF-fil: PDF
+  gps-system: gps
+  GPS-system: GPS
+  isbn-nummer: isbn
+  ISBN-nummer: ISBN
+  html-kode: html
+  HTML-kode: HTML
+  adsl-linje: adsl
+  ADSL-linje: ADSL
+  usb-kabel: usb
+  USB-kabel: USB
+  wi-fi-nettverk: wi-fi
+  Wi-Fi-nettverk: Wi-Fi
+  mva-avgift: mva

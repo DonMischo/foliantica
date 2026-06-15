@@ -1,0 +1,143 @@
+# Källor / Sources:
+#   - Språkrådet: sprakradet.se — Lånordswebben / lånordsrådgivning
+#   - Josephson, Olle: "Ju" (Norstedts, 2018) — anglicismer i svenska
+#   - SAOL: "Svenska Akademiens ordlista" (14e uppl. 2015)
+#   - Språkrådet: "Svenska skrivregler" (Liber, 4e uppl. 2017)
+#   - Hellspong, Lennart / Ledin, Per: "Vägar genom texten" (Studentlitteratur, 1997)
+extends: substitution
+message: "Anglicism: '%s' — på svenska: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Möten och affärsorganisation (Språkrådet; Josephson) ---
+  meeting: möte / sammanträde
+  meetings: möten
+  briefing: genomgång / briefing (accepterat)
+  debriefing: eftersamtal / utvärdering
+  brainstorming: idéstorm / brainstorming (accepterat)
+  workshop: workshop (accepterat) / seminarium / arbetsgrupp
+  workshops: seminarier
+  deadline: tidsgräns / sista dag / deadline (accepterat)
+  deadlines: tidsgränser
+  networking: nätverkande / networking (accepterat)
+  staff: personal / medarbetare
+  manager: chef / ledare / manager (accepterat)
+  managers: chefer / ledare
+  management: ledning / management (accepterat)
+  outsourcing: utläggning / outsourcing (accepterat)
+  freelance: frilans / freelance (accepterat)
+  startup: startup (accepterat) / nystartat företag
+  pitch: pitch (accepterat) / presentation
+  feedback: återkoppling / feedback (accepterat)
+  newsletter: nyhetsbrev
+  newsletters: nyhetsbrev
+  ranking: rankinglista / placering
+  lobbying: lobbying (accepterat) / påverkansarbete
+  target: mål / målgrupp
+  targets: mål
+  benchmark: referenspunkt / benchmark (accepterat)
+  benchmarking: jämförelseanalys / benchmarking (accepterat)
+  copyright: upphovsrätt
+  joint venture: samriskbolag / joint venture (accepterat)
+
+  # --- Teknik och digitalt (Språkrådet; SAOL) ---
+  email: e-post / mejl (accepterat)
+  e-mail: e-post / mejl
+  spam: skräppost
+  link: länk
+  links: länkar
+  login: inloggning
+  logout: utloggning
+  password: lösenord
+  passwords: lösenord
+  username: användarnamn
+  download: nedladdning
+  upload: uppladdning
+  update: uppdatering
+  updates: uppdateringar
+  backup: säkerhetskopia / backup (accepterat)
+  backups: säkerhetskopior
+  hardware: hårdvara
+  software: programvara / mjukvara
+  app: app (accepterat) / tillämpning
+  apps: appar / tillämpningar
+  smartphone: smartphone (accepterat) / mobiltelefon
+  hashtag: hashtag (accepterat) / ämnesord
+  selfie: selfie (accepterat) / självporträtt
+  selfies: selfies / självporträtt
+  streaming: strömmande media / streaming (accepterat)
+  blog: blogg
+  blogs: bloggar
+  influencer: influencer (accepterat) / påverkare
+  influencers: påverkare
+  trending: trendig / trending (accepterat)
+  tweet: tweet (accepterat) / inlägg
+  tweets: tweets / inlägg
+  cloud: molnet / cloud (accepterat)
+  webinar: webbinarium / webinar (accepterat)
+  chatbot: chattbot / chatbot (accepterat)
+  chatbots: chattbottar
+  big data: stora datamängder / big data (accepterat)
+
+  # --- Media och underhållning (SAOL; Josephson) ---
+  show: show (accepterat) / föreställning
+  casting: casting (accepterat) / uttagning
+  reality show: realityshow (accepterat) / verklighetsshow
+  talk show: talkshow (accepterat) / pratshow
+  prime time: bästa sändningstid / prime time (accepterat)
+  trailer: trailer (accepterat) / förhandsvisning
+  trailers: trailers / förhandsvisningar
+  playlist: spellista
+  playlists: spellistor
+  live: live (accepterat) / direkt / i direkt
+  remake: remake (accepterat) / nyinspelning
+  flyer: flyer (accepterat) / löpsedel / flygblad
+
+  # --- Mode och konsumtion (SAOL; Språkrådet) ---
+  outfit: outfit (accepterat) / klädsel / utstyrsel
+  fashion: mode / fashion (accepterat)
+  brand: varumärke
+  brands: varumärken
+  branding: varumärkesbyggande / varumärkesarbete
+  shopping: shopping (accepterat) / handel / handlande
+  ticket: biljett
+  tickets: biljetter
+  voucher: presentkort / voucher (accepterat)
+  premium: premium (accepterat) / förstaklass / premiumklass
+  stock: lager / förråd
+
+  # --- Mat och service (SAOL) ---
+  brunch: brunch (accepterat) / sen frukost
+  catering: catering (accepterat) / cateringservice
+  food truck: foodtruck (accepterat) / matbil
+  fast food: snabbmat / fastfood (accepterat)
+  happy hour: happy hour (accepterat) / rabatttid
+  chef: kock / kökschef / chef (accepterat)
+
+  # --- Sport och hälsa (SAOL; Josephson) ---
+  running: löpning
+  fitness: fitness (accepterat) / konditionsträning
+  wellness: välmående / wellness (accepterat)
+  spa: spa (accepterat) / kuranläggning
+  coach: tränare / coach (accepterat)
+  coaching: coachning / tränarstöd
+  record: rekord
+
+  # --- Marknadsföring (Språkrådet; SAOL) ---
+  banner: banner (accepterat) / webbanner
+  landing page: landningssida
+  engagement: engagemang
+  reach: räckvidd
+  awareness: medvetenhet / kännedom
+  storytelling: berättarkonst / storytelling (accepterat)
+  press release: pressmeddelande
+  background: bakgrund
+  off the record: inofficiellt / off the record (accepterat)
+
+  # --- Anglicistiska verb (Josephson; Språkrådet) ---
+  googla: söka på internet / googla (accepterat)
+  chatta: chatta (accepterat) / kommunicera online
+  posta: posta (accepterat) / publicera
+  tweeta: tweeta (accepterat) / publicera inlägg
+  ladda upp: ladda upp (korrekt)
+  ladda ned: ladda ned (korrekt)

@@ -1,10 +1,98 @@
+# Källor / Sources:
+#   - Strömquist, Siv: "Skrivboken" (Gleerups, 8e uppl. 2014)
+#   - Språkrådet: "Svenska skrivregler" (Liber, 4e uppl. 2017)
+#   - SAOL: "Svenska Akademiens ordlista" (14e uppl. 2015)
+#   - Hellspong, Lennart / Ledin, Per: "Vägar genom texten" (Studentlitteratur, 1997)
+#   - Josephson, Olle: "Ju" (Norstedts, 2018)
 extends: substitution
-message: "'%s' är redundant — överväg '%s'."
-level: warning
+message: "Pleonasm / redundans: '%s' — ett ord för mycket. Förslag: '%s'?"
+level: suggestion
+ignorecase: true
 swap:
-  gammal veteran: veteran
-  lyfta upp: lyfta
+  # --- Riktningsredundanser (Strömquist; Språkrådet) ---
+  stiga upp: stiga
+  stiga uppåt: stiga
   sänka ner: sänka
+  falla ned: falla
+  falla neråt: falla
+  lyfta upp: lyfta
+  återvända tillbaka: återvända
   tillbaka igen: tillbaka
+  gammal veteran: veteran
+
+  # --- Verbala redundanser (Språkrådet; Strömquist) ---
   upprepa igen: upprepa
+  upprepa på nytt: upprepa
+  förutsäga i förväg: förutsäga
+  planera i förväg: planera
+  reservera i förväg: reservera
+  varna i förväg: varna
+  meddela i förväg: meddela
+
+  # --- Nominala tautologier (SAOL; Strömquist; Josephson) ---
+  huvudprotagonist: protagonist
+  första debut: debut
+  ny nyhet: nyhet
+  oväntad överraskning: överraskning
+  falsk lögn: lögn
+  sann sanning: sanning
   samarbeta tillsammans: samarbeta
+  allmän konsensus: konsensus
+  slutresultat: resultat
+  definitiv slutsats: slutsats
+  exklusivt monopol: monopol
+  universellt botemedel: botemedel
+  potentiell risk: risk
+  möjlig fara: fara
+  alternativt alternativ: alternativ
+  gratis och för intet: gratis
+
+  # --- Tidsredundanser (Strömquist) ---
+  nu för tillfället: nu
+  aldrig någonsin: aldrig
+  alltid och evigt: alltid
+  redan tidigare: redan
+  sedan tidigare: sedan
+
+  # --- RAS-syndromet (SAOL; Språkrådet) ---
+  # PIN = Personligt IdentifikationsNummer
+  PIN-kod: PIN
+  # HIV = Humant Immunbristvirus
+  hiv-virus: hiv
+  HIV-virus: HIV
+  # aids = Acquired Immune Deficiency Syndrome
+  aids-syndrom: aids
+  # NGO = Non-Governmental Organization
+  ngo-organisation: ngo
+  NGO-organisation: NGO
+  # RAM = Random Access Memory
+  RAM-minne: RAM
+  # dvd = Digital Versatile Disc
+  dvd-skiva: dvd
+  DVD-skiva: DVD
+  # cd = Compact Disc
+  cd-skiva: cd
+  CD-skiva: CD
+  # pdf = Portable Document Format
+  pdf-fil: pdf
+  PDF-fil: PDF
+  # gps = Global Positioning System
+  gps-system: gps
+  GPS-system: GPS
+  # isbn = International Standard Book Number
+  isbn-nummer: isbn
+  ISBN-nummer: ISBN
+  # html = HyperText Markup Language
+  html-kod: html
+  HTML-kod: HTML
+  # adsl = Asymmetric Digital Subscriber Line
+  adsl-linje: adsl
+  ADSL-linje: ADSL
+  # usb = Universal Serial Bus
+  usb-kabel: usb
+  USB-kabel: USB
+  # wi-fi
+  wi-fi-nätverk: wi-fi
+  Wi-Fi-nätverk: Wi-Fi
+  # moms = Mervärdesskatt
+  moms-skatt: moms
