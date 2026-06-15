@@ -167,7 +167,8 @@ async def put_custom_rules(body: CustomRulesBody, db: Session = Depends(get_db))
     """Replace the user's custom rule entries."""
     s = db.query(UserSettings).first()
     if not s:
-        raise HTTPException(404, "Settings not found")
+        s = UserSettings()
+        db.add(s)
     s.vale_custom_rules = json.dumps(body.rules, ensure_ascii=False)
     db.commit()
     return {"ok": True}

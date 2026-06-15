@@ -166,8 +166,8 @@ class TestValeSystemMode:
         assert "--config" in captured[0]
         assert cfg in captured[0]
 
-    def test_no_config_path_omits_config_flag(self, client):
-        _enable_system(client)  # no config_path
+    def test_no_config_path_uses_auto_generated_ini(self, client):
+        _enable_system(client)  # no user-provided config_path
         mock_stdout = _vale_json([])
         captured: list[list] = []
         def capture_run(cmd, **kw):
@@ -179,7 +179,10 @@ class TestValeSystemMode:
         ):
             r = client.post("/api/vale/check", json={"text": "Text."})
         assert r.status_code == 200
-        assert "--config" not in captured[0]
+        # _check_system always writes an auto ini and passes --config to it
+        assert "--config" in captured[0]
+        config_val = captured[0][captured[0].index("--config") + 1]
+        assert config_val.endswith(".vale.ini")
 
 
 # ── Docker mode ───────────────────────────────────────────────────────────────
