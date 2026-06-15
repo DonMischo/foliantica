@@ -7,6 +7,14 @@ import { cn } from "@/lib/utils";
 import type { ValeAlert } from "@/lib/api";
 import { useValeCheck } from "@/store/queries";
 
+function langName(code: string): string {
+  try {
+    return new Intl.DisplayNames(["en"], { type: "language" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
 // ── Severity config ───────────────────────────────────────────────────────────
 
 const SEV = {
@@ -209,7 +217,7 @@ export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
       </div>
 
       {/* Footer */}
-      <div className="px-3 py-2.5 border-t border-border shrink-0">
+      <div className="px-3 py-2.5 border-t border-border shrink-0 space-y-2">
         <Button
           size="sm"
           className="w-full"
@@ -220,6 +228,12 @@ export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
             ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Analysing…</>
             : "Run Vale"}
         </Button>
+        <p className="text-[10px] text-muted-foreground leading-snug">
+          {language
+            ? <>Language: <span className="text-foreground/70">{langName(language)}</span> <span className="opacity-50">(from Project Info)</span></>
+            : <>Using default English — set language in <span className="opacity-70">Project Info</span></>
+          }
+        </p>
       </div>
     </div>
   );
