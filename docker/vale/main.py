@@ -36,16 +36,17 @@ def _build_config(lang: str, has_foliantica: bool) -> str:
         based_on = "Vale, write-good, proselint"
         if has_foliantica:
             based_on += ", Foliantica"
+        extra = ""
     else:
-        # Non-English: skip Vale built-ins (English spelling + style) entirely.
-        # Use only our Foliantica rules; fall back to bare Vale if none loaded.
-        based_on = "Foliantica" if has_foliantica else "Vale"
+        based_on = "Vale, Foliantica" if has_foliantica else "Vale"
+        # Disable English spelling inside the section (top-level placement is ignored by Vale)
+        extra = "\nVale.Spelling = NO"
     return (
         "StylesPath = styles\n"
         "MinAlertLevel = suggestion\n"
         "\n"
         "[*.md]\n"
-        f"BasedOnStyles = {based_on}\n"
+        f"BasedOnStyles = {based_on}{extra}\n"
     )
 
 

@@ -122,14 +122,16 @@ def _check_system(text: str, config_path: str | None, language: str | None = Non
                 based_on = "Vale"
                 if styles:
                     based_on += ", Foliantica"
+                spelling_off = ""
             else:
-                based_on = "Foliantica" if styles else "Vale"
+                based_on = "Vale, Foliantica" if styles else "Vale"
+                spelling_off = "\nVale.Spelling = NO"
             ini_parts = [
                 "StylesPath = styles",
                 "MinAlertLevel = suggestion",
                 "",
                 "[*.md]",
-                f"BasedOnStyles = {based_on}",
+                f"BasedOnStyles = {based_on}{spelling_off}",
             ]
             ini = Path(tmp) / ".vale.ini"
             ini.write_text("\n".join(ini_parts) + "\n", encoding="utf-8")
