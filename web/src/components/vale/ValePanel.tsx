@@ -158,13 +158,38 @@ export function ValePanel({ text, language, onClose }: Props) {
               const alerts = byGroup[sev];
               if (!alerts?.length) return null;
               const cfg = SEV[sev];
+
+              // Group by Check rule so the same rule firing N times collapses into one block
+              const byRule = alerts.reduce<Record<string, ValeAlert[]>>((acc, a) => {
+                (acc[a.Check] ??= []).push(a);
+                return acc;
+              }, {});
+
               return (
                 <div key={sev}>
                   <p className={cn("text-[10px] font-semibold uppercase tracking-wider mb-1.5", cfg.color)}>
                     {cfg.label} ({alerts.length})
                   </p>
-                  <div className="space-y-1.5">
-                    {alerts.map((a, i) => <AlertCard key={i} alert={a} />)}
+                  <div className="space-y-3">
+                    {Object.entries(byRule).map(([rule, ruleAlerts]) => {
+                      const [pkg, ruleName] = rule.includes(".")
+                        ? rule.split(".", 2)
+                        : ["Vale", rule];
+                      return (
+                        <div key={rule}>
+                          <p className="text-[10px] text-muted-foreground mb-1 flex items-center gap-1">
+                            <span className="opacity-50 font-mono">{pkg}.</span>
+                            <span>{ruleName}</span>
+                            {ruleAlerts.length > 1 && (
+                              <span className="ml-auto text-[10px] tabular-nums opacity-60">×{ruleAlerts.length}</span>
+                            )}
+                          </p>
+                          <div className="space-y-1.5">
+                            {ruleAlerts.map((a, i) => <AlertCard key={i} alert={a} />)}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
