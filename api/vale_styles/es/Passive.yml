@@ -1,0 +1,6 @@
+extends: existence
+message: "Posible voz pasiva — considera la voz activa."
+level: suggestion
+tokens:
+  - \bfue\b
+  - \bfueron\b

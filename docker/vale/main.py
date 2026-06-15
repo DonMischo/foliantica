@@ -1,5 +1,5 @@
 import json
-import os
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -9,13 +9,17 @@ from pydantic import BaseModel
 
 app = FastAPI()
 
-_DEFAULT_INI = Path(__file__).parent / "default.ini"
+_APP_STYLES = Path("/app/styles")
+
+# Vale cannot meaningfully analyse CJK or Arabic — whitespace tokenisation breaks down.
+_UNSUPPORTED = {"zh", "ja", "ko", "ar"}
 
 
 class CheckRequest(BaseModel):
     text: str
-    config: str | None = None      # .vale.ini content; None → use default.ini
-    language: str | None = None    # e.g. "en-US", "de-DE", "auto"
+    config: str | None = None          # full .vale.ini content; overrides everything
+    language: str | None = None        # e.g. "en-US", "de", "auto"
+    styles: dict[str, str] | None = None  # rel path inside styles/ → YAML content
 
 
 @app.get("/health")
@@ -23,32 +27,56 @@ def health():
     return {"status": "ok"}
 
 
+def _lang(language: str | None) -> str:
+    return (language or "").lower()[:2]
+
+
+def _build_config(lang: str, has_foliantica: bool) -> str:
+    lines = ["StylesPath = styles", "MinAlertLevel = suggestion", ""]
+    if lang in ("en", ""):
+        based_on = "Vale, write-good, proselint"
+        if has_foliantica:
+            based_on += ", Foliantica"
+    else:
+        lines.insert(2, "Vale.Spelling = NO")
+        based_on = "Vale, Foliantica" if has_foliantica else "Vale"
+    lines += ["[*.md]", f"BasedOnStyles = {based_on}"]
+    return "\n".join(lines) + "\n"
+
+
 @app.post("/check")
 def check(req: CheckRequest):
-    with tempfile.TemporaryDirectory() as tmp:
-        src = Path(tmp) / "input.md"
-        src.write_text(req.text, encoding="utf-8")
+    if _lang(req.language) in _UNSUPPORTED:
+        return {"alerts": []}
 
-        if req.config:
-            cfg = Path(tmp) / ".vale.ini"
-            cfg.write_text(req.config, encoding="utf-8")
-            cfg_path = str(cfg)
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+
+        (tmp_path / "input.md").write_text(req.text, encoding="utf-8")
+
+        # Seed styles/ with community packages bundled in the image
+        styles_dir = tmp_path / "styles"
+        if _APP_STYLES.exists():
+            shutil.copytree(_APP_STYLES, styles_dir)
         else:
-            # Disable built-in spell-check for non-English content — Vale only
-            # ships an English dictionary, so every foreign word becomes an error.
-            is_english = (req.language or "").lower().startswith("en")
-            if not is_english:
-                cfg = Path(tmp) / ".vale.ini"
-                cfg.write_text(
-                    _DEFAULT_INI.read_text(encoding="utf-8") + "\nVale.Spelling = NO\n",
-                    encoding="utf-8",
-                )
-                cfg_path = str(cfg)
-            else:
-                cfg_path = str(_DEFAULT_INI)
+            styles_dir.mkdir()
+
+        # Overlay Foliantica/language rules sent from the API
+        has_foliantica = bool(req.styles)
+        if req.styles:
+            for rel, content in req.styles.items():
+                dest = styles_dir / rel
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_text(content, encoding="utf-8")
+
+        cfg = tmp_path / ".vale.ini"
+        if req.config:
+            cfg.write_text(req.config, encoding="utf-8")
+        else:
+            cfg.write_text(_build_config(_lang(req.language), has_foliantica), encoding="utf-8")
 
         result = subprocess.run(
-            ["vale", "--config", cfg_path, "--output=JSON", str(src)],
+            ["vale", "--config", str(cfg), "--output=JSON", str(tmp_path / "input.md")],
             capture_output=True, text=True, timeout=30, cwd=tmp,
         )
 

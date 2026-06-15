@@ -1,0 +1,20 @@
+extends: existence
+message: "'%s' ist ein Füllwort — präziser formulieren?"
+level: warning
+tokens:
+  - \bsehr\b
+  - \bwirklich\b
+  - \beigentlich\b
+  - \birgendwie\b
+  - \bziemlich\b
+  - \beinfach\b
+  - \bhalt\b
+  - \beben\b
+  - \boffensichtlich\b
+  - \bnatürlich\b
+  - \bselbstverständlich\b
+  - \bjedenfalls\b
+  - \bletztendlich\b
+  - \bgewissermaßen\b
+  - \bsozusagen\b
+  - \bquasi\b

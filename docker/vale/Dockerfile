@@ -8,6 +8,12 @@ RUN apk add --no-cache libstdc++ && \
     pip install --no-cache-dir fastapi uvicorn
 
 WORKDIR /app
+
+# Download community style packages at image build time.
+# sync.ini lists write-good and proselint under Packages; vale sync fetches them.
+COPY sync.ini .vale.ini
+RUN mkdir -p styles && vale sync && rm .vale.ini
+
 COPY main.py .
 COPY default.ini .
 

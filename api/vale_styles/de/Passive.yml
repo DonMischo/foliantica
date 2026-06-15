@@ -1,0 +1,6 @@
+extends: existence
+message: "Mögliches Passiv — Aktivkonstruktion bevorzugen?"
+level: suggestion
+tokens:
+  - \bwurde\b
+  - \bwurden\b

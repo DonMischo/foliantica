@@ -1,0 +1,6 @@
+extends: existence
+message: "Möjligt passiv — föredra aktiv form?"
+level: suggestion
+tokens:
+  - \bblev\b
+  - \bblivit\b

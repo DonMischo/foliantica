@@ -1,0 +1,6 @@
+extends: existence
+message: "Voix passive possible — préférez la voix active."
+level: suggestion
+tokens:
+  - \bfut\b
+  - \bfurent\b

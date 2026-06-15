@@ -1,0 +1,14 @@
+extends: substitution
+message: "'%s' ist redundant — erwäge '%s'."
+level: warning
+swap:
+  bereits schon: bereits
+  alter Veteran: Veteran
+  weißer Schimmel: Schimmel
+  tote Leiche: Leiche
+  vergangene Geschichte: Geschichte
+  persönliche Meinung: Meinung
+  kleine Miniatur: Miniatur
+  gemeinsame Zusammenarbeit: Zusammenarbeit
+  runder Kreis: Kreis
+  nasse Feuchtigkeit: Feuchtigkeit

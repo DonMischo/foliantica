@@ -1,0 +1,12 @@
+extends: substitution
+message: "'%s' es redundante — considera '%s'."
+level: warning
+swap:
+  subir arriba: subir
+  bajar abajo: bajar
+  entrar adentro: entrar
+  salir afuera: salir
+  volver a repetir: repetir
+  el día de hoy: hoy
+  en la actualidad actualmente: actualmente
+  viejo anciano: anciano

@@ -1,0 +1,10 @@
+extends: substitution
+message: "'%s' är redundant — överväg '%s'."
+level: warning
+swap:
+  gammal veteran: veteran
+  lyfta upp: lyfta
+  sänka ner: sänka
+  tillbaka igen: tillbaka
+  upprepa igen: upprepa
+  samarbeta tillsammans: samarbeta

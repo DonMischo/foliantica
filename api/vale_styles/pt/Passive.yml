@@ -1,0 +1,6 @@
+extends: existence
+message: "Possível voz passiva — prefira a voz ativa."
+level: suggestion
+tokens:
+  - \bfoi\b
+  - \bforam\b

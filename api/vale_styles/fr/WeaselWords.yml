@@ -1,0 +1,17 @@
+extends: existence
+message: "'%s' est un terme vague — formuler plus précisément ?"
+level: warning
+tokens:
+  - \btrès\b
+  - \bvraiment\b
+  - \bassez\b
+  - \bplutôt\b
+  - \bsimplement\b
+  - \bévidemment\b
+  - \bvisiblement\b
+  - \bapparemment\b
+  - \bfranchement\b
+  - \bclairement\b
+  - \btotalement\b
+  - \bcarrément\b
+  - \babsolument\b

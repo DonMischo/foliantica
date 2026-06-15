@@ -1,0 +1,11 @@
+extends: substitution
+message: "'%s' est redondant — préférer '%s'."
+level: warning
+swap:
+  monter en haut: monter
+  descendre en bas: descendre
+  reculer en arrière: reculer
+  avancer en avant: avancer
+  répéter à nouveau: répéter
+  prévoir à l'avance: prévoir
+  collaborer ensemble: collaborer

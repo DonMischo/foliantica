@@ -1,0 +1,17 @@
+extends: existence
+message: "'%s' es un término vago — ¿más concreto?"
+level: warning
+tokens:
+  - \bmuy\b
+  - \brealmente\b
+  - \bbastante\b
+  - \bsimplemente\b
+  - \bobviamente\b
+  - \bbásicamente\b
+  - \bquizás\b
+  - \bciertamente\b
+  - \baparentemente\b
+  - \bdefinitivamente\b
+  - \bclaramente\b
+  - \btotalmente\b
+  - \befectivamente\b

@@ -1,0 +1,10 @@
+extends: substitution
+message: "'%s' er redundant — overvej '%s'."
+level: warning
+swap:
+  gammel veteran: veteran
+  løfte op: løfte
+  sænke ned: sænke
+  tilbage igen: tilbage
+  gentage igen: gentage
+  samarbejde sammen: samarbejde

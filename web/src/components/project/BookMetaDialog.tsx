@@ -197,6 +197,14 @@ export function BookMetaDialog({ projectTitle, initial, open, onClose, onSave }:
                   <option key={l.code} value={l.code}>{l.label}</option>
                 ))}
               </datalist>
+              {(() => {
+                const lc = (meta.language ?? "en").toLowerCase().split("-")[0];
+                if (["zh", "ja", "ko", "ar"].includes(lc))
+                  return <p className="text-[10px] text-amber-500 mt-0.5">Style checking is not available for this language.</p>;
+                if (!["en", "de", "es", "fr", "pt", "sv", "da", "no"].includes(lc))
+                  return <p className="text-[10px] text-muted-foreground mt-0.5">Style checking has limited support for this language — only basic rules apply.</p>;
+                return null;
+              })()}
             </Field>
           </div>
 

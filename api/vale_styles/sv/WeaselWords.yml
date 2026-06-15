@@ -1,0 +1,16 @@
+extends: existence
+message: "'%s' är ett fyllnadsord — formulera mer exakt?"
+level: warning
+tokens:
+  - \bmycket\b
+  - \bverkligen\b
+  - \bganska\b
+  - \brätt\b
+  - \bbara\b
+  - \bfaktiskt\b
+  - \btydligen\b
+  - \buppenbarligen\b
+  - \bliksom\b
+  - \begentligen\b
+  - \bnästan\b
+  - \bsjälvklart\b

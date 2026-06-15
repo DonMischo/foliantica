@@ -1,0 +1,11 @@
+extends: substitution
+message: "'%s' é redundante — considerar '%s'."
+level: warning
+swap:
+  subir para cima: subir
+  descer para baixo: descer
+  entrar para dentro: entrar
+  sair para fora: sair
+  repetir de novo: repetir
+  prever antecipadamente: prever
+  colaborar em conjunto: colaborar

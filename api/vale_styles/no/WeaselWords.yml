@@ -1,0 +1,15 @@
+extends: existence
+message: "'%s' er et fylleord — formuler mer presist?"
+level: warning
+tokens:
+  - \bveldig\b
+  - \bvirkelig\b
+  - \bganske\b
+  - \bbare\b
+  - \bfaktisk\b
+  - \båpenbart\b
+  - \btydeligvis\b
+  - \bliksom\b
+  - \begentlig\b
+  - \bnesten\b
+  - \bselvfølgelig\b

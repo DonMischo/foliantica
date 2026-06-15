@@ -1,0 +1,16 @@
+extends: existence
+message: "'%s' er et fyldord — formuler mere præcist?"
+level: warning
+tokens:
+  - \bmeget\b
+  - \bvirkelig\b
+  - \bganske\b
+  - \bret\b
+  - \bbare\b
+  - \bfaktisk\b
+  - \båbenbart\b
+  - \btydeligvis\b
+  - \bligesom\b
+  - \begentlig\b
+  - \bnæsten\b
+  - \bselvfølgelig\b
