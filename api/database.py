@@ -134,7 +134,7 @@ def migrate_achievement_popup_shown():
     """Add popup_shown_at column to achievement_unlocks if not present."""
     try:
         with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE achievement_unlocks ADD COLUMN popup_shown_at DATETIME"))
+            conn.execute(text("ALTER TABLE achievement_unlocks ADD COLUMN popup_shown_at TIMESTAMP"))
     except Exception:
         pass
 
