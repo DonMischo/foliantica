@@ -43,9 +43,9 @@ swap:
   in Kenntnis setzen: informieren
   Abstand nehmen von: verzichten auf
   Einsicht nehmen in: einsehen
-  Anteil nehmen: mitfühlen
+  Anteil nehmen: teilnehmen
   Bezug nehmen auf: sich beziehen auf
-  Anstoß nehmen an: sich stoßen an
+  Anstoß nehmen an: missbilligen
   Notiz nehmen von: beachten
   Anlass nehmen zu: nutzen um zu
   Abschied nehmen: sich verabschieden
@@ -130,8 +130,10 @@ swap:
   in Wegfall geraten: wegfallen
   in Vergessenheit geraten: vergessen werden
   in Auftrag geben: beauftragen
-  ein Gespräch führen: sprechen
-  eine Rede halten: reden
+  # NOTE: "ein Gespräch führen: sprechen" und "eine Rede halten: reden" entfernt —
+  # die Streckform ist hier spezifischer als das vorgeschlagene Verb (strukturiertes
+  # Gespräch vs. beliebiges Reden; formelle Rede vs. beliebiges Reden), kein echter
+  # Stilgewinn.
   einen Vorschlag machen: vorschlagen
   Kritik üben: kritisieren
   sich Hoffnung machen: hoffen

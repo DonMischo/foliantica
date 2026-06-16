@@ -23,18 +23,13 @@ tokens:
   - \blukkes\b
 
   # --- Bli-passiv (Vinje; NTB Språk) ---
-  - \bbli\b
-  - \bblir\b
-  - \bble\b
-  - \bblitt\b
+  # NOTE: "bli/blir/ble/blitt" som frittstående tokens er fjernet — "bli" betyr også
+  # "bli + adjektiv" (f.eks. "blir trøtt", aktivt) og er ekstremt vanlig.
+  # Bare de smalere, mindre tvetydige fraseformene beholdes.
   - \bkommer til å bli\b
   - \bskal bli\b
 
-  # --- Være-passiv / tilstandspassiv (Lie; Vinje) ---
-  - \ber\b
-  - \bvar\b
-  - \bvære\b
-  - \bvært\b
-
-  # --- Man-konstruksjon (Vinje; Språkrådet: unngå upersonlig "man") ---
-  - \bman\b
+  # NOTE: være-passiv (er/var/være/vært) og man-konstruksjonen er fjernet helt —
+  # "er"/"var" er de vanligste kopulaene på norsk og kan ikke skilles fra
+  # "være + adjektiv" (aktivt) uten lookahead, som RE2 ikke støtter. "man" er
+  # dessuten ikke passiv, men aktiv med upersonlig subjekt.

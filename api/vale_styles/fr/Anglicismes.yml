@@ -29,8 +29,8 @@ swap:
   outsourcing: externalisation
   freelance: indépendant
   freelancer: travailleur indépendant
-  startup: jeune pousse
-  startups: jeunes pousses
+  startup: jeune pousse (Québec) / startup (courant en France)
+  startups: jeunes pousses (Québec) / startups (courant en France)
   pitch: argumentaire
   pitching: présentation
   feedback: retour / rétroaction
@@ -58,10 +58,10 @@ swap:
 
   # --- Technologie et numérique (FranceTerme ; Commission de terminologie) ---
   # Termes officiels publiés au Journal officiel
-  email: courriel
-  e-mail: courriel
+  email: courriel (Québec) / e-mail (courant en France)
+  e-mail: courriel (Québec) / e-mail (courant en France)
   mailing: envoi de courriels
-  spam: pourriel
+  spam: pourriel (Québec) / spam (courant en France)
   link: lien
   links: liens
   login: identifiant / connexion
@@ -71,8 +71,8 @@ swap:
   username: identifiant
   download: téléchargement
   downloads: téléchargements
-  upload: téléversement
-  uploads: téléversements
+  upload: téléversement (Québec) / mise en ligne (courant en France)
+  uploads: téléversements (Québec) / mises en ligne (courant en France)
   update: mise à jour
   updates: mises à jour
   backup: sauvegarde
@@ -85,8 +85,8 @@ swap:
   smartphones: ordiphones
   tablet: tablette
   tablets: tablettes
-  hashtag: mot-dièse
-  hashtags: mots-dièse
+  hashtag: mot-dièse (officiel) / hashtag (courant)
+  hashtags: mots-dièse (officiel) / hashtags (courant)
   selfie: autoportrait / égoportrait
   selfies: autoportraits / égoportraits
   streaming: diffusion en continu
@@ -107,13 +107,13 @@ swap:
   trending: tendance
   trend: tendance
   trends: tendances
-  tweet: gazouillis
-  tweets: gazouillis
+  tweet: gazouillis (Québec) / tweet (courant en France)
+  tweets: gazouillis (Québec) / tweets (courant en France)
   retweeter: retransmettre
   googler: rechercher sur internet
   wifi: sans-fil / réseau sans-fil
   cloud: nuage / informatique en nuage
-  big data: mégadonnées
+  big data: mégadonnées (officiel) / big data (courant)
   data: données
   content: contenu
   webinar: webinaire

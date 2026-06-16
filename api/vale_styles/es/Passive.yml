@@ -9,11 +9,8 @@ level: suggestion
 ignorecase: true
 tokens:
   # --- Pasiva perifrástica con "ser" (Grijelmo: la pasiva con ser suena artificial en español) ---
-  # Pretérito indefinido / imperfecto (las más comunes)
-  - \bfue\b
-  - \bfueron\b
-  - \bfuera\b
-  - \bfuesen\b
+  # NOTE: "fue/fueron/fuera/fuesen" se han retirado — son idénticos al pretérito de "ir"
+  # (p. ej. "fue a casa", activo) y producen demasiados falsos positivos.
 
   # Pretérito perfecto compuesto (ha/han sido)
   - \bha sido\b

@@ -8,11 +8,9 @@ message: "'%s' — Verwechslungsgefahr oder häufiger Stilfehler: prüfen?"
 level: warning
 ignorecase: false
 tokens:
-  # --- scheinbar vs. anscheinend (Sick, Bd. 1; Duden Bd. 9) ---
-  # scheinbar = sieht so aus, ist es aber nicht ("der scheinbare Widerspruch")
-  # anscheinend = sieht so aus und ist es wahrscheinlich auch ("er ist anscheinend krank")
-  # Im Alltag wird "scheinbar" oft falsch für "anscheinend" verwendet.
-  - \bscheinbar\b
+  # NOTE: "scheinbar" wurde entfernt — die Verwechslung mit "anscheinend" betrifft nur
+  # einen Teil der Verwendungen; eine existence-Regel kann korrekten von falschem
+  # Gebrauch nicht unterscheiden und würde jede korrekte Verwendung mitflaggen.
 
   # --- Falsche Vergleichspartikel: "wie" statt "als" nach Komparativ (Sick; Duden) ---
   # Richtig: "größer als", "besser als", "mehr als" — nicht "wie"
@@ -37,28 +35,10 @@ tokens:
   - anders wie
   - als wie
 
-  # --- "derselbe" vs. "der gleiche" (Sick, Bd. 2; Duden) ---
-  # "derselbe/dieselbe/dasselbe" = identisch (ein und dasselbe Objekt)
-  # "der/die/das gleiche" = gleichartig (zwei verschiedene, aber identische Objekte)
-  # Im Alltag wird "derselbe" oft für "der gleiche" verwendet.
-  - \bderselbe\b
-  - \bdieselbe\b
-  - \bdasselbe\b
+  # NOTE: "derselbe/dieselbe/dasselbe" und "aktuell" wurden entfernt — beide Wörter sind
+  # in den meisten Fällen korrekt verwendet; eine existence-Regel kann den seltenen
+  # Fehlgebrauch nicht von der überwiegend richtigen Verwendung unterscheiden.
 
-  # --- "aktuell" als Allzweckwort (Sick; Schneider) ---
-  # "aktuell" wird überstrapaziert wenn "jetzt", "gegenwärtig", "modern",
-  # "zeitgemäß", "neu" oder "derzeitig" präziser wäre.
-  - \baktuell\b
-
-  # --- Perspektiv-Hedges (Schneider: Meinungen direkt vertreten, nicht abschwächen) ---
-  # "Meiner Meinung nach" vor einer Aussage wirkt unsicher — entweder ohne Vorbehalt
-  # schreiben oder explizit als These kennzeichnen.
-  - \bmeiner Meinung nach\b
-  - \bich finde dass\b
-  - \bich denke dass\b
-  - \bich glaube dass\b
-  - \bmeines Erachtens\b
-  - \bm\. E\.\b
-  - \baus meiner Sicht\b
-  - \baus meiner persönlichen Sicht\b
-  - \bpersönlich finde ich\b
+  # NOTE: die Perspektiv-Hedges ("meiner Meinung nach" usw.) wurden komplett entfernt —
+  # das sind keine Verwechslungsfehler (gehören thematisch nicht in eine
+  # Falsche-Freunde-Datei) und in Meinungstexten/Rezensionen oft legitim, kein Fehler.

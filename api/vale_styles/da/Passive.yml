@@ -33,18 +33,13 @@ tokens:
   - \bholdtes\b
 
   # --- Blive-passiv (Lund; Hannemand) ---
-  - \bblive\b
-  - \bbliver\b
-  - \bblev\b
-  - \bblivet\b
+  # NOTE: "blive/bliver/blev/blivet" som selvstændige tokens er fjernet — "blive" betyder
+  # også "blive + adjektiv" (f.eks. "bliver træt", aktivt) og er ekstremt almindeligt.
+  # Kun de smallere, mindre tvetydige frasekonstruktioner bevares.
   - \bkommer til at blive\b
   - \bskal blive\b
 
-  # --- Være-passiv / tilstandspassiv (Galberg Jacobsen) ---
-  - \ber\b
-  - \bvar\b
-  - \bvære\b
-  - \bværet\b
-
-  # --- Man-konstruktion (Dansk Sprognævn; Lund: undgå upersonlig "man") ---
-  - \bman\b
+  # NOTE: være-passiv (er/var/være/været) og man-konstruktionen er fjernet helt —
+  # "er"/"var" er de mest almindelige kopulaer på dansk og kan ikke skelnes fra
+  # "være + adjektiv" (aktivt) uden lookahead, som RE2 ikke understøtter. "man" er
+  # desuden ikke passiv, men aktiv med upersonligt subjekt.

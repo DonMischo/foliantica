@@ -12,7 +12,7 @@ swap:
   # --- Opblæste præpositioner (Hannemand; Dansk Sprognævn) ---
   inden for rammerne af: i / ved / for
   med hensyn til: om / vedrørende
-  hvad angår: om / hvad angår → om
+  hvad angår: om
   vedrørende: om
   i forbindelse med: ved / når / i
   i henhold til: ifølge / efter
@@ -64,13 +64,13 @@ swap:
   det skal bemærkes at: bemærk
   på den baggrund: derfor
   i denne anledning: derfor
-  i den forbindelse: i den forbindelse → her
+  i den forbindelse: her
   i det henseende: her
   hermed: med dette
   herigennem: herved / på den måde
-  heraf: af dette / heraf → deraf
-  hvorved: hvorved → og dermed
-  for så vidt angår: hvad angår → om
+  heraf: af dette
+  hvorved: og dermed
+  for så vidt angår: om
 
   # --- Modale omskrivninger (Hannemand; Galberg Jacobsen) ---
   have mulighed for at: kunne
