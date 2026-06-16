@@ -91,7 +91,7 @@ if (Test-Path $nextCache) {
 Write-Host "  $(white "Starting Docker services...")"
 if (Get-Command docker -ErrorAction SilentlyContinue) {
     Push-Location $Root
-    docker compose up --build -d
+    docker compose --profile languagetool --profile pandoc --profile calibre --profile spacy --profile vale up --build -d
     Pop-Location
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  $(yellow "[WARN]") Docker services failed to start - grammar check and export may be unavailable."
