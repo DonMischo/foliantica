@@ -742,7 +742,16 @@ async def ws_collab(ws: WebSocket, token: str = Query(default="")):
     )
 
     # ── Authenticate ──────────────────────────────────────────────────────────
-    if is_cowork_enabled() and not is_local:
+    # Co-work-enabled is checked here, not as an early "skip everything"
+    # bypass, so that disabling co-work immediately revokes ALL non-trusted
+    # access — including an already-issued JWT — rather than only blocking
+    # new joins. The server's bind address only changes on app restart, so a
+    # LAN device can still reach this port for a while after co-work is
+    # toggled off; this is what actually closes that window.
+    if not is_local:
+        if not is_cowork_enabled():
+            await ws.close(code=1008, reason="Co-work is disabled")
+            return
         if not token:
             await ws.close(code=1008, reason="Authentication required")
             return

@@ -58,6 +58,22 @@ describe("CoworkAccessGuard", () => {
     expect(screen.queryByText("secret content")).not.toBeInTheDocument();
   });
 
+  it("shows the invitation-required screen when the probe returns 403", async () => {
+    // 403 means co-work is disabled and the caller still isn't trusted —
+    // e.g. a LAN device reaching the page after the host toggled co-work
+    // off (the server's bind address only changes on app restart, so the
+    // LAN port can still be reachable for a while). Without this, the
+    // guard would render the app shell while every real data fetch
+    // underneath fails with 403, producing a blank screen instead of this
+    // message.
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 403 })));
+
+    render(<CoworkAccessGuard><div>secret content</div></CoworkAccessGuard>);
+
+    await waitFor(() => expect(screen.getByText("Invitation required")).toBeInTheDocument());
+    expect(screen.queryByText("secret content")).not.toBeInTheDocument();
+  });
+
   it("skips the probe entirely on /join", async () => {
     mockPathname = "/join";
     const fetchMock = vi.fn();

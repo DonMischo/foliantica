@@ -146,7 +146,7 @@ _COWORK_PUBLIC_PATHS = {"/api/health", "/api/collab/join", "/api/collab/info"}
 
 # Per-launch secret, set by Electron and injected into its own window's
 # requests only (see electron/main.js + COWORKING_NETWORK_SECURITY_SUMMARY.md).
-# Absent in the non-Electron launch path (StartFoliantica.bat) — host-trust
+# Absent in the non-Electron launch path (LaunchFoliantica.bat) — host-trust
 # there falls back entirely to the peer + Origin checks below.
 _HOST_SECRET = os.environ.get("FOLIANTICA_HOST_SECRET", "")
 
@@ -154,10 +154,6 @@ class CoworkAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # OPTIONS preflight — always pass through so CORS headers are set
         if request.method == "OPTIONS":
-            return await call_next(request)
-
-        # Only enforce when co-work is enabled
-        if not collab_router.is_cowork_enabled():
             return await call_next(request)
 
         # Public endpoints (join + health) — no auth required
@@ -204,6 +200,17 @@ class CoworkAuthMiddleware(BaseHTTPMiddleware):
         # Localhost is always trusted (host browser, internal calls)
         if client_ip in ("127.0.0.1", "::1"):
             return await call_next(request)
+
+        # Non-trusted peer: co-work must be enabled for guest access to be
+        # possible at all. Checked here (not as an early bypass above) so
+        # that disabling co-work immediately revokes ALL guest access,
+        # including already-issued JWTs — not just new joins. The server's
+        # bind address only changes on app restart (electron/main.js reads
+        # it once at startup), so a LAN device can still reach this port
+        # for a while after co-work is toggled off; this is what actually
+        # closes that window rather than relying on the rebind.
+        if not collab_router.is_cowork_enabled():
+            return JSONResponse({"detail": "Co-work is disabled."}, status_code=403)
 
         # External client: require a valid Bearer JWT
         auth = request.headers.get("Authorization", "")

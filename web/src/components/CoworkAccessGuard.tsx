@@ -8,11 +8,16 @@ type Status = "checking" | "allowed" | "denied";
 
 // Guests sometimes land on a bare URL (LAN IP, Cloudflare domain) instead of
 // the invitation link from /join — e.g. a stale bookmark, or someone retyping
-// the address by hand. The host is always trusted by IP and needs no JWT, so
-// this probe (any auth-gated endpoint) only ever returns 401 for guests who
-// never completed the join flow. When co-work is disabled, the backend
-// doesn't enforce auth at all, so this is a no-op for the normal single-user
-// case.
+// the address by hand. The host is always trusted (via the loopback/secret/
+// Origin checks in CoworkAuthMiddleware) and needs no JWT, so this probe
+// (any auth-gated endpoint) only returns a rejection for an untrusted
+// caller. Two distinct rejections to watch for: 401 means co-work is on but
+// no/invalid JWT was presented (the normal "never joined" case); 403 means
+// co-work is OFF and the caller isn't trusted either — e.g. someone on the
+// LAN still reaching this page after the host disabled co-work, since the
+// server's bind address only changes on app restart. For the genuine
+// single-user case (host's own loopback/secret-trusted traffic) neither
+// ever fires, so this stays a no-op there.
 export function CoworkAccessGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const skip = pathname === "/join";
@@ -26,7 +31,7 @@ export function CoworkAccessGuard({ children }: { children: React.ReactNode }) {
     fetch("/api/projects", {
       headers: jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {},
     })
-      .then(res => { if (!cancelled) setStatus(res.status === 401 ? "denied" : "allowed"); })
+      .then(res => { if (!cancelled) setStatus(res.status === 401 || res.status === 403 ? "denied" : "allowed"); })
       .catch(() => { if (!cancelled) setStatus("allowed"); });
     return () => { cancelled = true; };
   }, [skip]);

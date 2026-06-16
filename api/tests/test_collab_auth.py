@@ -385,6 +385,32 @@ class TestProxyTrustBoundary:
         r = remote.get("/api/collab/invitations")
         assert r.status_code == 200
 
+    def test_remote_peer_rejected_when_cowork_disabled_even_with_valid_jwt(self, client):
+        """Disabling co-work must immediately revoke ALL non-trusted access,
+        including an already-issued JWT — not just block new joins. The
+        server's bind address only changes on app restart, so a LAN device
+        can still reach this port for a while after co-work is toggled off;
+        this is what actually closes that window. Regression test for a
+        bug where the middleware's old early bypass ("if not
+        is_cowork_enabled(): allow everyone unconditionally") left the app
+        fully open to the LAN, with zero auth, the moment co-work was
+        switched off while still bound 0.0.0.0 from before."""
+        collab_mod.set_cowork_enabled(True)
+        inv = make_invitation(client, name="Remote Guest")
+        data = join_ok(client, token=inv["token"])
+        collab_mod.set_cowork_enabled(False)
+
+        remote = self._remote_client()
+        remote.headers["Authorization"] = f"Bearer {data['jwt']}"
+        r = remote.get("/api/collab/invitations")
+        assert r.status_code == 403
+
+    def test_remote_peer_rejected_when_cowork_disabled_with_no_credentials(self, client):
+        collab_mod.set_cowork_enabled(False)
+        remote = self._remote_client()
+        r = remote.get("/api/collab/invitations")
+        assert r.status_code == 403
+
 
 # ── Electron host-secret trust ─────────────────────────────────────────────────
 # The secret is the strongest of the three trust signals — it's checked

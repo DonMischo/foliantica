@@ -3,9 +3,15 @@ Phases 2, 3, 4 — WebSocket: locks, presence, student-mode enforcement.
 
 Strategy
 --------
-* Co-work DISABLED (default):  the auth check is skipped regardless of peer
-  address, and every WS connection receives session_id="host". This keeps
-  lock/presence tests simple without needing real JWTs.
+* Co-work DISABLED (default):  trust still requires a genuinely trusted
+  connection (loopback peer, secret, or matching Origin) — disabling
+  co-work no longer skips that check, since the server's bind address only
+  changes on app restart, so a LAN device could otherwise still reach this
+  port for a while after co-work is toggled off (see
+  COWORKING_NETWORK_SECURITY_SUMMARY.md). These tests use the `client`
+  fixture (loopback peer, see conftest.py) to get session_id="host" without
+  needing real JWTs, exactly matching how the host's own Electron window
+  actually connects.
 
 * Co-work ENABLED (explicit):  Guest auth tests inject a real JWT via the
   ?token= query param, and connect via the `ws_client` fixture rather than
@@ -13,13 +19,8 @@ Strategy
   "testclient", simulating a real guest's connection (in production the WS
   upgrade is proxied through Next.js's server-wrapper.js, same as REST, but
   ws.client.host stops being a useful trust signal once that's true for
-  host and guest alike — see TestWsHostTrust below and
-  COWORKING_NETWORK_SECURITY_SUMMARY.md). `client`'s peer is pinned to
-  127.0.0.1 (see conftest.py) to match the proxy's loopback hop for
-  ordinary HTTP calls like creating an invitation — using it for a WS
-  connect would incorrectly grant host-level trust on peer alone, which is
-  exactly why the Origin check in TestWsHostTrust exists. Student-mode
-  tests build a session via the join endpoint (HTTP, via `client`) so the
+  host and guest alike — see TestWsHostTrust below). Student-mode tests
+  build a session via the join endpoint (HTTP, via `client`) so the
   session dict (with assigned_items) is in _sessions, then connect with
   `ws_client`.
 
@@ -45,27 +46,27 @@ WS_PATH = "/api/collab/ws/collab"
 
 class TestConnection:
 
-    def test_connect_receives_state(self, ws_client):
-        with ws_client.websocket_connect(WS_PATH) as ws:
+    def test_connect_receives_state(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
             msg = ws.receive_json()
         assert msg["type"] == "state"
         assert "locks" in msg
         assert "presence" in msg
         assert "sessions" in msg
 
-    def test_state_includes_my_session_id(self, ws_client):
-        with ws_client.websocket_connect(WS_PATH) as ws:
+    def test_state_includes_my_session_id(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
             msg = ws.receive_json()
         assert "my_session_id" in msg
         assert msg["my_session_id"] == "host"
 
-    def test_connect_registers_presence(self, ws_client):
-        with ws_client.websocket_connect(WS_PATH) as ws:
+    def test_connect_registers_presence(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
             ws.receive_json()  # state
             assert "host" in collab_mod._presence
 
-    def test_disconnect_clears_presence(self, ws_client):
-        with ws_client.websocket_connect(WS_PATH) as ws:
+    def test_disconnect_clears_presence(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
             ws.receive_json()
         assert "host" not in collab_mod._presence
 
@@ -92,8 +93,22 @@ class TestConnection:
             with ws_client.websocket_connect(f"{WS_PATH}?token=notvalid") as ws:
                 ws.receive_json()
 
-    def test_ping_pong(self, ws_client):
-        with ws_client.websocket_connect(WS_PATH) as ws:
+    def test_guest_rejected_when_cowork_disabled_even_with_valid_jwt(self, client, ws_client):
+        """Disabling co-work immediately revokes guest access, including an
+        already-issued JWT — not just new joins. Regression test for the
+        bug where toggling co-work off (without an app restart) left the
+        server still LAN-bound but with zero auth enforcement at all."""
+        collab_mod.set_cowork_enabled(True)
+        inv = make_invitation(client, name="Bob")
+        data = join_ok(client, token=inv["token"], display_name="Bob")
+        jwt_token = data["jwt"]
+        collab_mod.set_cowork_enabled(False)
+        with pytest.raises(Exception):
+            with ws_client.websocket_connect(f"{WS_PATH}?token={jwt_token}") as ws:
+                ws.receive_json()
+
+    def test_ping_pong(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
             ws.receive_json()  # state
             ws.send_json({"type": "ping"})
             pong = ws.receive_json()
@@ -104,8 +119,8 @@ class TestConnection:
 
 class TestLocks:
 
-    def test_request_lock_grants_and_broadcasts(self, ws_client):
-        with ws_client.websocket_connect(WS_PATH) as ws:
+    def test_request_lock_grants_and_broadcasts(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
             ws.receive_json()  # state
             ws.send_json({"type": "lock", "item_type": "scene", "item_id": 42})
             msg = ws.receive_json()
@@ -115,8 +130,8 @@ class TestLocks:
         assert lock["item_type"] == "scene"
         assert lock["item_id"] == 42
 
-    def test_lock_recorded_in_module_state(self, ws_client):
-        with ws_client.websocket_connect(WS_PATH) as ws:
+    def test_lock_recorded_in_module_state(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
             ws.receive_json()
             ws.send_json({"type": "lock", "item_type": "scene", "item_id": 1})
             ws.receive_json()  # locks broadcast
@@ -124,7 +139,7 @@ class TestLocks:
             # that behavior is verified by test_disconnect_releases_all_locks)
             assert "scene:1" in collab_mod._locks
 
-    def test_lock_denied_when_held_by_other(self, ws_client):
+    def test_lock_denied_when_held_by_other(self, client):
         """Two separate WS sessions; second one is denied the same lock."""
         # First session grabs the lock by injecting directly into module state
         collab_mod._locks["scene:10"] = {
@@ -134,7 +149,7 @@ class TestLocks:
             "item_id":      10,
             "expires_at":   datetime.now(UTC) + timedelta(seconds=30),
         }
-        with ws_client.websocket_connect(WS_PATH) as ws:
+        with client.websocket_connect(WS_PATH) as ws:
             ws.receive_json()  # state
             ws.send_json({"type": "lock", "item_type": "scene", "item_id": 10})
             msg = ws.receive_json()
@@ -143,9 +158,9 @@ class TestLocks:
         assert msg["reason"] == "locked"
         assert msg["item_id"] == 10
 
-    def test_lock_reacquired_by_same_session(self, ws_client):
+    def test_lock_reacquired_by_same_session(self, client):
         """If the same session already holds a lock, re-requesting it updates TTL."""
-        with ws_client.websocket_connect(WS_PATH) as ws:
+        with client.websocket_connect(WS_PATH) as ws:
             ws.receive_json()
             ws.send_json({"type": "lock", "item_type": "scene", "item_id": 5})
             ws.receive_json()  # granted
@@ -154,8 +169,8 @@ class TestLocks:
             msg = ws.receive_json()
         assert msg["type"] == "locks"
 
-    def test_unlock_releases_lock(self, ws_client):
-        with ws_client.websocket_connect(WS_PATH) as ws:
+    def test_unlock_releases_lock(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
             ws.receive_json()
             ws.send_json({"type": "lock", "item_type": "scene", "item_id": 3})
             ws.receive_json()  # granted
@@ -165,16 +180,16 @@ class TestLocks:
         assert len(msg["locks"]) == 0
         assert "scene:3" not in collab_mod._locks
 
-    def test_disconnect_releases_all_locks(self, ws_client):
-        with ws_client.websocket_connect(WS_PATH) as ws:
+    def test_disconnect_releases_all_locks(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
             ws.receive_json()
             ws.send_json({"type": "lock", "item_type": "scene", "item_id": 99})
             ws.receive_json()
         # After context exit the WS is closed
         assert "scene:99" not in collab_mod._locks
 
-    def test_heartbeat_extends_expiry(self, ws_client):
-        with ws_client.websocket_connect(WS_PATH) as ws:
+    def test_heartbeat_extends_expiry(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
             ws.receive_json()
             ws.send_json({"type": "lock", "item_type": "scene", "item_id": 7})
             ws.receive_json()  # granted
@@ -184,7 +199,7 @@ class TestLocks:
             after = collab_mod._locks["scene:7"]["expires_at"]
         assert after >= before
 
-    def test_expired_lock_pruned_on_next_request(self, ws_client):
+    def test_expired_lock_pruned_on_next_request(self, client):
         # Inject an already-expired lock
         collab_mod._locks["scene:20"] = {
             "session_id":   "old",
@@ -193,7 +208,7 @@ class TestLocks:
             "item_id":      20,
             "expires_at":   datetime.now(UTC) - timedelta(seconds=1),
         }
-        with ws_client.websocket_connect(WS_PATH) as ws:
+        with client.websocket_connect(WS_PATH) as ws:
             ws.receive_json()
             # Requesting the same item should succeed because the old lock expired
             ws.send_json({"type": "lock", "item_type": "scene", "item_id": 20})
@@ -202,8 +217,8 @@ class TestLocks:
         lock = next(l for l in msg["locks"] if l["item_id"] == 20)
         assert lock["session_id"] == "host"
 
-    def test_lock_snapshot_excludes_expires_at(self, ws_client):
-        with ws_client.websocket_connect(WS_PATH) as ws:
+    def test_lock_snapshot_excludes_expires_at(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
             ws.receive_json()
             ws.send_json({"type": "lock", "item_type": "scene", "item_id": 8})
             msg = ws.receive_json()
@@ -215,14 +230,14 @@ class TestLocks:
 
 class TestPresence:
 
-    def test_initial_state_includes_own_presence(self, ws_client):
-        with ws_client.websocket_connect(WS_PATH) as ws:
+    def test_initial_state_includes_own_presence(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
             state = ws.receive_json()
         # The connecting session should be in presence
         assert any(p["session_id"] == "host" for p in state["presence"])
 
-    def test_presence_message_updates_location(self, ws_client):
-        with ws_client.websocket_connect(WS_PATH) as ws:
+    def test_presence_message_updates_location(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
             ws.receive_json()  # state
             ws.send_json({"type": "presence", "item_type": "scene", "item_id": 42})
             msg = ws.receive_json()  # broadcast back to self (only connection)
@@ -232,8 +247,8 @@ class TestPresence:
         assert host_presence["item_type"] == "scene"
         assert host_presence["item_id"] == 42
 
-    def test_presence_null_clears_location(self, ws_client):
-        with ws_client.websocket_connect(WS_PATH) as ws:
+    def test_presence_null_clears_location(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
             ws.receive_json()
             ws.send_json({"type": "presence", "item_type": "scene", "item_id": 1})
             ws.receive_json()
@@ -243,19 +258,19 @@ class TestPresence:
         assert host["item_type"] is None
         assert host["item_id"] is None
 
-    def test_disconnect_removes_from_presence(self, ws_client):
-        with ws_client.websocket_connect(WS_PATH) as ws:
+    def test_disconnect_removes_from_presence(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
             ws.receive_json()
         assert "host" not in collab_mod._presence
 
-    def test_presence_includes_display_name(self, ws_client):
-        with ws_client.websocket_connect(WS_PATH) as ws:
+    def test_presence_includes_display_name(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
             state = ws.receive_json()
         host = next(s for s in state["presence"] if s["session_id"] == "host")
         assert host["display_name"] == "Host"
 
-    def test_presence_includes_color(self, ws_client):
-        with ws_client.websocket_connect(WS_PATH) as ws:
+    def test_presence_includes_color(self, client):
+        with client.websocket_connect(WS_PATH) as ws:
             state = ws.receive_json()
         host = next(s for s in state["presence"] if s["session_id"] == "host")
         assert host["color"].startswith("#")
