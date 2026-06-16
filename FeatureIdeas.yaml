@@ -5,10 +5,10 @@ features:
     status: planned
     description: >
       Let multiple people work on the same Foliantica project simultaneously.
-      One person runs the app as host; guests join via browser over LAN or the
-      internet (UPnP / manual port-forward). Real-time updates via WebSocket.
-      Presence awareness and per-chapter edit locking prevent conflicts.
-      No cloud services, no VPN required.
+      One person runs the app as host; guests join via browser over LAN,
+      Cloudflare Tunnel, or manual router port-forward. Real-time updates via
+      WebSocket. Presence awareness and per-chapter edit locking prevent
+      conflicts. No cloud services, no VPN required.
 
     out_of_scope:
       - VPN key generation / WireGuard integration (users handle VPN themselves)
@@ -34,28 +34,27 @@ features:
               - Toggle (requires restart note)
               - Detected LAN IP display (GET /api/collab/info)
               - Copyable URL: http://<lan-ip>:3000
-              - UPnP sub-section (see internet_access below)"
+              - Internet access via manual port-forward (see internet_access below)"
 
         internet_access:
-          upnp:
-            description: >
-              Automatically punch a hole through the router using UPnP/NAT-PMP.
-              No router UI needed. Works on most home/office networks.
-            dep: miniupnpc   # pip install miniupnpc
-            flow:
-              - "POST /api/collab/upnp/enable: call miniupnpc.UPnP(), discover(),
-                 addportmapping(external_port, 'TCP', internal_port, description)."
-              - Return external_ip + external_port to frontend.
-              - Display public URL: http://<external-ip>:<external-port>
-              - "POST /api/collab/upnp/disable: deleteportmapping to clean up on stop."
-              - Lease renewed every 10 min by a background thread (UPnP leases expire).
-            fallback_note: >
-              If UPnP is unavailable, show a collapsible 'Manual port forwarding' section
-              with this text: "In your router admin panel (usually http://192.168.1.1),
-              find 'Port Forwarding' or 'Virtual Server'. Forward external TCP port 8000
-              to this machine's local IP on port 8000 (same for port 3000 if guests should
-              access the web UI directly). Then share your public IP with your co-author —
-              find it at https://ifconfig.me or shown above."
+          status: removed
+          note: >
+            UPnP auto port-mapping was implemented (Phase 5) then removed — it
+            auto-forwarded the API port (8765) to the open internet with no
+            TLS, and combined with the X-Client-IP host-trust bypass (see
+            ws_via_cloudflare below) it let anyone on the internet impersonate
+            the host with zero auth. Manual port-forward remains the only
+            raw-public-IP option; Cloudflare Tunnel is the recommended path
+            for internet sharing (REST already works through it; see
+            ws_via_cloudflare for extending live collab to it too).
+          manual_port_forward:
+            note: >
+              In your router admin panel (usually http://192.168.1.1), find
+              'Port Forwarding' or 'Virtual Server'. Forward external TCP port
+              3000 to this machine's local IP on port 3000 (also forward 8765
+              if you want live presence/locks/broadcast updates, not just
+              REST access). Then share your public IP — find it at
+              https://ifconfig.me.
 
       - id: 2
         name: Real-Time Event Push
@@ -113,6 +112,37 @@ features:
           - Scope lock to chapter editor only; other content types (codex, research) use
             last-write-wins via React Query refetch.
 
+      - id: 5
+        name: WebSocket via Cloudflare Tunnel
+        status: idea
+        goal: >
+          Guests connecting through the Cloudflare quick tunnel get live
+          presence/locks/broadcast updates too, not just REST. Currently the
+          tunnel only proxies port 3000, so WS (which connects directly to
+          FastAPI on 8765 — see useCollabSocket.ts) never reaches Cloudflare
+          guests at all; LAN guests are unaffected either way since 8765 is
+          already reachable on the LAN directly.
+        steps:
+          - "Intercept the 'upgrade' HTTP event in the standalone Next.js
+             server.js (monkey-patch http.createServer before requiring the
+             generated server, since server.js is regenerated on every build
+             and can't be hand-edited directly) and pipe matching
+             /api/collab/ws/collab upgrade requests to ws://127.0.0.1:8765/..."
+          - "This means the Cloudflare tunnel (which already proxies port
+             3000) carries WS traffic too — no second tunneled port needed."
+          - "SECURITY — must fix WS auth before doing this: collab.py's WS
+             handler currently trusts ws.client.host (the raw socket peer
+             address) to decide host-vs-guest (collab.py:831). If Next.js
+             proxies the connection, FastAPI would see every guest's WS
+             connection as coming from 127.0.0.1 (the proxy itself),
+             silently granting host-level trust to all guests. Must rework
+             WS auth to consult a forwarded-identity header (same pattern as
+             X-Client-IP for REST, see main.py's CoworkAuthMiddleware)
+             instead of socket address before this ships."
+          - "Dev mode (npm run dev) doesn't produce a standalone server.js —
+             this only applies to the production launcher path; dev/LAN
+             guests keep connecting directly to 8765."
+
     files:
       new:
         - api/routers/collab.py
@@ -128,8 +158,6 @@ features:
         - web/src/app/layout.tsx (or root provider)  # mount useCollabSocket
 
     dependencies:
-      python:
-        - miniupnpc   # UPnP port mapping; fallback gracefully if unavailable
       npm: []         # none — native browser WebSocket, existing React Query
 
   - id: postgres-migration

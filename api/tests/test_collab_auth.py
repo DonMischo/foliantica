@@ -110,6 +110,42 @@ class TestInvitationCRUD:
         listed = client.get("/api/collab/invitations").json()
         assert listed[0]["assigned_items"] == items
 
+    def test_listing_does_not_expose_token(self, client):
+        make_invitation(client, name="Eve")
+        listed = client.get("/api/collab/invitations").json()
+        assert "token" not in listed[0]
+
+    def test_token_encrypted_on_disk(self, client):
+        import json
+        from crypto import decrypt
+
+        inv = make_invitation(client, name="Frank")
+        raw_token = inv["token"]
+
+        cfg = json.loads(collab_mod._CONFIG_PATH.read_text("utf-8"))
+        stored = cfg["cowork"]["invitations"][0]["token"]
+
+        assert stored != raw_token              # not plaintext on disk
+        assert decrypt(stored) == raw_token      # but recoverable with the machine key
+
+    def test_legacy_plaintext_token_still_joinable(self, client):
+        """Invitations written before tokens were encrypted (plain hex on
+        disk) must keep working — _inv_token() falls back to the raw value
+        when decrypt() fails."""
+        invs = [{
+            "id": "legacy-1", "name": "Legacy", "token": "a" * 64,
+            "role": "coauthor", "pin_hash": None, "max_sessions": 1,
+            "assigned_items": [],
+        }]
+        collab_mod._save_invitations(invs)
+
+        r = client.get(f"/api/collab/invitations/legacy-1/token")
+        assert r.status_code == 200
+        assert r.json()["token"] == "a" * 64
+
+        data = join_ok(client, token="a" * 64, display_name="Guest")
+        assert data["display_name"] == "Guest"
+
 
 # ── Join / authentication ─────────────────────────────────────────────────────
 

@@ -112,10 +112,6 @@ async def lifespan(app: FastAPI):
     yield
     sync_router.shutdown_backup()
     import asyncio as _asyncio
-    # Clean up UPnP port mappings if any were opened this session.
-    # A secondary atexit hook in collab.py catches hard-exit scenarios.
-    if collab_router._upnp_active:
-        await _asyncio.to_thread(collab_router.upnp_close)
     # Terminate the Cloudflare Tunnel process if running.
     if collab_router._cf_active:
         await _asyncio.to_thread(collab_router.cloudflare_close)

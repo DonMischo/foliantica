@@ -26,6 +26,7 @@ Architecture
 """
 
 import asyncio
+import hmac
 import json
 import os
 import re
@@ -44,6 +45,8 @@ import bcrypt
 import jwt
 from fastapi import APIRouter, HTTPException, Query, Request, WebSocket
 from pydantic import BaseModel
+
+from crypto import encrypt, decrypt
 
 router = APIRouter(prefix="/api/collab", tags=["collab"])
 
@@ -105,152 +108,7 @@ def _presence_snapshot() -> list[dict]:
     ]
 
 
-# ── Phase 5 state — UPnP internet access ─────────────────────────────────────
-
-# Runtime state (not persisted — rebuilt from scratch on each startup)
-_upnp_active:       bool       = False
-_upnp_external_ip:  str | None = None
-_upnp_mapped_ports: list[int]  = []
-
-# UPnP lease duration in seconds.
-# 0 = permanent until explicitly deleted.
-# We also register an atexit hook and a FastAPI shutdown hook for cleanup,
-# so the most likely failure scenario (clean shutdown) is covered.
-# If the process is hard-killed the mapping stays until the router restarts.
-_UPNP_LEASE = 0
-
-# Description string shown in the router's port-mapping table
-_UPNP_DESC = "Foliantica Co-Work"
-
-
-def is_upnp_disclaimer_accepted() -> bool:
-    return bool(_read_config().get("cowork", {}).get("upnp_disclaimer_accepted", False))
-
-
-def set_upnp_disclaimer_accepted() -> None:
-    cfg = _read_config()
-    cfg.setdefault("cowork", {})["upnp_disclaimer_accepted"] = True
-    _write_config(cfg)
-
-
-def upnp_open() -> dict:
-    """Open UPnP port mappings so guests can reach Foliantica from the internet.
-
-    Maps the Next.js port (web UI / HTTP proxy) and the FastAPI port (WebSocket).
-    Runs synchronously; call via asyncio.to_thread() from async handlers.
-
-    Returns a dict:  {success, external_ip?, external_url?, ports_mapped?, error?}
-    """
-    global _upnp_active, _upnp_external_ip, _upnp_mapped_ports
-
-    try:
-        import miniupnpc  # guarded import — optional dependency
-    except ImportError:
-        return {
-            "success": False,
-            "error": "miniupnpc is not installed. Run: pip install miniupnpc",
-        }
-
-    api_port  = int(os.environ.get("LW_API_PORT",  "8765"))
-    web_port  = int(os.environ.get("LW_WEB_PORT",  "3000"))
-    local_ip  = _get_lan_ip()
-    ports     = [web_port, api_port]
-
-    try:
-        u = miniupnpc.UPnP()
-        u.discoverdelay = 500          # ms to wait for IGD broadcast reply
-        found = u.discover()
-        if found == 0:
-            return {
-                "success": False,
-                "error": (
-                    "No UPnP gateway found on your network. "
-                    "Your router may not support UPnP, or it is disabled in its settings."
-                ),
-            }
-
-        u.selectigd()                  # choose the Internet Gateway Device
-        external_ip = u.externalipaddress()
-
-        mapped: list[int] = []
-        errors: list[str] = []
-
-        for port in ports:
-            try:
-                u.addportmapping(
-                    port, "TCP",
-                    local_ip, port,
-                    _UPNP_DESC, _UPNP_LEASE,
-                )
-                mapped.append(port)
-            except Exception as exc:
-                errors.append(f"port {port}: {exc}")
-
-        if not mapped:
-            return {
-                "success": False,
-                "error": "Failed to map any ports. " + "; ".join(errors),
-            }
-
-        _upnp_active       = True
-        _upnp_external_ip  = external_ip
-        _upnp_mapped_ports = mapped
-
-        return {
-            "success":      True,
-            "external_ip":  external_ip,
-            "external_url": f"http://{external_ip}:{web_port}",
-            "ports_mapped": mapped,
-        }
-
-    except Exception as exc:
-        return {"success": False, "error": str(exc)}
-
-
-def upnp_close() -> None:
-    """Remove all UPnP port mappings created by this session.
-
-    Safe to call even if UPnP was never opened or already closed.
-    Runs synchronously; call via asyncio.to_thread() from async handlers
-    or directly from atexit.
-    """
-    global _upnp_active, _upnp_external_ip, _upnp_mapped_ports
-
-    ports_to_remove = list(_upnp_mapped_ports)
-
-    # Reset state immediately so a second call is a no-op
-    _upnp_active       = False
-    _upnp_external_ip  = None
-    _upnp_mapped_ports = []
-
-    if not ports_to_remove:
-        return
-
-    try:
-        import miniupnpc
-    except ImportError:
-        return  # if miniupnpc is gone we can't clean up — mapping will expire naturally
-
-    try:
-        u = miniupnpc.UPnP()
-        u.discoverdelay = 500
-        if u.discover() == 0:
-            return  # router disappeared — nothing we can do
-        u.selectigd()
-        for port in ports_to_remove:
-            try:
-                u.deleteportmapping(port, "TCP")
-            except Exception:
-                pass  # best-effort; individual port failures don't stop the rest
-    except Exception:
-        pass  # best-effort; gateway may have gone offline
-
-
-# Register atexit cleanup so the port is removed on interpreter exit even
-# when the lifespan context manager isn't run (e.g. direct uvicorn invocation,
-# keyboard interrupt before the ASGI app fully starts).
 import atexit as _atexit
-_atexit.register(upnp_close)
 
 
 # ── Phase 6 state — Cloudflare Tunnel ────────────────────────────────────────
@@ -619,7 +477,7 @@ def get_info(request: Request):
     # Optional: validate invitation token (used by /join page)
     token = request.query_params.get("token")
     if token:
-        inv = next((i for i in _get_invitations() if i["token"] == token), None)
+        inv = next((i for i in _get_invitations() if _token_matches(i, token)), None)
         if inv:
             result["invitation"] = {
                 "name":      inv["name"],
@@ -636,7 +494,7 @@ def get_info(request: Request):
 
 @router.get("/invitations")
 def list_invitations():
-    return [_safe_inv(i) for i in _get_invitations()]
+    return [_safe_inv_listing(i) for i in _get_invitations()]
 
 
 @router.post("/invitations", status_code=201)
@@ -647,7 +505,7 @@ def create_invitation(body: InvitationCreate):
     inv: dict = {
         "id":             str(uuid.uuid4()),
         "name":           body.name.strip(),
-        "token":          secrets.token_hex(32),
+        "token":          encrypt(secrets.token_hex(32)),
         "role":           body.role,
         "pin_hash":       _hash_pin(body.pin) if body.pin else None,
         "max_sessions":   max(1, body.max_sessions),
@@ -699,8 +557,9 @@ def get_invitation_token(inv_id: str, request: Request):
         if inv["id"] == inv_id:
             lan_ip   = _get_lan_ip()
             web_port = int(os.environ.get("LW_WEB_PORT", "3000"))
-            join_url = f"http://{lan_ip}:{web_port}/join?token={inv['token']}"
-            return {"token": inv["token"], "join_url": join_url}
+            raw_token = _inv_token(inv)
+            join_url = f"http://{lan_ip}:{web_port}/join?token={raw_token}"
+            return {"token": raw_token, "join_url": join_url}
     raise HTTPException(status_code=404, detail="Invitation not found")
 
 
@@ -728,7 +587,7 @@ def join(body: JoinRequest, request: Request):
         )
 
     # Locate invitation
-    inv = next((i for i in _get_invitations() if i["token"] == body.token), None)
+    inv = next((i for i in _get_invitations() if _token_matches(i, body.token)), None)
     if inv is None:
         _record_failure(client_ip)
         raise HTTPException(status_code=401, detail="Invalid invitation token.")
@@ -952,48 +811,6 @@ async def ws_collab(ws: WebSocket, token: str = Query(default="")):
             await manager.broadcast({"type": "presence", "sessions": _presence_snapshot()})
 
 
-# ── Phase 5: UPnP endpoints ──────────────────────────────────────────────────
-
-@router.get("/upnp/status")
-def upnp_status():
-    """Current UPnP state and whether the user has accepted the disclaimer."""
-    web_port = int(os.environ.get("LW_WEB_PORT", "3000"))
-    return {
-        "active":               _upnp_active,
-        "disclaimer_accepted":  is_upnp_disclaimer_accepted(),
-        "external_ip":          _upnp_external_ip,
-        "external_url": (
-            f"http://{_upnp_external_ip}:{web_port}" if _upnp_external_ip else None
-        ),
-        "ports_mapped": _upnp_mapped_ports,
-    }
-
-
-@router.post("/upnp/accept-disclaimer", status_code=200)
-def upnp_accept_disclaimer():
-    """Persist the user's acknowledgement of the UPnP risk disclaimer."""
-    set_upnp_disclaimer_accepted()
-    return {"disclaimer_accepted": True}
-
-
-@router.post("/upnp/open")
-async def upnp_open_endpoint():
-    """Discover the UPnP gateway and open port mappings.
-    Runs in a thread pool because miniupnpc discovery is a blocking network call.
-    """
-    result = await asyncio.to_thread(upnp_open)
-    if not result.get("success"):
-        raise HTTPException(status_code=503, detail=result.get("error", "UPnP failed"))
-    return result
-
-
-@router.post("/upnp/close")
-async def upnp_close_endpoint():
-    """Remove all UPnP port mappings opened by this session."""
-    await asyncio.to_thread(upnp_close)
-    return {"active": False}
-
-
 # ── Phase 6: Cloudflare Tunnel endpoints ─────────────────────────────────────
 
 @router.get("/cloudflare/status")
@@ -1056,8 +873,30 @@ def _hash_pin(pin: str) -> str:
     return bcrypt.hashpw(pin.encode(), bcrypt.gensalt()).decode()
 
 
+def _inv_token(inv: dict) -> str:
+    """Decrypt an invitation's stored token.
+
+    Falls back to the raw stored value if decryption fails, so invitations
+    written before this field was encrypted (plain hex) keep working —
+    decrypt() returns None on any non-Fernet input rather than raising.
+    """
+    return decrypt(inv["token"]) or inv["token"]
+
+
+def _token_matches(inv: dict, candidate: str) -> bool:
+    return hmac.compare_digest(_inv_token(inv), candidate)
+
+
 def _safe_inv(inv: dict) -> dict:
-    """Strip pin_hash; add has_pin bool."""
+    """Strip pin_hash; decrypt token; add has_pin bool."""
     return {k: v for k, v in inv.items() if k != "pin_hash"} | {
-        "has_pin": bool(inv.get("pin_hash"))
+        "has_pin": bool(inv.get("pin_hash")),
+        "token":   _inv_token(inv),
     }
+
+
+def _safe_inv_listing(inv: dict) -> dict:
+    """Like _safe_inv, but also strips the token — used for the bulk listing
+    endpoint so the raw token isn't handed out on every page load. Guests
+    fetch it on demand via GET /invitations/{id}/token instead."""
+    return {k: v for k, v in _safe_inv(inv).items() if k != "token"}

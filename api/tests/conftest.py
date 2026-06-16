@@ -138,10 +138,7 @@ def isolated_state(tmp_path, monkeypatch):
     collab_mod._locks.clear()
     collab_mod._presence.clear()
     collab_mod.manager._connections.clear()
-    collab_mod._upnp_mapped_ports.clear()
 
-    collab_mod._upnp_active = False
-    collab_mod._upnp_external_ip = None
     collab_mod._cf_active = False
     collab_mod._cf_url = None
     collab_mod._cf_process = None
@@ -155,9 +152,6 @@ def isolated_state(tmp_path, monkeypatch):
     collab_mod._locks.clear()
     collab_mod._presence.clear()
     collab_mod.manager._connections.clear()
-    collab_mod._upnp_mapped_ports.clear()
-    collab_mod._upnp_active = False
-    collab_mod._upnp_external_ip = None
     collab_mod._cf_active = False
     collab_mod._cf_url = None
     collab_mod._cf_process = None
