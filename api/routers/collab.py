@@ -262,7 +262,12 @@ _cf_active:  bool = False
 # Regex that matches the trycloudflare.com URL printed by cloudflared.
 # The URL always appears somewhere in a log line, e.g.:
 #   INF |  https://random-words.trycloudflare.com  |
-_CF_URL_RE = re.compile(r'https://[a-z0-9-]+\.trycloudflare\.com')
+# The subdomain is captured separately so callers can require a hyphen —
+# cloudflared also logs its own Cloudflare API calls (e.g. https://api.trycloudflare.com)
+# which match this pattern but are not the quick-tunnel URL. Quick tunnel
+# subdomains are always multiple random words joined by hyphens, so a bare
+# single-word subdomain like "api" can be told apart from the real tunnel URL.
+_CF_URL_RE = re.compile(r'https://([a-z0-9-]+)\.trycloudflare\.com')
 
 
 def cloudflare_open() -> dict:
@@ -314,7 +319,7 @@ def cloudflare_open() -> dict:
     def _reader() -> None:
         for line in proc.stdout:  # type: ignore[union-attr]
             m = _CF_URL_RE.search(line)
-            if m:
+            if m and "-" in m.group(1):  # skip cloudflared's own API calls (e.g. api.trycloudflare.com)
                 found.append(m.group(0))
                 ready.set()
                 return
@@ -601,14 +606,13 @@ def get_info(request: Request):
     """Network info + status. Also validates an invitation token if provided,
     so the /join page can show the invitation name and whether a PIN is needed."""
     lan_ip = _get_lan_ip()
-    port   = int(request.url.port or 8765)
-    web_port = port  # same port exposed to the outside (Next.js sits in front)
-
+    port     = int(request.url.port or 8765)
+    web_port = int(os.environ.get("LW_WEB_PORT", "3000"))
     result: dict = {
         "enabled":         is_cowork_enabled(),
         "lan_ip":          lan_ip,
         "api_port":        port,
-        "lan_url":         f"http://{lan_ip}:3000",
+        "lan_url":         f"http://{lan_ip}:{web_port}",
         "active_sessions": len(_sessions),
     }
 
@@ -693,9 +697,9 @@ def get_invitation_token(inv_id: str, request: Request):
     Includes a ready-to-share join URL using the detected LAN IP."""
     for inv in _get_invitations():
         if inv["id"] == inv_id:
-            lan_ip  = _get_lan_ip()
-            port    = int(request.url.port or 8765)
-            join_url = f"http://{lan_ip}:3000/join?token={inv['token']}"
+            lan_ip   = _get_lan_ip()
+            web_port = int(os.environ.get("LW_WEB_PORT", "3000"))
+            join_url = f"http://{lan_ip}:{web_port}/join?token={inv['token']}"
             return {"token": inv["token"], "join_url": join_url}
     raise HTTPException(status_code=404, detail="Invitation not found")
 

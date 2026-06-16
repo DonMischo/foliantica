@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Fragment } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database, Users, Copy, Link2, ShieldCheck, ListChecks, Info, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database, Users, Copy, Link2, ShieldCheck, ListChecks, Info, ChevronDown, ChevronUp, QrCode, Cloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -166,7 +166,7 @@ export default function SettingsPage() {
   const [valeRuleMeta,     setValeRuleMeta]     = useState<Record<string, ValeRuleMeta[]>>({});
   const [valeCustomSaving, setValeCustomSaving] = useState(false);
   const [valeCustomInputs, setValeCustomInputs] = useState<Record<string, string>>({});
-  const [activeTab, setActiveTab] = useState<"ai" | "appearance" | "docker" | "sync" | "cowork">("ai");
+  const [activeTab, setActiveTab] = useState<"ai" | "appearance" | "docker" | "sync" | "cowork">("appearance");
   const [showServiceStatus, setShowServiceStatus] = useState(false);
   const { data: serviceStatus, isLoading: statusLoading, refetch: refetchStatus } =
     useServiceStatus(showServiceStatus);
@@ -306,6 +306,9 @@ export default function SettingsPage() {
   const [newInvPin,          setNewInvPin]          = useState("");
   const [newInvMaxSessions,  setNewInvMaxSessions]  = useState(1);
   const [copiedInvId,        setCopiedInvId]        = useState<string | null>(null);
+  const [copiedCfInvId,      setCopiedCfInvId]      = useState<string | null>(null);
+  const [expandedInvId,      setExpandedInvId]      = useState<string | null>(null);
+  const [invTokenInfo,       setInvTokenInfo]       = useState<Record<string, { token: string; join_url: string }>>({});
   const [coworkToggleBusy,   setCoworkToggleBusy]   = useState(false);
   const [assigningInv,       setAssigningInv]       = useState<Invitation | null>(null);
   const [teacherSessions,    setTeacherSessions]    = useState<TeacherSession[]>([]);
@@ -442,12 +445,35 @@ export default function SettingsPage() {
     setInvitations(prev => prev.filter(i => i.id !== id));
   };
 
+  const handleToggleLink = async (id: string) => {
+    if (expandedInvId === id) { setExpandedInvId(null); return; }
+    if (!invTokenInfo[id]) {
+      try {
+        const info = await collabApi.getInvitationToken(id);
+        setInvTokenInfo(prev => ({ ...prev, [id]: info }));
+      } catch { return; }
+    }
+    setExpandedInvId(id);
+  };
+
   const handleCopyLink = async (id: string) => {
     try {
-      const { join_url } = await collabApi.getInvitationToken(id);
-      await navigator.clipboard.writeText(join_url);
+      const info = invTokenInfo[id] ?? await collabApi.getInvitationToken(id);
+      setInvTokenInfo(prev => ({ ...prev, [id]: info }));
+      await navigator.clipboard.writeText(info.join_url);
       setCopiedInvId(id);
       setTimeout(() => setCopiedInvId(null), 2000);
+    } catch {}
+  };
+
+  const handleCopyCloudflareLink = async (id: string) => {
+    if (!cfStatus?.url) return;
+    try {
+      const info = invTokenInfo[id] ?? await collabApi.getInvitationToken(id);
+      setInvTokenInfo(prev => ({ ...prev, [id]: info }));
+      await navigator.clipboard.writeText(`${cfStatus.url}/join?token=${info.token}`);
+      setCopiedCfInvId(id);
+      setTimeout(() => setCopiedCfInvId(null), 2000);
     } catch {}
   };
 
@@ -796,11 +822,11 @@ export default function SettingsPage() {
         <aside className="w-52 shrink-0 border-r border-border sticky top-[57px] h-[calc(100vh-57px)] overflow-y-auto">
           <nav className="p-3 space-y-0.5">
             {([
-              { id: "ai",         label: "AI Settings",  Icon: Cpu },
               { id: "appearance", label: "Appearance",    Icon: Palette },
-              { id: "docker",     label: "Docker",        Icon: Container },
               { id: "sync",       label: "Sync / Mirror", Icon: FolderOpen },
               { id: "cowork",     label: "Co-Work",       Icon: Users },
+              { id: "docker",     label: "Docker",        Icon: Container },
+              { id: "ai",         label: "AI Settings",  Icon: Cpu },
             ] as const).map(({ id, label, Icon }) => (
               <button
                 key={id}
@@ -1477,6 +1503,42 @@ export default function SettingsPage() {
               <span className="text-xs tabular-nums text-muted-foreground w-8 text-right">{typewriterOffset}%</span>
             </div>
           </div>
+        </section>
+
+        <div className="border-t border-border" />
+
+        {/* Language */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2 mb-4">
+            <Globe className="h-4 w-4 text-primary" />
+            <h2 className="text-base font-semibold">{t("settings_language")}</h2>
+            <span
+              className="text-muted-foreground hover:text-foreground cursor-help"
+              title="The UI language. Project language (used for grammar and style checks) is set per project."
+            >
+              <HelpCircle className="h-3.5 w-3.5" />
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            <Select value={locale} onValueChange={(v) => setLocale(v as Locale)}>
+              <SelectTrigger className="w-full max-w-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.entries(LOCALE_NAMES) as [Locale, string][]).map(([code, name]) => (
+                  <SelectItem key={code} value={code}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </section>
+
+        <div className="border-t border-border" />
+
+        {/* About */}
+        <section className="space-y-2 text-sm text-muted-foreground">
+          <p className="font-medium text-foreground">{t("settings_about_title")}</p>
+          <p>{t("settings_about_desc")}</p>
         </section>
         </>)}
 
@@ -3228,26 +3290,29 @@ BasedOnStyles = write-good`}</code>
                   to be installed. Traffic passes through Cloudflare servers.
                 </p>
                 {cfStatus?.active && cfStatus.url && (
-                  <>
-                    <div className="flex items-center gap-2 rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 px-3 py-2 text-xs">
-                      <span className="text-muted-foreground shrink-0">Tunnel URL:</span>
-                      <code className="flex-1 font-mono text-[11px] text-emerald-950 dark:text-emerald-100 truncate">
-                        {cfStatus.url}/join?token=…
-                      </code>
-                      <button
-                        onClick={() => navigator.clipboard.writeText(cfStatus.url!).catch(() => {})}
-                        className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                        title="Copy base URL"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </button>
-                    </div>
-                    <div className="flex justify-center pt-1">
-                      <div className="bg-white p-2 rounded-lg border border-emerald-200 dark:border-emerald-800/40 inline-block">
-                        <QRCode value={cfStatus.url} size={128} />
-                      </div>
-                    </div>
-                  </>
+                  <div className="flex items-center gap-2 rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 px-3 py-2 text-xs">
+                    <span className="text-muted-foreground shrink-0">Tunnel URL:</span>
+                    <a
+                      href={cfStatus.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 font-mono text-[11px] text-emerald-950 dark:text-emerald-100 truncate hover:underline"
+                    >
+                      {cfStatus.url}
+                    </a>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(cfStatus.url!).catch(() => {})}
+                      className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                      title="Copy base URL"
+                    >
+                      <Copy className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+                {cfStatus?.active && (
+                  <p className="text-[11px] text-muted-foreground">
+                    This URL has no invitation info embedded — share a per-invitation link below instead.
+                  </p>
                 )}
                 {cfError && (
                   <p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1.5">{cfError}</p>
@@ -3274,7 +3339,8 @@ BasedOnStyles = write-good`}</code>
                   <p className="text-xs text-muted-foreground italic">No invitations yet.</p>
                 )}
                 {invitations.map(inv => (
-                  <div key={inv.id} className="rounded-lg border border-border p-3 flex items-center gap-3">
+                  <div key={inv.id} className="rounded-lg border border-border">
+                  <div className="p-3 flex items-center gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-medium truncate">{inv.name}</span>
@@ -3311,13 +3377,12 @@ BasedOnStyles = write-good`}</code>
                       </button>
                     )}
                     <button
-                      onClick={() => handleCopyLink(inv.id)}
+                      onClick={() => handleToggleLink(inv.id)}
                       className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                      title="Copy join link"
+                      title="Show join link"
                     >
-                      {copiedInvId === inv.id
-                        ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                        : <Copy className="h-3.5 w-3.5" />}
+                      <QrCode className="h-3.5 w-3.5" />
+                      <ChevronDown className={cn("h-3 w-3 transition-transform", expandedInvId === inv.id && "rotate-180")} />
                     </button>
                     <button
                       onClick={() => handleDeleteInvitation(inv.id)}
@@ -3326,6 +3391,46 @@ BasedOnStyles = write-good`}</code>
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
+                  </div>
+
+                  {expandedInvId === inv.id && invTokenInfo[inv.id] && (
+                    <div className="px-3 pb-3 pt-1 border-t border-border space-y-3">
+                      {/* Local LAN link — QR + URL */}
+                      <div className="flex items-start gap-3">
+                        <div className="bg-white p-1.5 rounded-md border border-border shrink-0">
+                          <QRCode value={invTokenInfo[inv.id].join_url} size={88} />
+                        </div>
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <p className="text-[10px] font-medium text-muted-foreground">Local link</p>
+                          <code className="block text-[11px] font-mono text-foreground break-all">
+                            {invTokenInfo[inv.id].join_url}
+                          </code>
+                          <button
+                            onClick={() => handleCopyLink(inv.id)}
+                            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {copiedInvId === inv.id
+                              ? <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                              : <Copy className="h-3 w-3" />}
+                            Copy local link
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Cloudflare link — only when the tunnel is active */}
+                      {cfStatus?.active && cfStatus.url && (
+                        <button
+                          onClick={() => handleCopyCloudflareLink(inv.id)}
+                          className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {copiedCfInvId === inv.id
+                            ? <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                            : <Cloud className="h-3 w-3" />}
+                          Copy Cloudflare link
+                        </button>
+                      )}
+                    </div>
+                  )}
                   </div>
                 ))}
               </div>
@@ -3576,37 +3681,6 @@ BasedOnStyles = write-good`}</code>
         </section>
         </>)}
 
-        {activeTab === "appearance" && (<>
-        <div className="border-t border-border" />
-
-        {/* Language */}
-        <section className="space-y-4">
-          <div className="flex items-center gap-2 mb-4">
-            <Globe className="h-4 w-4 text-primary" />
-            <h2 className="text-base font-semibold">{t("settings_language")}</h2>
-          </div>
-          <div className="space-y-1.5">
-            <Select value={locale} onValueChange={(v) => setLocale(v as Locale)}>
-              <SelectTrigger className="w-full max-w-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.entries(LOCALE_NAMES) as [Locale, string][]).map(([code, name]) => (
-                  <SelectItem key={code} value={code}>{name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </section>
-
-        <div className="border-t border-border" />
-
-        {/* About */}
-        <section className="space-y-2 text-sm text-muted-foreground">
-          <p className="font-medium text-foreground">{t("settings_about_title")}</p>
-          <p>{t("settings_about_desc")}</p>
-        </section>
-        </>)}
 
           </div>
         </main>

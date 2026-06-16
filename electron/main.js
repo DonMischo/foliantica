@@ -562,6 +562,7 @@ async function startServers() {
         ...process.env,
         LW_API_PORT: String(apiPort),
         LW_API_HOST: bindHost,
+        LW_WEB_PORT: String(webPort),
         LW_DATA_DIR: dataDir,
         LW_RESOURCES_DIR: process.resourcesPath,
         // PostgreSQL connection — use Docker PG values if provided, else defaults

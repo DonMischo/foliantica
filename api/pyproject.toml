@@ -25,8 +25,10 @@ upnp = ["miniupnpc>=2.2.2"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# Run pytest from the api/ directory: python -m pytest
-# The api/ directory is the working dir so routers.collab is importable directly.
+addopts = "-m 'not live'"
+markers = [
+    "live: makes real network calls — requires running services (LanguageTool, Pandoc) or OPENROUTER_TEST_KEY",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -34,13 +36,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["."]
-
-[tool.pytest.ini_options]
-# Skip live (real-network) tests by default; run them explicitly with: pytest -m live
-addopts = "-m 'not live'"
-markers = [
-    "live: makes real network calls — requires running services (LanguageTool, Pandoc) or OPENROUTER_TEST_KEY",
-]
 
 [dependency-groups]
 dev = [

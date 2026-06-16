@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 interface InvitationInfo {
@@ -10,6 +10,14 @@ interface InvitationInfo {
 }
 
 export default function JoinPage() {
+  return (
+    <Suspense fallback={null}>
+      <JoinPageInner />
+    </Suspense>
+  );
+}
+
+function JoinPageInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const token        = searchParams.get("token") ?? "";

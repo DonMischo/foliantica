@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { UIStoreSync } from "@/components/UIStoreSync";
 import { SyncNotification } from "@/components/SyncNotification";
 import { CollabSocketProvider } from "@/hooks/useCollabSocket";
+import { CoworkAccessGuard } from "@/components/CoworkAccessGuard";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -25,7 +26,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <UIStoreSync />
           <SyncNotification />
           <CollabSocketProvider />
-          {children}
+          <CoworkAccessGuard>{children}</CoworkAccessGuard>
         </LanguageProvider>
       </ThemeProvider>
     </QueryClientProvider>

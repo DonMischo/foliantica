@@ -151,7 +151,6 @@ case "$PG_MODE" in
         echo -e "           ${GRAY}sudo -u postgres psql -c \"CREATE DATABASE foliantica OWNER foliantica;\"${RESET}"
       fi
     fi
-    export LW_USE_SQLITE=0
     export LW_PG_HOST="$PG_HOST"
     export LW_PG_PORT="$PG_PORT"
     export LW_PG_USER="$PG_USER"
@@ -186,7 +185,6 @@ case "$PG_MODE" in
     else
       warn "PostgreSQL container not ready after 30 s. The API will keep retrying."
     fi
-    export LW_USE_SQLITE=0
     export LW_PG_HOST="$PG_HOST"
     export LW_PG_PORT="$PG_PORT"
     export LW_PG_USER="$PG_USER"

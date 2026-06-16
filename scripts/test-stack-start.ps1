@@ -32,6 +32,7 @@ $env:LW_PG_USER = 'foliantica'
 $env:LW_PG_PASS = 'foliantica'
 $env:LW_PG_DB   = 'foliantica_test'
 $env:LW_DATA_DIR = $env:TEMP
+$env:LW_WEB_PORT = '3100'
 
 $python = Join-Path $Root "api\.venv\Scripts\python.exe"
 Start-Process -FilePath $python `
