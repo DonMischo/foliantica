@@ -1,0 +1,64 @@
+# Quellen / Sources:
+#   - Bastian Sick: "Der Dativ ist dem Genitiv sein Tod", Bd. 1-3 (Kiepenheuer & Witsch, 2004-)
+#   - Duden: "Richtiges und gutes Deutsch" (Bd. 9, 7. Aufl. 2011)
+#   - Wolf Schneider: "Deutsch fürs Leben" (Rowohlt, 1994)
+#   - Dudenredaktion: "Zweifelsfälle der deutschen Sprache" (Duden Bd. 9)
+extends: existence
+message: "'%s' — Verwechslungsgefahr oder häufiger Stilfehler: prüfen?"
+level: warning
+ignorecase: false
+tokens:
+  # --- scheinbar vs. anscheinend (Sick, Bd. 1; Duden Bd. 9) ---
+  # scheinbar = sieht so aus, ist es aber nicht ("der scheinbare Widerspruch")
+  # anscheinend = sieht so aus und ist es wahrscheinlich auch ("er ist anscheinend krank")
+  # Im Alltag wird "scheinbar" oft falsch für "anscheinend" verwendet.
+  - \bscheinbar\b
+
+  # --- Falsche Vergleichspartikel: "wie" statt "als" nach Komparativ (Sick; Duden) ---
+  # Richtig: "größer als", "besser als", "mehr als" — nicht "wie"
+  - größer wie
+  - kleiner wie
+  - besser wie
+  - schlechter wie
+  - schneller wie
+  - langsamer wie
+  - mehr wie
+  - weniger wie
+  - älter wie
+  - jünger wie
+  - höher wie
+  - niedriger wie
+  - stärker wie
+  - schwächer wie
+  - früher wie
+  - später wie
+  - weiter wie
+  - näher wie
+  - anders wie
+  - als wie
+
+  # --- "derselbe" vs. "der gleiche" (Sick, Bd. 2; Duden) ---
+  # "derselbe/dieselbe/dasselbe" = identisch (ein und dasselbe Objekt)
+  # "der/die/das gleiche" = gleichartig (zwei verschiedene, aber identische Objekte)
+  # Im Alltag wird "derselbe" oft für "der gleiche" verwendet.
+  - \bderselbe\b
+  - \bdieselbe\b
+  - \bdasselbe\b
+
+  # --- "aktuell" als Allzweckwort (Sick; Schneider) ---
+  # "aktuell" wird überstrapaziert wenn "jetzt", "gegenwärtig", "modern",
+  # "zeitgemäß", "neu" oder "derzeitig" präziser wäre.
+  - \baktuell\b
+
+  # --- Perspektiv-Hedges (Schneider: Meinungen direkt vertreten, nicht abschwächen) ---
+  # "Meiner Meinung nach" vor einer Aussage wirkt unsicher — entweder ohne Vorbehalt
+  # schreiben oder explizit als These kennzeichnen.
+  - \bmeiner Meinung nach\b
+  - \bich finde dass\b
+  - \bich denke dass\b
+  - \bich glaube dass\b
+  - \bmeines Erachtens\b
+  - \bm\. E\.\b
+  - \baus meiner Sicht\b
+  - \baus meiner persönlichen Sicht\b
+  - \bpersönlich finde ich\b

@@ -1,9 +1,9 @@
 import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient, useQueries } from "@tanstack/react-query";
-import { projectsApi, actsApi, chaptersApi, scenesApi, codexApi, settingsApi, timeApi, fragmentsApi, imagesApi, sceneCommandsApi, promptsApi, versionsApi, mentionStatsApi, writingLogApi, synopsisApi, timelineTracksApi, timelineEventsApi, grammarApi, fontsApi, seriesApi, analyticsApi, researchApi, submissionsApi, exportProfilesApi, publishersApi, achievementsApi, statsApi, syncApi, type StatsTotals, type SyncStatus } from "@/lib/api";
-import type { GrammarCheckResult, PovStats, QuerySubmissionCreate, ExportProfileCreate } from "@/lib/api";
+import { projectsApi, actsApi, chaptersApi, scenesApi, codexApi, settingsApi, timeApi, fragmentsApi, imagesApi, sceneCommandsApi, promptsApi, versionsApi, mentionStatsApi, writingLogApi, synopsisApi, timelineTracksApi, timelineEventsApi, grammarApi, valeApi, fontsApi, seriesApi, analyticsApi, researchApi, submissionsApi, exportProfilesApi, publishersApi, achievementsApi, statsApi, syncApi, type StatsTotals, type SyncStatus } from "@/lib/api";
+import type { GrammarCheckResult, ValeCheckResult, PovStats, QuerySubmissionCreate, ExportProfileCreate } from "@/lib/api";
 import type { SceneCommandIn, ProjectItemLogEntry, ProjectCurrencyLogEntry, OpenRouterModel } from "@/lib/api";
-import type { AIPrompt, ProjectSceneItem, SceneVersion, SceneVersionDetail, CorkboardAct, CorkboardData, SeriesData, ProjectAnalytics, ResearchItem, QuerySubmission, ExportProfile, PublisherProfile } from "@/types";
+import type { AIPrompt, ProjectSceneItem, SceneVersion, SceneVersionDetail, CorkboardAct, CorkboardData, CorkboardPrefs, RelationsGraph, SeriesData, ProjectAnalytics, ResearchItem, QuerySubmission, ExportProfile, PublisherProfile } from "@/types";
 
 // ── Projects ──────────────────────────────────────────────────────────────────
 
@@ -179,6 +179,9 @@ export const useScene = (sceneId: number) =>
     queryKey: ["scene", sceneId],
     queryFn: () => scenesApi.get(sceneId),
     enabled: !!sceneId,
+    // Avoid refetch-driven clobbers of in-flight autosaves on incidental
+    // invalidations (window refocus, sibling mutations).
+    staleTime: 1000 * 30,
   });
 
 export const useCreateScene = (chapterId: number) => {
@@ -432,10 +435,14 @@ export const useDeleteFragment = (projectId: number) => {
 
 // ── Scene Commands ────────────────────────────────────────────────────────────
 
-export const useSyncSceneCommands = (sceneId: number) => {
+export const useSyncSceneCommands = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (commands: SceneCommandIn[]) => sceneCommandsApi.sync(sceneId, commands),
+    // sceneId is passed per-call (not bound at hook time) so a debounced sync
+    // that fires after the user navigates targets the scene the commands were
+    // extracted from, not whatever scene is now mounted.
+    mutationFn: ({ sceneId, commands }: { sceneId: number; commands: SceneCommandIn[] }) =>
+      sceneCommandsApi.sync(sceneId, commands),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["codex"] });           // refreshes CodexEntry.inventory
       qc.invalidateQueries({ queryKey: ["codex-relations"] });
@@ -579,6 +586,16 @@ export const useEntrySceneMentions = (entryId: number) =>
     enabled: entryId > 0,
   });
 
+export const useRescanSceneMentions = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sceneId: number) => mentionStatsApi.rescanScene(sceneId),
+    onSuccess: (_data, sceneId) => {
+      qc.invalidateQueries({ queryKey: ["mention-stats", "scene", sceneId] });
+    },
+  });
+};
+
 export const useRescanProjectMentions = (projectId: number) => {
   const qc = useQueryClient();
   return useMutation({
@@ -646,6 +663,11 @@ export const useServiceStatus = (enabled = true) =>
 export const useGrammarCheck = () =>
   useMutation<GrammarCheckResult, Error, { text: string; language?: string }>({
     mutationFn: ({ text, language }) => grammarApi.check(text, language),
+  });
+
+export const useValeCheck = () =>
+  useMutation<ValeCheckResult, Error, { text: string; language?: string }>({
+    mutationFn: ({ text, language }) => valeApi.check(text, language),
   });
 
 export const usePandocFonts = (enabled = true) =>
@@ -779,6 +801,50 @@ export const useCorkboard = (projectId: number) =>
     queryKey: ["corkboard", projectId],
     queryFn: () => projectsApi.corkboard(projectId),
     enabled: !!projectId,
+  });
+
+export const useUpdateCorkboardPrefs = (projectId: number) =>
+  // No invalidation — prefs are written-through from local state; refetching
+  // the whole corkboard on every toggle would cause needless node rebuilds.
+  useMutation({
+    mutationFn: (prefs: CorkboardPrefs) => projectsApi.updateCorkboardPrefs(projectId, prefs),
+  });
+
+export const useCreateConnection = (projectId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { source_scene_id: number; target_scene_id: number; connection_type: string; label?: string | null }) =>
+      projectsApi.createConnection(projectId, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["corkboard", projectId] }),
+  });
+};
+
+export const useDeleteConnection = (projectId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (connectionId: number) => projectsApi.deleteConnection(projectId, connectionId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["corkboard", projectId] }),
+  });
+};
+
+export const useSetGlobalOrder = (projectId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (items: { id: number; global_order: number }[]) =>
+      projectsApi.setGlobalOrder(projectId, items),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["corkboard", projectId] });
+      qc.invalidateQueries({ queryKey: ["scenes"] });
+    },
+  });
+};
+
+export const useRelationsGraph = (projectId: number) =>
+  useQuery<RelationsGraph>({
+    queryKey: ["relations-graph", projectId],
+    queryFn: () => projectsApi.relationsGraph(projectId),
+    enabled: !!projectId,
+    staleTime: 1000 * 60,  // codex relations change rarely while on the board
   });
 
 export const useGenerateSynopsis = (projectId: number) => {

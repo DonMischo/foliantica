@@ -5,6 +5,7 @@ import { X, RotateCcw, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSceneVersions, useRestoreSceneVersion } from "@/store/queries";
 import { versionsApi } from "@/lib/api";
+import { sanitizeHtml } from "@/lib/sanitize";
 import type { SceneVersion, SceneVersionDetail } from "@/types";
 
 interface Props {
@@ -151,7 +152,7 @@ export function VersionHistoryPanel({ sceneId, onClose, onRestored }: Props) {
             {preview?.id === v.id && (
               <div
                 className="mx-4 mb-3 rounded border border-border/60 bg-background/60 p-3 text-[11px] leading-relaxed text-foreground/80 max-h-48 overflow-y-auto prose prose-invert prose-xs max-w-none"
-                dangerouslySetInnerHTML={{ __html: preview.content }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(preview.content) }}
               />
             )}
           </div>

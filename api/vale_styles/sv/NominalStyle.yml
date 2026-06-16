@@ -1,0 +1,83 @@
+# Källor / Sources:
+#   - Strömquist, Siv: "Skrivboken" (Gleerups, 8e uppl. 2014) — undvik substantivstil
+#   - Myndigheternas skrivregler (Norstedts Juridik, 8e uppl. 2014) — aktiv verbstil
+#   - Hellspong, Lennart / Ledin, Per: "Vägar genom texten" (Studentlitteratur, 1997)
+#   - Språkrådet: "Svenska skrivregler" (Liber, 4e uppl. 2017)
+extends: substitution
+message: "Substantivstil: '%s' — mer direkt: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- "göra" + substantiv (Strömquist; Myndigheternas) ---
+  göra en bedömning av: bedöma
+  göra en analys av: analysera
+  göra en genomgång av: gå igenom
+  göra en granskning av: granska
+  göra en utvärdering av: utvärdera
+  göra en undersökning av: undersöka
+  göra ett försök: försöka
+  göra ett inköp: köpa
+  göra ett val: välja
+  göra en beräkning: beräkna
+  göra en kontroll: kontrollera
+  göra ett uttalande om: uttala sig om
+  göra en observation: observera
+
+  # --- "utföra" + substantiv (Strömquist; Myndigheternas) ---
+  utföra en beräkning: beräkna
+  utföra en analys: analysera
+  utföra en undersökning: undersöka
+  utföra en kontroll: kontrollera
+  utföra en inspektion: inspektera
+  utföra en test: testa
+  utföra en revision: revidera
+
+  # --- "fatta/ta" + substantiv (Myndigheternas; Språkrådet) ---
+  fatta ett beslut: besluta
+  ta ett beslut: besluta
+  ta ett steg: ta steget
+  fatta ett ställningstagande: ta ställning
+  ta itu med: hantera / ta tag i
+
+  # --- "ge" + substantiv (Strömquist; Hellspong/Ledin) ---
+  ge ett svar på: svara på
+  ge en förklaring till: förklara
+  ge en beskrivning av: beskriva
+  ge en översikt av: sammanfatta
+  ge ett omdöme om: bedöma
+  ge ett tillstånd för: tillåta
+  ge stöd åt: stödja
+  ge råd om: råda om
+  ge en redogörelse för: redogöra för
+  ge uttryck för: uttrycka
+
+  # --- "ha" + abstrakt substantiv (Myndigheternas; Strömquist) ---
+  ha möjlighet att: kunna
+  ha förmåga att: kunna
+  ha rätt att: få
+  ha behov av: behöva
+  ha vetskap om: veta om
+  ha kännedom om: känna till
+  ha tillit till: lita på
+  ha avsikt att: ämna / planera att
+  ha ansvar för: ansvara för
+
+  # --- "ta" + substantiv (Strömquist; Myndigheternas) ---
+  ta del av: läsa / ta reda på
+  ta initiativ till: initiera
+  ta kontakt med: kontakta
+  ta ansvar för: ansvara för
+
+  # --- "genomföra" + substantiv (Myndigheternas; Hellspong/Ledin) ---
+  genomföra en undersökning: undersöka
+  genomföra en analys: analysera
+  genomföra en inspektion: inspektera
+  genomföra en kontroll: kontrollera
+  genomföra en utvärdering: utvärdera
+  genomföra en förändring: förändra
+  genomföra en reform: reformera
+
+  # --- "ske/äga rum" som tomt verb (Strömquist; Myndigheternas) ---
+  ske en ökning av: öka
+  ske en minskning av: minska
+  äga rum: ske / hållas / inträffa

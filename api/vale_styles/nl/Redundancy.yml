@@ -1,0 +1,113 @@
+# Bronnen / Sources:
+#   - Jan Renkema: "Schrijfwijzer" (4e druk, Boom, 2012)
+#   - Genootschap Onze Taal: taaladvies.net
+#   - Van Dale: "Groot woordenboek van de Nederlandse taal" (15e druk, 2015)
+#   - ANS: "Algemene Nederlandse Spraakkunst" (2e druk, 1997 / online 2016)
+#   - Henk Pander Maat / Leo Lentz: "Schrijven voor lezers" (Boom, 2010)
+extends: substitution
+message: "Pleonasme / redundantie: '%s' — één woord te veel. Voorkeur: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Directionele redundanties (Renkema; Van Dale) ---
+  omhoog stijgen: stijgen
+  naar boven stijgen: stijgen
+  omlaag dalen: dalen
+  naar beneden dalen: dalen
+  naar binnen gaan: naar binnengaan
+  naar buiten gaan: naar buitengaan
+  terug keren: terugkeren
+  terug gaan: teruggaan
+  vooruit gaan: vooruitgaan
+  achteruit gaan: achteruitgaan
+  dichterbij komen: naderen
+  verder weg gaan: weggaan
+
+  # --- Verbale redundanties (Renkema; Genootschap Onze Taal) ---
+  opnieuw herhalen: herhalen
+  nogmaals herhalen: herhalen
+  weer herhalen: herhalen
+  van tevoren voorspellen: voorspellen
+  van tevoren plannen: plannen
+  van tevoren reserveren: reserveren
+  van tevoren waarschuwen: waarschuwen
+  van tevoren aankondigen: aankondigen
+
+  # --- Nominale tautologieën (Renkema; Van Dale; ANS) ---
+  hoofdprotagonist: protagonist
+  hoofdpersonage: personage
+  eerste debuut: debuut
+  nieuwe noviteit: noviteit
+  onverwachte verrassing: verrassing
+  onvoorziene omstandigheid: onvoorziene omstandigheid → onvoorziene omstandigheid (reeds redundant)
+  valse leugen: leugen
+  echte waarheid: waarheid
+  samen samenwerken: samenwerken
+  samen vergaderen: vergaderen
+  consensus bereiken: consensus bereiken → het eens worden
+  algemene consensus: consensus
+  eindresultaat: resultaat
+  eindconclusie: conclusie
+  definitief eindoordeel: eindoordeel
+  exclusief monopolie: monopolie
+  universeel panacee: panacee
+  enig en alleen: enig
+  gratis en voor niets: gratis
+  potentieel risico: risico
+  mogelijk gevaar: gevaar
+  alternatieve optie: alternatief
+  bijkomende bijlage: bijlage
+  bloedende wond: wond
+
+  # --- Tijdsredundanties (Renkema; Genootschap Onze Taal) ---
+  gisteren de vorige dag: gisteren
+  morgen de volgende dag: morgen
+  nu op dit moment: nu
+  nooit en te nimmer: nooit
+  altijd en eeuwig: altijd
+  reeds eerder: al eerder → reeds
+
+  # --- RAS-syndroom — acroniemen met het redundante woord (Van Dale; ANS; Renkema) ---
+  # PIN = Personal Identification Number (persoonlijk identificatienummer)
+  PIN-nummer: PIN
+  pincodeNummer: pincode
+  # HIV = Human Immunodeficiency Virus
+  hiv-virus: hiv
+  HIV-virus: HIV
+  # aids = Acquired Immune Deficiency Syndrome
+  aids-syndroom: aids
+  # ngo = Non-Gouvernementele Organisatie
+  ngo-organisatie: ngo
+  NGO-organisatie: NGO
+  # RAM = Random Access Memory
+  RAM-geheugen: RAM
+  # dvd = Digital Versatile Disc
+  dvd-schijf: dvd
+  DVD-schijf: DVD
+  # cd = Compact Disc
+  cd-schijf: cd
+  CD-schijf: CD
+  # pdf = Portable Document Format
+  pdf-bestand: pdf
+  PDF-bestand: PDF
+  # gps = Global Positioning System
+  gps-systeem: gps
+  GPS-systeem: GPS
+  # btw = Belasting over de Toegevoegde Waarde
+  btw-belasting: btw
+  BTW-belasting: BTW
+  # isbn = International Standard Book Number
+  isbn-nummer: isbn
+  ISBN-nummer: ISBN
+  # html = HyperText Markup Language
+  html-taal: html
+  HTML-taal: HTML
+  # adsl = Asymmetric Digital Subscriber Line
+  adsl-lijn: adsl
+  ADSL-lijn: ADSL
+  # usb = Universal Serial Bus
+  usb-kabel: usb
+  USB-kabel: USB
+  # wifi = Wireless Fidelity
+  wifi-netwerk: wifi
+  Wi-Fi-netwerk: Wi-Fi

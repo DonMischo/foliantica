@@ -44,12 +44,14 @@ interface Props {
   onOpenChat?: () => void;
   aiDisabled?: boolean;
   onOpenTimeline?: () => void;
+  onOpenLink?: () => void;
   onWordSelect?: (word: string | null) => void;
   onFlagsChange?: (flags: FlagItem[]) => void;
   replaceWordRef?: React.MutableRefObject<((word: string) => void) | null>;
   applyFlagRef?: React.MutableRefObject<((type: string) => void) | null>;
   applyGrammarFixRef?: React.MutableRefObject<((matched: string, replacement: string, plainOffset: number) => void) | null>;
   jumpToGrammarMatchRef?: React.MutableRefObject<((matched: string, plainOffset: number) => void) | null>;
+  jumpToTextRef?: React.MutableRefObject<((text: string) => void) | null>;
   onPrefillEntry?: (data: Partial<CodexEntry>) => void;
   /** When true the editor is rendered read-only (co-work lock held by another user) */
   readOnly?: boolean;
@@ -132,7 +134,7 @@ function applyTypewriterScroll(
   } catch { /* view not mounted */ }
 }
 
-export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, onPrefillEntry, aiDisabled = false, readOnly = false }: Props) {
+export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onOpenLink, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, jumpToTextRef, onPrefillEntry, aiDisabled = false, readOnly = false }: Props) {
   const showLineNumbers  = useUIStore((s) => s.showParagraphNumbers);
   const typewriterMode   = useUIStore((s) => s.typewriterMode);
   const typewriterOffset = useUIStore((s) => s.typewriterOffset);
@@ -167,6 +169,8 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
   aiDisabledRef.current = aiDisabled;
   const onOpenTimelineRef = useRef(onOpenTimeline);
   onOpenTimelineRef.current = onOpenTimeline;
+  const onOpenLinkRef = useRef(onOpenLink);
+  onOpenLinkRef.current = onOpenLink;
   const onWordSelectRef  = useRef(onWordSelect);
   onWordSelectRef.current  = onWordSelect;
   const onFlagsChangeRef = useRef(onFlagsChange);
@@ -237,6 +241,9 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
                 .insertContent('<span data-ghost="" class="ghost-text">[placeholder]</span>')
                 .unsetMark("ghostText")
                 .run();
+            } else if (props.id === "link") {
+              editor.chain().focus().deleteRange(range).run();
+              onOpenLinkRef.current?.();
             } else if (props.id === "table") {
               editor.chain().focus().deleteRange(range)
                 .insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
@@ -410,10 +417,56 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
       if (!editor) return;
       const range = grammarFindInDoc(editor, matched, plainOffset);
       if (!range) return;
-      editor.chain().focus().setTextSelection(range).run();
-      editor.view.dispatch(editor.state.tr.scrollIntoView());
+      // preventScroll stops browser from auto-scrolling the window when focusing the editor DOM
+      editor.chain().focus(undefined, { scrollIntoView: false }).setTextSelection(range).run();
+      // Scroll the editor's own container (same one used by typewriter mode)
+      requestAnimationFrame(() => {
+        const container = scrollRef.current;
+        if (!container) return;
+        try {
+          const coords  = editor.view.coordsAtPos(range.from);
+          const cRect   = container.getBoundingClientRect();
+          const relTop  = coords.top - cRect.top;
+          const MARGIN  = 80;
+          if (relTop < MARGIN) {
+            container.scrollTop += relTop - MARGIN;
+          } else if (relTop > cRect.height - MARGIN) {
+            container.scrollTop += relTop - cRect.height + MARGIN;
+          }
+        } catch { /* view not mounted */ }
+      });
     };
   }, [editor, jumpToGrammarMatchRef]);
+
+  // Jump to first occurrence of a plain-text string (used by codex suggestion clicks)
+  useEffect(() => {
+    if (!jumpToTextRef) return;
+    jumpToTextRef.current = (text: string) => {
+      if (!editor) return;
+      const lower = text.toLowerCase();
+      let found: { from: number; to: number } | null = null;
+      editor.state.doc.descendants((node, pos) => {
+        if (found || !node.isText || !node.text) return;
+        const idx = node.text.toLowerCase().indexOf(lower);
+        if (idx !== -1) found = { from: pos + idx, to: pos + idx + text.length };
+      });
+      if (!found) return;
+      const range = found as { from: number; to: number };
+      editor.chain().focus().setTextSelection(range).run();
+      // Scroll the nearest overflow-y container to center the match
+      const coords = editor.view.coordsAtPos(range.from);
+      let el: HTMLElement | null = editor.view.dom as HTMLElement;
+      while (el) {
+        const ov = window.getComputedStyle(el).overflowY;
+        if (ov === "auto" || ov === "scroll") {
+          const rect = el.getBoundingClientRect();
+          el.scrollTop += coords.top - rect.top - rect.height / 2;
+          break;
+        }
+        el = el.parentElement;
+      }
+    };
+  }, [editor, jumpToTextRef]);
 
   // Grammar: find matched text and replace with suggestion
   useEffect(() => {
@@ -457,20 +510,22 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
 
   return (
     <EditorContext.Provider value={{ characters, items, allEntries: codexEntries, sceneId, projectId: codexEntries[0]?.project_id ?? 0, onPrefillEntry }}>
-      <div ref={scrollRef} className={wrapperClass}>
-        <EditorContent editor={editor} className="h-full" />
-        {editor && <FormattingToolbar editor={editor} />}
+      <div className="relative h-full">
+        <div ref={scrollRef} className={wrapperClass}>
+          <EditorContent editor={editor} className="h-full" />
+          {editor && <FormattingToolbar editor={editor} />}
+          {slashMenu && (
+            <SlashCommandMenu
+              ref={menuHandleRef}
+              items={slashMenu.items}
+              rect={slashMenu.rect}
+              onSelect={slashMenu.command}
+              onClose={closeSlash}
+            />
+          )}
+        </div>
         {editor && searchOpen && (
           <SearchBar editor={editor} onClose={() => setSearchOpen(false)} />
-        )}
-        {slashMenu && (
-          <SlashCommandMenu
-            ref={menuHandleRef}
-            items={slashMenu.items}
-            rect={slashMenu.rect}
-            onSelect={slashMenu.command}
-            onClose={closeSlash}
-          />
         )}
       </div>
     </EditorContext.Provider>

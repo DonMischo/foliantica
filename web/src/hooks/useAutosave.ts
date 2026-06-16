@@ -3,8 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useUIStore } from "@/store/ui";
 import { scenesApi } from "@/lib/api";
 
-const DEBOUNCE_MS = 1000;
-const INTERVAL_MS = 60_000;
+const INTERVAL_MS = 20_000;
 const STORAGE_PREFIX = "lw_pending_";
 
 interface Options {
@@ -16,51 +15,67 @@ interface Options {
 export function useAutosave({ sceneId, content, enabled }: Options) {
   const setSaveStatus = useUIStore((s) => s.setSaveStatus);
   const qc = useQueryClient();
-  const pendingRef = useRef(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contentRef = useRef(content);
   contentRef.current = content;
+  const lastSavedRef = useRef(content);
+  const pendingSaveRef = useRef<{ value: string; sceneId: number } | null>(null);
 
-  const save = useCallback(async (value: string) => {
+  // save() takes the target sceneId explicitly so a late-firing save can never
+  // write content to a scene the user has since navigated away from.
+  const save = useCallback(async (value: string, forSceneId: number) => {
     if (!enabled) return;
     setSaveStatus("saving");
-    pendingRef.current = true;
     try {
-      await scenesApi.update(sceneId, { content: value });
-      // Keep React Query cache in sync so remounts read fresh content
-      qc.setQueryData(["scene", sceneId], (old: any) =>
+      await scenesApi.update(forSceneId, { content: value });
+      qc.setQueryData(["scene", forSceneId], (old: any) =>
         old ? { ...old, content: value } : old
       );
-      localStorage.removeItem(`${STORAGE_PREFIX}${sceneId}`);
+      localStorage.removeItem(`${STORAGE_PREFIX}${forSceneId}`);
+      lastSavedRef.current = value;
       setSaveStatus("saved");
     } catch {
-      localStorage.setItem(`${STORAGE_PREFIX}${sceneId}`, value);
+      localStorage.setItem(`${STORAGE_PREFIX}${forSceneId}`, value);
       setSaveStatus("error");
-    } finally {
-      pendingRef.current = false;
     }
-  }, [sceneId, enabled, setSaveStatus, qc]);
+  }, [enabled, setSaveStatus, qc]);
 
-  // Debounced save on content change
+  // Mark unsaved when content diverges from what was last saved
   useEffect(() => {
     if (!enabled) return;
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    setSaveStatus("saving");
-    debounceRef.current = setTimeout(() => save(contentRef.current), DEBOUNCE_MS);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [content, save, enabled, setSaveStatus]);
+    if (content !== lastSavedRef.current) {
+      pendingSaveRef.current = { value: content, sceneId };
+      setSaveStatus("unsaved");
+    }
+  }, [content, enabled, sceneId, setSaveStatus]);
 
-  // Interval save
+  // Flush pending edit on navigation away or unmount — never silently drop keystrokes
+  useEffect(() => {
+    return () => {
+      const pending = pendingSaveRef.current;
+      if (pending) {
+        pendingSaveRef.current = null;
+        void save(pending.value, pending.sceneId);
+      }
+    };
+  }, [sceneId, save]);
+
+  // 20-second interval save
   useEffect(() => {
     if (!enabled) return;
-    const interval = setInterval(() => save(contentRef.current), INTERVAL_MS);
+    const interval = setInterval(() => {
+      const pending = pendingSaveRef.current;
+      if (pending) {
+        pendingSaveRef.current = null;
+        void save(pending.value, pending.sceneId);
+      }
+    }, INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [save, enabled]);
+  }, [save, enabled, sceneId]);
 
-  // Warn on unload
+  // Warn on unload if there are unsaved changes
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (pendingRef.current) {
+      if (pendingSaveRef.current) {
         e.preventDefault();
         e.returnValue = "";
       }
@@ -69,9 +84,18 @@ export function useAutosave({ sceneId, content, enabled }: Options) {
     return () => window.removeEventListener("beforeunload", handler);
   }, []);
 
-  // Sync any locally stored changes on mount
+  // Recover any locally stored unsaved changes on mount
   useEffect(() => {
-    const stored = localStorage.getItem(`${STORAGE_PREFIX}${sceneId}`);
-    if (stored) save(stored);
+    const key = `${STORAGE_PREFIX}${sceneId}`;
+    const stored = localStorage.getItem(key);
+    if (!stored) return;
+    if (stored === contentRef.current) {
+      localStorage.removeItem(key);
+    } else {
+      save(stored, sceneId);
+    }
   }, [sceneId, save]);
+
+  const saveNow = useCallback(() => save(contentRef.current, sceneId), [save, sceneId]);
+  return { saveNow };
 }

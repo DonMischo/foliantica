@@ -1,0 +1,177 @@
+# Fuentes / Sources:
+#   - Álex Grijelmo: "El estilo del periodista" (Taurus, 1997)
+#   - Fernando Lázaro Carreter: "El dardo en la palabra" (Galaxia Gutenberg, 1997)
+#   - Fundación del Español Urgente (FundéU): fundeu.es — recomendaciones de estilo
+#   - Libro de estilo de El País (Ediciones El País, 2014)
+#   - Real Academia Española (RAE): "Diccionario panhispánico de dudas" (DPD, 2005)
+#   - José Martínez de Sousa: "Manual de estilo de la lengua española" (Trea, 2000)
+extends: substitution
+message: "Frase larga: '%s' — ¿más corto: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Preposiciones infladas (Grijelmo; RAE DPD; FundéU) ---
+  en base a: según
+  a nivel de: en
+  con motivo de: por
+  con referencia a: sobre
+  con respecto a: sobre
+  en relación a: sobre
+  en relación con: sobre
+  con relación a: sobre
+  en lo que respecta a: sobre
+  por lo que respecta a: sobre
+  por lo que se refiere a: sobre
+  en lo concerniente a: sobre
+  en lo relativo a: sobre
+  en lo tocante a: sobre
+  en términos de: en
+  en el ámbito de: en
+  en el terreno de: en
+  en el campo de: en
+  en el plano de: en
+  en el marco de: en
+  en el contexto de: en
+  dentro del ámbito de: en
+  a tenor de: según
+  a tenor de lo dispuesto en: según
+  en virtud de: por
+  en función de: según
+  a los efectos de: para
+  al efecto de: para
+  a los fines de: para
+  con el fin de: para
+  con el objeto de: para
+  con el objetivo de: para
+  con la finalidad de: para
+  con vistas a: para
+  con miras a: para
+  a fin de que: para que
+  con el propósito de: para
+  con la intención de: para
+
+  # --- Causales infladas (FundéU; Grijelmo) ---
+  debido al hecho de que: porque
+  a causa del hecho de que: porque
+  por el hecho de que: porque
+  dado el hecho de que: dado que
+  como consecuencia de que: porque
+  como resultado de que: porque
+  a raíz de que: porque
+  en razón de que: porque
+  por razón de que: porque
+  habida cuenta de que: dado que
+  teniendo en cuenta que: dado que
+  a la vista de que: dado que
+  en vista de que: dado que
+
+  # --- Condicionales infladas (FundéU) ---
+  en el supuesto de que: si
+  en el caso de que: si
+  en el hipotético caso de que: si
+  en caso de que: si
+  siempre y cuando: si
+  siempre que: si
+  a condición de que: si
+  con la condición de que: si
+
+  # --- Temporales infladas (FundéU; Libro de estilo El País) ---
+  con anterioridad a: antes de
+  con posterioridad a: después de
+  con anterioridad al: antes del
+  con posterioridad al: después del
+  durante el período de: durante
+  en el período de tiempo de: en
+  a lo largo del período de: durante
+  en el transcurso de: durante
+  en el momento en que: cuando
+  en el instante en que: cuando
+  en el preciso momento en que: cuando
+  en la fecha en que: cuando
+  en el día de hoy: hoy
+  a día de hoy: hoy
+  a fecha de hoy: hoy
+  en el momento actual: ahora
+  en estos momentos: ahora
+  en la actualidad: ahora
+  al día de la fecha: hoy
+
+  # --- Exceptivas infladas (Grijelmo) ---
+  a excepción de: excepto
+  con excepción de: excepto
+  exceptuando el caso de: excepto
+  salvo en el caso de: salvo
+
+  # --- Cuantitativas infladas (FundéU; Grijelmo) ---
+  un total de: (eliminar)
+  la totalidad de: todos los
+  la mayoría de los casos: generalmente
+  en la mayor parte de los casos: generalmente
+  en numerosas ocasiones: a menudo
+  en múltiples ocasiones: a menudo
+  en la práctica totalidad de: casi todos los
+  en un elevado número de: en muchos
+
+  # --- Burocráticas / administrativas (FundéU; Libro de estilo El País) ---
+  en el momento en que se proceda a: cuando se
+  llevar a cabo el proceso de: realizar
+  desde el punto de vista de: para
+  a todos los efectos: en la práctica
+  para todos los efectos: en la práctica
+  a los efectos previstos: según lo previsto
+  quedar de manifiesto: quedar claro
+  hacer patente: mostrar
+  poner de relieve: destacar
+  resultar de aplicación: aplicarse
+  ser de aplicación: aplicarse
+  resultar pertinente: ser apropiado
+  es por ello que: por eso
+  es por eso que: por eso
+  es por esta razón que: por eso
+  es por este motivo que: por eso
+  es debido a esto que: por eso
+  ello no obstante: sin embargo
+  sin embargo ello: sin embargo
+  no obstante lo anterior: sin embargo
+  en cuanto a lo anterior: sobre esto
+  en lo que antecede: en lo anterior
+  a mayor abundamiento: además
+  cabe destacar que: (eliminar)
+  cabe señalar que: (eliminar)
+  cabe mencionar que: (eliminar)
+  conviene señalar que: (eliminar)
+  conviene destacar que: (eliminar)
+  hay que tener en cuenta que: (eliminar)
+  es importante destacar que: (eliminar)
+  es importante señalar que: (eliminar)
+  es preciso señalar que: (eliminar)
+  es necesario destacar que: (eliminar)
+
+  # --- Modales y posibilidades infladas (Grijelmo; FundéU) ---
+  tiene la capacidad de: puede
+  tiene la posibilidad de: puede
+  tiene la facultad de: puede
+  está en condiciones de: puede
+  está en situación de: puede
+  se encuentra en condiciones de: puede
+  cuenta con la posibilidad de: puede
+  es capaz de: puede
+  es posible que: quizás
+  existe la posibilidad de que: quizás
+  no se descarta que: quizás
+  no es descartable que: quizás
+  es probable que: probablemente
+  existe la probabilidad de que: probablemente
+
+  # --- Modismos filler (Grijelmo; Lázaro Carreter) ---
+  hay que decir que: (eliminar)
+  cabe decir que: (eliminar)
+  hay que añadir que: además,
+  por lo que se puede observar: (eliminar)
+  tal y como se ha mencionado: como se mencionó
+  tal y como se ha indicado: como se indicó
+  tal y como se ha señalado: como se señaló
+  como ya se ha dicho: como se dijo
+  como ya hemos visto: como vimos
+  en definitiva y en resumen: en resumen
+  en definitiva y en conclusión: en conclusión

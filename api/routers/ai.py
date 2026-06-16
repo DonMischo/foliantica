@@ -6,14 +6,13 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session, selectinload
 import httpx
 
+from ai_providers import PROVIDER_MAP, stream_provider, post_provider, ProviderDef
 from crypto import decrypt
 from database import get_db
 from models import Scene, Chapter, Act, Project, UserSettings, CodexEntry, AIPrompt
 from schemas import AIGenerateRequest, KiGenerateRequest, ChatRequest, TranslateRequest, StructureRequest
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
-
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # BCP 47 base tag → full language name
 LANGUAGE_NAMES: dict[str, str] = {
@@ -132,26 +131,52 @@ def _build_context(scene: Scene, db: Session) -> str:
     return "\n\n".join(parts)
 
 
-async def _stream_openrouter(api_key: str, model: str, messages: list[dict]):
-    async with httpx.AsyncClient(timeout=120) as client:
-        async with client.stream(
-            "POST",
-            OPENROUTER_URL,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "http://localhost:3000",
-                "X-Title": "Foliantica",
-            },
-            json={"model": model, "messages": messages, "stream": True},
-        ) as response:
-            if response.status_code != 200:
-                body = await response.aread()
-                yield f"data: {json.dumps({'error': body.decode()})}\n\n"
-                return
-            async for line in response.aiter_lines():
-                if line.startswith("data: "):
-                    yield f"{line}\n\n"
+def _parse_providers_cfg(settings: UserSettings) -> dict:
+    try:
+        return json.loads(settings.ai_providers_cfg or "{}")
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+
+def _resolve_provider(settings: UserSettings, model: str | None = None) -> tuple[ProviderDef, str, str | None]:
+    """Return (ProviderDef, base_url, api_key) for the provider that should handle this request.
+
+    If *model* is given and it has an entry in the model→provider map (stored in
+    ai_providers_cfg._model_provider_map), that provider is used instead of the
+    active one.  This lets a user keep OpenRouter as the default while routing
+    a locally-favourited Qwen model to AnythingLLM automatically.
+
+    Falls back to the legacy openrouter_api_key field so existing users keep
+    working without reconfiguring anything.
+    """
+    cfg = _parse_providers_cfg(settings)
+    active_id = getattr(settings, "active_provider", None) or "openrouter"
+
+    # Per-model provider override
+    provider_id = active_id
+    if model:
+        mapped = cfg.get("_model_provider_map", {}).get(model)
+        if mapped and mapped in PROVIDER_MAP:
+            provider_id = mapped
+
+    pdef = PROVIDER_MAP.get(provider_id) or PROVIDER_MAP.get(active_id)
+    if not pdef:
+        raise HTTPException(400, f"Unknown provider: {provider_id}")
+
+    prov_cfg = cfg.get(provider_id, {})
+    base_url = prov_cfg.get("base_url") or pdef.default_base_url
+
+    encrypted = prov_cfg.get("api_key")
+    api_key = decrypt(encrypted) if encrypted else None
+
+    # Backward compat: legacy openrouter_api_key
+    if provider_id == "openrouter" and not api_key and settings.openrouter_api_key:
+        api_key = decrypt(settings.openrouter_api_key)
+
+    if pdef.requires_key and not api_key:
+        raise HTTPException(400, f"{pdef.name} API key not configured. Add it in Settings → AI Provider.")
+
+    return pdef, base_url, api_key
 
 
 @router.post("/generate")
@@ -161,11 +186,13 @@ async def generate(body: AIGenerateRequest, db: Session = Depends(get_db)):
         raise HTTPException(404, "Scene not found")
 
     settings = db.query(UserSettings).first()
-    if not settings or not settings.openrouter_api_key:
-        raise HTTPException(400, "OpenRouter API key not configured")
-
-    api_key = decrypt(settings.openrouter_api_key)
+    if not settings:
+        raise HTTPException(400, "No AI provider configured")
     model = body.model or settings.default_model
+    if not model:
+        raise HTTPException(400, "No AI model configured")
+    pdef, base_url, api_key = _resolve_provider(settings, model=model)
+
     context = _build_context(scene, db)
     system_prompt = MODE_SYSTEM_PROMPTS.get(body.mode, MODE_SYSTEM_PROMPTS["custom"])
 
@@ -181,7 +208,7 @@ async def generate(body: AIGenerateRequest, db: Session = Depends(get_db)):
     ]
 
     return StreamingResponse(
-        _stream_openrouter(api_key, model, messages),
+        stream_provider(pdef, base_url, api_key, model, messages),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -280,11 +307,12 @@ async def ki_generate(body: KiGenerateRequest, db: Session = Depends(get_db)):
         raise HTTPException(404, "Scene not found")
 
     settings = db.query(UserSettings).first()
-    if not settings or not settings.openrouter_api_key:
-        raise HTTPException(400, "OpenRouter API key not configured")
-
-    api_key = decrypt(settings.openrouter_api_key)
+    if not settings:
+        raise HTTPException(400, "No AI provider configured")
     model = body.model or settings.default_model
+    if not model:
+        raise HTTPException(400, "No AI model configured")
+    pdef, base_url, api_key = _resolve_provider(settings, model=model)
 
     if body.prompt_id:
         # Use a stored prompt template
@@ -343,7 +371,7 @@ async def ki_generate(body: KiGenerateRequest, db: Session = Depends(get_db)):
     ]
 
     return StreamingResponse(
-        _stream_openrouter(api_key, model, messages),
+        stream_provider(pdef, base_url, api_key, model, messages),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
@@ -353,47 +381,33 @@ async def ki_generate(body: KiGenerateRequest, db: Session = Depends(get_db)):
 async def translate_text(body: TranslateRequest, db: Session = Depends(get_db)):
     """Translate a block of text using the configured AI model."""
     settings = db.query(UserSettings).first()
-    if not settings or not settings.openrouter_api_key:
-        raise HTTPException(400, "OpenRouter API key not configured")
-
-    api_key = decrypt(settings.openrouter_api_key)
+    if not settings:
+        raise HTTPException(400, "No AI provider configured")
     model = body.model or settings.default_codex_model or settings.default_model
     if not model:
         raise HTTPException(400, "No AI model configured")
+    pdef, base_url, api_key = _resolve_provider(settings, model=model)
 
-    async with httpx.AsyncClient(timeout=60) as client:
-        resp = await client.post(
-            OPENROUTER_URL,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "http://localhost:3000",
-                "X-Title": "Foliantica",
-            },
-            json={
-                "model": model,
-                "stream": False,
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": (
-                            f"You are a professional literary translator. "
-                            f"Translate the provided text into {body.target_language}. "
-                            f"Preserve the original formatting exactly — keep all section headers, "
-                            f"bullet points, newlines, and structural elements intact. "
-                            f"Preserve the meaning, tone, and style. "
-                            f"Return only the translated text, no preamble or explanation."
-                        ),
-                    },
-                    {"role": "user", "content": body.text},
-                ],
-            },
-        )
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                f"You are a professional literary translator. "
+                f"Translate the provided text into {body.target_language}. "
+                f"Preserve the original formatting exactly — keep all section headers, "
+                f"bullet points, newlines, and structural elements intact. "
+                f"Preserve the meaning, tone, and style. "
+                f"Return only the translated text, no preamble or explanation."
+            ),
+        },
+        {"role": "user", "content": body.text},
+    ]
+    try:
+        result = await post_provider(pdef, base_url, api_key, model, messages, timeout=60)
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(502, f"Provider error: {exc.response.text}")
 
-    if resp.status_code != 200:
-        raise HTTPException(502, f"OpenRouter error: {resp.text}")
-
-    translated = resp.json()["choices"][0]["message"]["content"].strip()
+    translated = result["choices"][0]["message"]["content"].strip()
     return {"text": translated}
 
 
@@ -411,13 +425,12 @@ _STRUCTURE_SECTIONS: dict[str, list[str]] = {
 async def structure_text(body: StructureRequest, db: Session = Depends(get_db)):
     """Reorganize free-form description text into typed sections for a codex entry."""
     settings = db.query(UserSettings).first()
-    if not settings or not settings.openrouter_api_key:
-        raise HTTPException(400, "OpenRouter API key not configured")
-
-    api_key = decrypt(settings.openrouter_api_key)
+    if not settings:
+        raise HTTPException(400, "No AI provider configured")
     model = body.model or settings.default_codex_model or settings.default_model
     if not model:
         raise HTTPException(400, "No AI model configured")
+    pdef, base_url, api_key = _resolve_provider(settings, model=model)
 
     entry_type = (body.entry_type or "custom").lower()
     sections = _STRUCTURE_SECTIONS.get(entry_type, _STRUCTURE_SECTIONS["custom"])
@@ -489,29 +502,16 @@ async def structure_text(body: StructureRequest, db: Session = Depends(get_db)):
         f"- Return valid JSON on a single line; do not wrap in code fences"
     )
 
-    async with httpx.AsyncClient(timeout=60) as client:
-        resp = await client.post(
-            OPENROUTER_URL,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "http://localhost:3000",
-                "X-Title": "Foliantica",
-            },
-            json={
-                "model": model,
-                "stream": False,
-                "messages": [
-                    {"role": "system", "content": system_content},
-                    {"role": "user",   "content": body.text},
-                ],
-            },
-        )
+    messages_struct = [
+        {"role": "system", "content": system_content},
+        {"role": "user",   "content": body.text},
+    ]
+    try:
+        result = await post_provider(pdef, base_url, api_key, model, messages_struct, timeout=60)
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(502, f"Provider error: {exc.response.text}")
 
-    if resp.status_code != 200:
-        raise HTTPException(502, f"OpenRouter error: {resp.text}")
-
-    raw = resp.json()["choices"][0]["message"]["content"].strip()
+    raw = result["choices"][0]["message"]["content"].strip()
 
     # ── Split on delimiter ────────────────────────────────────────────────────
     structured_text = raw
@@ -550,47 +550,36 @@ async def generate_synopsis(scene_id: int, db: Session = Depends(get_db)):
         raise HTTPException(404, "Scene not found")
 
     settings = db.query(UserSettings).first()
-    if not settings or not settings.openrouter_api_key:
-        raise HTTPException(400, "OpenRouter API key not configured")
+    if not settings:
+        raise HTTPException(400, "No AI provider configured")
 
     content = re.sub(r"<[^>]+>", "", scene.content or "").strip()
     if not content:
         raise HTTPException(400, "Scene has no content to summarize")
 
-    api_key = decrypt(settings.openrouter_api_key)
     model = settings.default_synopsis_model or settings.default_model
+    if not model:
+        raise HTTPException(400, "No AI model configured")
+    pdef, base_url, api_key = _resolve_provider(settings, model=model)
     lang = _project_language(scene, db)
 
-    async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.post(
-            OPENROUTER_URL,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "http://localhost:3000",
-                "X-Title": "Foliantica",
-            },
-            json={
-                "model": model,
-                "stream": False,
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": (
-                            f"You are a writing assistant. Write a concise 1–3 sentence synopsis of the scene. "
-                            f"Focus on what happens — the key action, conflict, or revelation. "
-                            f"Write in {lang}. Return only the synopsis, no preamble."
-                        ),
-                    },
-                    {"role": "user", "content": content[:4000]},
-                ],
-            },
-        )
+    messages_syn = [
+        {
+            "role": "system",
+            "content": (
+                f"You are a writing assistant. Write a concise 1–3 sentence synopsis of the scene. "
+                f"Focus on what happens — the key action, conflict, or revelation. "
+                f"Write in {lang}. Return only the synopsis, no preamble."
+            ),
+        },
+        {"role": "user", "content": content[:4000]},
+    ]
+    try:
+        result = await post_provider(pdef, base_url, api_key, model, messages_syn, timeout=30)
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(502, f"Provider error: {exc.response.text}")
 
-    if resp.status_code != 200:
-        raise HTTPException(502, f"OpenRouter error: {resp.text}")
-
-    synopsis = resp.json()["choices"][0]["message"]["content"].strip()
+    synopsis = result["choices"][0]["message"]["content"].strip()
     return {"synopsis": synopsis}
 
 
@@ -602,11 +591,13 @@ async def chat(body: ChatRequest, db: Session = Depends(get_db)):
         raise HTTPException(404, "Scene not found")
 
     settings = db.query(UserSettings).first()
-    if not settings or not settings.openrouter_api_key:
-        raise HTTPException(400, "OpenRouter API key not configured")
-
-    api_key = decrypt(settings.openrouter_api_key)
+    if not settings:
+        raise HTTPException(400, "No AI provider configured")
     model = body.model or settings.default_model
+    if not model:
+        raise HTTPException(400, "No AI model configured")
+    pdef, base_url, api_key = _resolve_provider(settings, model=model)
+
     language = _project_language(scene, db)
     scene_content = re.sub(r"<[^>]+>", "", scene.content or "")
 
@@ -624,7 +615,7 @@ async def chat(body: ChatRequest, db: Session = Depends(get_db)):
     messages += [{"role": m.role, "content": m.content} for m in body.messages]
 
     return StreamingResponse(
-        _stream_openrouter(api_key, model, messages),
+        stream_provider(pdef, base_url, api_key, model, messages),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

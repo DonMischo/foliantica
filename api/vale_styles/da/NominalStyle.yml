@@ -1,0 +1,71 @@
+# Kilder / Sources:
+#   - Hannemand, Bjarne: "Godt Sprog" (Gyldendal, 2009) — undgå nominalstil
+#   - Galberg Jacobsen, Henrik / Jarvad, Pia: "Dansk Sproglære" (Gyldendal, 2010)
+#   - Lund, Jørn: "Sproget i avisen" — brug verber ikke substantiver
+#   - Dansk Sprognævn: dsn.dk — sprogrådgivning
+#   - Sprogportal.dk
+extends: substitution
+message: "Nominalstil: '%s' — mere direkte: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- "foretage" + substantiv (Hannemand; Galberg Jacobsen) ---
+  foretage en vurdering af: vurdere
+  foretage en analyse af: analysere
+  foretage en gennemgang af: gennemgå
+  foretage en undersøgelse af: undersøge
+  foretage en kontrol af: kontrollere
+  foretage en inspektion af: inspicere
+  foretage en beregning: beregne
+  foretage en revision: revidere
+
+  # --- "udføre" + substantiv (Hannemand; Lund) ---
+  udføre en beregning: beregne
+  udføre en analyse: analysere
+  udføre en undersøgelse: undersøge
+  udføre en kontrol: kontrollere
+  udføre en inspektion: inspicere
+  udføre en test: teste
+  udføre en revision: revidere
+
+  # --- "træffe" + substantiv (Galberg Jacobsen; Dansk Sprognævn) ---
+  træffe en beslutning: beslutte
+  træffe en afgørelse: afgøre
+  træffe en foranstaltning: tage forholdsregler / handle
+  træffe et valg: vælge
+
+  # --- "give" + substantiv (Hannemand; Lund) ---
+  give et svar på: svare på
+  give en forklaring på: forklare
+  give en beskrivelse af: beskrive
+  give et overblik over: sammenfatte
+  give en vurdering af: vurdere
+  give tilladelse til: tillade
+  give støtte til: støtte
+  give råd om: rådgive om
+  give udtryk for: udtrykke
+
+  # --- "have" + abstrakt substantiv (Hannemand; Galberg Jacobsen) ---
+  have mulighed for: kunne
+  have evne til: kunne
+  have ret til: måtte / have lov til
+  have behov for: behøve
+  have kendskab til: kende
+  have tillid til: stole på
+  have intention om: have til hensigt at → ville
+  have betænkeligheder ved: betvivle / stille spørgsmålstegn ved
+
+  # --- "tage" + substantiv (Hannemand) ---
+  tage del i: deltage i
+  tage initiativ til: igangsætte / initiere
+  tage kontakt til: kontakte
+  tage ansvar for: tage ansvar for → stå til ansvar
+
+  # --- "gennemføre" + substantiv (Galberg Jacobsen; Lund) ---
+  gennemføre en undersøgelse: undersøge
+  gennemføre en analyse: analysere
+  gennemføre en inspektion: inspicere
+  gennemføre en kontrol: kontrollere
+  gennemføre en evaluering: evaluere
+  gennemføre en ændring: ændre
+  gennemføre en reform: reformere

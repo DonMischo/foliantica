@@ -1,0 +1,148 @@
+# Quellen / Sources:
+#   - Wikipedia: https://de.wikipedia.org/wiki/Pleonasmus
+#   - Bastian Sick: "Der Dativ ist dem Genitiv sein Tod", Bd. 1-3 (Kiepenheuer & Witsch, 2004-)
+#   - Bastian Sick: Zwiebelfisch-Kolumnen (Spiegel Online)
+#   - Wolf Schneider: "Deutsch furs Leben" (Rowohlt, 1994)
+#   - Ludwig Reiners: "Stilkunst" (C.H. Beck, 1961)
+#   - Duden: "Richtiges und gutes Deutsch" (Bd. 9) / "Das Stilwoerterbuch" (Bd. 2)
+extends: substitution
+message: "'%s' ist redundant — erwäge '%s'."
+level: warning
+ignorecase: true
+swap:
+  # --- Klassische Tier-/Farb-Tautologien ---
+  weißer Schimmel: Schimmel
+  schwarzer Rappe: Rappe
+  schwarzer Rabe: Rabe
+  roter Rotfuchs: Rotfuchs
+  blauer Blauwal: Blauwal
+  grüner Grünspecht: Grünspecht
+  gelbe Eidotter: Eidotter
+  gelbes Eigelb: Eigelb
+  grüner Smaragd: Smaragd
+  nasser Regen: Regen
+  dunkle Nacht: Nacht
+
+  # --- Geometrische / physikalische Tautologien ---
+  runder Kreis: Kreis
+  runde Kugel: Kugel
+  viereckiges Quadrat: Quadrat
+  dreieckiges Dreieck: Dreieck
+  flaches Flachland: Flachland
+  spitzer Spitzwinkel: Spitzwinkel
+
+  # --- Adjektiv steckt bereits im Nomen (Sick; Schneider; Wikipedia) ---
+  tote Leiche: Leiche
+  alter Greis: Greis
+  alter Veteran: Veteran
+  kleiner Zwerg: Zwerg
+  großer Riese: Riese
+  neues Novum: Novum
+  erste Premiere: Premiere
+  heiße Hitze: Hitze
+  kalte Kälte: Kälte
+  stumme Stille: Stille
+  leeres Vakuum: Vakuum
+  wahre Wahrheit: Wahrheit
+  männlicher Patriarch: Patriarch
+  weibliche Matriarchin: Matriarchin
+  einziger Solist: Solist
+  persönliches Autogramm: Autogramm
+  momentaner Augenblick: Augenblick
+  negativer Nachteil: Nachteil
+  positiver Vorteil: Vorteil
+  freiwillige Option: Option
+  einmalige Rarität: Rarität
+  weibliche Bundeskanzlerin: Bundeskanzlerin
+  vorweggenommene Antizipation: Antizipation
+  rückblickende Retrospektive: Retrospektive
+  vorausschauende Prognose: Prognose
+
+  # --- Adjektiv-Tautologien (Sick; Schneider; Duden) ---
+  Hauptprotagonist: Protagonist
+  seltene Ausnahme: Ausnahme
+  Kurzzusammenfassung: Zusammenfassung
+  persönliche Meinung: Meinung
+  persönliche Anwesenheit: Anwesenheit
+  akute Notfallsituation: Notfall
+  gemeinsame Zusammenarbeit: Zusammenarbeit
+  Einzelindividuum: Individuum
+  manuelle Handarbeit: Handarbeit
+  genetisches Erbgut: Erbgut
+  Volksdemokratie: Demokratie
+  absolutes Alleinmonopol: Monopol
+  chronische Dauererscheinung: Dauererscheinung
+  direkter Blickkontakt: Blickkontakt
+
+  # --- Redundante Verben / Verbzusätze (Schneider; Reiners) ---
+  zusammenaddieren: addieren
+  vorprogrammieren: programmieren
+  Rückerinnerung: Erinnerung
+  fertig abschließen: abschließen
+  komplett ausfüllen: ausfüllen
+  vorab ankündigen: ankündigen
+  im Voraus planen: planen
+  neu renovieren: renovieren
+  wieder wiederholen: wiederholen
+
+  # --- Richtungsredundanzen (Wikipedia; Sick) ---
+  bereits schon: bereits
+  wieder zurück: zurück
+  vorher vorbereiten: vorbereiten
+  weiter fortfahren: fortfahren
+  aufwärts steigen: steigen
+  hinunter fallen: fallen
+  aufwärts klettern: klettern
+  rückwärts zurückgehen: zurückgehen
+  vorwärts voranschreiten: voranschreiten
+  oben hinauf: hinauf
+  unten hinunter: hinunter
+  innen drinnen: drinnen
+  außen draußen: draußen
+  einander gegenseitig: gegenseitig
+  miteinander zusammen: miteinander
+
+  # --- Zeitredundanzen (Schneider; Reiners) ---
+  heutige Gegenwart: Gegenwart
+  künftige Zukunft: Zukunft
+  zukünftige Perspektive: Perspektive
+  vergangene Geschichte: Geschichte
+  alte Tradition: Tradition
+  althergebrachte Tradition: Tradition
+  im Nachhinein rückwirkend: rückwirkend
+  kleine Miniatur: Miniatur
+
+  # --- Gratis / Kosten (Sick; Schneider) ---
+  Gratis-Geschenk: Geschenk
+  kostenlose Gratis-Version: Gratis-Version
+  unentgeltlich kostenlos: kostenlos
+  einzig und allein: einzig
+
+  # --- RAS-Syndrom (Sick; Wikipedia https://de.wikipedia.org/wiki/RAS-Syndrom) ---
+  PIN-Nummer: PIN
+  TAN-Nummer: TAN
+  IBAN-Nummer: IBAN
+  ISBN-Nummer: ISBN
+  BIC-Code: BIC
+  LCD-Display: LCD
+  HIV-Virus: HIV
+  VPN-Netzwerk: VPN
+  WLAN-Netzwerk: WLAN
+  LAN-Netzwerk: LAN
+  SMS-Service: SMS
+  IT-Technik: IT
+  ABM-Maßnahme: ABM
+  ABS-System: ABS
+  ADAC-Club: ADAC
+  AIDS-Syndrom: AIDS
+  API-Schnittstelle: API
+  DAX-Index: DAX
+  DSL-Leitung: DSL
+  DVD-Video: DVD
+  HDMI-Anschluss: HDMI
+  MRT-Tomograph: MRT
+  RAM-Speicher: RAM
+  ROM-Speicher: ROM
+  SMTP-Protokoll: SMTP
+  AC-Wechselstrom: Wechselstrom
+  DC-Gleichstrom: Gleichstrom

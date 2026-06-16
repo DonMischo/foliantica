@@ -5,7 +5,6 @@ import {
   FileText, FileCode2, BookOpen, FileDown, File,
   FolderOpen, Upload, Check, Loader2, ChevronDown, ChevronRight,
   Lock, Save, Star, Package, ExternalLink,
-  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -430,9 +429,12 @@ const CATEGORY_LABELS: Record<PublisherCategory, string> = {
 
 export function ExportDialog({ projectId, projectTitle, bookMeta, open, onClose }: Props) {
   const { data: appSettings } = useSettings();
-  const pandocEnabled = appSettings?.pandoc_enabled ?? false;
+  const pandocEnabled  = appSettings?.pandoc_enabled  ?? false;
+  const calibreEnabled = appSettings?.calibre_enabled ?? false;
+  const calibreMode    = appSettings?.calibre_mode    ?? "off";
 
   const [opts, setOpts]       = useState<ExportOptions>({ ...DEFAULT_OPTS });
+
   const [acts, setActs]       = useState<ExportAct[]>([]);
   const [allContent, setAllContent]           = useState(true);
   const [selectedSceneIds, setSelectedSceneIds] = useState<Set<number>>(new Set());
@@ -588,8 +590,6 @@ export function ExportDialog({ projectId, projectTitle, bookMeta, open, onClose 
 
   const handleExport = async () => {
     setStatus("busy"); setStatusMsg("");
-
-    const isBinary = opts.format === "pdf" || opts.format === "epub" || opts.format === "docx";
     // Use the user-picked folder only for text formats; everything else goes to dataDir
     const useDirHandle = !!dirHandle && !isBinary;
 
@@ -643,8 +643,12 @@ export function ExportDialog({ projectId, projectTitle, bookMeta, open, onClose 
     }
   };
 
+  const isBinary = ["pdf", "epub", "docx", "mobi", "azw3", "epub-calibre"].includes(opts.format);
+
   const fmtLabel: Record<string, string> = {
-    md: "Markdown", tex: "LaTeX", "epub-style": "EPUB Style", pdf: "PDF", epub: "EPUB", docx: "DOCX",
+    md: "Markdown", tex: "LaTeX", "epub-style": "EPUB Style",
+    pdf: "PDF", epub: "EPUB", docx: "DOCX",
+    mobi: "MOBI", azw3: "AZW3", "epub-calibre": "EPUB (Calibre)",
   };
   const fmtLabelStr = fmtLabel[opts.format] ?? opts.format;
 
@@ -710,31 +714,31 @@ export function ExportDialog({ projectId, projectTitle, bookMeta, open, onClose 
 
           {/* Format */}
           <SectionHeading>Format</SectionHeading>
-          <div className="grid grid-cols-3 gap-2">
-            {([
-              { fmt: "md",         Icon: FileText,  label: "Markdown",   sub: ".md file" },
-              { fmt: "tex",        Icon: FileCode2, label: "LaTeX",      sub: "LuaLaTeX / fontspec" },
-              { fmt: "epub-style", Icon: BookOpen,  label: "EPUB Style", sub: "CSS + cover" },
-              ...(pandocEnabled ? [
-                { fmt: "pdf",  Icon: FileDown,  label: "PDF",  sub: "via Pandoc + LaTeX" },
-                { fmt: "epub", Icon: BookOpen,  label: "EPUB", sub: "via Pandoc" },
-                { fmt: "docx", Icon: File,      label: "DOCX", sub: "Word document" },
-              ] : []),
-            ] as { fmt: string; Icon: LucideIcon; label: string; sub: string }[]).map(({ fmt, Icon, label, sub }) => (
-              <button key={fmt} onClick={() => set("format", fmt as ExportOptions["format"])}
-                className={cn(
-                  "flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 text-xs transition-colors",
-                  opts.format === fmt
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-border hover:border-border/80 text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Icon className="h-5 w-5" />
-                <span className="font-medium">{label}</span>
-                <span className="text-[10px] opacity-70">{sub}</span>
-              </button>
-            ))}
-          </div>
+          <select
+            value={opts.format}
+            onChange={e => set("format", e.target.value as ExportOptions["format"])}
+            className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+          >
+            {calibreEnabled && (
+              <optgroup label="Calibre">
+                <option value="epub-calibre">EPUB</option>
+                <option value="mobi">MOBI — Kindle (legacy)</option>
+                <option value="azw3">AZW3 — Kindle KF8</option>
+              </optgroup>
+            )}
+            <optgroup label="E-books">
+              {pandocEnabled && <option value="epub">EPUB — via Pandoc</option>}
+              <option value="epub-style">EPUB Style — CSS + cover</option>
+            </optgroup>
+            <optgroup label="Documents &amp; Print">
+              {pandocEnabled && <option value="pdf">PDF — via Pandoc + LaTeX</option>}
+              {pandocEnabled && <option value="docx">DOCX — Word document</option>}
+              <option value="tex">LaTeX — LuaLaTeX / fontspec</option>
+            </optgroup>
+            <optgroup label="Text">
+              <option value="md">Markdown</option>
+            </optgroup>
+          </select>
 
           {/* Export profiles */}
           {profiles.length > 0 && (
@@ -1065,7 +1069,7 @@ export function ExportDialog({ projectId, projectTitle, bookMeta, open, onClose 
 
           {/* Output */}
           <SectionHeading>Output</SectionHeading>
-          {opts.format !== "pdf" && opts.format !== "epub" && opts.format !== "docx" ? (
+          {!isBinary ? (
             <div className="space-y-2">
               {hasFolderPicker && (
                 <button onClick={pickFolder}
@@ -1097,7 +1101,10 @@ export function ExportDialog({ projectId, projectTitle, bookMeta, open, onClose 
           ) : (
             <div className="flex items-center gap-2 px-3 py-2 text-xs rounded-md border border-border text-muted-foreground">
               <FolderOpen className="h-3.5 w-3.5 shrink-0" />
-              Generated by the Pandoc container and saved to your data folder → <span className="font-mono">exports/</span>
+              {["mobi", "azw3", "epub-calibre"].includes(opts.format)
+                ? <>Generated by Calibre{calibreMode === "docker" ? " (Docker)" : " (system)"} and saved to your data folder → <span className="font-mono">exports/</span></>
+                : <>Generated by the Pandoc container and saved to your data folder → <span className="font-mono">exports/</span></>
+              }
             </div>
           )}
           </>)}

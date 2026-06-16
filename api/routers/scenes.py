@@ -1,13 +1,13 @@
 import re
 import json
 import hashlib
-from datetime import datetime, UTC, timedelta
+from datetime import datetime, UTC
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import Chapter, Scene, SceneVersion, MentionStat, CodexEntry, WritingLog
+from models import Chapter, Scene, SceneVersion, MentionStat, CodexEntry, WritingLog, UserSettings
 from schemas import SceneCreate, SceneOut, SceneUpdate, ReorderRequest, SceneVersionOut, SceneVersionDetail, CreateVersionRequest, MentionStatOut
 
 
@@ -31,6 +31,31 @@ def _scan_mentions(content: str, entries: list[CodexEntry]) -> dict[int, int]:
         if c:
             counts[entry.id] = c
     return counts
+
+
+def _scan_mentions_spacy(content: str, entries: list[CodexEntry], spacy_url: str) -> dict[int, int] | None:
+    """Call the spaCy service for token-aware mention scanning.
+    Returns {codex_id: count} or None if the service is unavailable."""
+    try:
+        import httpx
+        payload = {
+            "content": content,
+            "entries": [
+                {
+                    "id": e.id,
+                    "name": e.name,
+                    "aliases": json.loads(e.aliases or "[]") if e.aliases else [],
+                    "entry_type": e.entry_type,
+                }
+                for e in entries
+            ],
+        }
+        r = httpx.post(f"{spacy_url.rstrip('/')}/scan", json=payload, timeout=10.0)
+        if r.status_code == 200:
+            return {int(k): v for k, v in r.json()["counts"].items()}
+    except Exception:
+        pass
+    return None
 
 
 def _get_project_id(scene_id: int, db: Session) -> int | None:
@@ -79,7 +104,11 @@ def _update_mention_stats(
     if entries is None:
         entries = db.query(CodexEntry).filter(CodexEntry.project_id == project_id).all()
 
-    counts = _scan_mentions(content, entries)
+    settings = db.query(UserSettings).first()
+    if settings and settings.spacy_enabled and settings.spacy_url:
+        counts = _scan_mentions_spacy(content, entries, settings.spacy_url) or _scan_mentions(content, entries)
+    else:
+        counts = _scan_mentions(content, entries)
 
     # Replace all existing stats for this scene
     db.query(MentionStat).filter(MentionStat.scene_id == scene_id).delete()
@@ -150,16 +179,18 @@ def update_scene(scene_id: int, body: SceneUpdate, db: Session = Depends(get_db)
     if "scene_time" in body.model_fields_set:
         st = body.scene_time
         data["scene_time"] = json.dumps(st) if st is not None else None
-    # Handle subplot separately — None means "move back to main plot"
-    if "subplot" in body.model_fields_set:
-        data["subplot"] = body.subplot
-    # Handle pov_character_id and beat — None means "clear the value"
-    if "pov_character_id" in body.model_fields_set:
-        data["pov_character_id"] = body.pov_character_id
-    if "beat" in body.model_fields_set:
-        data["beat"] = body.beat
-    if "scene_type" in body.model_fields_set:
-        data["scene_type"] = body.scene_type
+    # These fields are intentionally nullable: an explicit null means "clear the
+    # value" — e.g. move a scene back to the main plot, or remove it from the
+    # corkboard canvas (node_x/node_y) or a stack. exclude_none above drops them,
+    # so restore any the client explicitly set (including to null).
+    _NULLABLE_FIELDS = (
+        "subplot", "pov_character_id", "beat", "scene_type",
+        "synopsis", "global_order", "stack_group", "node_x", "node_y",
+        "card_color",
+    )
+    for field in _NULLABLE_FIELDS:
+        if field in body.model_fields_set:
+            data[field] = getattr(body, field)
     # Validate cross-chapter move
     if "chapter_id" in data and not db.get(Chapter, data["chapter_id"]):
         raise HTTPException(404, f"Chapter {data['chapter_id']} not found")
@@ -197,7 +228,14 @@ def reorder_scenes(body: ReorderRequest, db: Session = Depends(get_db)):
 # ── Scene Versions ────────────────────────────────────────────────────────────
 
 def _prune_versions(scene_id: int, db: Session) -> None:
-    """Keep max 30 versions. If >30 exist, apply 30-day rule first, then hard-cap at 30."""
+    """Keep the 30 most recent versions; delete the rest.
+
+    The previous implementation also purged anything older than 30 days *before*
+    the hard-cap, which could delete a version that was among the 30 newest
+    simply because it was old — violating the "keep the 30 most recent" contract
+    and losing history for users who snapshot in bursts then pause. The hard-cap
+    alone bounds storage while always retaining the newest 30.
+    """
     versions = (
         db.query(SceneVersion)
         .filter(SceneVersion.scene_id == scene_id)
@@ -206,20 +244,7 @@ def _prune_versions(scene_id: int, db: Session) -> None:
     )
     if len(versions) <= 30:
         return
-    # Step 1: delete versions older than 30 days
-    cutoff = _now() - timedelta(days=30)
-    for v in versions:
-        if v.created_at < cutoff:
-            db.delete(v)
-    db.flush()
-    # Step 2: hard-cap at 30 (delete oldest first)
-    remaining = (
-        db.query(SceneVersion)
-        .filter(SceneVersion.scene_id == scene_id)
-        .order_by(SceneVersion.created_at.desc())
-        .all()
-    )
-    for v in remaining[30:]:
+    for v in versions[30:]:  # newest-first, so [30:] are the oldest beyond the cap
         db.delete(v)
     db.flush()
 
@@ -317,6 +342,17 @@ def get_scene_mention_stats(scene_id: int, db: Session = Depends(get_db)):
     return [MentionStatOut(codex_id=r.codex_id, scene_id=r.scene_id, count=r.count) for r in rows]
 
 
+@router.post("/api/scenes/{scene_id}/mentions/rescan")
+def rescan_scene_mentions(scene_id: int, db: Session = Depends(get_db)):
+    """Re-scan one scene's content and rebuild its mention_stats rows on demand."""
+    scene = db.get(Scene, scene_id)
+    if not scene:
+        raise HTTPException(status_code=404, detail="Scene not found")
+    _update_mention_stats(scene_id, scene.content or "", db)
+    db.commit()
+    return {"scanned": 1}
+
+
 @router.get("/api/projects/{project_id}/mention-stats", response_model=list[MentionStatOut])
 def get_project_mention_stats(project_id: int, db: Session = Depends(get_db)):
     """Return aggregated mention counts across all scenes for a project."""
@@ -409,4 +445,52 @@ def get_project_ghost_texts(project_id: int, db: Session = Depends(get_db)):
                 "chapter_title": chapter_title,
                 "ghost_texts": texts,
             })
+    return result
+
+
+@router.get("/api/scenes/{scene_id}/suggest-entries")
+def suggest_entries(scene_id: int, db: Session = Depends(get_db)):
+    scene = db.get(Scene, scene_id)
+    if not scene:
+        raise HTTPException(404, "Scene not found")
+    settings = db.query(UserSettings).first()
+    if not (settings and settings.spacy_enabled and settings.spacy_url):
+        raise HTTPException(400, "spaCy not enabled")
+    row = db.execute(
+        text("SELECT a.project_id, p.book_meta FROM scenes s JOIN chapters c ON c.id = s.chapter_id JOIN acts a ON a.id = c.act_id JOIN projects p ON p.id = a.project_id WHERE s.id = :sid"),
+        {"sid": scene_id},
+    ).fetchone()
+    project_id = row[0] if row else None
+    try:
+        bm = json.loads(row[1] or "{}") if row else {}
+        # BCP 47 e.g. "de-DE" → take the primary subtag only
+        project_lang = (bm.get("language") or "en").split("-")[0].split("_")[0].lower()
+    except Exception:
+        project_lang = "en"
+    plain = re.sub(r"<[^>]+>", " ", scene.content or "")
+    try:
+        import httpx
+        resp = httpx.post(
+            f"{settings.spacy_url.rstrip('/')}/suggest",
+            json={"content": plain, "lang": project_lang},
+            timeout=10.0,
+        )
+        resp.raise_for_status()
+        suggestions: list[dict] = resp.json()
+    except Exception:
+        raise HTTPException(503, "spaCy service unavailable")
+    entries = db.query(CodexEntry).filter(CodexEntry.project_id == project_id).all()
+    known: set[str] = set()
+    for e in entries:
+        known.add(e.name.lower())
+        for alias in json.loads(e.aliases or "[]"):
+            known.add(alias.lower())
+    result = []
+    for s in suggestions:
+        norm = s["text"].lower()
+        candidates = [norm]
+        if norm.endswith("s") and len(norm) > 2:
+            candidates.append(norm[:-1])  # strip trailing 's' for German genitive (Claras → Clara)
+        if not any(c in known for c in candidates):
+            result.append(s)
     return result

@@ -1,0 +1,90 @@
+# Kilder / Sources:
+#   - Vinje, Finn-Erik: "Moderne norsk" (Universitetsforlaget, 6. utg. 1990)
+#   - NTB Språk: "NTBs språkbok"
+#   - Lie, Svein: "Innføring i norsk syntaks" (Universitetsforlaget, 4. utg. 2003)
+#   - Språkrådet: sprakradet.no — klarspråk og skrivehjelp
+#   - Berge, Kjell Lars m.fl.: "Å skape mening med språk" (LNU/Cappelen, 1998)
+extends: substitution
+message: "Oppblåst uttrykk: '%s' — kortere: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Oppblåste preposisjoner (Vinje; Språkrådet) ---
+  innenfor rammene av: i / ved / for
+  med hensyn til: om / med tanke på
+  hva angår: om
+  vedrørende: om
+  i forbindelse med: ved / når / i
+  i henhold til: ifølge / etter
+  i samsvar med: ifølge / etter
+  med sikte på: for å
+  med det formål å: for å
+  i den hensikt å: for å
+  på grunn av det faktum at: fordi
+  som følge av det faktum at: fordi
+  i betraktning av at: da / ettersom
+  i lys av at: da / ettersom
+  med bakgrunn i: på grunn av / basert på
+  på basis av: basert på / etter
+  i relasjon til: i forhold til / om
+  i henhold til gjeldende: etter gjeldende
+
+  # --- Kausale omskrivninger (Vinje; NTB Språk) ---
+  av den grunn at: fordi
+  på grunn av det faktum at: fordi
+  som en konsekvens av at: fordi / da
+  i og med at: da / fordi
+
+  # --- Betingede omskrivninger (Vinje; Lie) ---
+  i tilfelle at: hvis / om
+  i det tilfelle at: hvis
+  under forutsetning av at: hvis / forutsatt at
+  forutsatt at: hvis
+  i den utstrekning at: hvis / i den grad
+
+  # --- Temporale omskrivninger (NTB Språk; Vinje) ---
+  i forbindelse med at: da / når
+  på det tidspunktet da: da / når
+  i løpet av perioden: i / under
+  for øyeblikket: nå
+  for tiden: nå
+  på nåværende tidspunkt: nå
+  på et senere tidspunkt: senere
+  i et tidligere stadium: tidligere
+
+  # --- Unntak / begrensning (Vinje; Berge m.fl.) ---
+  med unntak av: bortsett fra / unntatt
+  i mangel av: uten
+  uansett om: enten ... eller / uavhengig av om
+
+  # --- Byråkratiske fyllord (Språkrådet klarspråk; Vinje) ---
+  det bør bemerkes at: merk at
+  det bør fremheves at: viktig er at
+  det kan konstateres at: det framgår at
+  det skal bemerkes at: merk
+  på den bakgrunn: derfor
+  i den anledning: derfor
+  i den forbindelse: her
+  i det henseende: her
+  hermed: med dette
+  herved: på denne måten
+  herav: av dette
+  hvorved: og dermed
+  for så vidt angår: hva angår → om
+
+  # --- Modale omskrivninger (Vinje; NTB Språk) ---
+  ha mulighet til å: kunne
+  ha evne til å: kunne
+  være i stand til å: kunne
+  være berettiget til å: ha lov til å / få
+  være forpliktet til å: måtte / være nødt til å
+  det er mulig at: kanskje / muligens
+  det kan ikke utelukkes at: muligens
+  med stor sannsynlighet: sannsynligvis
+
+  # --- Redaksjonelle cheviller (Vinje; Berge m.fl.) ---
+  som tidligere nevnt: som nevnt
+  som allerede angitt: som angitt
+  som beskrevet ovenfor: som beskrevet
+  kort og godt: kort sagt / enkelt sagt
+  avslutningsvis og oppsummert: avslutningsvis

@@ -1,0 +1,159 @@
+# Sources :
+#   - Maurice Grevisse / André Goosse : « Le Bon Usage » (De Boeck, 15e éd., 2011)
+#   - Jean Girodet : « Dictionnaire des pièges et difficultés de la langue française » (Bordas, 1988)
+#   - Académie française : recommandations de style
+#   - Office québécois de la langue française (OQLF) : Guide de rédaction administrative
+#   - Commission générale de terminologie et de néologie : Journal officiel
+extends: substitution
+message: "Expression gonflée : '%s' — plus court : '%s' ?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Prépositions gonflées (Girodet ; Académie française) ---
+  dans le cadre de: dans / pour
+  en ce qui concerne: sur / concernant
+  par rapport à: sur / concernant
+  en ce qui a trait à: sur
+  au niveau de: dans / sur
+  en termes de: en matière de
+  du point de vue de: selon / pour
+  sous l'angle de: selon
+  dans l'optique de: pour / du point de vue de
+  du fait de: à cause de
+  en raison de: à cause de
+  à la suite de: après
+  suite à: après
+  en vue de: pour
+  à des fins de: pour
+  dans le but de: pour
+  dans l'objectif de: pour
+  avec pour objectif de: pour
+  afin d'assurer: pour assurer
+  à cet effet: pour cela
+  à cette fin: pour cela
+  à l'effet de: pour
+  à l'intention de: pour
+  à l'usage de: pour
+  à titre de: comme / en tant que
+  en tant que tel: en tant que tel (supprimer si superflu)
+  par voie de: par
+  au travers de: à travers
+  au sein de: dans
+  en l'absence de: sans
+  à l'exception de: sauf
+  à l'exclusion de: sauf
+  à l'instar de: comme
+  à l'image de: comme
+  à l'égal de: comme
+
+  # --- Causales gonflées (Girodet ; OQLF) ---
+  en raison du fait que: parce que
+  du fait que: parce que
+  étant donné le fait que: étant donné que
+  en raison de ce que: parce que
+  par le fait que: parce que
+  vu le fait que: vu que
+  attendu que le fait: attendu que
+  compte tenu du fait que: compte tenu du fait que → puisque
+  eu égard au fait que: puisque
+
+  # --- Conditionnelles gonflées (Girodet) ---
+  dans le cas où: si
+  dans l'hypothèse où: si
+  dans l'éventualité où: si
+  dans l'hypothèse de: en cas de
+  au cas où: si
+  sous réserve que: si
+  à condition que: si
+  pour peu que: si
+
+  # --- Temporelles gonflées (OQLF ; Académie française) ---
+  antérieurement à: avant
+  préalablement à: avant
+  postérieurement à: après
+  durant la période de: pendant
+  au cours de la période de: pendant
+  à l'heure actuelle: maintenant
+  au moment présent: maintenant
+  en ce moment précis: maintenant
+  à la date d'aujourd'hui: aujourd'hui
+  au jour d'aujourd'hui: aujourd'hui
+  au jour de ce jour: ce jour
+  dans l'immédiat: maintenant
+  dans un premier temps: d'abord
+  dans un second temps: ensuite
+  dans un dernier temps: enfin
+
+  # --- Exceptives gonflées (Girodet) ---
+  à l'exception de: sauf
+  à l'exclusion de: sauf
+  excepté le cas de: sauf
+  hormis le cas de: sauf
+
+  # --- Quantitatifs gonflés (Girodet ; Grevisse) ---
+  un total de: (supprimer)
+  la totalité de: tous les
+  la majorité des cas: généralement
+  dans la plupart des cas: généralement
+  en de nombreuses occasions: souvent
+  à de multiples reprises: souvent
+
+  # --- Bureaucratiques / administratives (Commission de terminologie ; OQLF) ---
+  il convient de noter que: notons que
+  il y a lieu de noter que: notons que
+  il est à noter que: (supprimer)
+  il est important de souligner que: (supprimer)
+  il convient de souligner que: soulignons que
+  il y a lieu de préciser que: précisons que
+  il importe de mentionner que: mentionnons que
+  force est de constater que: on constate que
+  c'est pourquoi: donc
+  c'est la raison pour laquelle: donc
+  c'est dans ce contexte que: ainsi
+  c'est dans cette perspective que: ainsi
+  en conséquence de quoi: donc
+  par voie de conséquence: donc
+  par suite de: à la suite de
+  à la lumière de ce qui précède: au vu de ce qui précède
+  quoi qu'il en soit: cependant
+  en tout état de cause: de toute façon
+  cela étant dit: cependant
+  d'ores et déjà: déjà
+  en l'occurrence: ici / dans ce cas
+  à cet égard: à ce sujet
+  sur ce point particulier: sur ce point
+  en ce sens: ainsi
+  dans ce contexte: ainsi
+  à cette fin précise: pour cela
+  pour les besoins de la cause: pour
+  eu égard à: compte tenu de
+  en sus de: en plus de
+  en deçà de: en dessous de
+  au-delà de: plus de / au-dessus de
+
+  # --- Modaux gonflés (Girodet ; OQLF) ---
+  être en mesure de: pouvoir
+  être à même de: pouvoir
+  être en capacité de: pouvoir
+  être en position de: pouvoir
+  se trouver dans la possibilité de: pouvoir
+  il est possible de: on peut
+  il est envisageable de: on peut
+  il n'est pas exclu que: peut-être
+  on ne saurait exclure que: peut-être
+  il est probable que: probablement
+  il est vraisemblable que: vraisemblablement
+  il y a de fortes chances que: probablement
+
+  # --- Chevilles rédactionnelles (Girodet ; Grevisse) ---
+  il y a lieu de: il faut
+  il est nécessaire de: il faut
+  il est indispensable de: il faut
+  il importe de: il faut
+  il s'avère nécessaire de: il faut
+  comme il a été dit précédemment: comme dit précédemment
+  ainsi que mentionné ci-dessus: comme mentionné
+  comme évoqué plus haut: comme évoqué
+  comme indiqué précédemment: comme indiqué
+  en définitive et en résumé: en résumé
+  en conclusion et en résumé: en conclusion

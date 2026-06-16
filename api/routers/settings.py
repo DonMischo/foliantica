@@ -2,7 +2,6 @@ import json
 import os
 import platform
 import shutil
-import sqlite3
 import sys
 import subprocess
 import threading
@@ -13,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import httpx
 
+from ai_providers import PROVIDERS, PROVIDER_MAP, fetch_models
 from crypto import encrypt, decrypt
 from database import get_db, DEFAULT_AI_PROMPTS
 from models import UserSettings, AIPrompt
@@ -75,6 +75,15 @@ def _settings_out(s: UserSettings) -> SettingsOut:
         grammar_languages=grammar_langs,
         pandoc_enabled=bool(s.pandoc_enabled),
         pandoc_url=s.pandoc_url or "http://localhost:8082",
+        spacy_enabled=bool(s.spacy_enabled),
+        spacy_url=s.spacy_url or "http://localhost:8083",
+        calibre_mode=getattr(s, "calibre_mode", None) or "off",
+        calibre_enabled=(getattr(s, "calibre_mode", None) or "off") != "off",
+        calibre_url=s.calibre_url or "http://localhost:8084",
+        vale_mode=getattr(s, "vale_mode", None) or "off",
+        vale_enabled=(getattr(s, "vale_mode", None) or "off") != "off",
+        vale_url=getattr(s, "vale_url", None) or "http://localhost:8085",
+        vale_config_path=getattr(s, "vale_config_path", None) or None,
         ai_disabled=bool(s.ai_disabled) if s.ai_disabled is not None else False,
         sync_mirror_enabled=bool(s.sync_mirror_enabled) if s.sync_mirror_enabled is not None else False,
         sync_local_dir=s.sync_local_dir or None,
@@ -123,6 +132,21 @@ def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
         s.pandoc_enabled = int(body.pandoc_enabled)
     if body.pandoc_url is not None:
         s.pandoc_url = body.pandoc_url
+    if body.spacy_enabled is not None:
+        s.spacy_enabled = int(body.spacy_enabled)
+    if body.spacy_url is not None:
+        s.spacy_url = body.spacy_url
+    if body.calibre_mode is not None:
+        s.calibre_mode = body.calibre_mode
+        s.calibre_enabled = int(body.calibre_mode != "off")
+    if body.calibre_url is not None:
+        s.calibre_url = body.calibre_url
+    if body.vale_mode is not None:
+        s.vale_mode = body.vale_mode
+    if body.vale_url is not None:
+        s.vale_url = body.vale_url
+    if body.vale_config_path is not None:
+        s.vale_config_path = body.vale_config_path or None
     if body.ai_disabled is not None:
         s.ai_disabled = int(body.ai_disabled)
     sync_changed = False
@@ -265,11 +289,20 @@ def docker_compose_up(db: Session = Depends(get_db)):
     env_file.write_text(f"LT_LANGS={lt_langs}\n", encoding="utf-8")
 
     # ── Build compose command ─────────────────────────────────────────────────
-    # Include the 'postgres' profile when Docker PG is enabled in lw-config
     lw_cfg   = _read_lw_config()
     profiles = []
     if lw_cfg.get("pg", {}).get("useDocker"):
-        profiles = ["--profile", "postgres"]
+        profiles += ["--profile", "postgres"]
+    if s.grammar_check_enabled:
+        profiles += ["--profile", "languagetool"]
+    if s.pandoc_enabled:
+        profiles += ["--profile", "pandoc"]
+    if s.spacy_enabled:
+        profiles += ["--profile", "spacy"]
+    if (getattr(s, "calibre_mode", None) or "off") == "docker":
+        profiles += ["--profile", "calibre"]
+    if (getattr(s, "vale_mode", None) or "off") == "docker":
+        profiles += ["--profile", "vale"]
 
     cmd = (["docker", "compose"]
            + profiles
@@ -297,6 +330,7 @@ async def service_status(db: Session = Depends(get_db)):
     s = _get_or_create_settings(db)
     lt_url = (s.grammar_check_url or "http://localhost:8081").rstrip("/")
     pandoc_url = (s.pandoc_url or "http://localhost:8082").rstrip("/")
+    spacy_url = (s.spacy_url or "http://localhost:8083").rstrip("/")
 
     async def ping(url: str, path: str) -> str:
         try:
@@ -306,12 +340,80 @@ async def service_status(db: Session = Depends(get_db)):
         except Exception:
             return "offline"
 
-    import asyncio
-    lt_status, pandoc_status = await asyncio.gather(
+    import asyncio, shutil as _shutil
+    calibre_mode = getattr(s, "calibre_mode", None) or "off"
+    vale_mode = getattr(s, "vale_mode", None) or "off"
+
+    async def _calibre_system_status() -> str:
+        return "ok" if _shutil.which("ebook-convert") else "offline"
+
+    async def _vale_system_status() -> str:
+        return "ok" if _shutil.which("vale") else "offline"
+
+    async def _offline() -> str:
+        return "offline"
+
+    if calibre_mode == "system":
+        calibre_coro = _calibre_system_status()
+    elif calibre_mode == "docker":
+        calibre_url = (s.calibre_url or "http://localhost:8084").rstrip("/")
+        calibre_coro = ping(calibre_url, "/health")
+    else:
+        calibre_coro = _offline()
+
+    if vale_mode == "system":
+        vale_coro = _vale_system_status()
+    elif vale_mode == "docker":
+        vale_url = (getattr(s, "vale_url", None) or "http://localhost:8085").rstrip("/")
+        vale_coro = ping(vale_url, "/health")
+    else:
+        vale_coro = _offline()
+
+    lt_status, pandoc_status, spacy_status, calibre_status, vale_status = await asyncio.gather(
         ping(lt_url, "/v2/languages"),
         ping(pandoc_url, "/health"),
+        ping(spacy_url, "/health"),
+        calibre_coro,
+        vale_coro,
     )
-    return {"languagetool": lt_status, "pandoc": pandoc_status}
+    return {
+        "languagetool": lt_status, "pandoc": pandoc_status,
+        "spacy": spacy_status, "calibre": calibre_status, "vale": vale_status,
+    }
+
+
+@router.get("/detect-vale")
+async def detect_vale(db: Session = Depends(get_db)):
+    """Check whether Vale is available via system PATH and/or Docker service."""
+    import shutil
+    s = _get_or_create_settings(db)
+    system_ok = shutil.which("vale") is not None
+    vale_url = (getattr(s, "vale_url", None) or "http://localhost:8085").rstrip("/")
+    docker_ok = False
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            r = await client.get(f"{vale_url}/health")
+        docker_ok = r.status_code < 400
+    except Exception:
+        pass
+    return {"system": system_ok, "docker": docker_ok}
+
+
+@router.get("/detect-calibre")
+async def detect_calibre(db: Session = Depends(get_db)):
+    """Check whether Calibre is available via system PATH and/or Docker service."""
+    import shutil
+    s = _get_or_create_settings(db)
+    system_ok = shutil.which("ebook-convert") is not None
+    calibre_url = (s.calibre_url or "http://localhost:8084").rstrip("/")
+    docker_ok = False
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            r = await client.get(f"{calibre_url}/health")
+        docker_ok = r.status_code < 400
+    except Exception:
+        pass
+    return {"system": system_ok, "docker": docker_ok}
 
 
 # ── Folder-picker: polling pattern ───────────────────────────────────────────
@@ -472,8 +574,9 @@ def get_data_dir():
 
 @router.get("/data-dir/check")
 def check_data_dir(path: str):
+    """Check whether a previously used data directory contains a SQL dump."""
     try:
-        return {"has_db": (Path(path) / "foliantica.db").exists()}
+        return {"has_db": (Path(path) / "foliantica.sql").exists()}
     except Exception:
         return {"has_db": False}
 
@@ -488,17 +591,6 @@ def set_data_dir(body: DataDirUpdate):
             dst = Path(body.path)
             dst.mkdir(parents=True, exist_ok=True)
             (dst / "uploads").mkdir(exist_ok=True)
-
-            # Use SQLite's backup API so we can copy the live, open database safely.
-            db_src = src / "foliantica.db"
-            if db_src.exists():
-                src_conn = sqlite3.connect(str(db_src))
-                dst_conn = sqlite3.connect(str(dst / "foliantica.db"))
-                try:
-                    src_conn.backup(dst_conn)
-                finally:
-                    dst_conn.close()
-                    src_conn.close()
 
             uploads_src = src / "uploads"
             if uploads_src.exists():
@@ -525,20 +617,13 @@ def set_data_dir(body: DataDirUpdate):
 
 @router.get("/pg-active")
 def get_pg_active():
-    """Return the PG connection the API is *currently* running on (from env vars).
-
-    Distinct from /pg-config (the saved lw-config preference for next restart).
-    The frontend compares both to detect a pending-restart state.
-    """
-    from database import USE_SQLITE
-    if USE_SQLITE:
-        return {"mode": "sqlite", "port": None}
+    """Return the PG connection the API is currently running on (from env vars)."""
     return {
-        "mode":   "pg",
-        "host":   os.getenv("LW_PG_HOST", "127.0.0.1"),
-        "port":   int(os.getenv("LW_PG_PORT", "5433")),
-        "user":   os.getenv("LW_PG_USER", "foliantica"),
-        "db":     os.getenv("LW_PG_DB",   "foliantica"),
+        "mode": "pg",
+        "host": os.getenv("LW_PG_HOST", "127.0.0.1"),
+        "port": int(os.getenv("LW_PG_PORT", "5433")),
+        "user": os.getenv("LW_PG_USER", "foliantica"),
+        "db":   os.getenv("LW_PG_DB",   "foliantica"),
     }
 
 
@@ -609,6 +694,21 @@ def transfer_pg(body: dict):
     from models import Base
 
     dst_cfg    = {**_EMBEDDED_PG, **body.get("target", {})}
+
+    # This endpoint copies the entire datastore — including the encrypted
+    # api-key columns — to the target. An unrestricted destination is a data
+    # exfiltration primitive (e.g. via a same-origin XSS payload POSTing here).
+    # Restrict the target to loopback unless an operator explicitly opts in via
+    # an environment variable (trusted, not attacker-settable).
+    dst_host = str(dst_cfg.get("host", "")).lower()
+    if dst_host not in ("localhost", "127.0.0.1", "::1") and \
+            os.getenv("LW_ALLOW_REMOTE_PG_TRANSFER") != "1":
+        raise HTTPException(
+            403,
+            "pg-transfer target must be a loopback host. Set "
+            "LW_ALLOW_REMOTE_PG_TRANSFER=1 to allow a remote destination.",
+        )
+
     dst_engine = _pg_engine_for(dst_cfg)
 
     try:
@@ -679,28 +779,205 @@ def transfer_pg(body: dict):
         dst_engine.dispose()
 
 
-@router.get("/models")
-def get_available_models(db: Session = Depends(get_db)):
-    """Proxy the OpenRouter model list so the API key stays server-side."""
-    s = _get_or_create_settings(db)
-    if not s.openrouter_api_key:
-        return []
+def _parse_providers_cfg(s: UserSettings) -> dict:
     try:
+        return json.loads(s.ai_providers_cfg or "{}")
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+
+def _write_providers_cfg(s: UserSettings, cfg: dict) -> None:
+    s.ai_providers_cfg = json.dumps(cfg)
+
+
+@router.get("/providers")
+def list_providers(db: Session = Depends(get_db)):
+    """List all known providers with configured + active status."""
+    s = _get_or_create_settings(db)
+    cfg = _parse_providers_cfg(s)
+    active_id = getattr(s, "active_provider", None) or "openrouter"
+    result = []
+    for p in PROVIDERS:
+        prov_cfg = cfg.get(p.id, {})
+        has_key = bool(prov_cfg.get("api_key"))
+        # Backward compat: OpenRouter may still use the legacy column
+        if p.id == "openrouter" and not has_key:
+            has_key = bool(s.openrouter_api_key)
+        result.append({
+            "id":          p.id,
+            "name":        p.name,
+            "is_local":    p.is_local,
+            "requires_key": p.requires_key,
+            "default_base_url": p.default_base_url,
+            "configured":  has_key or (not p.requires_key),
+            "is_active":   p.id == active_id,
+            "base_url":    prov_cfg.get("base_url") or p.default_base_url,
+        })
+    return result
+
+
+@router.post("/providers/model-map")
+def set_model_provider_map(body: dict, db: Session = Depends(get_db)):
+    """Record which provider owns a model ID so cross-provider routing works.
+    Body: {model_id: str, provider_id: str}
+    """
+    model_id    = (body.get("model_id") or "").strip()
+    provider_id = (body.get("provider_id") or "").strip()
+    if not model_id or not PROVIDER_MAP.get(provider_id):
+        raise HTTPException(400, "model_id and a valid provider_id are required")
+
+    s = _get_or_create_settings(db)
+    cfg = _parse_providers_cfg(s)
+    cfg.setdefault("_model_provider_map", {})[model_id] = provider_id
+    _write_providers_cfg(s, cfg)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/providers/active")
+def set_active_provider(body: dict, db: Session = Depends(get_db)):
+    """Set the active provider. Body: {provider_id: str}"""
+    provider_id = body.get("provider_id", "")
+    if not PROVIDER_MAP.get(provider_id):
+        raise HTTPException(400, f"Unknown provider: {provider_id}")
+    s = _get_or_create_settings(db)
+    s.active_provider = provider_id
+    db.commit()
+    return {"active_provider": provider_id}
+
+
+def _validate_base_url(url: str, pdef) -> str:
+    """Validate a user-supplied provider base URL.
+
+    The base URL is the outbound target for AI calls, and for key-bearing
+    providers the *decrypted* API key is attached as an Authorization header.
+    An unvalidated value lets an attacker (e.g. via a same-origin XSS payload)
+    point the request at their own host and exfiltrate the key, or reach
+    internal services. We therefore:
+      - allow only ``http`` / ``https`` schemes (blocks ``file:``/``gopher:`` etc.)
+      - require a hostname
+      - require ``https`` for non-loopback hosts when the provider sends a key
+        (prevents plaintext credential exfiltration / cleartext SSRF)
+    Local providers (e.g. ollama) may use ``http://localhost``.
+    """
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise HTTPException(400, "base_url must be a valid http(s) URL")
+    host = parsed.hostname.lower()
+    is_loopback = host in ("localhost", "127.0.0.1", "::1")
+    if pdef.requires_key and not is_loopback and parsed.scheme != "https":
+        raise HTTPException(400, "base_url must use https for non-local providers")
+    return url
+
+
+@router.post("/providers/{provider_id}")
+def save_provider_config(
+    provider_id: str,
+    body: dict,
+    db: Session = Depends(get_db),
+):
+    """Save API key and/or base URL for a provider.
+    Body: {api_key?: str, base_url?: str}
+    Passing api_key="" removes the stored key.
+    """
+    pdef = PROVIDER_MAP.get(provider_id)
+    if not pdef:
+        raise HTTPException(404, f"Unknown provider: {provider_id}")
+
+    s = _get_or_create_settings(db)
+    cfg = _parse_providers_cfg(s)
+    prov_cfg = cfg.setdefault(provider_id, {})
+
+    if "api_key" in body:
+        key_val = body["api_key"]
+        if key_val:
+            prov_cfg["api_key"] = encrypt(key_val)
+            # Keep legacy column in sync for OpenRouter (backward compat)
+            if provider_id == "openrouter":
+                s.openrouter_api_key = encrypt(key_val)
+        else:
+            prov_cfg.pop("api_key", None)
+            if provider_id == "openrouter":
+                s.openrouter_api_key = None
+
+    if "base_url" in body:
+        url_val = (body["base_url"] or "").strip()
+        prov_cfg["base_url"] = _validate_base_url(url_val, pdef) if url_val else None
+
+    _write_providers_cfg(s, cfg)
+    db.commit()
+    return {"ok": True}
+
+
+@router.get("/providers/{provider_id}/ping")
+async def ping_provider(provider_id: str, db: Session = Depends(get_db)):
+    """Check if a local provider is reachable at its configured base URL."""
+    pdef = PROVIDER_MAP.get(provider_id)
+    if not pdef:
+        raise HTTPException(404, f"Unknown provider: {provider_id}")
+
+    s = _get_or_create_settings(db)
+    cfg = _parse_providers_cfg(s).get(provider_id, {})
+    base_url = cfg.get("base_url") or pdef.default_base_url
+
+    try:
+        async with httpx.AsyncClient(timeout=3) as client:
+            await client.get(f"{base_url}/models")
+        return {"reachable": True}
+    except Exception:
+        return {"reachable": False}
+
+
+@router.get("/providers/{provider_id}/models")
+async def get_provider_models(provider_id: str, db: Session = Depends(get_db)):
+    """Fetch available models for the given provider (key stays server-side)."""
+    pdef = PROVIDER_MAP.get(provider_id)
+    if not pdef:
+        raise HTTPException(404, f"Unknown provider: {provider_id}")
+
+    s = _get_or_create_settings(db)
+    cfg = _parse_providers_cfg(s).get(provider_id, {})
+    base_url = cfg.get("base_url") or pdef.default_base_url
+
+    encrypted = cfg.get("api_key")
+    api_key = decrypt(encrypted) if encrypted else None
+    if provider_id == "openrouter" and not api_key and s.openrouter_api_key:
         api_key = decrypt(s.openrouter_api_key)
-        resp = httpx.get(
-            "https://openrouter.ai/api/v1/models",
-            headers={"Authorization": f"Bearer {api_key}"},
-            timeout=15,
-        )
-        if resp.status_code != 200:
-            return []
-        data = resp.json()
-        models = [
-            {"id": m["id"], "name": m.get("name") or m["id"]}
-            for m in data.get("data", [])
-            if m.get("id")
-        ]
-        return sorted(models, key=lambda m: m["name"].lower())
+
+    try:
+        return await fetch_models(pdef, base_url, api_key)
+    except httpx.ConnectError:
+        raise HTTPException(503, f"Cannot connect to {pdef.name} at {base_url}. Make sure the service is running and network discovery/API access is enabled.")
+    except httpx.TimeoutException:
+        raise HTTPException(503, f"{pdef.name} did not respond at {base_url}. Check that the service is reachable.")
+    except Exception:
+        return []
+
+
+@router.get("/models")
+async def get_available_models(db: Session = Depends(get_db)):
+    """Return models for the currently active provider (legacy endpoint kept for compat)."""
+    s = _get_or_create_settings(db)
+    active_id = getattr(s, "active_provider", None) or "openrouter"
+    pdef = PROVIDER_MAP.get(active_id)
+    if not pdef:
+        return []
+
+    cfg = _parse_providers_cfg(s).get(active_id, {})
+    base_url = cfg.get("base_url") or pdef.default_base_url
+    encrypted = cfg.get("api_key")
+    api_key = decrypt(encrypted) if encrypted else None
+    if active_id == "openrouter" and not api_key and s.openrouter_api_key:
+        api_key = decrypt(s.openrouter_api_key)
+
+    try:
+        return await fetch_models(pdef, base_url, api_key)
+    except httpx.ConnectError:
+        raise HTTPException(503, f"Cannot connect to {pdef.name} at {base_url}. Make sure the service is running and network discovery/API access is enabled.")
+    except httpx.TimeoutException:
+        raise HTTPException(503, f"{pdef.name} did not respond at {base_url}. Check that the service is reachable.")
     except Exception:
         return []
 

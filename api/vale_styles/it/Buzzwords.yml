@@ -1,0 +1,173 @@
+# Fonti / Sources:
+#   - Luca Serianni: "Guida all'italiano" (BUR, 2007)
+#   - Accademia della Crusca: consulenze linguistiche — accademicadellacrusca.it
+#   - Tullio De Mauro: "Grande dizionario italiano dell'uso" (GRADIT, UTET, 1999)
+#   - Valeria Della Valle / Giuseppe Patota: "Viva l'italiano!" (Sperling & Kupfer, 2009)
+#   - Beppe Severgnini: "L'italiano: lezioni semiserie" (Rizzoli, 2007)
+#   - Italo Calvino: "L'antilingua" (Il Giorno, 1965)
+extends: existence
+message: "'%s' è una parola di moda / gergo — formulare in modo più concreto?"
+level: suggestion
+ignorecase: true
+tokens:
+  # --- Gergo aziendale e manageriale (Calvino; Severgnini; Accademia della Crusca) ---
+  - \bsinergia\b
+  - \bsinergie\b
+  - \bsinergico\b
+  - \bparadigma\b
+  - \bparadigmi\b
+  - \bparadigmatico\b
+  - \bdisruption\b
+  - \bdirompente\b
+  - \bdisruptivo\b
+  - \btrasformazione digitale\b
+  - \btrasformazione\b
+  - resilienza
+  - \bresiliente\b
+  - \bresilientI\b
+  - ecosistema
+  - \becosistemi\b
+  - scalabilità
+  - \bscalabile\b
+  - \bscalabili\b
+  - agilità
+  - \bagile\b
+  - \bagili\b
+  - \bpivot\b
+  - \bpivotare\b
+  - \bstakeholder\b
+  - \bstakeholders\b
+  - \bbenchmark\b
+  - \bbenchmarks\b
+  - \bbenchmarking\b
+  - \bbest practice\b
+  - \bbest practices\b
+  - \bbuona pratica\b
+  - \blean\b
+  - \bscrum\b
+  - \bkanban\b
+  - \bsprint\b
+  - \bsprints\b
+  - \bKPI\b
+  - \bKPIs\b
+  - \bROI\b
+  - \bOKR\b
+  - \bOKRs\b
+  - \bUSP\b
+  - \bwin-win\b
+  - \breadmap\b
+  - \btabella di marcia\b
+  - \bmilestone\b
+  - \bmilestones\b
+  - \btraguardo intermedio\b
+  - \btrazione\b
+  - valore aggiunto
+  - \bcreare valore\b
+  - \bgenerare valore\b
+  - \bportare valore\b
+  - \bleva\b
+  - \bleve\b
+  - \bleve di crescita\b
+
+  # --- Startup e tecnologia (Accademia della Crusca; Severgnini) ---
+  - \bstartup\b
+  - \bstartups\b
+  - \bunicorno\b
+  - \bunicorni\b
+  - \bgrowth hacking\b
+  - \bgrowth\b
+  - \bscale-up\b
+  - \bpitch\b
+  - \bpitching\b
+  - \bincubatore\b
+  - acceleratore
+  - \bopen innovation\b
+  - \bhackathon\b
+  - \bhackathons\b
+  - \bfintecH\b
+  - \bfintech\b
+  - \bedtech\b
+
+  # --- Parole politiche e sociali di moda (Accademia della Crusca; De Mauro) ---
+  - \bgovernance\b
+  - \bpilotaggio\b
+  - \bconduzione del cambiamento\b
+  - \bgestione del cambiamento\b
+  - \btrasversalità\b
+  - \btrasversale\b
+  - \btrasversali\b
+  - \bco-costruzione\b
+  - \bco-creazione\b
+  - empowerment
+  - \bbenessere organizzativo\b
+  - \bleadership empatica\b
+  - \bmontare le competenze\b
+  - \bDNA aziendale\b
+  - \braison d'être\b
+  - \bpurpose\b
+  - \bnarrativa\b
+  - \bnuova normalità\b
+  - \bnuova realtà\b
+  - \bsistema paese\b
+  - \bfare sistema\b
+  - \bfare rete\b
+
+  # --- Aggettivi vuoti (Calvino; Serianni; Severgnini) ---
+  - \binnovativo\b
+  - \binnovativa\b
+  - \binnovativi\b
+  - innovazione
+  - \ball'avanguardia\b
+  - \bd'avanguardia\b
+  - \bolistico\b
+  - \bolistica\b
+  - \bglobale\b
+  - \bproattivo\b
+  - \bproattiva\b
+  - \bdinamico\b
+  - \bdinamica\b
+  - \bflessibile\b
+  - \bflessibili\b
+  - eccellenza
+  - \beccellente\b
+  - \beccellenti\b
+  - impegno
+  - \bimpegnato\b
+  - \bimpegnati\b
+  - \btrasparente\b
+  - \btrasparenti\b
+  - \btrasparenza\b
+  - \binclusivo\b
+  - \binclusiva\b
+  - inclusività
+  - \bintegrato\b
+  - \bintegrata\b
+
+  # --- Frasi aziendali (Calvino; Severgnini) ---
+  - \bcreazione di impatto\b
+  - \bgenerare impatto\b
+  - \bavere impatto\b
+  - \bdare senso\b
+  - \bmettere le persone al centro\b
+  - \bmettere l'uomo al centro\b
+  - \buscire dalla zona di comfort\b
+  - \bzona di comfort\b
+  - \bpensare fuori dagli schemi\b
+  - \bgame changer\b
+  - \bgame-changer\b
+  - \bsenza precedenti\b
+  - \bstorico\b
+  - \bstorica\b
+  - \bepocale\b
+  - \bdi livello mondiale\b
+  - \bdi classe mondiale\b
+  - \bdi primo piano\b
+  - \bdi primo livello\b
+  - \bpotenzializzare\b
+  - \bottimizzare\b
+  - \bmassimizzare\b
+  - \bminimizzare\b
+  - \bvalorizzare\b
+  - \bcatalizzatore\b
+  - \bvettore\b
+  - \bvettori\b

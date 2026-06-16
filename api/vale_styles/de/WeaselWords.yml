@@ -1,0 +1,153 @@
+# Quellen / Sources:
+#   - Wolf Schneider: "Deutsch fürs Leben" (Rowohlt, 1994), Kap. "Weichmacher" und "Füllwörter"
+#   - Wolf Schneider: "Deutsch! Das Handbuch für attraktives Schreiben" (Rowohlt, 2005)
+#   - Ludwig Reiners: "Stilkunst" (C.H. Beck, 1961), §§ "Das überflüssige Wort"
+#   - Bastian Sick: Zwiebelfisch-Kolumnen (Spiegel Online / Kiepenheuer & Witsch)
+#   - Bundesverwaltungsamt: "Leitfaden Bürgernahe Sprache" (2002)
+#   - Netzwerk Leichte Sprache: Regeln für Leichte Sprache (2013), www.leichte-sprache.org
+extends: existence
+message: "'%s' ist ein Füllwort — überprüfen ob weglassbar?"
+level: warning
+ignorecase: true
+tokens:
+  # --- Abschwächer / Hedges (Schneider: "Weichmacher") ---
+  - \beigentlich\b
+  - \birgendwie\b
+  - \bgewissermaßen\b
+  - \bsozusagen\b
+  - \bquasi\b
+  - \bgleichsam\b
+  - \bim Prinzip\b
+  - \bim Grunde\b
+  - \bim Grunde genommen\b
+  - \bin gewisser Weise\b
+  - \bin gewissem Sinne\b
+  - \bauf gewisse Weise\b
+
+  # --- Intensifier, die paradoxerweise abschwächen (Schneider; Reiners) ---
+  - \bwirklich\b
+  - \becht\b
+  - \bsehr\b
+  - \babsolut\b
+  - \btotal\b
+  - \bvöllig\b
+  - \bgänzlich\b
+  - \bvollkommen\b
+  - \bregelrecht\b
+  - \bgeradezu\b
+  - \bschier\b
+  - \bausgesprochen\b
+  - \büberaus\b
+  - \bungemein\b
+  - \baußerordentlich\b
+  - \baußergewöhnlich\b
+  - \bmaßgeblich\b
+  - \bnachhaltig\b
+
+  # --- Selbstverständlichkeiten (Schneider; Sick) ---
+  - \bnatürlich\b
+  - \bselbstverständlich\b
+  - \boffensichtlich\b
+  - \boffenbar\b
+  - \boffenkundig\b
+  - \baugenscheinlich\b
+  - \bbekanntlich\b
+  - \bzweifellos\b
+  - \bzweifelsohne\b
+  - \bfreilich\b
+  - \bunbestreitbar\b
+
+  # --- Vage Mengenangaben (Schneider; Reiners) ---
+  - \beinige\b
+  - \bmehrere\b
+  - zahlreiche
+  - diverse
+  - verschiedene
+  - \bgewisse\b
+  - \bbestimmte\b
+  - \bmancherlei\b
+  - \bvielerlei\b
+  - \bnicht selten\b
+  - \bdes Öfteren\b
+  - \bhin und wieder\b
+  - \bmehr oder weniger\b
+
+  # --- Epistemische Hedges / vage Wahrscheinlichkeit (Sick; Schneider) ---
+  - anscheinend
+  - scheinbar
+  - \bvermeintlich\b
+  - \bangeblich\b
+  - \bdürfte\b
+  - \beventuell\b
+  - \bvielleicht\b
+  - \bmöglicherweise\b
+  - \bunter Umständen\b
+  - \bim Zweifel\b
+  - \bim Großen und Ganzen\b
+
+  # --- Zeitliche Weasel Words (Bundesverwaltungsamt; Schneider) ---
+  - zeitnah
+  - \bkurzfristig\b
+  - \bmittelfristig\b
+  - \blangfristig\b
+  - \bin absehbarer Zeit\b
+  - \bin Kürze\b
+  - \bschnellstmöglich\b
+  - \bschnellstens\b
+  - \bso bald wie möglich\b
+  - \bzu gegebener Zeit\b
+  - \bin naher Zukunft\b
+  - \birgendwann\b
+  - \bfrüher oder später\b
+
+  # --- Bürokratisches Füllwerk / Amtsdeutsch (Bundesverwaltungsamt; Schneider) ---
+  - \bim Rahmen\b
+  - seitens
+  - vonseiten
+  - diesbezüglich
+  - dahingehend
+  - \bvor diesem Hintergrund\b
+  - \bvor dem Hintergrund\b
+  - \bim Lichte dessen\b
+  - \bangesichts dessen\b
+  - \bdementsprechend\b
+  - \bmithin\b
+  - \bes sei darauf hingewiesen\b
+  - \ban dieser Stelle\b
+  - \bes ist festzustellen\b
+  - \bes ist anzumerken\b
+  - \bes ist zu beachten\b
+  - \bfür den Fall dass\b
+  - \bim Falle\b
+
+  # --- Floskeln / bedeutungsarmes Framing (Schneider; Reiners) ---
+  - \bletztendlich\b
+  - \bletzten Endes\b
+  - \bim Endeffekt\b
+  - \bgrundsätzlich\b
+  - \bim Wesentlichen\b
+  - \bnormalerweise\b
+  - \bgewöhnlich\b
+  - \bin diesem Zusammenhang\b
+  - \bnichtsdestotrotz\b
+  - \bnichtsdestoweniger\b
+  - \binfolgedessen\b
+  - \bübrigens\b
+
+  # --- Vage Approximatoren (Schneider) ---
+  - \bziemlich\b
+  - \beinigermaßen\b
+  - \bweitgehend\b
+  - \bvergleichsweise\b
+  - \brelativ\b
+  - \bin etwa\b
+  - \bletzten Endes\b
+
+  # --- Relativierungswörter (Sick; Schneider) ---
+  - \bsogenannt\b
+  - sogenannte
+  - sogenannten
+  - \bsprichwörtlich\b
+  - \bim wahrsten Sinne des Wortes\b
+  - \bdie Problematik\b
+  - \bdie Thematik\b

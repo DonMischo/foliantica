@@ -10,7 +10,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "api"))
 
-os.environ.setdefault("LW_USE_SQLITE", "0")
 os.environ.setdefault("LW_PG_PORT",   "5433")
 os.environ.setdefault("LW_PG_USER",   "foliantica")
 os.environ.setdefault("LW_PG_PASS",   "foliantica")

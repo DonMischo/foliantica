@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 from typing import Optional, Any, Literal
-from pydantic import BaseModel, Field, model_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 
 
 # ── Projects ──────────────────────────────────────────────────────────────────
@@ -159,6 +159,7 @@ class SceneUpdate(BaseModel):
     pov_character_id: Optional[int] = None
     beat: Optional[str] = None
     scene_type: Optional[str] = None
+    card_color: Optional[str] = None
 
 
 class SceneOut(SceneBase):
@@ -175,6 +176,7 @@ class SceneOut(SceneBase):
     pov_character_id: Optional[int] = None
     beat: Optional[str] = None
     scene_type: Optional[str] = None
+    card_color: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -191,6 +193,35 @@ class SceneOut(SceneBase):
                 except Exception:
                     pass
         return data
+
+
+# ── Corkboard connections / ordering ─────────────────────────────────────────
+
+class SceneConnectionCreate(BaseModel):
+    source_scene_id: int
+    target_scene_id: int
+    connection_type: str = "reference"
+    label: Optional[str] = None
+
+
+class SceneConnectionOut(BaseModel):
+    id: int
+    project_id: int
+    source_scene_id: int
+    target_scene_id: int
+    connection_type: str
+    label: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+class GlobalOrderItem(BaseModel):
+    id: int
+    global_order: int
+
+
+class GlobalOrderRequest(BaseModel):
+    items: list[GlobalOrderItem]
 
 
 # ── Codex Entries ─────────────────────────────────────────────────────────────
@@ -357,18 +388,15 @@ class SceneCommandOut(BaseModel):
 
     model_config = {"from_attributes": True}
 
-    @model_validator(mode="before")
+    @field_validator("data", "scene_time", mode="before")
     @classmethod
-    def _parse_json(cls, data):
-        if hasattr(data, "__dict__"):
-            for field in ("data", "scene_time"):
-                raw = getattr(data, field, None)
-                if isinstance(raw, str):
-                    try:
-                        object.__setattr__(data, field, json.loads(raw))
-                    except Exception:
-                        pass
-        return data
+    def _parse_json(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except Exception:
+                pass
+        return v
 
 
 # ── Data directory ────────────────────────────────────────────────────────────
@@ -398,6 +426,13 @@ class SettingsUpdate(BaseModel):
     grammar_languages: Optional[list[str]] = None
     pandoc_enabled: Optional[bool] = None
     pandoc_url: Optional[str] = None
+    spacy_enabled: Optional[bool] = None
+    spacy_url: Optional[str] = None
+    calibre_mode: Optional[str] = None  # "off" | "system" | "docker"
+    calibre_url: Optional[str] = None
+    vale_mode: Optional[str] = None  # "off" | "system" | "docker"
+    vale_url: Optional[str] = None
+    vale_config_path: Optional[str] = None
     ai_disabled: Optional[bool] = None
     sync_mirror_enabled: Optional[bool] = None
     sync_local_dir: Optional[str] = None
@@ -422,6 +457,15 @@ class SettingsOut(BaseModel):
     grammar_languages: list[str]
     pandoc_enabled: bool
     pandoc_url: str
+    spacy_enabled: bool = False
+    spacy_url: str = "http://localhost:8083"
+    calibre_mode: str = "off"
+    calibre_enabled: bool = False  # derived: calibre_mode != "off"
+    calibre_url: str = "http://localhost:8084"
+    vale_mode: str = "off"
+    vale_enabled: bool = False  # derived: vale_mode != "off"
+    vale_url: str = "http://localhost:8085"
+    vale_config_path: Optional[str] = None
     ai_disabled: bool = False
     sync_mirror_enabled: bool = False
     sync_local_dir: Optional[str] = None
@@ -626,7 +670,7 @@ class TimelineEventOut(BaseModel):
 # ── Export ────────────────────────────────────────────────────────────────────
 
 class ExportOptions(BaseModel):
-    format: Literal["md", "tex", "epub-style", "pdf", "epub", "docx"] = "md"
+    format: Literal["md", "tex", "epub-style", "pdf", "epub", "docx", "mobi", "azw3", "epub-calibre"] = "md"
     # Content selection — None means "all"
     scene_ids: Optional[list[int]] = None   # None = all scenes
     # Structural headings
@@ -846,8 +890,12 @@ class ResearchItemOut(BaseModel):
         if hasattr(data, "__dict__"):
             raw = getattr(data, "tags", None)
             if isinstance(raw, str):
+                # Build a plain dict so Pydantic constructs from it — never mutate
+                # the ORM object directly (that corrupts the SQLAlchemy identity map).
+                d = {k: v for k, v in vars(data).items() if not k.startswith("_")}
                 try:
-                    object.__setattr__(data, "tags", json.loads(raw))
+                    d["tags"] = json.loads(raw)
                 except Exception:
-                    object.__setattr__(data, "tags", [])
+                    d["tags"] = []
+                return d
         return data

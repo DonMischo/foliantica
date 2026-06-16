@@ -1,0 +1,130 @@
+# Quellen / Sources:
+#   - Wolf Schneider: "Deutsch fürs Leben" (Rowohlt, 1994), Kap. "Amtssprache"
+#   - Wolf Schneider: "Deutsch! Das Handbuch für attraktives Schreiben" (Rowohlt, 2005)
+#   - Ludwig Reiners: "Stilkunst" (C.H. Beck, 1961), §§ "Blähworte und Streckformen"
+#   - Bastian Sick: "Der Dativ ist dem Genitiv sein Tod", Bd. 1-3 (Kiepenheuer & Witsch)
+#   - Bundesverwaltungsamt: "Leitfaden Bürgernahe Sprache" (2002)
+#   - Bundesministerium für Justiz: "Handbuch der Rechtsförmlichkeit" (3. Aufl. 2008)
+#   - Netzwerk Leichte Sprache: Regeln für Leichte Sprache (2013), www.leichte-sprache.org
+extends: substitution
+message: "'%s' → kürzer: '%s'"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Aufgeblähte Präpositionen (Bundesverwaltungsamt; Wolf Schneider) ---
+  im Hinblick auf: für
+  in Bezug auf: zu
+  hinsichtlich: wegen
+  bezüglich: zu
+  mit Hilfe von: mit
+  mithilfe von: mit
+  auf Grund von: wegen
+  aufgrund von: wegen
+  infolge von: wegen
+  im Rahmen von: bei
+  im Bereich von: in
+  in Anbetracht: angesichts
+  mit Rücksicht auf: wegen
+  unter Berücksichtigung von: bei
+  zum Zweck der: für die
+  in Ermangelung von: mangels
+  unter Umständen: möglicherweise
+  auf der Basis von: nach
+  im Zuge von: bei
+  unter Zuhilfenahme von: mit
+  im Sinne von: nach
+  auf die Nerven gehen: nerven
+
+  # --- Amtsdeutsch: aufgeblähte Präpositionalfügungen (Bundesverwaltungsamt; BMJ) ---
+  zum gegenwärtigen Zeitpunkt: jetzt
+  zum jetzigen Zeitpunkt: jetzt
+  im gegenwärtigen Moment: jetzt
+  in der aktuellen Situation: aktuell
+  unter den gegebenen Umständen: so
+  auf dem Gebiet von: in
+  auf der Ebene der: bei
+  auf Ebene von: bei
+  von Seiten: von
+  vonseiten der: von
+  seitens der: von
+  in Höhe von: über
+  in einem Ausmaß von: um
+  in der Lage sein zu: können
+  unter Aufwendung von: mit
+  unter Verwendung von: mit
+  an die Hand geben: geben
+  zu Rate ziehen: befragen
+  in Anlehnung an: nach
+  in Übereinstimmung mit: gemäß
+  im Widerspruch zu: gegen
+  im Einklang mit: gemäß
+  in Abhängigkeit von: je nach
+  in Verbindung mit: mit
+  in Ergänzung zu: ergänzend
+  mit Blick auf: für
+  mit Bezug auf: zu
+  unter Bezugnahme auf: zu
+  unter Beachtung: nach
+  nach Maßgabe: gemäß
+  nach Maßgabe des: nach
+  in seiner Eigenschaft als: als
+  in ihrer Eigenschaft als: als
+  in seiner Funktion als: als
+  in ihrer Funktion als: als
+  in Form von: als
+  in Gestalt von: als
+  mittels: durch
+  vermittels: durch
+
+  # --- Kausale Umschreibungen (Schneider; BMJ) ---
+  aufgrund der Tatsache dass: weil
+  angesichts der Tatsache dass: da
+  vor dem Hintergrund dass: da
+  in Anbetracht der Tatsache dass: da
+  mit dem Ziel dass: damit
+  auf Grund des Umstands dass: weil
+  im Hinblick auf die Tatsache dass: da
+  aus dem Grund weil: weil
+  der Grund hierfür liegt darin dass: weil
+  dies liegt daran dass: das liegt daran: denn
+
+  # --- Finalphrasen (Bundesverwaltungsamt; BMJ) ---
+  zum Zwecke der: für
+  zum Zwecke von: für
+  zwecks: für
+  im Interesse von: für
+  im Sinne einer: für eine
+  zugunsten von: für
+  zu Lasten von: auf Kosten von
+  auf dem Wege der: durch
+  via: über
+
+  # --- Vage Modalausdrücke (Schneider; Reiners) ---
+  es ist davon auszugehen dass: wahrscheinlich
+  es besteht die Möglichkeit dass: möglicherweise
+  zu dem Schluss kommen dass: schließen dass
+  es ist nicht auszuschließen dass: möglicherweise
+  es gilt zu beachten: bitte beachten
+  es gilt festzustellen: festzustellen ist
+  es muss berücksichtigt werden: zu berücksichtigen ist
+  es lässt sich sagen dass: man kann sagen:
+  es darf nicht vergessen werden: wichtig:
+
+  # --- Nominalgruppenaufblähungen (Schneider; Bundesverwaltungsamt) ---
+  die Tatsache dass: dass
+  der Umstand dass: dass
+  der Tatbestand dass: dass
+  ein hohes Maß an: viel
+  in vollem Umfang: vollständig
+  in hohem Maße: sehr
+  in zunehmendem Maße: zunehmend
+  in ausreichendem Maße: ausreichend
+  in erheblichem Maße: erheblich
+  in starkem Maße: stark
+  in beträchtlichem Maße: beträchtlich
+  in besonderem Maße: besonders
+
+  # --- "erfolgen" als Streckform (Schneider: "stets ersetzen") ---
+  findet statt: geschieht
+  kommt zur Anwendung: wird angewendet
+  gelangt zur Verteilung: wird verteilt

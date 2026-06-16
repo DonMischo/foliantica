@@ -105,22 +105,25 @@ async def update_research(item_id: int, data: ResearchItemUpdate, db: Session = 
     if not item:
         raise HTTPException(status_code=404, detail="Research item not found")
 
-    if data.title is not None:
+    fs = data.model_fields_set
+    if "title" in fs:
         item.title = data.title
-    if data.url is not None:
+    if "url" in fs and data.url is not None:
         item.url = data.url
         # Re-fetch metadata when URL changes
         url_meta = await _fetch_url_meta(data.url)
         item.url_title       = url_meta.get("url_title")
         item.url_description = url_meta.get("url_description")
         item.url_image       = url_meta.get("url_image")
-    if data.text_content is not None:
+    if "text_content" in fs:
         item.text_content = data.text_content
-    if data.linked_scene_id is not None:
+    # linked_scene_id / linked_codex_id use model_fields_set so callers can
+    # explicitly set null (unlink) — a plain None default would be ignored otherwise.
+    if "linked_scene_id" in fs:
         item.linked_scene_id = data.linked_scene_id
-    if data.linked_codex_id is not None:
+    if "linked_codex_id" in fs:
         item.linked_codex_id = data.linked_codex_id
-    if data.tags is not None:
+    if "tags" in fs and data.tags is not None:
         item.tags = json.dumps(data.tags)
 
     item.updated_at = _now()

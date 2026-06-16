@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, Fragment } from "react";
 import Link from "next/link";
-import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database, Users, Copy, Link2, ShieldCheck, ListChecks, ChevronDown } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database, Users, Copy, Link2, ShieldCheck, ListChecks, Info, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings, useUpdateSettings, useOpenRouterModels, usePrompts, useCreatePrompt, useUpdatePrompt, useDeletePrompt, useRevertPrompt, useServiceStatus, useSyncStatus } from "@/store/queries";
-import { dataDirApi, settingsApi, syncApi, pgConfigApi, collabApi, type PgConfig, type PgActive, type Invitation, type TeacherSession, type UPnPStatus, type CloudflareStatus } from "@/lib/api";
+import { dataDirApi, settingsApi, syncApi, pgConfigApi, collabApi, aiProvidersApi, valeApi, type PgConfig, type PgActive, type Invitation, type TeacherSession, type UPnPStatus, type CloudflareStatus, type AIProvider, type ValeRuleMeta, type ValeCustomRules } from "@/lib/api";
 import { AssignmentPicker } from "@/components/collab/AssignmentPicker";
 import QRCode from "react-qr-code";
 import { ACH_POPUPS_KEY } from "@/components/AchievementToast";
@@ -19,6 +20,17 @@ import { useTheme, THEMES, THEME_LABELS, THEME_PREVIEW } from "@/contexts/ThemeC
 import { LOCALE_NAMES, type Locale } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { AIPrompt } from "@/types";
+
+const PROVIDER_HINTS: Record<string, { title: string; steps: string[] }> = {
+  ollama: {
+    title: "Ollama is not running",
+    steps: [
+      "Start Ollama: run `ollama serve` in a terminal (or open the Ollama app).",
+      "Pull a model first: `ollama pull mistral` (or any other model).",
+      "Default port is 11434 — check your Base URL if you changed it.",
+    ],
+  },
+};
 
 const GRAMMAR_LANGUAGES = [
   { code: "en", label: "English" },
@@ -68,9 +80,10 @@ function ServiceStatusBadge({ label, status }: { label: string; status: "ok" | "
 }
 
 export default function SettingsPage() {
+  const router = useRouter();
   const { data: settings } = useSettings();
   const updateSettings = useUpdateSettings();
-  const { data: availableModels = [], isLoading: modelsLoading, refetch: refetchModels } = useOpenRouterModels();
+  const { data: availableModels = [], isLoading: modelsLoading, isError: modelsError, error: modelsErrorObj, refetch: refetchModels } = useOpenRouterModels();
   const { t, locale, setLocale } = useLanguage();
   const { theme, setTheme } = useTheme();
   const showParagraphNumbers    = useUIStore((s) => s.showParagraphNumbers);
@@ -97,15 +110,24 @@ export default function SettingsPage() {
   const deletePrompt  = useDeletePrompt();
   const revertPrompt  = useRevertPrompt();
 
-  const [apiKey, setApiKey]               = useState("");
-  const [apiKeyDirty, setApiKeyDirty]     = useState(false);
+  // ── AI Provider management ────────────────────────────────────────────────
+  const [providers,         setProviders]        = useState<AIProvider[]>([]);
+  const [providerTab,       setProviderTab]      = useState<"online" | "local">("online");
+  const [localReachability, setLocalReachability] = useState<Record<string, boolean | null>>({});
+  const didScan = useRef(false);
+  const [providerKeyDraft,  setProviderKeyDraft] = useState<Record<string, string>>({});
+  const [providerUrlDraft,  setProviderUrlDraft] = useState<Record<string, string>>({});
+  const [providerSaving,    setProviderSaving]   = useState<Record<string, boolean>>({});
+  const [providerSaveOk,    setProviderSaveOk]   = useState<Record<string, boolean>>({});
+
   const [defaultModel, setDefaultModel]                   = useState("anthropic/claude-3.5-sonnet");
   const [defaultChatModel, setDefaultChatModel]           = useState<string>("");
   const [defaultSynopsisModel, setDefaultSynopsisModel]   = useState<string>("");
   const [defaultCodexModel, setDefaultCodexModel]         = useState<string>("");
   const [enabledModels, setEnabledModels]       = useState<string[]>([]);
-  const [modelSearch, setModelSearch]     = useState("");
-  const [saved, setSaved]                 = useState(false);
+  const [modelSearch, setModelSearch]           = useState("");
+  const [customModelInput, setCustomModelInput] = useState("");
+  const [saved, setSaved]                       = useState(false);
 
   // ── Services ──────────────────────────────────────────────────────────────
   const [grammarEnabled, setGrammarEnabled]   = useState(false);
@@ -113,6 +135,37 @@ export default function SettingsPage() {
   const [grammarLanguages, setGrammarLanguages] = useState<string[]>(["en"]);
   const [pandocEnabled, setPandocEnabled]     = useState(false);
   const [pandocUrl, setPandocUrl]           = useState("http://localhost:8082");
+  const [spacyEnabled, setSpacyEnabled]     = useState(false);
+  const [spacyUrl, setSpacyUrl]             = useState("http://localhost:8083");
+  const [calibreMode, setCalibreMode]       = useState<"off" | "system" | "docker">("off");
+  const [calibreUrl, setCalibreUrl]         = useState("http://localhost:8084");
+  const [calibreDetecting, setCalibreDetecting] = useState(false);
+  const [calibreDetectResult, setCalibreDetectResult] = useState<{ system: boolean; docker: boolean } | null>(null);
+  const [calibreHelpOpen, setCalibreHelpOpen] = useState(false);
+  const [calibreHelpOs, setCalibreHelpOs] = useState<"windows" | "mac" | "linux">("windows");
+  const [valeMode, setValeMode]             = useState<"off" | "system" | "docker">("off");
+  const [valeUrl, setValeUrl]               = useState("http://localhost:8085");
+  const [valeConfigPath, setValeConfigPath] = useState("");
+  const [valeDetecting, setValeDetecting]   = useState(false);
+  const [valeDetectResult, setValeDetectResult] = useState<{ system: boolean; docker: boolean } | null>(null);
+  const [valeHelpOpen, setValeHelpOpen]     = useState(false);
+  const [valeSourcesOpen, setValeSourcesOpen] = useState(false);
+  const [valeDeLangOpen,  setValeDeLangOpen]  = useState(false);
+  const [valeEsLangOpen,  setValeEsLangOpen]  = useState(false);
+  const [valeFrLangOpen,  setValeFrLangOpen]  = useState(false);
+  const [valeItLangOpen,  setValeItLangOpen]  = useState(false);
+  const [valePtLangOpen,  setValePtLangOpen]  = useState(false);
+  const [valeNlLangOpen,  setValeNlLangOpen]  = useState(false);
+  const [valeSvLangOpen,  setValeSvLangOpen]  = useState(false);
+  const [valeDaLangOpen,  setValeDaLangOpen]  = useState(false);
+  const [valeNoLangOpen,  setValeNoLangOpen]  = useState(false);
+  const [valeHelpOs, setValeHelpOs]         = useState<"windows" | "mac" | "linux">("windows");
+  const [valeCustomOpen,   setValeCustomOpen]   = useState(false);
+  const [valeCustomLang,   setValeCustomLang]   = useState("de");
+  const [valeCustomRules,  setValeCustomRules]  = useState<ValeCustomRules>({});
+  const [valeRuleMeta,     setValeRuleMeta]     = useState<Record<string, ValeRuleMeta[]>>({});
+  const [valeCustomSaving, setValeCustomSaving] = useState(false);
+  const [valeCustomInputs, setValeCustomInputs] = useState<Record<string, string>>({});
   const [showServiceStatus, setShowServiceStatus] = useState(false);
   const { data: serviceStatus, isLoading: statusLoading, refetch: refetchStatus } =
     useServiceStatus(showServiceStatus);
@@ -132,6 +185,7 @@ export default function SettingsPage() {
   useEffect(() => {
     pgConfigApi.get().then(cfg => setPgCfg({ ...defaultPgCfg, ...cfg })).catch(() => {});
     pgConfigApi.getActive().then(setPgActive).catch(() => {});
+    aiProvidersApi.list().then(setProviders).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -464,6 +518,13 @@ export default function SettingsPage() {
       setGrammarLanguages(settings.grammar_languages ?? ["en"]);
       setPandocEnabled(settings.pandoc_enabled ?? false);
       setPandocUrl(settings.pandoc_url ?? "http://localhost:8082");
+      setSpacyEnabled(settings.spacy_enabled ?? false);
+      setSpacyUrl(settings.spacy_url ?? "http://localhost:8083");
+      setCalibreMode(settings.calibre_mode ?? "off");
+      setCalibreUrl(settings.calibre_url ?? "http://localhost:8084");
+      setValeMode(settings.vale_mode ?? "off");
+      setValeUrl(settings.vale_url ?? "http://localhost:8085");
+      setValeConfigPath(settings.vale_config_path ?? "");
       setAiDisabled(settings.ai_disabled ?? false);
       setSyncEnabled(settings.sync_mirror_enabled ?? false);
       setSyncLocalDir(settings.sync_local_dir ?? "");
@@ -489,10 +550,80 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSaveProvider = async (providerId: string) => {
+    setProviderSaving(prev => ({ ...prev, [providerId]: true }));
+    try {
+      const body: { api_key?: string; base_url?: string } = {};
+      if (providerKeyDraft[providerId] !== undefined) body.api_key = providerKeyDraft[providerId];
+      if (providerUrlDraft[providerId] !== undefined) body.base_url = providerUrlDraft[providerId];
+      await aiProvidersApi.save(providerId, body);
+      setProviderSaveOk(prev => ({ ...prev, [providerId]: true }));
+      setProviderKeyDraft(prev => { const n = { ...prev }; delete n[providerId]; return n; });
+      aiProvidersApi.list().then(updated => {
+        setProviders(updated);
+        const pdef = updated.find(p => p.id === providerId);
+        if (pdef?.is_local) scanLocalProviders(updated);
+      }).catch(() => {});
+      refetchModels();
+      setTimeout(() => setProviderSaveOk(prev => { const n = { ...prev }; delete n[providerId]; return n; }), 2500);
+    } finally {
+      setProviderSaving(prev => ({ ...prev, [providerId]: false }));
+    }
+  };
+
+  const handleSetActive = async (providerId: string) => {
+    await aiProvidersApi.setActive(providerId);
+    aiProvidersApi.list().then(setProviders).catch(() => {});
+    refetchModels();
+  };
+
+  const scanLocalProviders = (list = providers) => {
+    const localPs = list.filter(p => p.is_local);
+    if (localPs.length === 0) return;
+    setLocalReachability(Object.fromEntries(localPs.map(p => [p.id, null])));
+    localPs.forEach(p => {
+      aiProvidersApi.ping(p.id)
+        .then(r => setLocalReachability(prev => ({ ...prev, [p.id]: r.reachable })))
+        .catch(() => setLocalReachability(prev => ({ ...prev, [p.id]: false })));
+    });
+  };
+
+  // Scan when switching to local tab
+  useEffect(() => {
+    if (providerTab === "local") scanLocalProviders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providerTab]);
+
+  // Scan once on initial provider load if local tab is active
+  useEffect(() => {
+    if (providerTab === "local" && providers.length > 0 && !didScan.current) {
+      didScan.current = true;
+      scanLocalProviders(providers);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providers.length]);
+
   const toggleModel = (id: string) => {
-    setEnabledModels(prev =>
-      prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
-    );
+    setEnabledModels(prev => {
+      if (prev.includes(id)) return prev.filter(m => m !== id);
+      // Record which provider this model belongs to so routing works across providers
+      const activeProvider = providers.find(p => p.is_active);
+      if (activeProvider) {
+        aiProvidersApi.setModelProvider(id, activeProvider.id).catch(() => {});
+      }
+      return [...prev, id];
+    });
+  };
+
+  const addCustomModel = () => {
+    const id = customModelInput.trim();
+    if (!id || enabledModels.includes(id)) return;
+    const activeProvider = providers.find(p => p.is_active);
+    if (activeProvider) {
+      aiProvidersApi.setModelProvider(id, activeProvider.id).catch(() => {});
+    }
+    setEnabledModels(prev => [...prev, id]);
+    setCustomModelInput("");
   };
 
   const handleSave = async () => {
@@ -508,25 +639,36 @@ export default function SettingsPage() {
       grammar_languages: grammarLanguages,
       pandoc_enabled: pandocEnabled,
       pandoc_url: pandocUrl,
+      spacy_enabled: spacyEnabled,
+      spacy_url: spacyUrl,
+      calibre_mode: calibreMode,
+      calibre_url: calibreUrl,
+      vale_mode: valeMode,
+      vale_url: valeUrl,
+      vale_config_path: valeConfigPath || null,
     };
-    // Only include the key when the user has explicitly typed in the field.
-    // Guards against browser autofill silently populating a password field on load.
-    if (apiKeyDirty && apiKey) payload.openrouter_api_key = apiKey;
     await updateSettings.mutateAsync(payload);
-    setApiKey("");
-    setApiKeyDirty(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
-  // Models to show in the list: if API returned results use those, else show enabled_models already stored
-  const listModels = availableModels.length > 0 ? availableModels : enabledModels.map(id => ({ id, name: id }));
+  // All models from the active provider, plus any manually-enabled IDs that the provider
+  // didn't return (e.g. a Qwen model in AnythingLLM, or models from a previously active
+  // provider). This is the full browser list shown in the favourites picker.
+  const extraModels = enabledModels
+    .filter(id => !availableModels.some(m => m.id === id))
+    .map(id => ({ id, name: id }));
+  const listModels = availableModels.length > 0
+    ? [...availableModels, ...extraModels]
+    : enabledModels.map(id => ({ id, name: id }));
   const filteredModels = modelSearch
     ? listModels.filter(m => m.name.toLowerCase().includes(modelSearch.toLowerCase()) || m.id.toLowerCase().includes(modelSearch.toLowerCase()))
     : listModels;
 
-  // Default model dropdown: available models or just stored enabled ones
-  const defaultModelChoices = availableModels.length > 0 ? availableModels : listModels;
+  // Dropdowns only show favourited (enabled) models — local + online merged in one list.
+  // Falls back to the full provider list when nothing has been favourited yet.
+  const favouriteModels = listModels.filter(m => enabledModels.includes(m.id));
+  const defaultModelChoices = favouriteModels.length > 0 ? favouriteModels : listModels;
 
   // Restart the Python API then reload the UI.
   // In Electron: restart the API process first so the new data-dir is live,
@@ -570,12 +712,81 @@ export default function SettingsPage() {
     );
   }
 
+  // ── Vale custom rules helpers ─────────────────────────────────────────────
+
+  async function loadValeCustomRules() {
+    try {
+      const data = await valeApi.getCustomRules();
+      setValeCustomRules(data.rules ?? {});
+    } catch { /* ignore */ }
+  }
+
+  async function loadValeRuleMeta(lang: string) {
+    if (valeRuleMeta[lang]) return;
+    try {
+      const data = await valeApi.getRuleMeta(lang);
+      setValeRuleMeta(prev => ({ ...prev, [lang]: data.rules ?? [] }));
+    } catch { /* ignore */ }
+  }
+
+  async function saveValeCustom(rules: ValeCustomRules) {
+    setValeCustomSaving(true);
+    try { await valeApi.updateCustomRules(rules); } catch { /* ignore */ }
+    finally { setValeCustomSaving(false); }
+  }
+
+  function addExistenceEntry(lang: string, ruleName: string, token: string) {
+    const t = token.trim();
+    if (!t) return;
+    const prev = (valeCustomRules[lang]?.[ruleName] as string[] | undefined) ?? [];
+    if (prev.includes(t)) return;
+    const next: ValeCustomRules = {
+      ...valeCustomRules,
+      [lang]: { ...(valeCustomRules[lang] ?? {}), [ruleName]: [...prev, t] },
+    };
+    setValeCustomRules(next);
+    saveValeCustom(next);
+  }
+
+  function removeExistenceEntry(lang: string, ruleName: string, token: string) {
+    const prev = (valeCustomRules[lang]?.[ruleName] as string[] | undefined) ?? [];
+    const next: ValeCustomRules = {
+      ...valeCustomRules,
+      [lang]: { ...(valeCustomRules[lang] ?? {}), [ruleName]: prev.filter(e => e !== token) },
+    };
+    setValeCustomRules(next);
+    saveValeCustom(next);
+  }
+
+  function addSubstitutionEntry(lang: string, ruleName: string, original: string, replacement: string) {
+    const o = original.trim(), r = replacement.trim();
+    if (!o || !r) return;
+    const prev = (valeCustomRules[lang]?.[ruleName] as Record<string, string> | undefined) ?? {};
+    const next: ValeCustomRules = {
+      ...valeCustomRules,
+      [lang]: { ...(valeCustomRules[lang] ?? {}), [ruleName]: { ...prev, [o]: r } },
+    };
+    setValeCustomRules(next);
+    saveValeCustom(next);
+  }
+
+  function removeSubstitutionEntry(lang: string, ruleName: string, key: string) {
+    const prev = { ...((valeCustomRules[lang]?.[ruleName] as Record<string, string> | undefined) ?? {}) };
+    delete prev[key];
+    const next: ValeCustomRules = {
+      ...valeCustomRules,
+      [lang]: { ...(valeCustomRules[lang] ?? {}), [ruleName]: prev },
+    };
+    setValeCustomRules(next);
+    saveValeCustom(next);
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border px-6 py-4 flex items-center gap-3">
-        <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
+      <header className="sticky top-0 z-10 bg-background border-b border-border px-6 py-4 flex items-center gap-3">
+        <button onClick={() => router.back()} className="text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-4 w-4" />
-        </Link>
+        </button>
         <h1 className="text-lg font-semibold">{t("settings_title")}</h1>
       </header>
 
@@ -626,25 +837,138 @@ export default function SettingsPage() {
           )}
 
           {!aiDisabled && (<>
-          <div className="space-y-1.5">
-            <Label htmlFor="api-key" className="flex items-center gap-1.5">
-              <Key className="h-3.5 w-3.5" />
-              {t("settings_api_key")}
-            </Label>
-            <Input
-              id="api-key"
-              type="password"
-              placeholder={settings?.has_api_key ? "••••••••••••••••••••••••••••••" : "sk-or-..."}
-              value={apiKey}
-              onChange={(e) => { setApiKey(e.target.value); setApiKeyDirty(true); }}
-              autoComplete="new-password"
-            />
-            <p className="text-xs text-muted-foreground">
-              {t("settings_api_key_note")}{" "}
-              <a href="https://openrouter.ai/keys" target="_blank" rel="noopener" className="text-primary hover:underline">
-                Get a key →
-              </a>
+          {/* ── AI Provider selection ─────────────────────────────────────── */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-1.5">
+                <Cpu className="h-3.5 w-3.5" />
+                Provider
+              </Label>
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-md border border-border overflow-hidden text-xs">
+                  <button type="button"
+                    onClick={() => setProviderTab("online")}
+                    className={cn("px-2.5 py-1 transition-colors", providerTab === "online" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+                  >Online</button>
+                  <button type="button"
+                    onClick={() => setProviderTab("local")}
+                    className={cn("px-2.5 py-1 transition-colors border-l border-border", providerTab === "local" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+                  >Local</button>
+                </div>
+                {providerTab === "local" && (
+                  <button type="button" onClick={() => scanLocalProviders()}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    title="Re-scan local providers"
+                  >
+                    <RefreshCw className={cn("h-3.5 w-3.5",
+                      Object.values(localReachability).some(v => v === null) && "animate-spin"
+                    )} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <p className="text-[11px] text-muted-foreground/70 flex items-center gap-1">
+              <Key className="h-3 w-3 shrink-0" />
+              API keys are encrypted with a machine-local key and won&apos;t be usable after syncing to another device. Re-enter them there.
             </p>
+
+            <div className="rounded-lg border border-border overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-secondary/20">
+                    <th className="w-8 px-3 py-2" />
+                    <th className="text-left px-3 py-2 text-[11px] font-medium text-muted-foreground">Provider</th>
+                    <th className="text-left px-3 py-2 text-[11px] font-medium text-muted-foreground">
+                      {providerTab === "online" ? "API Key" : "Base URL"}
+                    </th>
+                    <th className="px-3 py-2 text-[11px] font-medium text-muted-foreground text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {providers.filter(p => p.is_local === (providerTab === "local")).map(p => (
+                    <Fragment key={p.id}>
+                    <tr className={cn(p.is_active && "bg-primary/[0.04]")}>
+                      <td className="px-3 py-3">
+                        {p.is_local ? (
+                          localReachability[p.id] === null
+                            ? <Loader2 className="h-2.5 w-2.5 animate-spin text-muted-foreground/40 mx-auto" />
+                            : <span className={cn("h-2 w-2 rounded-full block mx-auto", localReachability[p.id] ? "bg-emerald-500" : "bg-red-500")} />
+                        ) : (
+                          <span className={cn("h-2 w-2 rounded-full block mx-auto", p.configured ? "bg-emerald-500" : "bg-muted-foreground/20")} />
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-medium">{p.name}</span>
+                          {p.is_active && (
+                            <span className="text-[9px] px-1 py-0.5 bg-primary/15 text-primary rounded font-semibold uppercase tracking-wide">Active</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 w-full">
+                        {p.requires_key && (
+                          <Input
+                            type="password"
+                            placeholder={p.configured ? "••••••••" : "Enter API key…"}
+                            value={providerKeyDraft[p.id] ?? ""}
+                            onChange={e => setProviderKeyDraft(prev => ({ ...prev, [p.id]: e.target.value }))}
+                            autoComplete="new-password"
+                            className="h-7 text-xs max-w-sm"
+                          />
+                        )}
+                        {p.is_local && (
+                          <Input
+                            type="text"
+                            placeholder={p.default_base_url ?? ""}
+                            value={providerUrlDraft[p.id] ?? (p.base_url ?? "")}
+                            onChange={e => setProviderUrlDraft(prev => ({ ...prev, [p.id]: e.target.value }))}
+                            className="h-7 text-xs font-mono max-w-sm"
+                          />
+                        )}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {providerSaveOk[p.id] && (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                          )}
+                          {!p.is_active && (
+                            <Button size="sm" variant="ghost" className="h-6 text-[11px] px-2"
+                              onClick={() => handleSetActive(p.id)}
+                            >Set active</Button>
+                          )}
+                          <Button size="sm" variant="outline" className="h-6 text-[11px] px-2.5"
+                            disabled={providerSaving[p.id]}
+                            onClick={() => handleSaveProvider(p.id)}
+                          >
+                            {providerSaving[p.id] ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                    {p.is_local && localReachability[p.id] === false && PROVIDER_HINTS[p.id] && (
+                      <tr className="bg-amber-50/60 dark:bg-amber-950/25">
+                        <td />
+                        <td colSpan={3} className="px-3 py-2.5">
+                          <p className="text-[11px] font-medium text-amber-700 dark:text-amber-400 mb-1">
+                            {PROVIDER_HINTS[p.id].title}
+                          </p>
+                          <ul className="space-y-0.5">
+                            {PROVIDER_HINTS[p.id].steps.map((step, i) => (
+                              <li key={i} className="text-[11px] text-amber-700/80 dark:text-amber-400/80 flex items-start gap-1.5">
+                                <span className="shrink-0 mt-0.5">·</span>
+                                <span>{step}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Default model */}
@@ -726,7 +1050,7 @@ export default function SettingsPage() {
           {/* Available models (checkbox list for /ki command) */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label>Models available in /ki command</Label>
+              <Label>Favourite models</Label>
               <button
                 type="button"
                 onClick={() => refetchModels()}
@@ -737,11 +1061,15 @@ export default function SettingsPage() {
               </button>
             </div>
 
-            {!settings?.has_api_key && (
-              <p className="text-xs text-muted-foreground">Add an API key to load available models.</p>
+            <p className="text-xs text-muted-foreground">
+              Checked models appear in the default model dropdowns and the /ki command. Mix local and online models freely.
+            </p>
+
+            {!providers.some(p => p.is_active && p.configured) && (
+              <p className="text-xs text-muted-foreground">Configure and activate a provider to load models.</p>
             )}
 
-            {settings?.has_api_key && (
+            {providers.some(p => p.is_active && p.configured) && (
               <>
                 <Input
                   className="h-7 text-xs max-w-xs"
@@ -750,11 +1078,17 @@ export default function SettingsPage() {
                   onChange={e => setModelSearch(e.target.value)}
                 />
 
+                {modelsError && (
+                  <div className="flex items-start gap-2 rounded-md border border-amber-400/40 bg-amber-50 dark:bg-amber-950/30 px-3 py-2.5 text-xs text-amber-800 dark:text-amber-300">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                    <span>{(modelsErrorObj as Error)?.message?.replace(/^\d+:\s*/, "").replace(/^"|"$/g, "") || "Could not reach the provider. Make sure the service is running."}</span>
+                  </div>
+                )}
                 {modelsLoading ? (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading models…
                   </div>
-                ) : filteredModels.length === 0 ? (
+                ) : !modelsError && filteredModels.length === 0 ? (
                   <p className="text-xs text-muted-foreground py-2">No models found.</p>
                 ) : (
                   <div className="border border-border rounded-lg overflow-hidden max-h-72 overflow-y-auto divide-y divide-border/50">
@@ -778,9 +1112,26 @@ export default function SettingsPage() {
                   </div>
                 )}
 
+                {/* Manual model ID entry — for models not returned by the provider's /models endpoint */}
+                <div className="flex gap-2 items-center pt-0.5">
+                  <Input
+                    className="h-7 text-xs flex-1 max-w-xs font-mono"
+                    placeholder="Add model ID manually…"
+                    value={customModelInput}
+                    onChange={e => setCustomModelInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustomModel(); } }}
+                  />
+                  <Button size="sm" variant="outline" className="h-7 text-xs px-2.5 shrink-0"
+                    onClick={addCustomModel}
+                    disabled={!customModelInput.trim() || enabledModels.includes(customModelInput.trim())}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />Add
+                  </Button>
+                </div>
+
                 {enabledModels.length > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    {enabledModels.length} model{enabledModels.length !== 1 ? "s" : ""} enabled
+                    {enabledModels.length} model{enabledModels.length !== 1 ? "s" : ""} favourited — used in all dropdowns
                   </p>
                 )}
               </>
@@ -1328,7 +1679,7 @@ export default function SettingsPage() {
             </button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Optional Docker-based services for grammar checking and PDF/EPUB export.
+            Optional Docker-based services for grammar checking, PDF/EPUB export, and NLP-enhanced codex analysis.
             Enable the ones you want, then click <strong className="text-foreground font-medium">Start Services</strong>.
           </p>
 
@@ -1427,6 +1778,742 @@ export default function SettingsPage() {
                 />
               </div>
             )}
+          </div>
+
+          {/* spaCy NLP */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Codex Analysis (spaCy)</p>
+                <p className="text-xs text-muted-foreground">Token-aware mention scanning — more accurate than plain text search, handles aliases and word boundaries</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={spacyEnabled}
+                onClick={() => setSpacyEnabled(v => !v)}
+                className={cn(
+                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                  spacyEnabled ? "bg-primary" : "bg-input"
+                )}
+              >
+                <span className={cn(
+                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
+                  spacyEnabled ? "translate-x-4" : "translate-x-0"
+                )} />
+              </button>
+            </div>
+            {spacyEnabled && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Service URL</Label>
+                <Input
+                  value={spacyUrl}
+                  onChange={e => setSpacyUrl(e.target.value)}
+                  placeholder="http://localhost:8083"
+                  className="h-8 text-xs font-mono"
+                />
+                <p className="text-[11px] text-muted-foreground">Falls back to built-in text search if the service is unreachable.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Calibre (EPUB / MOBI / AZW3) */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Calibre Export</p>
+                <p className="text-xs text-muted-foreground">EPUB, MOBI, AZW3 via Calibre</p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setCalibreDetecting(true);
+                    setCalibreDetectResult(null);
+                    try {
+                      const result = await settingsApi.detectCalibre();
+                      setCalibreDetectResult(result);
+                      if (result.system) setCalibreMode("system");
+                      else if (result.docker) setCalibreMode("docker");
+                    } catch { /* ignore */ } finally {
+                      setCalibreDetecting(false);
+                    }
+                  }}
+                  disabled={calibreDetecting}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2.5 py-1 rounded border border-border hover:border-primary/50 transition-colors disabled:opacity-50"
+                >
+                  {calibreDetecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                  Auto-detect
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCalibreHelpOpen(true)}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  title="Setup instructions"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {(["off", "system", "docker"] as const).map(mode => (
+                <label key={mode} className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="calibre-mode"
+                    value={mode}
+                    checked={calibreMode === mode}
+                    onChange={() => setCalibreMode(mode)}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">
+                    {mode === "off"    && "Off"}
+                    {mode === "system" && "System install"}
+                    {mode === "docker" && "Docker container"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {mode === "system" && "ebook-convert on PATH"}
+                    {mode === "docker" && "sidecar service"}
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            {calibreMode === "docker" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Service URL</Label>
+                <Input
+                  value={calibreUrl}
+                  onChange={e => setCalibreUrl(e.target.value)}
+                  placeholder="http://localhost:8084"
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+            )}
+
+            {calibreDetectResult && (
+              <p className="text-xs text-muted-foreground">
+                System: {calibreDetectResult.system ? "✓ ebook-convert found" : "✗ not found"}
+                {" · "}
+                Docker: {calibreDetectResult.docker ? "✓ service responding" : "✗ not responding"}
+              </p>
+            )}
+          </div>
+
+          {/* Vale prose linter */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Vale</p>
+                <p className="text-xs text-muted-foreground">Prose style linter — checks writing rules, vocabulary, and custom styles</p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setValeDetecting(true);
+                    setValeDetectResult(null);
+                    try {
+                      const result = await settingsApi.detectVale();
+                      setValeDetectResult(result);
+                      if (result.system) setValeMode("system");
+                      else if (result.docker) setValeMode("docker");
+                    } catch { /* ignore */ } finally {
+                      setValeDetecting(false);
+                    }
+                  }}
+                  disabled={valeDetecting}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2.5 py-1 rounded border border-border hover:border-primary/50 transition-colors disabled:opacity-50"
+                >
+                  {valeDetecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                  Auto-detect
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setValeHelpOpen(true)}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  title="Setup instructions & config help"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {(["off", "system", "docker"] as const).map(mode => (
+                <label key={mode} className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="vale-mode"
+                    value={mode}
+                    checked={valeMode === mode}
+                    onChange={() => setValeMode(mode)}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">
+                    {mode === "off"    && "Off"}
+                    {mode === "system" && "System install"}
+                    {mode === "docker" && "Docker container"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {mode === "system" && "vale on PATH"}
+                    {mode === "docker" && "sidecar service"}
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            {valeMode === "system" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Config file path <span className="text-muted-foreground font-normal">(optional — path to your .vale.ini)</span></Label>
+                <Input
+                  value={valeConfigPath}
+                  onChange={e => setValeConfigPath(e.target.value)}
+                  placeholder="e.g. C:\Users\you\vale\.vale.ini or ~/.vale.ini"
+                  className="h-8 text-xs font-mono"
+                />
+                <p className="text-[11px] text-muted-foreground">Leave blank to let Vale find its config automatically (checks current dir, home dir, etc.).</p>
+              </div>
+            )}
+
+            {valeMode === "docker" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Service URL</Label>
+                <Input
+                  value={valeUrl}
+                  onChange={e => setValeUrl(e.target.value)}
+                  placeholder="http://localhost:8085"
+                  className="h-8 text-xs font-mono"
+                />
+                <p className="text-[11px] text-muted-foreground">Docker sidecar uses Vale's built-in style only. Mount a config volume for custom styles.</p>
+              </div>
+            )}
+
+            {valeDetectResult && (
+              <p className="text-xs text-muted-foreground">
+                System: {valeDetectResult.system ? "✓ vale found" : "✗ not found"}
+                {" · "}
+                Docker: {valeDetectResult.docker ? "✓ service responding" : "✗ not responding"}
+              </p>
+            )}
+
+            {/* Custom rule entries */}
+            <div className="border border-border/60 rounded-md overflow-hidden">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!valeCustomOpen) {
+                    await Promise.all([loadValeCustomRules(), loadValeRuleMeta(valeCustomLang)]);
+                  }
+                  setValeCustomOpen(o => !o);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+              >
+                <Sparkles className="h-3.5 w-3.5 shrink-0 text-violet-400" />
+                <span className="flex-1 text-left">Your custom rules</span>
+                {valeCustomSaving && <Loader2 className="h-3 w-3 animate-spin" />}
+                {valeCustomOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </button>
+              {valeCustomOpen && (
+                <div className="px-3 pb-3 pt-2 space-y-3 border-t border-border/60 bg-muted/20">
+                  <p className="text-[11px] text-muted-foreground">Add words or phrases to any rule category. Your entries are checked alongside the built-in rules.</p>
+
+                  {/* Language tabs */}
+                  <div className="flex flex-wrap gap-1">
+                    {([
+                      { code: "de", label: "Deutsch" },
+                      { code: "es", label: "Español" },
+                      { code: "fr", label: "Français" },
+                      { code: "it", label: "Italiano" },
+                      { code: "pt", label: "Português" },
+                      { code: "nl", label: "Nederlands" },
+                      { code: "sv", label: "Svenska" },
+                      { code: "da", label: "Dansk" },
+                      { code: "no", label: "Norsk" },
+                    ] as const).map(({ code, label }) => (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={async () => {
+                          setValeCustomLang(code);
+                          await loadValeRuleMeta(code);
+                        }}
+                        className={cn(
+                          "text-[11px] px-2 py-0.5 rounded border transition-colors",
+                          valeCustomLang === code
+                            ? "border-primary/50 bg-primary/10 text-foreground"
+                            : "border-border text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Rule rows */}
+                  <div className="space-y-4">
+                    {(valeRuleMeta[valeCustomLang] ?? []).length === 0 && (
+                      <p className="text-[11px] text-muted-foreground italic">Loading…</p>
+                    )}
+                    {(valeRuleMeta[valeCustomLang] ?? []).map(rule => {
+                      const ik  = `${valeCustomLang}:${rule.name}`;
+                      const ikB = `${ik}:b`;
+                      const tokens = rule.type === "existence"
+                        ? ((valeCustomRules[valeCustomLang]?.[rule.name] as string[] | undefined) ?? [])
+                        : [];
+                      const pairs = rule.type === "substitution"
+                        ? ((valeCustomRules[valeCustomLang]?.[rule.name] as Record<string, string> | undefined) ?? {})
+                        : {};
+
+                      return (
+                        <div key={rule.name} className="space-y-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] font-medium text-foreground/80">{rule.name}</span>
+                            <span className="text-[9px] px-1 rounded border border-border/60 text-muted-foreground uppercase tracking-wide">
+                              {rule.type === "existence" ? "words" : "pairs"}
+                            </span>
+                          </div>
+
+                          {rule.type === "existence" ? (
+                            <div className="space-y-1.5">
+                              {tokens.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {tokens.map(tok => (
+                                    <span key={tok} className="inline-flex items-center gap-0.5 text-[11px] bg-muted/60 border border-border/60 rounded px-1.5 py-0.5">
+                                      {tok}
+                                      <button
+                                        type="button"
+                                        onClick={() => removeExistenceEntry(valeCustomLang, rule.name, tok)}
+                                        className="text-muted-foreground hover:text-foreground transition-colors ml-0.5"
+                                      >
+                                        <X className="h-2.5 w-2.5" />
+                                      </button>
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              <div className="flex gap-1">
+                                <input
+                                  type="text"
+                                  value={valeCustomInputs[ik] ?? ""}
+                                  onChange={e => setValeCustomInputs(p => ({ ...p, [ik]: e.target.value }))}
+                                  onKeyDown={e => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      addExistenceEntry(valeCustomLang, rule.name, valeCustomInputs[ik] ?? "");
+                                      setValeCustomInputs(p => ({ ...p, [ik]: "" }));
+                                    }
+                                  }}
+                                  placeholder="Add word or phrase…"
+                                  className="flex-1 h-7 text-[11px] bg-background border border-border rounded px-2 focus:outline-none focus:border-primary/50"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    addExistenceEntry(valeCustomLang, rule.name, valeCustomInputs[ik] ?? "");
+                                    setValeCustomInputs(p => ({ ...p, [ik]: "" }));
+                                  }}
+                                  className="text-[11px] px-2 h-7 rounded border border-border hover:border-primary/50 text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  Add
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {Object.entries(pairs).length > 0 && (
+                                <div className="space-y-1">
+                                  {Object.entries(pairs).map(([orig, repl]) => (
+                                    <div key={orig} className="flex items-center gap-1 text-[11px]">
+                                      <span className="bg-muted/60 border border-border/60 rounded px-1.5 py-0.5 font-mono">{orig}</span>
+                                      <span className="text-muted-foreground">→</span>
+                                      <span className="bg-muted/60 border border-border/60 rounded px-1.5 py-0.5 font-mono">{repl}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => removeSubstitutionEntry(valeCustomLang, rule.name, orig)}
+                                        className="text-muted-foreground hover:text-foreground transition-colors ml-1"
+                                      >
+                                        <X className="h-2.5 w-2.5" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <div className="flex gap-1 items-center">
+                                <input
+                                  type="text"
+                                  value={valeCustomInputs[ik] ?? ""}
+                                  onChange={e => setValeCustomInputs(p => ({ ...p, [ik]: e.target.value }))}
+                                  placeholder="Original…"
+                                  className="flex-1 h-7 text-[11px] bg-background border border-border rounded px-2 focus:outline-none focus:border-primary/50 font-mono"
+                                />
+                                <span className="text-muted-foreground text-[11px]">→</span>
+                                <input
+                                  type="text"
+                                  value={valeCustomInputs[ikB] ?? ""}
+                                  onChange={e => setValeCustomInputs(p => ({ ...p, [ikB]: e.target.value }))}
+                                  onKeyDown={e => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      addSubstitutionEntry(valeCustomLang, rule.name, valeCustomInputs[ik] ?? "", valeCustomInputs[ikB] ?? "");
+                                      setValeCustomInputs(p => ({ ...p, [ik]: "", [ikB]: "" }));
+                                    }
+                                  }}
+                                  placeholder="Replacement…"
+                                  className="flex-1 h-7 text-[11px] bg-background border border-border rounded px-2 focus:outline-none focus:border-primary/50 font-mono"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    addSubstitutionEntry(valeCustomLang, rule.name, valeCustomInputs[ik] ?? "", valeCustomInputs[ikB] ?? "");
+                                    setValeCustomInputs(p => ({ ...p, [ik]: "", [ikB]: "" }));
+                                  }}
+                                  className="text-[11px] px-2 h-7 rounded border border-border hover:border-primary/50 text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  Add
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Built-in style rule sources */}
+            <div className="border border-border/60 rounded-md overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setValeSourcesOpen(o => !o)}
+                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+              >
+                <Info className="h-3.5 w-3.5 shrink-0 text-blue-400" />
+                <span className="flex-1 text-left">Built-in Foliantica style rules — sources &amp; attribution</span>
+                {valeSourcesOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </button>
+              {valeSourcesOpen && (
+                <div className="px-3 pb-3 pt-1 space-y-2 border-t border-border/60 bg-muted/20">
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Foliantica bundles prose style rules for German, Spanish, French, Italian, Portuguese, Dutch, Swedish, Danish, and Norwegian, derived from the following authoritative sources:
+                  </p>
+
+                  {/* German sources */}
+                  <button
+                    type="button"
+                    onClick={() => setValeDeLangOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 hover:text-muted-foreground pt-1 transition-colors"
+                  >
+                    {valeDeLangOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronDown className="h-3 w-3 -rotate-90" />}
+                    Deutsch
+                  </button>
+                  {valeDeLangOpen && (
+                    <ul className="space-y-1.5 text-[11px]">
+                      {[
+                        { author: "Wolf Schneider", work: "Deutsch fürs Leben", year: "1994", note: "WeaselWords, NominalStyle, WordyPhrases" },
+                        { author: "Bastian Sick", work: "Der Dativ ist dem Genitiv sein Tod (Zwiebelfisch, Der Spiegel)", year: "2004–", note: "Redundancy, WeaselWords" },
+                        { author: "Ludwig Reiners", work: "Stilkunst", year: "1944 / rev. 1991", note: "NominalStyle (Funktionsverbgefüge)" },
+                        { author: "Bundesverwaltungsamt", work: "Leitfaden Bürgernahe Sprache / Handbuch für Leichte Sprache", year: "2002 / 2022", note: "WordyPhrases, Passive, NominalStyle" },
+                        { author: "Duden", work: "Richtiges und gutes Deutsch (Bd. 9) / Stilwörterbuch (Bd. 2)", year: "9. Aufl. 2010", note: "Redundancy, FalscheFreunde" },
+                        { author: "Wikipedia", work: "Liste der Pleonasmen (de.wikipedia.org/wiki/Pleonasmus)", year: "", note: "Redundancy" },
+                        { author: "Gesellschaft für deutsche Sprache (GfdS)", work: "Wörter des Jahres / Anglizismen-Empfehlungen", year: "laufend", note: "Anglizismen, Buzzwords" },
+                        { author: "Verein Deutsche Sprache (VDS)", work: "Anglizismen-Index", year: "laufend", note: "Anglizismen" },
+                        { author: "Unwort des Jahres (Sprachkritik-Jury)", work: "Unwörter & Modewörter", year: "seit 1991", note: "Buzzwords" },
+                        { author: "Institut für Deutsche Sprache (IDS)", work: "Grammis-Datenbank — Funktionsverbgefüge", year: "", note: "NominalStyle" },
+                      ].map(({ author, work, year, note }) => (
+                        <li key={author} className="flex gap-2">
+                          <span className="text-muted-foreground shrink-0">·</span>
+                          <span>
+                            <span className="font-medium text-foreground/80">{author}</span>
+                            {" – "}
+                            <span className="italic">{work}</span>
+                            {year && <span className="text-muted-foreground"> ({year})</span>}
+                            <span className="text-muted-foreground"> — {note}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Spanish sources */}
+                  <button
+                    type="button"
+                    onClick={() => setValeEsLangOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 hover:text-muted-foreground pt-1 transition-colors"
+                  >
+                    {valeEsLangOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronDown className="h-3 w-3 -rotate-90" />}
+                    Español
+                  </button>
+                  {valeEsLangOpen && (
+                    <ul className="space-y-1.5 text-[11px]">
+                      {[
+                        { author: "Álex Grijelmo", work: "El estilo del periodista / Defensa apasionada del idioma español", year: "1997 / 1998", note: "WeaselWords, NominalStyle, WordyPhrases, Redundancy, Anglicismos" },
+                        { author: "Fernando Lázaro Carreter", work: "El dardo en la palabra", year: "1997", note: "WeaselWords, NominalStyle, ErroresComunes, Redundancy" },
+                        { author: "Fundación del Español Urgente (FundéU)", work: "fundeu.es — recomendaciones de estilo", year: "en curso", note: "todos los módulos" },
+                        { author: "Real Academia Española (RAE)", work: "Diccionario panhispánico de dudas (DPD)", year: "2005", note: "Redundancy, ErroresComunes, WeaselWords" },
+                        { author: "RAE / ASALE", work: "Nueva gramática de la lengua española", year: "2009", note: "Passive, ErroresComunes" },
+                        { author: "Manuel Seco", work: "Diccionario de dudas y dificultades de la lengua española", year: "1998", note: "ErroresComunes, Redundancy" },
+                        { author: "Libro de estilo de El País", work: "Ediciones El País", year: "2014", note: "WeaselWords, WordyPhrases, NominalStyle" },
+                        { author: "José Martínez de Sousa", work: "Manual de estilo de la lengua española", year: "2000", note: "NominalStyle, WordyPhrases" },
+                        { author: "Grijelmo", work: "La seducción de las palabras", year: "2000", note: "Buzzwords" },
+                      ].map(({ author, work, year, note }) => (
+                        <li key={author} className="flex gap-2">
+                          <span className="text-muted-foreground shrink-0">·</span>
+                          <span>
+                            <span className="font-medium text-foreground/80">{author}</span>
+                            {" – "}
+                            <span className="italic">{work}</span>
+                            {year && <span className="text-muted-foreground"> ({year})</span>}
+                            <span className="text-muted-foreground"> — {note}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* French sources */}
+                  <button
+                    type="button"
+                    onClick={() => setValeFrLangOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 hover:text-muted-foreground pt-1 transition-colors"
+                  >
+                    {valeFrLangOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronDown className="h-3 w-3 -rotate-90" />}
+                    Français
+                  </button>
+                  {valeFrLangOpen && (
+                    <ul className="space-y-1.5 text-[11px]">
+                      {[
+                        { author: "Maurice Grevisse / André Goosse", work: "Le Bon Usage", year: "15e éd. 2011", note: "tous les modules" },
+                        { author: "Jean Girodet", work: "Dictionnaire des pièges et difficultés de la langue française", year: "1988", note: "WeaselWords, NominalStyle, WordyPhrases, Redundancy, FauxAmis" },
+                        { author: "Académie française", work: "recommandations officielles + mises en garde contre les anglicismes", year: "en cours", note: "Anglicismes, FauxAmis, Buzzwords" },
+                        { author: "Commission générale de terminologie et de néologie", work: "enrichissement de la langue française (Journal officiel)", year: "en cours", note: "Anglicismes, NominalStyle, WordyPhrases" },
+                        { author: "FranceTerme", work: "france-terme.culture.fr — termes officiels recommandés", year: "en cours", note: "Anglicismes" },
+                        { author: "Office québécois de la langue française (OQLF)", work: "Grand dictionnaire terminologique", year: "en cours", note: "Anglicismes, Redundancy, WeaselWords" },
+                      ].map(({ author, work, year, note }) => (
+                        <li key={author} className="flex gap-2">
+                          <span className="text-muted-foreground shrink-0">·</span>
+                          <span>
+                            <span className="font-medium text-foreground/80">{author}</span>
+                            {" – "}
+                            <span className="italic">{work}</span>
+                            {year && <span className="text-muted-foreground"> ({year})</span>}
+                            <span className="text-muted-foreground"> — {note}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Italian sources */}
+                  <button
+                    type="button"
+                    onClick={() => setValeItLangOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 hover:text-muted-foreground pt-1 transition-colors"
+                  >
+                    {valeItLangOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronDown className="h-3 w-3 -rotate-90" />}
+                    Italiano
+                  </button>
+                  {valeItLangOpen && (
+                    <ul className="space-y-1.5 text-[11px]">
+                      {[
+                        { author: "Luca Serianni", work: "Italiano (Garzanti) / Guida all'italiano (BUR)", year: "1988 / 2007", note: "tutti i moduli" },
+                        { author: "Accademia della Crusca", work: "consulenze linguistiche — accademicadellacrusca.it", year: "in corso", note: "Anglicismi, FalsiAmici, Buzzwords, Redundancy" },
+                        { author: "Tullio De Mauro", work: "Grande dizionario italiano dell'uso (GRADIT, UTET)", year: "1999", note: "WeaselWords, Redundancy, Anglicismi, FalsiAmici" },
+                        { author: "Maurizio Piemontese", work: "Manuale di stile (Presidenza del Consiglio dei Ministri)", year: "1997", note: "WordyPhrases, NominalStyle, Passive, WeaselWords" },
+                        { author: "Italo Calvino", work: "L'antilingua (Il Giorno)", year: "1965", note: "NominalStyle, WordyPhrases, Buzzwords, WeaselWords" },
+                        { author: "Valeria Della Valle / Giuseppe Patota", work: "Viva l'italiano! (Sperling & Kupfer)", year: "2009", note: "Redundancy, Anglicismi, FalsiAmici" },
+                        { author: "Beppe Severgnini", work: "L'italiano: lezioni semiserie (Rizzoli)", year: "2007", note: "Anglicismi, Buzzwords" },
+                      ].map(({ author, work, year, note }) => (
+                        <li key={author} className="flex gap-2">
+                          <span className="text-muted-foreground shrink-0">·</span>
+                          <span>
+                            <span className="font-medium text-foreground/80">{author}</span>
+                            {" – "}
+                            <span className="italic">{work}</span>
+                            {year && <span className="text-muted-foreground"> ({year})</span>}
+                            <span className="text-muted-foreground"> — {note}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Portuguese sources */}
+                  <button
+                    type="button"
+                    onClick={() => setValePtLangOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 hover:text-muted-foreground pt-1 transition-colors"
+                  >
+                    {valePtLangOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronDown className="h-3 w-3 -rotate-90" />}
+                    Português
+                  </button>
+                  {valePtLangOpen && (
+                    <ul className="space-y-1.5 text-[11px]">
+                      {[
+                        { author: "Celso Cunha / Lindley Cintra", work: "Nova Gramática do Português Contemporâneo (João Sá da Costa)", year: "1984/2014", note: "todos os módulos" },
+                        { author: "Cláudio Moreno", work: "Guia Prático de Estilo (L&PM)", year: "2009", note: "WeaselWords, WordyPhrases, NominalStyle, Estrangeirismos, Buzzwords" },
+                        { author: "Eduardo Martins", work: "Manual de Redação e Estilo de O Estado de S. Paulo", year: "1997", note: "WeaselWords, Redundancy, Estrangeirismos, Buzzwords" },
+                        { author: "Academia Brasileira de Letras (ABL)", work: "Vocabulário Ortográfico da Língua Portuguesa (VOLP) — volp.academia.org.br", year: "em curso", note: "Estrangeirismos, FalsosAmigos, Redundancy" },
+                        { author: "Academia das Ciências de Lisboa (ACL)", work: "Vocabulário Ortográfico do Português — academia.pt", year: "em curso", note: "Estrangeirismos, FalsosAmigos" },
+                        { author: "Vocabulário Ortográfico Comum (VOC)", work: "Acordo Ortográfico 2009 — vocabulario.cplp.org", year: "2009 / em curso", note: "Estrangeirismos, WeaselWords" },
+                        { author: "José Luís Nunes Moura", work: "Escrever em Português (Presença)", year: "2009", note: "WordyPhrases, NominalStyle, FalsosAmigos" },
+                      ].map(({ author, work, year, note }) => (
+                        <li key={author} className="flex gap-2">
+                          <span className="text-muted-foreground shrink-0">·</span>
+                          <span>
+                            <span className="font-medium text-foreground/80">{author}</span>
+                            {" – "}
+                            <span className="italic">{work}</span>
+                            {year && <span className="text-muted-foreground"> ({year})</span>}
+                            <span className="text-muted-foreground"> — {note}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Nederlands */}
+                  <button
+                    type="button"
+                    onClick={() => setValeNlLangOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 hover:text-muted-foreground pt-1 transition-colors"
+                  >
+                    {valeNlLangOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronDown className="h-3 w-3 -rotate-90" />}
+                    Nederlands
+                  </button>
+                  {valeNlLangOpen && (
+                    <ul className="space-y-1.5 text-[11px]">
+                      {[
+                        { author: "Jan Renkema", work: "Schrijfwijzer (Boom)", year: "2012", note: "alle modules — het Nederlandse stijlhandboek" },
+                        { author: "Genootschap Onze Taal", work: "taaladvies.net", year: "voortdurend bijgewerkt", note: "Anglicismen, TaalFouten, WeaselWords, Buzzwords" },
+                        { author: "Nederlandse Taalunie (NTU)", work: "taalunie.org — Schrijfwijzer overheid", year: "voortdurend bijgewerkt", note: "WordyPhrases, NominalStyle, WeaselWords" },
+                        { author: "Van Dale", work: "Groot woordenboek van de Nederlandse taal (15e druk)", year: "2015", note: "Redundancy, Anglicismen, TaalFouten" },
+                        { author: "ANS", work: "Algemene Nederlandse Spraakkunst (online editie)", year: "1997/2016", note: "Passive, Redundancy, TaalFouten" },
+                        { author: "Henk Pander Maat / Leo Lentz", work: "Schrijven voor lezers (Boom)", year: "2010", note: "WeaselWords, WordyPhrases, NominalStyle" },
+                        { author: "Instituut voor de Nederlandse Taal (INT)", work: "ivdnt.org", year: "voortdurend bijgewerkt", note: "Anglicismen" },
+                      ].map(({ author, work, year, note }) => (
+                        <li key={author} className="flex gap-2">
+                          <span className="text-muted-foreground shrink-0">·</span>
+                          <span>
+                            <span className="font-medium text-foreground/80">{author}</span>
+                            {" – "}
+                            <span className="italic">{work}</span>
+                            {year && <span className="text-muted-foreground"> ({year})</span>}
+                            <span className="text-muted-foreground"> — {note}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Svenska */}
+                  <button
+                    type="button"
+                    onClick={() => setValeSvLangOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 hover:text-muted-foreground pt-1 transition-colors"
+                  >
+                    {valeSvLangOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronDown className="h-3 w-3 -rotate-90" />}
+                    Svenska
+                  </button>
+                  {valeSvLangOpen && (
+                    <ul className="space-y-1.5 text-[11px]">
+                      {[
+                        { author: "Språkrådet", work: "Svenska skrivregler (Liber, 4e uppl.)", year: "2017", note: "alla moduler — det svenska skrivhandboket" },
+                        { author: "Strömquist, Siv", work: "Skrivboken (Gleerups, 8e uppl.)", year: "2014", note: "WeaselWords, WordyPhrases, NominalStyle, Buzzwords" },
+                        { author: "Myndigheternas skrivregler", work: "Norstedts Juridik (8e uppl.)", year: "2014", note: "WordyPhrases, NominalStyle, Passive" },
+                        { author: "SAOL", work: "Svenska Akademiens ordlista (14e uppl.)", year: "2015", note: "Redundancy, Anglicismer" },
+                        { author: "Josephson, Olle", work: "Ju (Norstedts)", year: "2018", note: "Anglicismer, SprakFel, Buzzwords" },
+                        { author: "Hellspong, Lennart / Ledin, Per", work: "Vägar genom texten (Studentlitteratur)", year: "1997", note: "WeaselWords, NominalStyle, WordyPhrases" },
+                      ].map(({ author, work, year, note }) => (
+                        <li key={author} className="flex gap-2">
+                          <span className="text-muted-foreground shrink-0">·</span>
+                          <span>
+                            <span className="font-medium text-foreground/80">{author}</span>
+                            {" – "}
+                            <span className="italic">{work}</span>
+                            {year && <span className="text-muted-foreground"> ({year})</span>}
+                            <span className="text-muted-foreground"> — {note}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Dansk */}
+                  <button
+                    type="button"
+                    onClick={() => setValeDaLangOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 hover:text-muted-foreground pt-1 transition-colors"
+                  >
+                    {valeDaLangOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronDown className="h-3 w-3 -rotate-90" />}
+                    Dansk
+                  </button>
+                  {valeDaLangOpen && (
+                    <ul className="space-y-1.5 text-[11px]">
+                      {[
+                        { author: "Dansk Sprognævn", work: "Retskrivningsordbogen (dsn.dk)", year: "2012 / løbende", note: "alle moduler" },
+                        { author: "Galberg Jacobsen / Jarvad", work: "Dansk Sproglære (Gyldendal)", year: "2010", note: "Passive, NominalStyle, Redundancy, WeaselWords" },
+                        { author: "Lund, Jørn", work: "Sproget i avisen — stilistik og skriftsprog", year: null, note: "WeaselWords, WordyPhrases, Buzzwords, SprogFejl" },
+                        { author: "Hannemand, Bjarne", work: "Godt Sprog (Gyldendal)", year: "2009", note: "NominalStyle, WordyPhrases, WeaselWords" },
+                        { author: "ODS", work: "Ordbog over det Danske Sprog (ordnet.dk)", year: "løbende", note: "Redundancy, Anglicismer" },
+                        { author: "Jarvad, Pia", work: "Nye ord — hvorfor og hvordan? (Gyldendal)", year: "1999", note: "Anglicismer" },
+                      ].map(({ author, work, year, note }) => (
+                        <li key={author} className="flex gap-2">
+                          <span className="text-muted-foreground shrink-0">·</span>
+                          <span>
+                            <span className="font-medium text-foreground/80">{author}</span>
+                            {" – "}
+                            <span className="italic">{work}</span>
+                            {year && <span className="text-muted-foreground"> ({year})</span>}
+                            <span className="text-muted-foreground"> — {note}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Norsk */}
+                  <button
+                    type="button"
+                    onClick={() => setValeNoLangOpen(o => !o)}
+                    className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60 hover:text-muted-foreground pt-1 transition-colors"
+                  >
+                    {valeNoLangOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronDown className="h-3 w-3 -rotate-90" />}
+                    Norsk
+                  </button>
+                  {valeNoLangOpen && (
+                    <ul className="space-y-1.5 text-[11px]">
+                      {[
+                        { author: "Vinje, Finn-Erik", work: "Moderne norsk (Universitetsforlaget, 6. utg.)", year: "1990", note: "alle moduler — det norske stilhåndboken" },
+                        { author: "Språkrådet", work: "sprakradet.no — bokmålsrådgivning og klarspråk", year: "løpende", note: "WeaselWords, Anglisismer, SprakFeil" },
+                        { author: "Bokmålsordboka", work: "bokmaalsordboka.no (Universitetet i Oslo)", year: "løpende", note: "Redundancy, Anglisismer" },
+                        { author: "Lie, Svein", work: "Innføring i norsk syntaks (Universitetsforlaget, 4. utg.)", year: "2003", note: "Passive, NominalStyle, WordyPhrases" },
+                        { author: "NTB Språk", work: "NTBs språkbok — stilguide for norsk pressetekst", year: null, note: "WeaselWords, WordyPhrases, NominalStyle, Passive" },
+                        { author: "Berge, Kjell Lars m.fl.", work: "Å skape mening med språk (LNU/Cappelen)", year: "1998", note: "WeaselWords, NominalStyle, WordyPhrases" },
+                      ].map(({ author, work, year, note }) => (
+                        <li key={author} className="flex gap-2">
+                          <span className="text-muted-foreground shrink-0">·</span>
+                          <span>
+                            <span className="font-medium text-foreground/80">{author}</span>
+                            {" – "}
+                            <span className="italic">{work}</span>
+                            {year && <span className="text-muted-foreground"> ({year})</span>}
+                            <span className="text-muted-foreground"> — {note}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <p className="text-[10px] text-muted-foreground/70 pt-1">
+                    Rules are suggestions only. All credit for the underlying style guidance belongs to the original authors.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* PostgreSQL Database */}
@@ -1552,6 +2639,10 @@ export default function SettingsPage() {
                     grammar_languages: grammarLanguages,
                     pandoc_enabled: pandocEnabled,
                     pandoc_url: pandocUrl,
+                    spacy_enabled: spacyEnabled,
+                    spacy_url: spacyUrl,
+                    calibre_mode: calibreMode,
+                    calibre_url: calibreUrl,
                   });
                   setDockerUpStep("Starting Docker… (may take up to 90 s if Docker Desktop was closed)");
                   const res = await settingsApi.dockerComposeUp();
@@ -1617,6 +2708,15 @@ export default function SettingsPage() {
               )}
               {pandocEnabled && (
                 <ServiceStatusBadge label="Pandoc" status={serviceStatus.pandoc} />
+              )}
+              {spacyEnabled && (
+                <ServiceStatusBadge label="spaCy" status={serviceStatus.spacy} />
+              )}
+              {calibreMode !== "off" && (
+                <ServiceStatusBadge label="Calibre" status={serviceStatus.calibre} />
+              )}
+              {valeMode !== "off" && (
+                <ServiceStatusBadge label="Vale" status={serviceStatus.vale} />
               )}
             </div>
           )}
@@ -1748,6 +2848,250 @@ export default function SettingsPage() {
               {/* Modal footer */}
               <div className="px-5 py-3 border-t border-border shrink-0">
                 <Button size="sm" onClick={() => setHelpOpen(false)} className="w-full">Got it</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Calibre Setup Help Modal ─────────────────────────────────────── */}
+        {calibreHelpOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+            onClick={() => setCalibreHelpOpen(false)}
+          >
+            <div
+              className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+                <div className="flex items-center gap-2">
+                  <HelpCircle className="h-4 w-4 text-primary" />
+                  <h2 className="text-base font-semibold">Setting Up Calibre</h2>
+                </div>
+                <button onClick={() => setCalibreHelpOpen(false)} className="text-muted-foreground hover:text-foreground">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* OS tabs */}
+              <div className="flex border-b border-border shrink-0">
+                {(["windows", "mac", "linux"] as const).map(os => (
+                  <button
+                    key={os}
+                    onClick={() => setCalibreHelpOs(os)}
+                    className={cn(
+                      "flex-1 py-2.5 text-xs font-medium transition-colors",
+                      calibreHelpOs === os
+                        ? "border-b-2 border-primary text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {os === "windows" ? "Windows" : os === "mac" ? "macOS" : "Linux"}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 text-sm">
+
+                {calibreHelpOs === "windows" && (<>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold">Option A — System install</h3>
+                    <ol className="space-y-2 text-xs text-muted-foreground leading-relaxed list-decimal list-inside">
+                      <li>Download and run the Calibre installer from <a href="https://calibre-ebook.com/download_windows" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">calibre-ebook.com <ExternalLink className="h-3 w-3" /></a></li>
+                      <li>After installing, add Calibre to your PATH:
+                        <div className="mt-1.5 ml-4 rounded-md bg-secondary/50 px-3 py-2 font-mono text-[11px] text-foreground">
+                          C:\Program Files\Calibre2\
+                        </div>
+                        <p className="mt-1 ml-4">Search <em>Edit environment variables</em> → Environment Variables → System variables → Path → New → paste the path above.</p>
+                      </li>
+                      <li>Restart the Foliantica backend.</li>
+                      <li>Click <strong className="text-foreground">Auto-detect</strong> — it should find <code className="text-primary font-mono text-[11px]">ebook-convert</code> and select System install.</li>
+                    </ol>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold">Option B — Docker container</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Select <strong className="text-foreground">Docker container</strong> above. Install Docker Desktop, then click <strong className="text-foreground">Start Services</strong> (see the Docker setup guide <button onClick={() => { setCalibreHelpOpen(false); setHelpOpen(true); }} className="text-primary hover:underline">here</button>). No PATH changes needed.
+                    </p>
+                  </div>
+                </>)}
+
+                {calibreHelpOs === "mac" && (<>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold">Option A — Homebrew (recommended)</h3>
+                    <div className="rounded-md bg-secondary/50 px-3 py-2 font-mono text-[11px] text-foreground">
+                      brew install calibre
+                    </div>
+                    <p className="text-xs text-muted-foreground">Homebrew puts <code className="text-primary font-mono text-[11px]">ebook-convert</code> on your PATH automatically. Restart the backend, then Auto-detect.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold">Option B — App install</h3>
+                    <ol className="space-y-2 text-xs text-muted-foreground leading-relaxed list-decimal list-inside">
+                      <li>Download and install the Calibre app from <a href="https://calibre-ebook.com/download_osx" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5">calibre-ebook.com <ExternalLink className="h-3 w-3" /></a></li>
+                      <li>Add to PATH — append to <code className="text-primary font-mono text-[11px]">~/.zshrc</code> (or <code className="text-primary font-mono text-[11px]">~/.bashrc</code>):
+                        <div className="mt-1.5 ml-4 rounded-md bg-secondary/50 px-3 py-2 font-mono text-[11px] text-foreground break-all">
+                          export PATH=&quot;/Applications/calibre.app/Contents/MacOS:$PATH&quot;
+                        </div>
+                      </li>
+                      <li>Run <code className="text-primary font-mono text-[11px]">source ~/.zshrc</code> and restart the backend.</li>
+                      <li>Click <strong className="text-foreground">Auto-detect</strong>.</li>
+                    </ol>
+                  </div>
+                </>)}
+
+                {calibreHelpOs === "linux" && (<>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold">Option A — Package manager</h3>
+                    <div className="rounded-md bg-secondary/50 px-3 py-2 font-mono text-[11px] text-foreground space-y-1">
+                      <div><span className="text-muted-foreground"># Debian / Ubuntu</span></div>
+                      <div>sudo apt install calibre</div>
+                      <div className="pt-1"><span className="text-muted-foreground"># Fedora</span></div>
+                      <div>sudo dnf install calibre</div>
+                    </div>
+                    <p className="text-xs text-muted-foreground"><code className="text-primary font-mono text-[11px]">ebook-convert</code> lands on PATH automatically. Restart the backend, then Auto-detect.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="font-semibold">Option B — Official installer (latest version)</h3>
+                    <div className="rounded-md bg-secondary/50 px-3 py-2 font-mono text-[11px] text-foreground break-all">
+                      wget -nv -O- https://download.calibre-ebook.com/linux-installer.sh | sudo sh /dev/stdin
+                    </div>
+                    <p className="text-xs text-muted-foreground">Installs to <code className="text-primary font-mono text-[11px]">/opt/calibre</code> and adds a symlink to <code className="text-primary font-mono text-[11px]">/usr/bin/</code>. Restart the backend, then Auto-detect.</p>
+                  </div>
+                </>)}
+
+              </div>
+
+              <div className="px-5 py-3 border-t border-border shrink-0">
+                <Button size="sm" onClick={() => setCalibreHelpOpen(false)} className="w-full">Got it</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Vale help modal */}
+        {valeHelpOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => setValeHelpOpen(false)}>
+            <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+                <h2 className="text-sm font-semibold">Vale — Setup &amp; Config</h2>
+                <button onClick={() => setValeHelpOpen(false)} className="text-muted-foreground hover:text-foreground">✕</button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5 text-xs">
+
+                {/* What is Vale */}
+                <div>
+                  <p className="font-semibold text-sm mb-1">What is Vale?</p>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Vale is a prose style linter. It checks your writing against configurable rule packages — things like weasel words, passive voice, overly complex sentences, banned terms, or your own vocabulary lists. Unlike grammar checkers, Vale focuses on style and consistency rules you define.
+                  </p>
+                </div>
+
+                {/* OS tabs */}
+                <div>
+                  <p className="font-semibold text-sm mb-2">Install Vale</p>
+                  <div className="flex rounded-md border border-border overflow-hidden text-xs mb-3">
+                    {(["windows", "mac", "linux"] as const).map(os => (
+                      <button key={os} onClick={() => setValeHelpOs(os)}
+                        className={`flex-1 px-3 py-1.5 transition-colors ${valeHelpOs === os ? "bg-primary text-primary-foreground font-medium" : "text-muted-foreground hover:bg-secondary"}`}>
+                        {os === "windows" ? "Windows" : os === "mac" ? "macOS" : "Linux"}
+                      </button>
+                    ))}
+                  </div>
+                  {valeHelpOs === "windows" && (
+                    <div className="space-y-2 text-muted-foreground leading-relaxed">
+                      <p><strong className="text-foreground">Recommended — winget:</strong></p>
+                      <code className="block bg-secondary/50 rounded px-3 py-2 font-mono text-[11px] text-foreground">winget install Vale.Vale</code>
+                      <p>Or via <strong className="text-foreground">Chocolatey:</strong> <code className="font-mono text-[11px] text-primary">choco install vale</code></p>
+                      <p>Or download the <code className="font-mono text-[11px] text-primary">.exe</code> from <strong className="text-foreground">github.com/errata-ai/vale/releases</strong> and add its folder to your PATH.</p>
+                      <p>After install, open a new terminal and verify: <code className="font-mono text-[11px] text-primary">vale --version</code></p>
+                    </div>
+                  )}
+                  {valeHelpOs === "mac" && (
+                    <div className="space-y-2 text-muted-foreground leading-relaxed">
+                      <p><strong className="text-foreground">Homebrew:</strong></p>
+                      <code className="block bg-secondary/50 rounded px-3 py-2 font-mono text-[11px] text-foreground">brew install vale</code>
+                      <p>Homebrew adds <code className="font-mono text-[11px] text-primary">vale</code> to your PATH automatically. Restart the backend, then click Auto-detect.</p>
+                    </div>
+                  )}
+                  {valeHelpOs === "linux" && (
+                    <div className="space-y-2 text-muted-foreground leading-relaxed">
+                      <p>Download the binary for your architecture from <strong className="text-foreground">github.com/errata-ai/vale/releases</strong> and place it in <code className="font-mono text-[11px] text-primary">/usr/local/bin/</code>:</p>
+                      <code className="block bg-secondary/50 rounded px-3 py-2 font-mono text-[11px] text-foreground whitespace-pre">{`sudo wget -O /usr/local/bin/vale \\
+  https://github.com/errata-ai/vale/releases/latest/download/vale_Linux_64-bit.tar.gz
+# extract and move binary as needed
+sudo chmod +x /usr/local/bin/vale`}</code>
+                      <p>Or via Snap: <code className="font-mono text-[11px] text-primary">snap install vale</code></p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Config file */}
+                <div>
+                  <p className="font-semibold text-sm mb-1">The .vale.ini config</p>
+                  <p className="text-muted-foreground leading-relaxed mb-2">
+                    Vale is driven by a <code className="font-mono text-[11px] text-primary">.vale.ini</code> file. It tells Vale where your styles live and which rules to apply. A minimal example:
+                  </p>
+                  <code className="block bg-secondary/50 rounded px-3 py-2 font-mono text-[11px] text-foreground whitespace-pre">{`StylesPath = styles
+MinAlertLevel = suggestion
+
+[*.md]
+BasedOnStyles = write-good`}</code>
+                  <ul className="mt-2 space-y-1 text-muted-foreground list-disc list-inside">
+                    <li><strong className="text-foreground">StylesPath</strong> — folder containing downloaded style packages (relative to .vale.ini)</li>
+                    <li><strong className="text-foreground">MinAlertLevel</strong> — show only <code className="font-mono text-[11px] text-primary">suggestion</code>, <code className="font-mono text-[11px] text-primary">warning</code>, or <code className="font-mono text-[11px] text-primary">error</code></li>
+                    <li><strong className="text-foreground">BasedOnStyles</strong> — comma-separated style packages to enable</li>
+                  </ul>
+                </div>
+
+                {/* Styles */}
+                <div>
+                  <p className="font-semibold text-sm mb-1">Style packages</p>
+                  <p className="text-muted-foreground leading-relaxed mb-2">
+                    After writing your <code className="font-mono text-[11px] text-primary">.vale.ini</code>, run <code className="font-mono text-[11px] text-primary">vale sync</code> in the same folder to download the packages. Popular ones for fiction writers:
+                  </p>
+                  <div className="space-y-1.5">
+                    {[
+                      ["write-good", "Flags weasel words, passive voice, clichés, and wordy phrases"],
+                      ["proselint",  "Curated literary style rules — redundancy, misused words, jargon"],
+                      ["Microsoft",  "Microsoft Writing Style Guide — clear, inclusive language"],
+                      ["Google",     "Google Developer Documentation Style — plain language rules"],
+                      ["Vale",       "Built-in Vale rules — spelling, repetition, terms (no sync needed)"],
+                    ].map(([name, desc]) => (
+                      <div key={name} className="flex gap-2">
+                        <code className="font-mono text-[11px] text-primary w-20 shrink-0">{name}</code>
+                        <span className="text-muted-foreground">{desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Vocabulary */}
+                <div>
+                  <p className="font-semibold text-sm mb-1">Vocabulary — accept &amp; reject lists</p>
+                  <p className="text-muted-foreground leading-relaxed mb-2">
+                    You can maintain per-project word lists. In your <code className="font-mono text-[11px] text-primary">.vale.ini</code>:
+                  </p>
+                  <code className="block bg-secondary/50 rounded px-3 py-2 font-mono text-[11px] text-foreground whitespace-pre">{`Vocab = MyProject
+
+[*.md]
+BasedOnStyles = write-good`}</code>
+                  <p className="text-muted-foreground mt-2 leading-relaxed">
+                    Then create two files in <code className="font-mono text-[11px] text-primary">styles/Vocab/MyProject/</code>:
+                  </p>
+                  <ul className="mt-1.5 space-y-1 text-muted-foreground list-disc list-inside">
+                    <li><strong className="text-foreground">accept.txt</strong> — one word/phrase per line — Vale won't flag these (allow-list)</li>
+                    <li><strong className="text-foreground">reject.txt</strong> — one word/phrase per line — Vale always flags these (block-list)</li>
+                  </ul>
+                  <p className="text-muted-foreground mt-2">
+                    Great for character names, made-up words, or terms you want to ban from your manuscript.
+                  </p>
+                </div>
+
+              </div>
+
+              <div className="px-5 py-3 border-t border-border shrink-0">
+                <Button size="sm" onClick={() => setValeHelpOpen(false)} className="w-full">Got it</Button>
               </div>
             </div>
           </div>

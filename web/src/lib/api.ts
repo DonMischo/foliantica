@@ -4,6 +4,7 @@ import type {
   Fragment, FragmentTabs, BookMeta, AIPrompt, ProjectSceneItem,
   SceneVersion, SceneVersionDetail, MentionStat, SceneMentionStat,
   WritingLogEntry, GhostTextScene, CorkboardAct, CorkboardData,
+  CorkboardPrefs, SceneConnection, RelationsGraph,
   TimelineTrack, TimelineEventItem, SeriesData,
   ProjectAnalytics, ResearchItem, QuerySubmission, ExportProfile, PublisherProfile,
   Achievement,
@@ -14,7 +15,7 @@ const BASE = "/api";
 // ── Export types ──────────────────────────────────────────────────────────────
 
 export interface ExportOptions {
-  format: "md" | "tex" | "epub-style" | "pdf" | "epub" | "docx";
+  format: "md" | "tex" | "epub-style" | "pdf" | "epub" | "docx" | "mobi" | "azw3" | "epub-calibre";
   scene_ids?: number[] | null;
   include_act_headings: boolean;
   include_chapter_headings: boolean;
@@ -124,6 +125,16 @@ export const projectsApi = {
   listScenes: (id: number) => req<ProjectSceneItem[]>(`/projects/${id}/scenes`),
   structure: (id: number) => req<CorkboardAct[]>(`/projects/${id}/structure`),
   corkboard: (id: number) => req<CorkboardData>(`/projects/${id}/corkboard`),
+  updateCorkboardPrefs: (id: number, prefs: CorkboardPrefs) =>
+    req<CorkboardPrefs>(`/projects/${id}/corkboard-prefs`, { method: "PATCH", body: JSON.stringify(prefs) }),
+  createConnection: (id: number, data: { source_scene_id: number; target_scene_id: number; connection_type: string; label?: string | null }) =>
+    req<SceneConnection>(`/projects/${id}/connections`, { method: "POST", body: JSON.stringify(data) }),
+  deleteConnection: (id: number, connectionId: number) =>
+    req<void>(`/projects/${id}/connections/${connectionId}`, { method: "DELETE" }),
+  setGlobalOrder: (id: number, items: { id: number; global_order: number }[]) =>
+    req<void>(`/projects/${id}/corkboard/global-order`, { method: "POST", body: JSON.stringify({ items }) }),
+  relationsGraph: (id: number) =>
+    req<RelationsGraph>(`/projects/${id}/graph`),
   setSubplotNames: (id: number, names: string[]) =>
     req<string[]>(`/projects/${id}/subplot-names`, { method: "PATCH", body: JSON.stringify({ names }) }),
   detachCodexSharing: (id: number) =>
@@ -182,6 +193,7 @@ export const scenesApi = {
     pov_character_id?: number | null;
     beat?: string | null;
     scene_type?: string | null;
+    card_color?: string | null;
   }) =>
     req<Scene>(`/scenes/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id: number) => req<void>(`/scenes/${id}`, { method: "DELETE" }),
@@ -504,12 +516,21 @@ export const settingsApi = {
     grammar_languages?: string[];
     pandoc_enabled?: boolean;
     pandoc_url?: string;
+    spacy_enabled?: boolean;
+    spacy_url?: string;
+    calibre_mode?: "off" | "system" | "docker";
+    calibre_url?: string;
+    vale_mode?: "off" | "system" | "docker";
+    vale_url?: string;
+    vale_config_path?: string | null;
     ai_disabled?: boolean;
     sync_mirror_enabled?: boolean;
     sync_local_dir?: string | null;
   }) => req<Settings>("/settings", { method: "POST", body: JSON.stringify(data) }),
   getModels: () => req<OpenRouterModel[]>("/settings/models"),
-  serviceStatus: () => req<{ languagetool: "ok" | "error" | "offline"; pandoc: "ok" | "error" | "offline" }>("/settings/service-status"),
+  serviceStatus: () => req<{ languagetool: "ok" | "error" | "offline"; pandoc: "ok" | "error" | "offline"; spacy: "ok" | "error" | "offline"; calibre: "ok" | "error" | "offline"; vale: "ok" | "error" | "offline" }>("/settings/service-status"),
+  detectCalibre: () => req<{ system: boolean; docker: boolean }>("/settings/detect-calibre"),
+  detectVale: () => req<{ system: boolean; docker: boolean }>("/settings/detect-vale"),
   dockerComposeUp: () => req<{ status: string; output: string }>("/settings/docker/up", { method: "POST" }),
 };
 
@@ -626,6 +647,8 @@ export const mentionStatsApi = {
     req<MentionStat[]>(`/projects/${projectId}/mention-stats`),
   forEntry: (entryId: number) =>
     req<SceneMentionStat[]>(`/codex/${entryId}/scene-mentions`),
+  rescanScene: (sceneId: number) =>
+    req<{ scanned: number }>(`/scenes/${sceneId}/mentions/rescan`, { method: "POST" }),
   rescanProject: (projectId: number) =>
     req<{ scanned: number }>(`/projects/${projectId}/mentions/rescan`, { method: "POST" }),
 };
@@ -669,6 +692,50 @@ export interface GrammarMatch {
 export interface GrammarCheckResult {
   matches: GrammarMatch[];
 }
+
+// ── Vale ─────────────────────────────────────────────────────────────────────
+
+export interface ValeAlert {
+  Action: { Name: string; Params: string[] };
+  Check: string;
+  Description: string;
+  Line: number;
+  Link: string;
+  Message: string;
+  Severity: "error" | "warning" | "suggestion";
+  Span: [number, number];
+  Match: string;
+}
+
+export interface ValeCheckResult {
+  alerts: ValeAlert[];
+}
+
+export interface ValeRuleMeta {
+  name: string;
+  type: "existence" | "substitution";
+}
+
+export type ValeCustomEntries = string[] | Record<string, string>;
+export type ValeCustomRules = Record<string, Record<string, ValeCustomEntries>>;
+
+export const valeApi = {
+  check: (text: string, language?: string) =>
+    req<ValeCheckResult>("/vale/check", {
+      method: "POST",
+      body: JSON.stringify({ text, language }),
+      signal: AbortSignal.timeout(60_000),
+    }),
+  getRuleMeta: (lang: string) =>
+    req<{ rules: ValeRuleMeta[] }>(`/vale/rule-meta/${lang}`),
+  getCustomRules: () =>
+    req<{ rules: ValeCustomRules }>("/vale/custom-rules"),
+  updateCustomRules: (rules: ValeCustomRules) =>
+    req<{ ok: boolean }>("/vale/custom-rules", {
+      method: "PUT",
+      body: JSON.stringify({ rules }),
+    }),
+};
 
 export const grammarApi = {
   check: (text: string, language = "auto") =>
@@ -790,7 +857,7 @@ export interface PgConfig {
 }
 
 export interface PgActive {
-  mode: "pg" | "sqlite";
+  mode: "pg";
   host?: string;
   port?: number;
   user?: string;
@@ -817,10 +884,58 @@ export const pgConfigApi = {
     }),
 };
 
+// ── AI Providers ──────────────────────────────────────────────────────────────
+
+export interface AIProvider {
+  id:               string;
+  name:             string;
+  is_local:         boolean;
+  requires_key:     boolean;
+  default_base_url: string;
+  configured:       boolean;
+  is_active:        boolean;
+  base_url:         string;
+}
+
+export interface AIModel {
+  id:   string;
+  name: string;
+}
+
+export const aiProvidersApi = {
+  list: () =>
+    req<AIProvider[]>("/settings/providers"),
+
+  save: (providerId: string, body: { api_key?: string; base_url?: string }) =>
+    req<{ ok: true }>(`/settings/providers/${providerId}`, {
+      method: "POST", body: JSON.stringify(body),
+    }),
+
+  setActive: (providerId: string) =>
+    req<{ active_provider: string }>("/settings/providers/active", {
+      method: "POST", body: JSON.stringify({ provider_id: providerId }),
+    }),
+
+  models: (providerId: string) =>
+    req<AIModel[]>(`/settings/providers/${providerId}/models`),
+
+  ping: (providerId: string) =>
+    req<{ reachable: boolean }>(`/settings/providers/${providerId}/ping`),
+
+  setModelProvider: (modelId: string, providerId: string) =>
+    req<{ ok: true }>("/settings/providers/model-map", {
+      method: "POST",
+      body: JSON.stringify({ model_id: modelId, provider_id: providerId }),
+    }),
+};
+
 // ── Achievements ──────────────────────────────────────────────────────────────
 
 export const achievementsApi = {
   list: () => req<Achievement[]>("/achievements"),
+  ack:  (keys: string[]) => req<{ ok: true }>("/achievements/ack", {
+    method: "POST", body: JSON.stringify({ keys }),
+  }),
 };
 
 // ── Stats ─────────────────────────────────────────────────────────────────────

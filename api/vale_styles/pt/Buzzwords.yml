@@ -1,0 +1,166 @@
+# Fontes / Sources:
+#   - Cláudio Moreno: "Guia Prático de Estilo" (L&PM, 2009)
+#   - Eduardo Martins: "Manual de Redação e Estilo de O Estado de S. Paulo" (1997)
+#   - Academia Brasileira de Letras (ABL)
+#   - Academia das Ciências de Lisboa (ACL)
+#   - Celso Cunha / Lindley Cintra: "Nova Gramática do Português Contemporâneo" (2014)
+extends: existence
+message: "'%s' é uma palavra da moda / jargão — formular de forma mais concreta?"
+level: suggestion
+ignorecase: true
+tokens:
+  # --- Jargão empresarial e de gestão (Moreno; Martins) ---
+  - \bsinergia\b
+  - \bsinergias\b
+  - \bsinérgico\b
+  - \bparadigma\b
+  - \bparadigmas\b
+  - \bparadigmático\b
+  - \bdisrupção\b
+  - \bdisruption\b
+  - \bdisruptivo\b
+  - \bdisruptiva\b
+  - \btransformação digital\b
+  - resiliência
+  - \bresiliente\b
+  - \bresilient\b
+  - ecossistema
+  - \becossistemas\b
+  - escalabilidade
+  - \bescalável\b
+  - \bescaláveis\b
+  - agilidade
+  - \bágil\b
+  - \bágeis\b
+  - \bpivot\b
+  - \bpivotear\b
+  - \bstakeholder\b
+  - \bstakeholders\b
+  - \bbenchmark\b
+  - \bbenchmarks\b
+  - \bbenchmarking\b
+  - \bbest practice\b
+  - \bbest practices\b
+  - \bboas práticas\b
+  - \blean\b
+  - \bscrum\b
+  - \bkanban\b
+  - \bsprint\b
+  - \bsprints\b
+  - \bKPI\b
+  - \bKPIs\b
+  - \bROI\b
+  - \bOKR\b
+  - \bOKRs\b
+  - \bUSP\b
+  - \bwin-win\b
+  - \broadmap\b
+  - \broteiro\b
+  - \bmilestone\b
+  - \bmilestones\b
+  - \btração\b
+  - valor acrescentado
+  - valor agregado
+  - \bcriar valor\b
+  - \bgerar valor\b
+  - \balavanca\b
+  - \balavancas\b
+  - \balavancagem\b
+
+  # --- Startups e tecnologia (ABL; ACL; Moreno) ---
+  - \bstartup\b
+  - \bstartups\b
+  - \bunicórnio\b
+  - \bunicórnios\b
+  - \bgrowth hacking\b
+  - \bgrowth\b
+  - \bscale-up\b
+  - \bpitch\b
+  - \bpitching\b
+  - \bincubadora\b
+  - acelerador
+  - \bopen innovation\b
+  - \bhackathon\b
+  - \bhackathons\b
+  - \bfintech\b
+  - \bedtech\b
+  - \bhealthtech\b
+
+  # --- Palavras políticas e sociais da moda (ABL; ACL; Moreno) ---
+  - \bgovernança\b
+  - \bgovernance\b
+  - \bgestão da mudança\b
+  - \btransversalidade\b
+  - \btransversal\b
+  - \bco-construção\b
+  - \bco-criação\b
+  - empoderamento
+  - \bempowerment\b
+  - \bwelfare\b
+  - \bleadership\b
+  - \bliderança empática\b
+  - \bADN\b
+  - \bDNA\b
+  - \bpropósito\b
+  - \bnarrativa\b
+  - \bnova normalidade\b
+  - \bnova realidade\b
+  - \bsistema-país\b
+  - \btrabalho em rede\b
+
+  # --- Adjetivos vazios (Moreno; Cunha/Cintra; Martins) ---
+  - \binovador\b
+  - \binovadora\b
+  - \binovadores\b
+  - inovação
+  - \bvanguarda\b
+  - \bde ponta\b
+  - \bholístico\b
+  - \bholística\b
+  - \bglobal\b
+  - \bproativo\b
+  - \bproativa\b
+  - \bdinâmico\b
+  - \bdinâmica\b
+  - \bflexível\b
+  - \bflexíveis\b
+  - excelência
+  - \bexcelente\b
+  - \bexcelentes\b
+  - compromisso
+  - \bcomprometido\b
+  - \btransparente\b
+  - \btransparentes\b
+  - \btransparência\b
+  - \binclusivo\b
+  - \binclusiva\b
+  - inclusividade
+  - \bintegrado\b
+  - \bintegrada\b
+  - \brobustez\b
+  - \brobust\b
+
+  # --- Frases empresariais (Moreno; Martins) ---
+  - \bcriação de impacto\b
+  - \bgerar impacto\b
+  - \bter impacto\b
+  - \bdar sentido\b
+  - \bcolocar as pessoas no centro\b
+  - \bsair da zona de conforto\b
+  - \bzona de conforto\b
+  - \bpensar fora da caixa\b
+  - \bgame changer\b
+  - \bgame-changer\b
+  - \bsem precedentes\b
+  - \bhistórico\b
+  - \bhistórica\b
+  - \bepocal\b
+  - \bde classe mundial\b
+  - \bde nível mundial\b
+  - \botimizar\b
+  - \bmaximizar\b
+  - \bminimizar\b
+  - \bpotenciar\b
+  - \bpotencializar\b
+  - \bcatalizar\b
+  - \bcatalysador\b

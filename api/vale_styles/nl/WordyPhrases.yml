@@ -1,0 +1,129 @@
+# Bronnen / Sources:
+#   - Jan Renkema: "Schrijfwijzer" (4e druk, Boom, 2012)
+#   - Henk Pander Maat / Leo Lentz: "Schrijven voor lezers" (Boom, 2010)
+#   - Genootschap Onze Taal: taaladvies.net
+#   - Nederlandse Taalunie (NTU): taalunie.org — "Schrijfwijzer overheid"
+#   - ANS: "Algemene Nederlandse Spraakkunst" (2e druk, 1997 / online 2016)
+extends: substitution
+message: "Omhaal van woorden: '%s' — korter: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Opgeblazen voorzetsels (Renkema; NTU; Pander Maat) ---
+  in het kader van: bij / in / voor
+  met betrekking tot: over / bij
+  ten aanzien van: over / bij
+  wat betreft: over
+  aangaande: over
+  betreffende: over
+  inzake: over
+  ter zake van: over
+  met het oog op: voor / met het oog op → gelet op
+  in het licht van: gezien
+  gelet op het feit dat: omdat
+  vanuit het oogpunt van: vanuit
+  vanwege het feit dat: omdat
+  op grond van het feit dat: omdat
+  teneinde: om
+  met als doel: om
+  met de bedoeling: om
+  met het doel: om
+  ten behoeve van: voor
+  ten gunste van: voor / ten voordele van
+  ten laste van: voor rekening van
+  ten tijde van: tijdens
+  voorafgaand aan: voor
+  aansluitend op: na
+  in aansluiting op: na
+  naar aanleiding van: door / naar aanleiding van → vanwege
+  op basis van: op basis van → volgens
+  conform: overeenkomstig → volgens
+  overeenkomstig: volgens
+  ingevolge: krachtens → volgens
+  krachtens: volgens / op grond van
+  bij wijze van: als
+  in de vorm van: als
+  voor zover het betreft: voor
+
+  # --- Causale omhaal (Renkema; Pander Maat) ---
+  vanwege het feit dat: omdat
+  omwille van het feit dat: omdat
+  gezien het feit dat: omdat / omdat
+  door het feit dat: doordat
+  in verband met het feit dat: omdat
+  als gevolg van het feit dat: doordat
+
+  # --- Conditionele omhaal (Renkema; NTU) ---
+  in het geval dat: als
+  in het geval waarin: als
+  voor het geval dat: voor het geval dat → mocht
+  indien en voor zover: als
+  mits en voor zover: mits
+  op voorwaarde dat: mits
+
+  # --- Temporele omhaal (Renkema; Pander Maat) ---
+  voorafgaand aan: voor
+  voorafgaande aan: voor
+  aansluitend aan: na
+  ten tijde van: tijdens / ten tijde → tijdens
+  op het moment dat: wanneer / als
+  op het ogenblik dat: wanneer
+  op de dag van vandaag: vandaag
+  op heden: vandaag / nu
+  heden ten dage: tegenwoordig
+  in het lopende jaar: dit jaar
+  in het huidige jaar: dit jaar
+  gedurende de periode van: tijdens
+  in de loop van: tijdens / in
+
+  # --- Uitzondering / beperking (Renkema) ---
+  met uitzondering van: behalve / tenzij
+  uitgezonderd het geval dat: tenzij
+  bij afwezigheid van: zonder
+  bij gebrek aan: bij gebrek aan → zonder
+  ongeacht: ongeacht → los van
+  onverminderd: onverminderd → ook als
+
+  # --- Bureaucratische opvullers (Renkema; NTU "Overheidsschrijven") ---
+  opgemerkt dient te worden dat: merk op dat
+  vastgesteld kan worden dat: blijkt dat
+  gesteld kan worden dat: men kan stellen dat → blijkt
+  geconcludeerd kan worden dat: we kunnen concluderen dat → dus
+  dient te worden vermeld dat: vermeld moet worden dat
+  het zij opgemerkt dat: nota bene
+  het zij vermeld dat: vermeld
+  in dit verband: daarom / hierbij
+  in dit kader: hierbij / hier
+  in dit opzicht: hier
+  te dien aanzien: hierover
+  terzijde: (weglaten)
+  voor alle duidelijkheid: (weglaten)
+  om niet mis te verstaan: duidelijk
+  voor de goede orde: voor de volledigheid
+  en/of: of / en (kies)
+  hetgeen: wat
+  welke: die / dat
+  diegene die: wie
+  datgene wat: wat
+  teneinde te: om te
+
+  # --- Modale omhaal (Renkema; Pander Maat) ---
+  in staat zijn om: kunnen
+  in de gelegenheid zijn om: kunnen
+  de mogelijkheid hebben om: kunnen
+  bevoegd zijn om: mogen
+  verplicht zijn om: moeten
+  het is mogelijk dat: misschien
+  niet uitgesloten is dat: misschien
+  met aan zekerheid grenzende waarschijnlijkheid: vrijwel zeker
+  in alle waarschijnlijkheid: waarschijnlijk
+
+  # --- Redactionele chevilles (Renkema; Pander Maat) ---
+  het dient te worden opgemerkt dat: merk op dat
+  het verdient aanbeveling om: het is aan te bevelen
+  het is van belang te benadrukken dat: belangrijk is dat
+  zoals eerder opgemerkt: zoals eerder gezegd
+  zoals reeds aangegeven: zoals aangegeven
+  zoals hieronder nader uiteengezet: zoals hieronder beschreven
+  kortom en samengevat: kortom
+  tot slot en samengevat: tot slot

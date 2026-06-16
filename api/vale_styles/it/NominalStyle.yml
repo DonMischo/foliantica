@@ -1,0 +1,133 @@
+# Fonti / Sources:
+#   - Luca Serianni: "Italiano" (Garzanti, 1988/2000)
+#   - Luca Serianni: "Guida all'italiano" (BUR, 2007)
+#   - Maurizio Piemontese: "Manuale di stile" (Presidenza del Consiglio dei Ministri, 1997)
+#   - Italo Calvino: "L'antilingua" (Il Giorno, 1965) — critica al nominalismo burocratico
+#   - Accademia della Crusca: consulenze linguistiche — accademicadellacrusca.it
+#   - Ministero per la pubblica amministrazione: "Guida alla semplificazione del linguaggio amministrativo"
+extends: substitution
+message: "Stile nominale: '%s' — più diretto: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- "procedere a" (Calvino; Piemontese: il verbo semplice è sempre preferibile) ---
+  procedere all'esame di: esaminare
+  procedere alla verifica di: verificare
+  procedere alla firma di: firmare
+  procedere all'apertura di: aprire
+  procedere alla chiusura di: chiudere
+  procedere al pagamento di: pagare
+  procedere alla lettura di: leggere
+  procedere alla consegna di: consegnare
+  procedere alla revisione di: revisionare
+  procedere all'analisi di: analizzare
+  procedere alla valutazione di: valutare
+  procedere alla selezione di: selezionare
+  procedere alla nomina di: nominare
+  procedere all'approvazione di: approvare
+  procedere all'invio di: inviare
+
+  # --- "effettuare" come verbo generico (Piemontese; Calvino) ---
+  effettuare un pagamento: pagare
+  effettuare un controllo: controllare
+  effettuare una visita: visitare
+  effettuare uno spostamento: spostarsi
+  effettuare una valutazione: valutare
+  effettuare un acquisto: acquistare
+  effettuare una vendita: vendere
+  effettuare una prenotazione: prenotare
+  effettuare una modifica: modificare
+  effettuare un trasferimento: trasferire
+  effettuare un investimento: investire
+  effettuare un prelievo: prelevare
+  effettuare un deposito: depositare
+  effettuare una ricerca: ricercare
+  effettuare un'analisi: analizzare
+  effettuare un sopralluogo: fare un sopralluogo
+
+  # --- "realizzare" come verbo generico (Calvino; Accademia della Crusca) ---
+  realizzare uno studio: studiare
+  realizzare un'analisi: analizzare
+  realizzare un investimento: investire
+  realizzare un acquisto: acquistare
+  realizzare una vendita: vendere
+  realizzare un'indagine: indagare
+  realizzare una valutazione: valutare
+  realizzare una visita: visitare
+
+  # --- "portare a" (Piemontese; Serianni) ---
+  portare a compimento: completare
+  portare a termine: completare
+  portare a conclusione: concludere
+  portare a realizzazione: realizzare
+  portare all'attenzione: segnalare
+  portare a conoscenza: comunicare
+  portare a soluzione: risolvere
+
+  # --- "dare" + sostantivo (Calvino; Piemontese) ---
+  dare attuazione a: attuare
+  dare avvio a: avviare
+  dare corso a: procedere
+  dare esecuzione a: eseguire
+  dare inizio a: iniziare
+  dare risposta a: rispondere
+  dare soluzione a: risolvere
+  dare supporto a: supportare
+  dare comunicazione di: comunicare
+  dare notizia di: informare di
+  dare luogo a: causare
+  dare seguito a: seguire
+
+  # --- "mettere" + sostantivo (Calvino; Piemontese) ---
+  mettere in atto: attuare
+  mettere in opera: realizzare
+  mettere in pratica: praticare
+  mettere in discussione: discutere
+  mettere in evidenza: evidenziare
+  mettere in luce: mettere in luce → evidenziare
+  mettere a disposizione: rendere disponibile
+  mettere a punto: perfezionare
+  mettere fine a: terminare
+  mettere ordine in: ordinare
+
+  # --- "prendere" + sostantivo (Serianni; Piemontese) ---
+  prendere una decisione: decidere
+  prendere atto di: notare
+  prendere visione di: leggere
+  prendere in considerazione: considerare
+  prendere in esame: esaminare
+  prendere a carico: farsi carico di
+  prendere conoscenza di: venire a conoscenza di → apprendere
+
+  # --- "avere" + sostantivo astratto (Calvino; Serianni) ---
+  avere la possibilità di: potere
+  avere la necessità di: dover
+  avere la capacità di: essere capaci di
+  avere coscienza di: essere consapevoli di
+  avere conoscenza di: conoscere
+  avere la certezza di: essere certi di
+  avere la convinzione di: essere convinti di
+  avere l'intenzione di: intendere
+  avere ricorso a: ricorrere a
+
+  # --- "fornire" + sostantivo (Piemontese; Calvino) ---
+  fornire assistenza a: assistere
+  fornire supporto a: supportare
+  fornire informazioni a: informare
+  fornire spiegazioni a: spiegare
+  fornire chiarimenti a: chiarire
+  fornire garanzie a: garantire
+
+  # --- "svolgere" + sostantivo (Piemontese) ---
+  svolgere un'analisi di: analizzare
+  svolgere un controllo di: controllare
+  svolgere un'attività di: svolgere
+  svolgere un ruolo di: ricoprire
+  svolgere una funzione di: fungere da
+
+  # --- "operare" + sostantivo (Calvino; Piemontese) ---
+  operare una scelta: scegliere
+  operare una distinzione: distinguere
+  operare una selezione: selezionare
+  operare una riduzione: ridurre
+  operare un taglio: tagliare

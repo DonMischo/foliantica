@@ -2,8 +2,8 @@ import json
 from calendar import monthrange
 from datetime import date, datetime, UTC, timedelta
 
-from fastapi import APIRouter, Depends
-from sqlalchemy import func, distinct, text
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func, distinct, text, case
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -236,15 +236,28 @@ def _compute_metrics(db: Session) -> dict[str, int]:
         .scalar() or 0
     )
 
-    queries_sent    = db.query(func.count(QuerySubmission.id)).scalar() or 0
-    queries_partial = db.query(func.count(QuerySubmission.id)).filter(QuerySubmission.status == "partial_requested").scalar() or 0
-    queries_full    = db.query(func.count(QuerySubmission.id)).filter(QuerySubmission.status == "full_requested").scalar()   or 0
-    queries_offer   = db.query(func.count(QuerySubmission.id)).filter(QuerySubmission.status == "offer").scalar()            or 0
+    # All four QuerySubmission counts in a single round-trip
+    _qs = db.query(
+        func.count(QuerySubmission.id),
+        func.count(case((QuerySubmission.status == "partial_requested", 1))),
+        func.count(case((QuerySubmission.status == "full_requested",    1))),
+        func.count(case((QuerySubmission.status == "offer",             1))),
+    ).one()
+    queries_sent, queries_partial, queries_full, queries_offer = (_qs[i] or 0 for i in range(4))
     research_items  = db.query(func.count(ResearchItem.id)).scalar() or 0
 
     # ── New metrics via raw SQL ───────────────────────────────────────────────
-    typed_scene_count = _safe(db, "SELECT COUNT(*) FROM scenes WHERE scene_type IS NOT NULL")
-    corkboard_scenes  = _safe(db, "SELECT COUNT(*) FROM scenes WHERE node_x IS NOT NULL")
+    # Merge three scene-table scans into one
+    _sc = db.execute(text(
+        "SELECT "
+        "  COUNT(CASE WHEN scene_type IS NOT NULL THEN 1 END), "
+        "  COUNT(CASE WHEN node_x     IS NOT NULL THEN 1 END), "
+        "  COALESCE(MAX(word_count), 0) "
+        "FROM scenes"
+    )).one()
+    typed_scene_count = _sc[0] or 0
+    corkboard_scenes  = _sc[1] or 0
+    max_scene_words   = _sc[2] or 0
     timeline_events   = _safe(db, "SELECT COUNT(*) FROM timeline_events")
     fragment_count    = _safe(db, "SELECT COUNT(*) FROM fragments")
     # Parse inventory JSON once for items / currency / relics
@@ -324,8 +337,6 @@ def _compute_metrics(db: Session) -> dict[str, int]:
             if len(days_written) == monthrange(year, month)[1]:
                 perfect_month = 1
                 break
-
-    max_scene_words = _safe(db, "SELECT COALESCE(MAX(word_count), 0) FROM scenes")
 
     # Lore bomb: max scenes a single codex entry appears in
     lore_bomb = 0
@@ -435,7 +446,9 @@ def _compute_metrics(db: Session) -> dict[str, int]:
 @router.get("/achievements")
 def get_achievements(db: Session = Depends(get_db)):
     metrics      = _compute_metrics(db)
-    unlocks      = {u.key: u.unlocked_at for u in db.query(AchievementUnlock).all()}
+    unlock_rows  = db.query(AchievementUnlock).all()
+    unlocks      = {u.key: u.unlocked_at for u in unlock_rows}
+    popup_shown  = {u.key for u in unlock_rows if u.popup_shown_at is not None}
     results      = []
     newly_earned = []
     now          = datetime.now(UTC).replace(tzinfo=None)
@@ -468,6 +481,7 @@ def get_achievements(db: Session = Depends(get_db)):
             "unlocked_at":  ts.isoformat() if ts and earned else None,
             "progress":     min(val, ach["threshold"]),
             "progress_max": ach["threshold"],
+            "show_toast":   earned and ach["key"] in unlocks and ach["key"] not in popup_shown,
         })
 
     # ── Special: All Human ────────────────────────────────────────────────────
@@ -493,6 +507,7 @@ def get_achievements(db: Session = Depends(get_db)):
         "unlocked_at":  all_human_ts.isoformat() if all_human_ts and all_human_earned else None,
         "progress":     1 if all_human_earned else 0,
         "progress_max": 1,
+        "show_toast":   all_human_earned and "all_human" in unlocks and "all_human" not in popup_shown,
     })
 
     # ── Hidden: The Complete Works ────────────────────────────────────────────
@@ -524,6 +539,7 @@ def get_achievements(db: Session = Depends(get_db)):
         "progress":     1 if complete_earned else 0,
         "progress_max": 1,
         "hidden":       True,
+        "show_toast":   complete_earned and "all_achievements" in unlocks and "all_achievements" not in popup_shown,
     })
 
     # ── Hidden achievements ───────────────────────────────────────────────────
@@ -542,6 +558,7 @@ def get_achievements(db: Session = Depends(get_db)):
             "unlocked_at": ts.isoformat() if ts and earned else None,
             "progress": min(val, threshold), "progress_max": threshold,
             "hidden": True,
+            "show_toast": earned and key in unlocks and key not in popup_shown,
         })
 
     _h("pantser",       "pantser",       "The Pantser",          "10,000 words and not a single codex entry. Kerouac typed On the Road on a 120-foot scroll in three weeks — no outline, no notes, no index cards. He called it 'automatic writing.' You clearly understand.",                                                                           "story",    2, "pantser_condition",     1)
@@ -570,3 +587,18 @@ def get_achievements(db: Session = Depends(get_db)):
         db.commit()
 
     return results
+
+
+@router.post("/achievements/ack")
+def ack_achievements(body: dict, db: Session = Depends(get_db)):
+    """Mark achievement popups as shown so they never appear again."""
+    keys = body.get("keys", [])
+    if not keys:
+        return {"ok": True}
+    now = datetime.now(UTC).replace(tzinfo=None)
+    db.query(AchievementUnlock).filter(
+        AchievementUnlock.key.in_(keys),
+        AchievementUnlock.popup_shown_at == None,  # noqa: E711
+    ).update({"popup_shown_at": now}, synchronize_session=False)
+    db.commit()
+    return {"ok": True}

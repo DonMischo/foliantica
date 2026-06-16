@@ -1,0 +1,125 @@
+# Kilder / Sources:
+#   - Språkrådet: sprakradet.no — råd om lånord og anglisismer
+#   - Vinje, Finn-Erik: "Moderne norsk" (Universitetsforlaget, 6. utg. 1990)
+#   - Bokmålsordboka: bokmaalsordboka.no
+#   - NTB Språk: "NTBs språkbok"
+#   - Norsk Ordbok: norsk-ordbok.no (Universitetet i Oslo)
+extends: substitution
+message: "Anglisisme: '%s' — på norsk: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Møter og forretningsorganisasjon (Språkrådet; Vinje) ---
+  meeting: møte / samling
+  meetings: møter
+  briefing: orientering / briefing (akseptert)
+  debriefing: ettermøte / evaluering
+  brainstorming: idédugnad / brainstorming (akseptert)
+  workshop: workshop (akseptert) / arbeidsseminar
+  workshops: arbeidsseminarer
+  deadline: frist / tidsfrist
+  deadlines: frister
+  networking: nettverksbygging / networking (akseptert)
+  staff: ansatte / medarbeidere
+  manager: leder / sjef / manager (akseptert)
+  managers: ledere
+  management: ledelse / management (akseptert)
+  outsourcing: outsourcing (akseptert) / utsetting
+  freelance: frilanser / freelance (akseptert)
+  startup: startup (akseptert) / nystartet bedrift
+  pitch: pitch (akseptert) / presentasjon
+  feedback: tilbakemelding / feedback (akseptert)
+  newsletter: nyhetsbrev
+  newsletters: nyhetsbrev
+  ranking: rangering / rangliste
+  lobbying: lobbyvirksomhet / lobbying (akseptert)
+  target: mål / målgruppe
+  targets: mål
+  benchmark: referansepunkt / benchmark (akseptert)
+  copyright: opphavsrett
+  joint venture: joint venture (akseptert) / samarbeidsforetak
+
+  # --- Teknologi og digitalt (Språkrådet; Bokmålsordboka) ---
+  email: e-post / epost (akseptert)
+  e-mail: e-post
+  spam: spam (akseptert) / søppelpost
+  link: lenke
+  links: lenker
+  login: innlogging
+  logout: utlogging
+  password: passord
+  passwords: passord
+  username: brukernavn
+  download: nedlasting
+  upload: opplasting
+  update: oppdatering
+  updates: oppdateringer
+  backup: sikkerhetskopi / backup (akseptert)
+  backups: sikkerhetskopier
+  hardware: hardware (akseptert) / utstyr / maskinvare
+  software: programvare / software (akseptert)
+  app: app (akseptert) / applikasjon
+  apps: apper / applikasjoner
+  smartphone: smarttelefon / smartphone (akseptert)
+  hashtag: hashtag (akseptert) / emneknagge
+  selfie: selfie (akseptert) / selvportrett
+  streaming: strømming / streaming (akseptert)
+  blog: blogg
+  blogs: blogger
+  influencer: influencer (akseptert) / påvirker
+  trending: trending (akseptert) / populær
+  tweet: tweet (akseptert) / innlegg
+  cloud: skyen / cloud (akseptert)
+  webinar: webinar (akseptert) / nettseminar
+  chatbot: chatbot (akseptert) / samtalerobot
+
+  # --- Medier og underholdning (NTB Språk; Bokmålsordboka) ---
+  show: show (akseptert) / forestilling
+  casting: casting (akseptert) / utvelgelse
+  reality show: realityshow (akseptert) / virkelighetsprogram
+  trailer: trailer (akseptert) / forhåndsvisning
+  playlist: spilleliste
+  playlists: spillelister
+  live: live (akseptert) / direkte
+  remake: remake (akseptert) / nyinnspilling
+  flyer: flyer (akseptert) / løpeseddel
+
+  # --- Mote og forbruk (Bokmålsordboka; NTB Språk) ---
+  outfit: outfit (akseptert) / antrekk / klær
+  fashion: mote / fashion (akseptert)
+  brand: merke / brand (akseptert)
+  brands: merker
+  branding: merkevarebygging
+  shopping: shopping (akseptert) / handel
+  ticket: billett
+  tickets: billetter
+  voucher: gavekort / voucher (akseptert)
+  premium: premium (akseptert) / førsteklasse
+
+  # --- Mat og service (Bokmålsordboka) ---
+  brunch: brunch (akseptert) / sein frokost
+  catering: catering (akseptert)
+  fast food: hurtigmat / fastfood (akseptert)
+  chef: kokk / kjøkkensjef
+
+  # --- Sport og helse (Bokmålsordboka; NTB Språk) ---
+  running: løping
+  fitness: fitness (akseptert) / kondisjonstrening
+  wellness: velvære / wellness (akseptert)
+  coach: trener / coach (akseptert)
+  coaching: coaching (akseptert) / veiledning
+
+  # --- Markedsføring (Språkrådet; NTB Språk) ---
+  banner: banner (akseptert) / nettannonse
+  engagement: engasjement
+  reach: rekkevidde
+  awareness: bevissthet / kjennskap
+  storytelling: historiefortelling / storytelling (akseptert)
+  press release: pressemelding
+  background: bakgrunn
+
+  # --- Anglisistiske verb (Språkrådet; Vinje) ---
+  google: søke på nett / google (akseptert)
+  chatte: chatte (akseptert) / prate online
+  poste: poste (akseptert) / publisere
+  tweete: tweete (akseptert) / legge ut innlegg

@@ -4,9 +4,7 @@ All computation is done in pure Python on the stored HTML content;
 no extra dependencies beyond the stdlib.
 """
 import re
-from collections import Counter
-import re as _re
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, text
@@ -151,7 +149,7 @@ def get_analytics(project_id: int, db: Session = Depends(get_db)):
 @router.get("/stats/totals")
 def get_stats_totals(db: Session = Depends(get_db)):
     def _wc(content: str) -> int:
-        return len(_re.sub(r"<[^>]+>", "", content or "").split())
+        return len(re.sub(r"<[^>]+>", "", content or "").split())
 
     # ── Total words ──────────────────────────────────────────────────────────────
     try:

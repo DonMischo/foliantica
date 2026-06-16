@@ -1,0 +1,140 @@
+# Fontes / Sources:
+#   - Celso Cunha / Lindley Cintra: "Nova Gramática do Português Contemporâneo" (João Sá da Costa, 1984/2014)
+#   - Cláudio Moreno: "Guia Prático de Estilo" (L&PM, 2009)
+#   - Eduardo Martins: "Manual de Redação e Estilo de O Estado de S. Paulo" (1997)
+#   - José Luís Nunes Moura: "Escrever em Português" (Presença, 2009)
+#   - Presidência do Conselho de Ministros (Portugal): "Guia de Boas Práticas de Linguagem Administrativa"
+#   - Academia Brasileira de Letras (ABL)
+extends: substitution
+message: "Expressão inflada: '%s' — mais breve: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Preposições infladas (Moreno; Presidência do Conselho; Cunha/Cintra) ---
+  no âmbito de: em
+  no domínio de: em
+  em sede de: em
+  no que concerne a: quanto a
+  no que diz respeito a: quanto a
+  no que se refere a: quanto a
+  relativamente a: sobre
+  em relação a: sobre
+  com referência a: sobre
+  com respeito a: sobre
+  em ordem a: para
+  em virtude de: por
+  a seguir a: após
+  a partir do momento em que: quando
+  por força de: por
+  em função de: segundo
+  em conformidade com: segundo
+  em cumprimento de: como previsto em
+  ao abrigo de: ao abrigo → segundo
+  ao arrepio de: contra
+  nos termos de: segundo
+  no quadro de: em
+  em termos de: em / do ponto de vista de
+  a título de: como
+  a título informativo: a título informativo → para informação
+  à luz de: segundo
+  na perspetiva de: segundo
+  na perspectiva de: segundo
+  com vista a: para
+  com o intuito de: para
+  com o objetivo de: para
+  com o propósito de: para
+  a fim de: para
+  com vista à: para
+  no sentido de: para
+
+  # --- Causais infladas (Moreno; Martins) ---
+  em virtude do facto de que: porque
+  dado o facto de que: porque
+  pelo facto de que: porque
+  atendendo a que: dado que
+  considerando que: dado que
+  tendo em conta que: dado que
+  tendo em consideração que: dado que
+  em razão de: por
+  por razão de: por
+
+  # --- Condicionais infladas (Moreno; Presidência do Conselho) ---
+  no caso em que: se
+  na eventualidade de que: se
+  caso se verifique: se
+  desde que: desde que → se
+  com a condição de que: desde que
+  contanto que: desde que
+
+  # --- Temporais infladas (Moreno; Martins) ---
+  anteriormente a: antes de
+  previamente a: antes de
+  posteriormente a: depois de
+  na data de hoje: hoje
+  no dia de hoje: hoje
+  na presente data: hoje
+  no corrente ano: este ano
+  no ano em curso: este ano
+  no momento em que: quando
+  no ato de: quando / no momento de
+  no decurso de: durante
+  no decorrer de: durante
+  aquando de: quando
+  por ocasião de: durante
+
+  # --- Excetivas infladas (Moreno) ---
+  com exceção de: exceto
+  à exceção de: exceto
+  excluindo o caso de: exceto
+  na ausência de: sem
+  na falta de: sem
+  independentemente de: independentemente de → seja qual for
+
+  # --- Burocráticas / administrativas (Moreno; Presidência do Conselho) ---
+  importa referir que: refira-se que
+  cumpre referir que: cumpre salientar → note-se que
+  cumpre salientar que: note-se que
+  cumpre notar que: note-se que
+  saliente-se que: note-se que
+  sublinhe-se que: note-se que
+  destaque-se que: note-se que
+  é de referir que: refira-se que
+  é de salientar que: note-se que
+  é de notar que: note-se que
+  é de assinalar que: note-se que
+  é de considerar que: note-se que
+  diga-se que: refira-se que
+  para todos os efeitos: de facto
+  de facto em concreto: de facto
+  em termos concretos: concretamente
+  a título definitivo: definitivamente
+  a título provisório: provisoriamente
+  a título excecional: excecionalmente
+  a título excepcional: excepcionalmente
+  conforme acima referido: como referido
+  conforme adiante indicado: como indicado a seguir
+  nos termos do exposto: como exposto
+  pela presente via: por este meio
+  quaisquer outros: (eliminar)
+  e/ou: ou / e (escolher)
+
+  # --- Modais inflados (Moreno; Cunha/Cintra) ---
+  ser capaz de: poder
+  estar em condições de: poder
+  ter a possibilidade de: poder
+  ter a faculdade de: poder
+  revelar-se possível: ser possível
+  é possível que: talvez
+  não se exclui que: talvez
+  com toda a probabilidade: provavelmente
+  há probabilidade de que: provavelmente
+
+  # --- Chevilles redatoriais (Moreno; Martins) ---
+  importa lembrar que: lembre-se que
+  convém precisar que: precisemos que
+  é necessário sublinhar que: sublinhemos que
+  como já foi dito anteriormente: como já foi dito
+  como já foi mencionado: como já mencionado
+  como já foi indicado: como já indicado
+  em conclusão e em síntese: em conclusão
+  em definitivo e em resumo: em resumo

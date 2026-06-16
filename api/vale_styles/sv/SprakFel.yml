@@ -1,0 +1,79 @@
+# Källor / Sources:
+#   - Josephson, Olle: "Ju" (Norstedts, 2018) — om anglicismer och felbruk
+#   - Språkrådet: "Svenska skrivregler" (Liber, 4e uppl. 2017)
+#   - SAOL: "Svenska Akademiens ordlista" (14e uppl. 2015)
+#   - Strömquist, Siv: "Skrivboken" (Gleerups, 8e uppl. 2014)
+#   - Hellspong, Lennart / Ledin, Per: "Vägar genom texten" (Studentlitteratur, 1997)
+extends: existence
+message: "'%s' — möjlig anglicism eller felaktig användning: kontrollera"
+level: warning
+ignorecase: false
+tokens:
+  # --- "realisera" som anglicism (Josephson; Språkrådet) ---
+  # Rätt: realisera = förverkliga, sälja. Fel: realisera = inse (to realize).
+  # "Han realiserade att han var sen" → "Han insåg att han var sen"
+  - \brealiserade att\b
+  - \bRealiserade att\b
+  - \bkan realisera att\b
+  - \brealiserar att\b
+  - \brealiserar jag att\b
+  - \brealiserat att\b
+
+  # --- "implementera" som anglicism (Språkrådet; Josephson) ---
+  # Bättre: genomföra, införa, tillämpa, genomdriva, verkställa
+  - \bimplementera\b
+  - \bImplementera\b
+  - \bimplementering\b
+  - \bimplementerat\b
+  - \bimplementerade\b
+
+  # --- "facilitera" som tomt verb (Språkrådet; Strömquist) ---
+  # Bättre: möjliggöra, underlätta, stödja, hjälpa till med
+  - \bfacilitera\b
+  - \bFacilitera\b
+  - \bfaciliterande\b
+  - \bfaciliterat\b
+  - \bfaciliterar\b
+
+  # --- "adressera" som anglicism (Josephson; Språkrådet) ---
+  # Rätt: adressera = skriva adress på kuvert. Anglicism: hantera ett problem.
+  # "Vi adresserar problemet" → "Vi hanterar / tar itu med problemet"
+  - \badressera problemet\b
+  - \badresserar problemet\b
+  - \badresserat problemet\b
+  - \badressera frågan\b
+  - \badresserar frågan\b
+  - \badressera utmaningen\b
+  - \badressera frågeställningen\b
+
+  # --- "eventuellt" (sv) ≠ "eventually" (en) (Josephson) ---
+  # Sv: eventuellt = möjligen, kanske (möjlig framtida händelse)
+  # En: eventually = till slut, slutligen (tidsmässigt) → på svenska: "till sist", "så småningom"
+  - \beventuellt\b
+
+  # --- "momentant" / "momentan" som anglicism (Josephson) ---
+  # Sv: momentan = ögonblicklig, omedelbar (korrekt). Anglicism: = för tillfället.
+  - \bmomentant\b
+
+  # --- "sensibel" som anglicism (Josephson; SAOL) ---
+  # Sv: sensibel = känslig (korrekt). Anglicism: = klok, förnuftig (sensible).
+  - \bsensibel\b
+  - \bsensibla\b
+
+  # --- "konsistent" som anglicism (Josephson) ---
+  # Sv: konsistent = sammanhängande. Anglicism: = konsekvent, ständig.
+  - \bkonsistent\b
+  - \bkonsistenta\b
+
+  # --- "supporta" som anglicism (Språkrådet) ---
+  # Bättre: stödja, hjälpa, understödja, backa upp
+  - \bsupporta\b
+  - \bsupportar\b
+  - \bsupportade\b
+
+  # --- Perspektivtäckning (Strömquist: ta ansvar för din text) ---
+  - \bjag är av den åsikten att\b
+  - \bjag är av den uppfattningen att\b
+  - \bNär jag ser det\b
+  - \bPersonligen anser jag\b
+  - \bPersonligen tycker jag\b

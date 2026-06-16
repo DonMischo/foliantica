@@ -1,0 +1,216 @@
+# Sources :
+#   - Académie française : recommandations officielles et mises en garde contre les anglicismes
+#   - Commission générale de terminologie et de néologie : enrichissement de la langue française (Journal officiel)
+#   - FranceTerme : france-terme.culture.fr — termes officiels recommandés
+#   - Office québécois de la langue française (OQLF) : Grand dictionnaire terminologique
+#   - Jean Girodet : « Dictionnaire des pièges et difficultés de la langue française » (Bordas, 1988)
+#   - Maurice Grevisse / André Goosse : « Le Bon Usage » (De Boeck, 15e éd., 2011)
+extends: substitution
+message: "Anglicisme : '%s' — en français : '%s' ?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Réunions et organisation (Commission de terminologie ; Académie française) ---
+  meeting: réunion
+  meetings: réunions
+  briefing: compte rendu / réunion d'information
+  briefings: comptes rendus
+  debriefing: bilan / compte rendu
+  brainstorming: remue-méninges
+  workshop: atelier
+  workshops: ateliers
+  deadline: date limite
+  deadlines: dates limites
+  networking: réseautage
+  staff: personnel
+  manager: responsable
+  managers: responsables
+  management: gestion
+  outsourcing: externalisation
+  freelance: indépendant
+  freelancer: travailleur indépendant
+  startup: jeune pousse
+  startups: jeunes pousses
+  pitch: argumentaire
+  pitching: présentation
+  feedback: retour / rétroaction
+  sponsor: parrain / commanditaire
+  sponsors: parrains / commanditaires
+  sponsoring: parrainage
+  newsletter: infolettre / lettre d'information
+  newsletters: infolettres
+  ranking: classement
+  rankings: classements
+  lobbying: lobbying (toléré) / représentation d'intérêts
+  leasing: crédit-bail
+  royalty: redevance
+  royalties: redevances
+  know-how: savoir-faire
+  joint venture: coentreprise
+  dumping: concurrence déloyale
+  copyright: droit d'auteur
+  copyrights: droits d'auteur
+  target: cible
+  targets: cibles
+  holding: groupe
+  benchmark: étalon / référence
+  benchmarking: étalonnage
+
+  # --- Technologie et numérique (FranceTerme ; Commission de terminologie) ---
+  # Termes officiels publiés au Journal officiel
+  email: courriel
+  e-mail: courriel
+  mailing: envoi de courriels
+  spam: pourriel
+  link: lien
+  links: liens
+  login: identifiant / connexion
+  logout: déconnexion
+  password: mot de passe
+  passwords: mots de passe
+  username: identifiant
+  download: téléchargement
+  downloads: téléchargements
+  upload: téléversement
+  uploads: téléversements
+  update: mise à jour
+  updates: mises à jour
+  backup: sauvegarde
+  backups: sauvegardes
+  hardware: matériel
+  software: logiciel
+  app: appli / application
+  apps: applis / applications
+  smartphone: ordiphone / téléphone intelligent
+  smartphones: ordiphones
+  tablet: tablette
+  tablets: tablettes
+  hashtag: mot-dièse
+  hashtags: mots-dièse
+  selfie: autoportrait / égoportrait
+  selfies: autoportraits / égoportraits
+  streaming: diffusion en continu
+  blog: blogue
+  blogs: blogues
+  blogger: blogueur
+  bloggers: blogueurs
+  influencer: influenceur
+  influencers: influenceurs
+  troll: troll (toléré) / provocateur
+  hacker: pirate informatique
+  hackers: pirates informatiques
+  click: clic
+  clicks: clics
+  chat: messagerie instantanée
+  chatbot: agent conversationnel
+  chatbots: agents conversationnels
+  trending: tendance
+  trend: tendance
+  trends: tendances
+  tweet: gazouillis
+  tweets: gazouillis
+  retweeter: retransmettre
+  googler: rechercher sur internet
+  wifi: sans-fil / réseau sans-fil
+  cloud: nuage / informatique en nuage
+  big data: mégadonnées
+  data: données
+  content: contenu
+  webinar: webinaire
+  e-commerce: commerce électronique
+  clickbait: appât à clics
+
+  # --- Médias et spectacles (Académie française ; Commission de terminologie) ---
+  show: spectacle
+  shows: spectacles
+  casting: sélection / audition
+  reality show: téléréalité
+  talk show: émission de débat
+  prime time: heure de grande écoute
+  spot: annonce publicitaire
+  spots: annonces publicitaires
+  clip: vidéoclip
+  clips: vidéoclips
+  trailer: bande-annonce
+  trailers: bandes-annonce
+  flyer: prospectus / tract
+  flyers: prospectus
+  remake: nouvelle version
+  spin-off: dérivé
+  playlist: liste de lecture
+  playlists: listes de lecture
+  single: single (toléré) / chanson
+  live: en direct
+  story: story (toléré) / histoire
+
+  # --- Mode, style et consommation (Académie française ; OQLF) ---
+  look: style / allure / aspect
+  outfit: tenue
+  outfits: tenues
+  fashion: mode
+  vintage: rétro / vintage (toléré)
+  brand: marque
+  brands: marques
+  branding: image de marque
+  shopping: courses / achats
+  stock: stock (toléré) / inventaire
+  ticket: billet
+  tickets: billets
+  voucher: bon / coupon
+  vouchers: bons / coupons
+  premium: haut de gamme
+  low cost: bas de gamme / économique
+
+  # --- Alimentation et hôtellerie (OQLF ; Commission de terminologie) ---
+  brunch: brunch (toléré) / déjeuner tardif
+  catering: restauration / traiteur
+  food truck: camion-restaurant
+  fast food: restauration rapide
+  happy hour: heure heureuse
+  chef: chef cuisinier
+  check-in: enregistrement
+  check-out: départ
+  resort: complexe hôtelier
+  camping: camping (toléré) / terrain de camping
+
+  # --- Loisirs, sport et bien-être (OQLF ; Académie française) ---
+  running: course à pied
+  fitness: remise en forme
+  wellness: bien-être
+  spa: spa (toléré) / établissement de soins
+  hobby: passe-temps / loisir
+  fan: fan (toléré) / admirateur
+  fans: fans / admirateurs
+  coach: entraîneur / conseiller
+  coaches: entraîneurs / conseillers
+  coaching: accompagnement / mentorat
+  record: record (toléré) / performance
+  cool: sympa / génial
+  fun: amusant
+
+  # --- Marketing et publicité (FranceTerme ; Commission de terminologie) ---
+  banner: bannière
+  banners: bannières
+  landing page: page d'atterrissage
+  claim: slogan
+  copywriting: rédaction publicitaire
+  storytelling: narration
+  engagement: engagement (toléré) / implication
+  reach: portée
+  awareness: notoriété
+  brochure: brochure (toléré) / dépliant
+  press release: communiqué de presse
+  off the record: officieusement
+  background: contexte / antécédents
+  best of: sélection
+
+  # --- Anglicismes verbaux (Académie française ; OQLF) ---
+  checker: vérifier
+  updater: mettre à jour
+  booker: réserver
+  surfer: naviguer
+  chatter: discuter en ligne
+  tweeter: gazouiller
+  liker: aimer / apprécier
+  tagger: étiqueter
+  partager en story: publier une histoire

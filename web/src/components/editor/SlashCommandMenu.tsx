@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
-import { StickyNote, Coins, Package, ImageIcon, Sparkles, MessageSquare, Braces, GitBranch, Table2, ListChecks } from "lucide-react";
+import { StickyNote, Coins, Package, ImageIcon, Sparkles, MessageSquare, Braces, GitBranch, Table2, ListChecks, Link as LinkIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface CommandItem {
@@ -106,6 +106,15 @@ export const COMMANDS: CommandItem[] = [
     icon: Table2,
     color: "#64748b",
     keywords: ["table", "grid", "row", "column", "cell", "codex", "matrix"],
+    content: null,
+  },
+  {
+    id: "link",
+    label: "Scene Links",
+    description: "Link research, snippets, and sources to this scene",
+    icon: LinkIcon,
+    color: "#0ea5e9",
+    keywords: ["link", "research", "source", "snippet", "idea", "reference", "clipping"],
     content: null,
   },
 ];

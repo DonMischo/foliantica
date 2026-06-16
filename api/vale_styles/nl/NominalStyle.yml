@@ -1,0 +1,102 @@
+# Bronnen / Sources:
+#   - Jan Renkema: "Schrijfwijzer" (4e druk, Boom, 2012) — vermijd het naamwoordelijke stijl
+#   - Henk Pander Maat / Leo Lentz: "Schrijven voor lezers" (Boom, 2010)
+#   - Genootschap Onze Taal: taaladvies.net
+#   - Nederlandse Taalunie (NTU): taalunie.org
+#   - ANS: "Algemene Nederlandse Spraakkunst" (2e druk, 1997 / online 2016)
+extends: substitution
+message: "Naamwoordelijke stijl: '%s' — directer: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- "overgaan tot" (Renkema; Pander Maat: gebruik het simpele werkwoord) ---
+  overgaan tot de behandeling van: behandelen
+  overgaan tot de bespreking van: bespreken
+  overgaan tot de beoordeling van: beoordelen
+  overgaan tot de uitvoering van: uitvoeren
+  overgaan tot de ondertekening van: ondertekenen
+  overgaan tot de opening van: openen
+  overgaan tot de sluiting van: sluiten
+  overgaan tot de betaling van: betalen
+  overgaan tot de levering van: leveren
+  overgaan tot de aanschaf van: aanschaffen
+
+  # --- "verrichten" als leeg werkwoord (Renkema; NTU) ---
+  een betaling verrichten: betalen
+  een onderzoek verrichten: onderzoeken
+  een inspectie verrichten: inspecteren
+  een beoordeling verrichten: beoordelen
+  werkzaamheden verrichten: werken
+  een meting verrichten: meten
+  een controle verrichten: controleren
+  een analyse verrichten: analyseren
+  een berekening verrichten: berekenen
+  een aankoop verrichten: kopen
+
+  # --- "uitvoeren" als leeg werkwoord (Renkema; Pander Maat) ---
+  een betaling uitvoeren: betalen
+  een controle uitvoeren: controleren
+  een onderzoek uitvoeren: onderzoeken
+  een analyse uitvoeren: analyseren
+  een evaluatie uitvoeren: evalueren
+  een selectie uitvoeren: selecteren
+  een inspectie uitvoeren: inspecteren
+  een test uitvoeren: testen
+  een berekening uitvoeren: berekenen
+
+  # --- "geven" + zelfstandig naamwoord (Renkema; Genootschap Onze Taal) ---
+  een antwoord geven op: antwoorden op
+  een toelichting geven op: toelichten
+  een beschrijving geven van: beschrijven
+  een overzicht geven van: samenvatten
+  een oordeel geven over: beoordelen
+  een beslissing geven over: beslissen over
+  toestemming geven voor: toestaan
+  opdracht geven tot: opdragen
+  advies geven over: adviseren over
+  steun geven aan: steunen
+  uitleg geven over: uitleggen
+
+  # --- "nemen" + zelfstandig naamwoord (Renkema; Pander Maat) ---
+  een beslissing nemen: beslissen
+  een besluit nemen: besluiten
+  een maatregel nemen: maatregelen treffen → handelen
+  kennis nemen van: kennisnemen van
+  contact opnemen met: contact opnemen → bellen / schrijven
+  initiatief nemen: het initiatief nemen → initiëren
+  een standpunt innemen: een standpunt innemen → stellen
+  toevlucht nemen tot: zijn toevlucht nemen → gebruikmaken van
+
+  # --- "hebben" + abstract zelfstandig naamwoord (Renkema; ANS) ---
+  de mogelijkheid hebben om: kunnen
+  de noodzaak hebben om: moeten
+  de bevoegdheid hebben om: mogen / bevoegd zijn om
+  kennis hebben van: kennen
+  vertrouwen hebben in: vertrouwen op
+  bezwaar hebben tegen: bezwaar maken tegen → bezwaar maken
+  de intentie hebben om: van plan zijn om
+  twijfels hebben over: twijfelen aan
+
+  # --- "maken" + zelfstandig naamwoord (Renkema; Genootschap Onze Taal) ---
+  gebruik maken van: gebruikmaken van → gebruiken
+  melding maken van: melden
+  kennis maken met: kennismaken met
+  bezwaar maken tegen: bezwaar aantekenen → protesteren
+  onderscheid maken tussen: onderscheiden
+  deel uitmaken van: behoren tot
+  een begin maken met: beginnen met
+  een einde maken aan: beëindigen
+
+  # --- "bieden" + zelfstandig naamwoord (Renkema) ---
+  ondersteuning bieden aan: ondersteunen
+  hulp bieden aan: helpen
+  weerstand bieden aan: weerstaan
+  bescherming bieden aan: beschermen
+  ruimte bieden voor: ruimte laten voor → toelaten
+
+  # --- "stellen" + zelfstandig naamwoord (Renkema; Pander Maat) ---
+  een vraag stellen: vragen
+  een eis stellen: eisen
+  een voorwaarde stellen: voorwaarden stellen → vereisen
+  een diagnose stellen: diagnosticeren
+  een prognose stellen: prognosticeren

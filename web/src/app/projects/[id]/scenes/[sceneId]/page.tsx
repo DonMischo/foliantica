@@ -2,18 +2,20 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { BookOpen, Sparkles, Clock, Moon, Sun, Archive, History, MessageSquare, Focus, Braces, ChevronDown, AlignCenter, Timer, Flag, BookMarked, MoreHorizontal, Check, SpellCheck, User, ListChecks } from "lucide-react";
+import { BookOpen, Sparkles, Clock, Moon, Sun, Archive, History, MessageSquare, Focus, Braces, ChevronDown, AlignCenter, Timer, Flag, BookMarked, MoreHorizontal, Check, SpellCheck, User, ListChecks, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TipTapEditor } from "@/components/editor/TipTapEditor";
 import { StatusBar } from "@/components/editor/StatusBar";
 import { ThesaurusPanel } from "@/components/editor/ThesaurusPanel";
 import { GrammarPanel } from "@/components/grammar/GrammarPanel";
+import { ValePanel } from "@/components/vale/ValePanel";
 import { SENSITIVITY_TYPES, type FlagItem, type SensitivityType } from "@/components/editor/SensitivityExtension";
 import { CodexSidebar } from "@/components/codex/CodexSidebar";
 import { CodexEntryDialog } from "@/components/codex/CodexEntryDialog";
 import { VersionHistoryPanel } from "@/components/editor/VersionHistoryPanel";
 import { ChatPanel } from "@/components/editor/ChatPanel";
+import { LinkPanel } from "@/components/editor/LinkPanel";
 import { SceneTimePanel } from "@/components/time/SceneTimePanel";
 import { TimeConfigDialog } from "@/components/time/TimeConfigDialog";
 import { TimelineCommandDialog } from "@/components/timeline/TimelineCommandDialog";
@@ -72,7 +74,7 @@ export default function ScenePage() {
   const createFragment = useCreateFragment(projectId);
   // chapter_id is on scene; hook needs it — use 0 until scene loads, only called after
   const deleteScene = useDeleteScene(scene?.chapter_id ?? 0);
-  const syncCommands = useSyncSceneCommands(sceneIdNum);
+  const syncCommands = useSyncSceneCommands();
   const createVersion = useCreateSceneVersion(sceneIdNum);
   const updateSettings = useUpdateSettings();
   const qc = useQueryClient();
@@ -91,6 +93,7 @@ export default function ScenePage() {
   const [timelineCommandOpen, setTimelineCommandOpen] = useState(false);
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
+  const [linkPanelOpen, setLinkPanelOpen] = useState(false);
 
   // ── Co-work soft lock + presence ────────────────────────────────────────
   const locks          = useCollabStore((s) => s.locks);
@@ -150,10 +153,12 @@ export default function ScenePage() {
   const [thesaurusOpen, setThesaurusOpen]         = useState(false);
   const [selectedWord, setSelectedWord]           = useState<string>("");
   const [grammarPanelOpen, setGrammarPanelOpen]   = useState(false);
+  const [valePanelOpen, setValePanelOpen]         = useState(false);
   const replaceWordRef         = useRef<((word: string) => void) | null>(null);
   const applyFlagRef           = useRef<((type: string) => void) | null>(null);
   const applyGrammarFixRef     = useRef<((matched: string, replacement: string, offset: number) => void) | null>(null);
   const jumpToGrammarMatchRef  = useRef<((matched: string, offset: number) => void) | null>(null);
+  const jumpToTextRef          = useRef<((text: string) => void) | null>(null);
 
   // Characters for POV selector
   const characters = useMemo(
@@ -202,7 +207,7 @@ export default function ScenePage() {
       // user navigated away before the debounced sync fired in a previous session.
       if (scene.content) {
         const commands = extractCommands(scene.content);
-        syncCommands.mutate(commands);
+        syncCommands.mutate({ sceneId: scene.id, commands });
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -241,18 +246,40 @@ export default function ScenePage() {
 
   // Debounced command sync (fires 2s after last change, same rhythm as autosave)
   const syncRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The pending command sync, tagged with the scene it was extracted from.
+  const pendingCmdRef = useRef<{ sceneId: number; html: string } | null>(null);
+  // Keep a stable reference to the (stable) RQ mutate fn so flushCommands below
+  // doesn't change identity every render.
+  const syncMutateRef = useRef(syncCommands.mutate);
+  syncMutateRef.current = syncCommands.mutate;
+
+  const flushCommands = useCallback(() => {
+    const pending = pendingCmdRef.current;
+    if (!pending) return;
+    pendingCmdRef.current = null;
+    syncMutateRef.current({ sceneId: pending.sceneId, commands: extractCommands(pending.html) });
+  }, [extractCommands]);
+
   const handleContentChange = useCallback((html: string) => {
     setContent(html);
     contentRef.current = html;
     const text = html.replace(/<[^>]+>/g, "");
     setWordCount(text.trim().split(/\s+/).filter(Boolean).length);
-    // Debounce command sync
+    // Debounce command sync, tagging the scene so a late fire targets the scene
+    // the commands came from — not whatever scene is mounted when it fires.
+    pendingCmdRef.current = { sceneId: sceneIdNum, html };
     if (syncRef.current) clearTimeout(syncRef.current);
-    syncRef.current = setTimeout(() => {
-      const commands = extractCommands(html);
-      syncCommands.mutate(commands);
-    }, 2000);
-  }, [extractCommands, syncCommands]);
+    syncRef.current = setTimeout(flushCommands, 2000);
+  }, [sceneIdNum, flushCommands]);
+
+  // Flush any pending command sync when leaving the scene / unmounting, so the
+  // last edits' inventory commands aren't dropped; also clears the stale timer.
+  useEffect(() => {
+    return () => {
+      if (syncRef.current) { clearTimeout(syncRef.current); syncRef.current = null; }
+      flushCommands();
+    };
+  }, [sceneIdNum, flushCommands]);
 
   const handleTitleBlur = () => {
     if (scene && title !== scene.title) {
@@ -260,16 +287,20 @@ export default function ScenePage() {
     }
   };
 
-  useAutosave({ sceneId: sceneIdNum, content, enabled: !!scene });
+  const { saveNow } = useAutosave({ sceneId: sceneIdNum, content, enabled: !!scene });
 
-  // ESC exits focus mode
+  // ESC exits focus mode; Ctrl/Cmd+S saves immediately
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && focusMode) setFocusMode(false);
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        saveNow();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [focusMode, setFocusMode]);
+  }, [focusMode, setFocusMode, saveNow]);
 
   // Clear session when navigating to a different scene
   useEffect(() => { clearSession(); }, [sceneIdNum]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -423,6 +454,18 @@ export default function ScenePage() {
           </div>
         )}
 
+        {/* Save */}
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={saveNow}
+          className="gap-1.5 text-xs"
+          title="Save now (Ctrl+S)"
+        >
+          <Save className="h-3.5 w-3.5" />
+          Save
+        </Button>
+
         {/* History */}
         <Button
           size="sm"
@@ -462,6 +505,18 @@ export default function ScenePage() {
           >
             <SpellCheck className="h-3.5 w-3.5" />
             Grammar
+          </Button>
+        )}
+        {appSettings?.vale_enabled && (
+          <Button
+            size="sm"
+            variant={valePanelOpen ? "secondary" : "ghost"}
+            onClick={() => setValePanelOpen(v => !v)}
+            className="gap-1.5 text-xs"
+            title="Style check"
+          >
+            <SpellCheck className="h-3.5 w-3.5" />
+            Style Checker
           </Button>
         )}
 
@@ -569,6 +624,16 @@ export default function ScenePage() {
                   {grammarPanelOpen && <Check className="ml-auto h-3 w-3 text-primary" />}
                 </button>
               )}
+              {appSettings?.vale_enabled && (
+                <button
+                  onClick={() => { setValePanelOpen((v) => !v); setMenuOpen(false); }}
+                  className={cn("w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2", valePanelOpen && "text-primary")}
+                >
+                  <SpellCheck className="h-3.5 w-3.5 text-muted-foreground" />
+                  Style Checker
+                  {valePanelOpen && <Check className="ml-auto h-3 w-3 text-primary" />}
+                </button>
+              )}
 
               <div className="border-t border-border my-1" />
 
@@ -664,6 +729,7 @@ export default function ScenePage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Editor */}
         <div className="flex-1 overflow-hidden flex flex-col">
+<<<<<<< HEAD
           {/* Co-work lock banner */}
           {isReadOnly && (
             <div className="flex items-center gap-2 px-4 py-1.5 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900/40 text-xs text-amber-700 dark:text-amber-400 shrink-0">
@@ -692,6 +758,29 @@ export default function ScenePage() {
             jumpToGrammarMatchRef={jumpToGrammarMatchRef}
             onPrefillEntry={(data) => { setNewEntryInitial(data); setNewEntryDialogOpen(true); }}
           />
+=======
+          <div className="flex-1 overflow-hidden">
+            <TipTapEditor
+              content={content}
+              onChange={handleContentChange}
+              codexEntries={codexEntries}
+              onCodexEntryClick={handleCodexEntryClick}
+              sceneId={sceneIdNum}
+              aiDisabled={aiDisabled}
+              onOpenChat={aiDisabled ? undefined : () => setChatPanelOpen(true)}
+              onOpenTimeline={() => setTimelineCommandOpen(true)}
+              onOpenLink={() => setLinkPanelOpen(true)}
+              onWordSelect={(w) => { if (w) setSelectedWord(w); }}
+              onFlagsChange={setFlags}
+              replaceWordRef={replaceWordRef}
+              applyFlagRef={applyFlagRef}
+              applyGrammarFixRef={applyGrammarFixRef}
+              jumpToGrammarMatchRef={jumpToGrammarMatchRef}
+              jumpToTextRef={jumpToTextRef}
+              onPrefillEntry={(data) => { setNewEntryInitial(data); setNewEntryDialogOpen(true); }}
+            />
+          </div>
+>>>>>>> main
           <StatusBar sceneWordCount={wordCount} />
         </div>
 
@@ -713,8 +802,10 @@ export default function ScenePage() {
             selectedId={selectedCodexId >= 0 ? selectedCodexId : undefined}
             onSelect={(id) => setSelectedCodexId(id)}
             onClose={() => setCodexSidebarOpen(false)}
-            onAdd={() => setNewEntryDialogOpen(true)}
+            onAdd={(initial) => { if (initial) setNewEntryInitial(initial); setNewEntryDialogOpen(true); }}
+            onJumpToText={(text) => jumpToTextRef.current?.(text)}
             sceneContent={content}
+            sceneId={Number(sceneId)}
           />
         )}
 
@@ -732,6 +823,15 @@ export default function ScenePage() {
           <ChatPanel
             sceneId={sceneIdNum}
             onClose={() => setChatPanelOpen(false)}
+          />
+        )}
+
+        {/* Scene links panel */}
+        {linkPanelOpen && (
+          <LinkPanel
+            projectId={projectId}
+            sceneId={sceneIdNum}
+            onClose={() => setLinkPanelOpen(false)}
           />
         )}
 
@@ -753,6 +853,16 @@ export default function ScenePage() {
             onClose={() => setGrammarPanelOpen(false)}
             onJumpTo={(matched, offset) => jumpToGrammarMatchRef.current?.(matched, offset)}
             onApplySuggestion={(matched, replacement, offset) => applyGrammarFixRef.current?.(matched, replacement, offset)}
+          />
+        )}
+
+        {/* Vale prose check panel */}
+        {valePanelOpen && (
+          <ValePanel
+            text={content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()}
+            language={project?.book_meta?.language ?? undefined}
+            onClose={() => setValePanelOpen(false)}
+            onJumpTo={(matched, offset) => jumpToGrammarMatchRef.current?.(matched, offset)}
           />
         )}
 

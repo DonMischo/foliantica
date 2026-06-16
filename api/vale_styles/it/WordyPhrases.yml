@@ -1,0 +1,138 @@
+# Fonti / Sources:
+#   - Luca Serianni: "Italiano" (Garzanti, 1988/2000)
+#   - Maurizio Piemontese: "Manuale di stile" (Presidenza del Consiglio dei Ministri, 1997)
+#   - Italo Calvino: "L'antilingua" (Il Giorno, 1965)
+#   - Accademia della Crusca: consulenze linguistiche — accademicadellacrusca.it
+#   - Ministero per la pubblica amministrazione: "Guida alla semplificazione del linguaggio amministrativo"
+#   - Valeria Della Valle / Giuseppe Patota: "Viva l'italiano!" (Sperling & Kupfer, 2009)
+extends: substitution
+message: "Espressione gonfiata: '%s' — più breve: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Preposizioni gonfiate (Calvino; Piemontese; Accademia della Crusca) ---
+  nell'ambito di: in
+  in merito a: su / riguardo a
+  per quanto riguarda: riguardo a
+  per quanto concerne: riguardo a
+  relativamente a: su
+  in relazione a: su
+  con riferimento a: riguardo a
+  con riguardo a: riguardo a
+  con riferimento alle: riguardo alle
+  in ordine a: riguardo a
+  in virtù di: per
+  a seguito di: dopo
+  a fronte di: di fronte a
+  sulla base di: secondo
+  in ragione di: per
+  in considerazione di: considerando
+  tenuto conto di: considerando
+  al fine di: per
+  allo scopo di: per
+  con l'obiettivo di: per
+  con il fine di: per
+  ai fini di: per
+  a fini di: per
+  in funzione di: secondo
+  in conformità a: secondo
+  in ottemperanza a: come previsto da
+  ai sensi di: secondo
+  nell'ottica di: per
+  in un'ottica di: in un'ottica di → per
+  in vista di: per
+  a titolo di: come
+  a titolo informativo: per informazione
+
+  # --- Causali gonfiate (Piemontese; Calvino) ---
+  in ragione del fatto che: perché
+  a causa del fatto che: perché
+  per il fatto che: perché
+  atteso che: poiché
+  considerato che: dato che
+  premesso che: poiché
+  tenuto presente che: dato che
+  visto che: dato che
+  in quanto tale: in quanto
+
+  # --- Condizionali gonfiate (Piemontese) ---
+  nel caso in cui: se
+  nell'eventualità in cui: se
+  qualora si verifichi: se
+  a condizione che: purché
+  a patto che: purché
+  sempre che: purché
+  fermo restando che: purché
+
+  # --- Temporali gonfiate (Piemontese; Calvino) ---
+  anteriormente a: prima di
+  precedentemente a: prima di
+  successivamente a: dopo
+  in data odierna: oggi
+  in data di ieri: ieri
+  in data di domani: domani
+  allo stato attuale: attualmente
+  al momento attuale: attualmente
+  nel corrente anno: quest'anno
+  nell'anno in corso: quest'anno
+  in corso d'anno: durante l'anno
+  nel momento in cui: quando
+  all'atto di: quando / nel momento di
+  nel corso di: durante
+  in occasione di: durante
+
+  # --- Eccettuative gonfiate (Piemontese) ---
+  ad eccezione di: tranne
+  a eccezione di: tranne
+  fatta eccezione per: tranne
+  in assenza di: senza
+  in mancanza di: senza
+  a prescindere da: indipendentemente da
+
+  # --- Burocratiche / amministrative (Calvino: "L'antilingua"; Piemontese) ---
+  si ritiene opportuno segnalare che: si segnala che
+  si evidenzia che: emerge che
+  si fa presente che: si segnala che
+  si rende noto che: si comunica che
+  si precisa che: si precisa che → si specifica che
+  si sottolinea che: si sottolinea → si ricorda che
+  si rappresenta che: si comunica che
+  è da ritenersi: è
+  è da considerarsi: è da considerare
+  per quanto di competenza: (eliminare)
+  a tutti gli effetti: di fatto
+  di fatto in concreto: di fatto
+  in via definitiva: definitivamente
+  in via provvisoria: provvisoriamente
+  in via prioritaria: prioritariamente
+  in via eccezionale: eccezionalmente
+  è da intendersi: si intende
+  è da leggersi: si legge
+  come sopra specificato: come specificato
+  come di seguito indicato: come indicato di seguito
+  di cui in premessa: indicato in premessa
+  in conformità a quanto sopra: come indicato sopra
+  quant'altro: (eliminare)
+  e/o: o / e (scegliere)
+
+  # --- Modali gonfiati (Piemontese; Calvino) ---
+  essere in grado di: potere
+  essere nella condizione di: potere
+  essere nella possibilità di: potere
+  essere in misura di: potere
+  avere la facoltà di: potere
+  risultare possibile: essere possibile
+  è possibile che: forse
+  non si esclude che: forse
+  con ogni probabilità: probabilmente
+  vi è la probabilità che: probabilmente
+
+  # --- Chevilles redazionali (Serianni; Calvino) ---
+  è opportuno ricordare che: ricordiamo che
+  è bene precisare che: precisiamo che
+  è necessario sottolineare che: sottolineiamo che
+  come già detto in precedenza: come già detto
+  come già menzionato: come menzionato
+  come già indicato: come indicato
+  in definitiva e in sintesi: in sintesi
+  in conclusione e in sintesi: in conclusione

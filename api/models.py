@@ -33,6 +33,7 @@ class Project(Base):
     cover_image: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     main_plot_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     subplot_names: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: ["name", ...]
+    corkboard_prefs: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: layout, toggles, colors, stack names
 
     acts: Mapped[list["Act"]] = relationship(
         "Act", back_populates="project", cascade="all, delete-orphan",
@@ -109,6 +110,7 @@ class Scene(Base):
     pov_character_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # codex_entries.id — POV character for this scene
     beat: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # plot beat label (e.g. "Inciting Incident")
     scene_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # action | dialogue | introspection | description | transition
+    card_color: Mapped[Optional[str]] = mapped_column(String(7), nullable=True)  # corkboard card tint (hex)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 
@@ -199,6 +201,22 @@ class CodexEntry(Base):
         self.entry_group = json.dumps(groups)
 
 
+class SceneConnection(Base):
+    """User-drawn typed cable between two scenes on the corkboard."""
+    __tablename__ = "scene_connections"
+    __table_args__ = (
+        UniqueConstraint("source_scene_id", "target_scene_id", "connection_type"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    project_id: Mapped[int] = mapped_column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    source_scene_id: Mapped[int] = mapped_column(Integer, ForeignKey("scenes.id", ondelete="CASCADE"), index=True)
+    target_scene_id: Mapped[int] = mapped_column(Integer, ForeignKey("scenes.id", ondelete="CASCADE"), index=True)
+    connection_type: Mapped[str] = mapped_column(String(50), nullable=False, default="reference")
+    label: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
 class CodexRelation(Base):
     __tablename__ = "codex_relations"
 
@@ -285,7 +303,19 @@ class UserSettings(Base):
     grammar_languages: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: ["en"]
     pandoc_enabled: Mapped[int] = mapped_column(Integer, default=0)
     pandoc_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    spacy_enabled: Mapped[int] = mapped_column(Integer, default=0)
+    spacy_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    calibre_enabled: Mapped[int] = mapped_column(Integer, default=0)
+    calibre_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    calibre_mode: Mapped[str] = mapped_column(Text, default="off")
+    vale_mode: Mapped[str] = mapped_column(Text, default="off")
+    vale_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    vale_config_path: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    vale_custom_rules: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
     ai_disabled: Mapped[int] = mapped_column(Integer, default=0)
+    # Multi-provider AI adapter (Phase 2)
+    active_provider: Mapped[str] = mapped_column(String(50), default="openrouter")
+    ai_providers_cfg: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
     sync_mirror_enabled: Mapped[int] = mapped_column(Integer, default=0)
     sync_local_dir: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # Counters — incremented by raw SQL in analytics.py / export.py.
@@ -459,9 +489,10 @@ class AchievementUnlock(Base):
     """Records the first time an achievement was earned. One row per achievement key."""
     __tablename__ = "achievement_unlocks"
 
-    id:          Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
-    key:         Mapped[str]      = mapped_column(String(100), nullable=False, unique=True)
-    unlocked_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    id:             Mapped[int]               = mapped_column(Integer, primary_key=True, autoincrement=True)
+    key:            Mapped[str]               = mapped_column(String(100), nullable=False, unique=True)
+    unlocked_at:    Mapped[datetime]          = mapped_column(DateTime, default=_now)
+    popup_shown_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
 
 class TimelineEvent(Base):

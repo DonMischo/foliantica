@@ -6,7 +6,7 @@ Run from the project root with PG already running on port 5433:
 
 Requires:
     - Embedded PG on port 5433 with the foliantica database populated
-    - LW_USE_SQLITE=0  LW_PG_PORT=5433 env vars (or defaults)
+    - LW_PG_PORT=5433 env vars (or defaults)
 """
 import json
 import os
@@ -16,7 +16,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "api"))
 
-os.environ.setdefault("LW_USE_SQLITE", "0")
 os.environ.setdefault("LW_PG_PORT",    "5433")
 os.environ.setdefault("LW_PG_USER",    "foliantica")
 os.environ.setdefault("LW_PG_PASS",    "foliantica")

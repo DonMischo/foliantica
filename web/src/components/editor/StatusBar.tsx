@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, AlertCircle, Loader2, Circle } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, Circle, PenLine } from "lucide-react";
 import { useUIStore } from "@/store/ui";
 import { formatWordCount } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -11,10 +11,11 @@ interface Props {
 }
 
 const STATUS_CONFIG = {
-  saved:  { icon: CheckCircle2, label: "Saved",           className: "text-green-500" },
-  saving: { icon: Loader2,      label: "Saving…",         className: "text-yellow-500 animate-spin" },
-  error:  { icon: AlertCircle,  label: "Unsaved changes", className: "text-red-500" },
-  idle:   { icon: Circle,       label: "",                className: "text-muted-foreground" },
+  saved:    { icon: CheckCircle2, label: "Saved",           className: "text-green-500" },
+  saving:   { icon: Loader2,      label: "Saving…",         className: "text-yellow-500 animate-spin" },
+  error:    { icon: AlertCircle,  label: "Unsaved changes", className: "text-red-500" },
+  idle:     { icon: Circle,       label: "",                className: "text-muted-foreground" },
+  unsaved:  { icon: PenLine,      label: "Unsaved",         className: "text-muted-foreground" },
 };
 
 function formatElapsed(secs: number): string {

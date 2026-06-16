@@ -1,0 +1,62 @@
+# Quellen / Sources:
+#   - Wolf Schneider: "Deutsch fürs Leben" (Rowohlt, 1994), Kap. "Aufgeblähte Verben"
+#   - Wolf Schneider: "Deutsch! Das Handbuch für attraktives Schreiben" (Rowohlt, 2005)
+#   - Ludwig Reiners: "Stilkunst" (C.H. Beck, 1961), § "Das starke Verb"
+#   - Bundesverwaltungsamt: "Leitfaden Bürgernahe Sprache" (2002)
+extends: substitution
+message: "Aufgeblähtes Reflexiv: '%s' — kürzer: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- "sich befinden" (Schneider: immer durch "sein" ersetzbar) ---
+  befindet sich: ist
+  befinden sich: sind
+  befand sich: war
+  befanden sich: waren
+  hat sich befunden: ist gewesen
+
+  # --- "sich zusammensetzen aus" (Schneider; Reiners) ---
+  setzt sich zusammen aus: besteht aus
+  setzen sich zusammen aus: bestehen aus
+  zusammensetzt aus: besteht aus
+
+  # --- "sich erweisen als" (Schneider) ---
+  erweist sich als: ist
+  erweisen sich als: sind
+  erwies sich als: war
+  erwiesen sich als: waren
+
+  # --- "sich darstellen als" (Bundesverwaltungsamt) ---
+  stellt sich dar als: ist
+  stellen sich dar als: sind
+  stellte sich dar als: war
+  stellten sich dar als: waren
+
+  # --- "sich gestalten" (Schneider: "sein" ist fast immer kürzer) ---
+  gestaltet sich: ist
+  gestaltete sich: war
+  gestalten sich: sind
+  gestalteten sich: waren
+
+  # --- "sich präsentieren als" (Bundesverwaltungsamt) ---
+  präsentiert sich als: gilt als
+  präsentieren sich als: gelten als
+
+  # --- "es gibt" als Streckform (Schneider: direktes Substantiv bevorzugen) ---
+  es gibt keine: kein
+  es gibt einen: ein
+  es gibt eine: eine
+  es gibt ein: ein
+
+  # --- "sich vollziehen" (Reiners; Bundesverwaltungsamt) ---
+  vollzieht sich: geschieht
+  vollziehen sich: geschehen
+  vollzog sich: geschah
+  vollzogen sich: geschahen
+  hat sich vollzogen: ist geschehen
+
+  # --- "zur Anwendung bringen/kommen" Reflexiv-Varianten ---
+  findet Anwendung: wird angewendet
+  finden Anwendung: werden angewendet
+  fand Anwendung: wurde angewendet
+  fanden Anwendung: wurden angewendet

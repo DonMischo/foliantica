@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { X, Search, Plus, User, MapPin, Package, Scroll, Tag, Coins, BarChart2 } from "lucide-react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { X, Search, Plus, User, MapPin, Package, Scroll, Tag, Coins, BarChart2, Loader2, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { CodexEntry, EntryType } from "@/types";
-import { useEntryRelations, useInventorySummary } from "@/store/queries";
 import { EntryMentionsDialog } from "./EntryMentionsDialog";
+import { CodexEntryDetail } from "./CodexEntryDetail";
 
 const TYPE_ICONS: Record<EntryType, React.ElementType> = {
   character: User,
@@ -27,21 +27,67 @@ const TYPE_LABELS: Record<EntryType, string> = {
   relic: "Relic",
 };
 
+const NER_META: Record<string, { type: EntryType; display: string }> = {
+  // English (OntoNotes)
+  PERSON: { type: "character", display: "Person" },
+  GPE:    { type: "location",  display: "Place" },
+  LOC:    { type: "location",  display: "Location" },
+  FAC:    { type: "location",  display: "Facility" },
+  ORG:    { type: "custom",    display: "Org" },
+  NORP:   { type: "lore",      display: "Group" },
+  // Other languages (TIGER/Universal — de, fr, es, it, nl, pt)
+  PER:    { type: "character", display: "Person" },
+  MISC:   { type: "custom",    display: "Other" },
+};
+
 interface Props {
   entries: CodexEntry[];
   selectedId?: number;
   onSelect: (id: number) => void;
   onClose: () => void;
-  onAdd: () => void;
-  sceneContent?: string;  // HTML of the current scene — used to filter relevant entries
+  onAdd: (initial?: Partial<CodexEntry>) => void;
+  onJumpToText?: (text: string) => void;
+  sceneContent?: string;
+  sceneId?: number;
 }
 
-export function CodexSidebar({ entries, selectedId, onSelect, onClose, onAdd, sceneContent }: Props) {
+export function CodexSidebar({ entries, selectedId, onSelect, onClose, onAdd, onJumpToText, sceneContent, sceneId }: Props) {
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<EntryType | "all" | "scene">(
+  const [typeFilter, setTypeFilter] = useState<EntryType | "all" | "scene" | "suggest">(
     sceneContent ? "scene" : "all"
   );
   const [mentionsEntry, setMentionsEntry] = useState<CodexEntry | null>(null);
+
+  const [suggestions, setSuggestions] = useState<{ text: string; label: string }[] | null>(null);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+  const [rejected, setRejected] = useState<Set<string>>(new Set());
+
+  const fetchSuggestions = useCallback(async () => {
+    if (!sceneId) return;
+    setSuggestLoading(true);
+    setSuggestError(null);
+    try {
+      const res = await fetch(`/api/scenes/${sceneId}/suggest-entries`);
+      if (res.status === 400) {
+        setSuggestError("Enable spaCy in Settings → External Services to use this feature.");
+        setSuggestions(null);
+        return;
+      }
+      if (!res.ok) throw new Error();
+      setSuggestions(await res.json());
+    } catch {
+      setSuggestError("spaCy container not running — enable it in Settings and click Start Services.");
+    } finally {
+      setSuggestLoading(false);
+    }
+  }, [sceneId]);
+
+  useEffect(() => {
+    if (typeFilter === "suggest" && suggestions === null && suggestError === null && !suggestLoading) {
+      fetchSuggestions();
+    }
+  }, [typeFilter, suggestions, suggestError, suggestLoading, fetchSuggestions]);
 
   // Strip HTML and compute which entry IDs are mentioned in the current scene
   const relevantIds = useMemo(() => {
@@ -67,9 +113,6 @@ export function CodexSidebar({ entries, selectedId, onSelect, onClose, onAdd, sc
   });
 
   const selected = entries.find((e) => e.id === selectedId);
-  const { data: relations = [] } = useEntryRelations(selected?.id ?? 0);
-  const isCharacter = selected?.entry_type === "character";
-  const { data: inventory } = useInventorySummary(isCharacter ? (selected?.id ?? 0) : 0);
 
   return (
     <>
@@ -77,7 +120,7 @@ export function CodexSidebar({ entries, selectedId, onSelect, onClose, onAdd, sc
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
         <span className="text-sm font-medium">Codex</span>
         <div className="flex items-center gap-1">
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onAdd}>
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onAdd()}>
             <Plus className="h-3.5 w-3.5" />
           </Button>
           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onClose}>
@@ -94,146 +137,7 @@ export function CodexSidebar({ entries, selectedId, onSelect, onClose, onAdd, sc
           >
             ← Back to list
           </button>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: selected.color }} />
-            <h3 className="font-semibold flex-1">{selected.name}</h3>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6 text-muted-foreground hover:text-foreground"
-              title="Mentions across scenes"
-              onClick={() => setMentionsEntry(selected)}
-            >
-              <BarChart2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wider">{TYPE_LABELS[selected.entry_type as EntryType]}</p>
-
-          {/* Groups / Species / Subtype */}
-          {((selected.groups?.length) || selected.species || selected.subtype) && (
-            <div className="flex gap-3 mb-3 flex-wrap">
-              {(selected.groups?.length > 0) && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">Groups</p>
-                  <div className="flex flex-wrap gap-0.5">
-                    {selected.groups.map(g => (
-                      <span key={g} className="text-xs bg-secondary px-1.5 py-0.5 rounded">{g}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {selected.species && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">Species</p>
-                  <p className="text-xs">{selected.species}</p>
-                </div>
-              )}
-              {selected.subtype && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-0.5">Subtype</p>
-                  <p className="text-xs">{selected.subtype}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Tags */}
-          {selected.tags.length > 0 && (
-            <div className="mb-3">
-              <p className="text-xs text-muted-foreground mb-1">Tags</p>
-              <div className="flex flex-wrap gap-1">
-                {selected.tags.map((t) => (
-                  <span key={t} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">#{t}</span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Aliases */}
-          {selected.aliases.length > 0 && (
-            <div className="mb-3">
-              <p className="text-xs text-muted-foreground mb-1">Also known as</p>
-              <div className="flex flex-wrap gap-1">
-                {selected.aliases.map((a) => (
-                  <span key={a} className="text-xs bg-secondary px-2 py-0.5 rounded">{a}</span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Description */}
-          {selected.description && (
-            <div className="mb-3">
-              <p className="text-xs text-muted-foreground mb-1">Description</p>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{selected.description}</p>
-            </div>
-          )}
-
-          {/* Notes */}
-          {selected.notes && (
-            <div className="mb-3">
-              <p className="text-xs text-muted-foreground mb-1">Notes</p>
-              <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">{selected.notes}</p>
-            </div>
-          )}
-
-          {/* Relations — manual only, auto: entries live in Inventory */}
-          {relations.filter(r => !r.relation_type?.startsWith("auto:")).length > 0 && (
-            <div className="mb-3">
-              <p className="text-xs text-muted-foreground mb-1">Relations</p>
-              <div className="space-y-1">
-                {relations.filter(r => !r.relation_type?.startsWith("auto:")).map((r) => (
-                  <div key={r.id} className="flex items-center gap-2 text-xs">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: r.other_color }} />
-                    <span className="font-medium">{r.other_name}</span>
-                    {r.relation_type && (
-                      <span className="text-muted-foreground">— {r.relation_type}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Inventory — characters only */}
-          {isCharacter && inventory && (
-            (inventory.items.length > 0 || inventory.currencies.length > 0) && (
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Inventory</p>
-                {inventory.items.length > 0 && (
-                  <div className="mb-2 space-y-0.5">
-                    {inventory.items.map(({ item_id, qty }) => {
-                      const entry = entries.find((e) => e.id === item_id);
-                      return (
-                        <div key={item_id} className="flex items-center gap-2 text-xs">
-                          <Package className="h-3 w-3 shrink-0 text-blue-400" />
-                          <span className="flex-1 truncate">{entry?.name ?? `Item #${item_id}`}</span>
-                          <span className={cn(
-                            "font-mono shrink-0",
-                            qty > 0 ? "text-green-400" : "text-red-400"
-                          )}>×{qty}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                {inventory.currencies.length > 0 && (
-                  <div className="space-y-0.5">
-                    {inventory.currencies.map(({ name, balance }) => (
-                      <div key={name} className="flex items-center gap-2 text-xs">
-                        <Coins className="h-3 w-3 shrink-0 text-green-400" />
-                        <span className="flex-1 truncate">{name}</span>
-                        <span className={cn(
-                          "font-mono shrink-0",
-                          balance >= 0 ? "text-green-400" : "text-red-400"
-                        )}>{balance}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          )}
+          <CodexEntryDetail entry={selected} allEntries={entries} />
         </div>
       ) : (
         <>
@@ -263,6 +167,20 @@ export function CodexSidebar({ entries, selectedId, onSelect, onClose, onAdd, sc
                 Scene
               </button>
             )}
+            {sceneId && (
+              <button
+                onClick={() => setTypeFilter("suggest")}
+                className={cn(
+                  "text-xs px-2 py-0.5 rounded-full transition-colors flex items-center gap-1",
+                  typeFilter === "suggest"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                )}
+              >
+                <Sparkles className="h-3 w-3" />
+                Suggest
+              </button>
+            )}
             {(["all", "character", "location", "item", "lore", "custom"] as const).map((t) => (
               <button
                 key={t}
@@ -279,33 +197,88 @@ export function CodexSidebar({ entries, selectedId, onSelect, onClose, onAdd, sc
             ))}
           </div>
 
-          <div className="flex-1 overflow-y-auto py-1">
-            {filtered.map((entry) => {
-              const Icon = TYPE_ICONS[entry.entry_type as EntryType] || Tag;
-              return (
-                <div key={entry.id} className="group flex items-center hover:bg-secondary/50">
-                  <button
-                    onClick={() => onSelect(entry.id)}
-                    className="flex-1 flex items-center gap-2.5 px-3 py-2 text-left min-w-0"
-                  >
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
-                    <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <span className="text-sm truncate">{entry.name}</span>
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setMentionsEntry(entry); }}
-                    className="pr-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
-                    title="Mentions across scenes"
-                  >
-                    <BarChart2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              );
-            })}
-            {filtered.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-4">No entries found</p>
-            )}
-          </div>
+          {typeFilter === "suggest" ? (
+            <div className="flex-1 overflow-y-auto py-1">
+              <div className="flex items-center justify-between px-3 py-1.5">
+                <span className="text-xs text-muted-foreground">Detected in scene</span>
+                <button
+                  onClick={fetchSuggestions}
+                  disabled={suggestLoading}
+                  className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                >
+                  {suggestLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Refresh"}
+                </button>
+              </div>
+              {suggestLoading && (
+                <p className="text-xs text-muted-foreground text-center py-4">Analyzing…</p>
+              )}
+              {suggestError && (
+                <p className="text-xs text-muted-foreground text-center py-4 px-3">{suggestError}</p>
+              )}
+              {suggestions && !suggestLoading && (() => {
+                const visible = suggestions.filter(s => !rejected.has(s.text.toLowerCase()));
+                if (visible.length === 0)
+                  return <p className="text-xs text-muted-foreground text-center py-4">No new suggestions</p>;
+                return visible.map(s => {
+                  const meta = NER_META[s.label] ?? { type: "custom" as EntryType, display: s.label };
+                  const Icon = TYPE_ICONS[meta.type] || Tag;
+                  return (
+                    <div key={s.text} className="group flex items-center gap-2 px-3 py-1.5 hover:bg-secondary/50">
+                      <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <button
+                        className="text-sm flex-1 truncate text-left"
+                        title="Jump to first occurrence"
+                        onClick={() => onJumpToText?.(s.text)}
+                      >{s.text}</button>
+                      <span className="text-[10px] text-muted-foreground shrink-0">{meta.display}</span>
+                      <button
+                        onClick={() => onAdd({ name: s.text, entry_type: meta.type })}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground shrink-0"
+                        title="Add to codex"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setRejected(prev => new Set([...prev, s.text.toLowerCase()]))}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground shrink-0"
+                        title="Dismiss"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto py-1">
+              {filtered.map((entry) => {
+                const Icon = TYPE_ICONS[entry.entry_type as EntryType] || Tag;
+                return (
+                  <div key={entry.id} className="group flex items-center hover:bg-secondary/50">
+                    <button
+                      onClick={() => onSelect(entry.id)}
+                      className="flex-1 flex items-center gap-2.5 px-3 py-2 text-left min-w-0"
+                    >
+                      <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
+                      <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-sm truncate">{entry.name}</span>
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setMentionsEntry(entry); }}
+                      className="pr-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                      title="Mentions across scenes"
+                    >
+                      <BarChart2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
+              {filtered.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center py-4">No entries found</p>
+              )}
+            </div>
+          )}
         </>
       )}
     </div>

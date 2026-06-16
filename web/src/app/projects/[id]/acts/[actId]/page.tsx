@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, PenLine } from "lucide-react";
 import { useActRead } from "@/store/queries";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 export default function ActReadPage() {
   const { id, actId } = useParams();
@@ -79,7 +80,7 @@ export default function ActReadPage() {
 
                   <div
                     className="story-prose max-w-none text-sm text-foreground/90"
-                    dangerouslySetInnerHTML={{ __html: scene.content || "" }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(scene.content) }}
                   />
 
                   {scIdx < chapter.scenes.length - 1 && (

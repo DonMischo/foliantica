@@ -6,24 +6,18 @@ Architecture:
   - Backend always runs from dataDir (unchanged).
   - This module maintains a mirror copy at sync_local_dir.
   - A background thread wakes every 5 minutes and:
-      1. SQLite: copies foliantica.db via SQLite's online backup API.
-         PostgreSQL: writes foliantica.sql via a pure-Python dump (no
-         pg_dump binary required — embedded-postgres does not ship it).
+      1. Writes foliantica.sql via a pure-Python dump (no pg_dump binary
+         required — embedded-postgres does not ship it).
       2. Mirrors uploads/ → sync_local_dir/uploads/, copying only files
          that are new or have a newer mtime (no unnecessary I/O).
-  - When the drive becomes unavailable the copy is skipped; mode → "offline".
-  - When the drive comes back online, mode → "online", drive_restored_at is
-    set so the frontend can surface a notification.
 """
 import os
 import shutil
-import sqlite3
 import threading
 from datetime import datetime, UTC
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
-from database import USE_SQLITE
 
 router = APIRouter(prefix="/api/sync", tags=["sync"])
 
@@ -35,9 +29,7 @@ _enabled:          bool            = False
 _mirror_dir:       Path | None     = None
 _mode:             str             = "disabled"   # "online" | "offline" | "disabled"
 _last_sync_at:     datetime | None = None
-_drive_restored_at: datetime | None = None
 _last_error:       str | None      = None
-_prev_available:   bool | None     = None
 
 _trigger = threading.Event()   # set to wake the sleeping thread early
 _stop    = threading.Event()   # set to shut the thread down
@@ -53,34 +45,8 @@ _hook_registered = False  # ensure we only register the SQLAlchemy hook once
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _db_path() -> Path:
-    return (Path.cwd() / "foliantica.db").resolve()
-
-
 def _uploads_path() -> Path:
     return (Path.cwd() / "uploads").resolve()
-
-
-def _datadir_available() -> bool:
-    if not USE_SQLITE:
-        return True  # PostgreSQL runs locally — always reachable
-    try:
-        _db_path().stat()
-        return True
-    except OSError:
-        return False
-
-
-def _do_backup(src: Path, dst: Path) -> None:
-    """SQLite online backup — safe while SQLAlchemy has the source file open."""
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    src_conn = sqlite3.connect(str(src))
-    dst_conn = sqlite3.connect(str(dst))
-    try:
-        src_conn.backup(dst_conn)
-    finally:
-        src_conn.close()
-        dst_conn.close()
 
 
 def _pg_literal(v: object) -> str:
@@ -130,19 +96,28 @@ def _do_pg_dump(mirror: Path) -> None:
             ))
         ]
 
+        # Columns that contain ciphertext encrypted with a machine-local key.
+        # Excluding them from the dump means restored databases start with NULL
+        # (no key configured) instead of undecryptable garbage from the source.
+        _SKIP_COLS: dict[str, set[str]] = {
+            "user_settings": {"openrouter_api_key", "ai_providers_cfg"},
+        }
+
         f.write(f"-- Foliantica PostgreSQL backup {datetime.now(UTC).replace(tzinfo=None).isoformat()}\n")
         f.write("SET session_replication_role = replica;\n\n")
 
         for table in tables:
-            cols = [
+            all_cols = [
                 row[0] for row in conn.execute(text(
                     "SELECT column_name FROM information_schema.columns "
                     "WHERE table_schema = 'public' AND table_name = :t "
                     "ORDER BY ordinal_position"
                 ), {"t": table})
             ]
-            rows    = conn.execute(text(f'SELECT * FROM "{table}"')).fetchall()
+            skip    = _SKIP_COLS.get(table, set())
+            cols    = [c for c in all_cols if c not in skip]
             col_sql = ", ".join(f'"{c}"' for c in cols)
+            rows    = conn.execute(text(f'SELECT {col_sql} FROM "{table}"')).fetchall()
 
             f.write(f"-- {table}\n")
             f.write(f'DELETE FROM "{table}";\n')
@@ -177,15 +152,14 @@ def _sync_uploads(src_dir: Path, dst_dir: Path) -> None:
 # ── Background thread ─────────────────────────────────────────────────────────
 
 def _bg_loop() -> None:
-    global _mode, _last_sync_at, _last_error, _prev_available, _drive_restored_at
+    global _mode, _last_sync_at, _last_error
 
     while not _stop.is_set():
         with _lock:
             enabled = _enabled
             mirror  = _mirror_dir
 
-        if enabled and not USE_SQLITE:
-            # ── PostgreSQL + Data Mirror enabled ─────────────────────────────
+        if enabled:
             # Dump to CWD (= dataDir) and optionally copy to the mirror dir.
             # Only runs when Data Mirror is explicitly enabled — avoids
             # overwriting an existing foliantica.sql the user placed there.
@@ -218,33 +192,6 @@ def _bg_loop() -> None:
                     with _lock:
                         _last_error = str(exc)
 
-        elif enabled and mirror:
-            # ── SQLite mode (legacy) ─────────────────────────────────────────
-            available = _datadir_available()
-
-            with _lock:
-                prev      = _prev_available
-                _prev_available = available
-
-                if available and prev is False:
-                    # Drive just came back online
-                    _drive_restored_at = datetime.now(UTC).replace(tzinfo=None)
-
-            if available:
-                try:
-                    _do_backup(_db_path(), mirror / "foliantica.db")
-                    _sync_uploads(_uploads_path(), mirror / "uploads")
-                    with _lock:
-                        _last_sync_at = datetime.now(UTC).replace(tzinfo=None)
-                        _last_error   = None
-                        _mode         = "online"
-                except Exception as exc:
-                    with _lock:
-                        _last_error = str(exc)
-            else:
-                with _lock:
-                    _mode = "offline"
-
         # Sleep until triggered or interval expires
         _trigger.wait(timeout=_INTERVAL)
         _trigger.clear()
@@ -276,7 +223,7 @@ def init(enabled: bool, local_dir: str | None) -> None:
         _trigger.set()
         # Hook into every SQLAlchemy commit for near-real-time syncing
         _register_commit_hook()
-    elif USE_SQLITE and not enabled:
+    elif not enabled:
         _stop.set()
         _trigger.set()
 
@@ -315,18 +262,14 @@ def shutdown_backup() -> None:
         mirror  = _mirror_dir
 
     try:
-        if not USE_SQLITE:
-            cwd = Path.cwd()
-            # Only overwrite a dump that we wrote this session.
-            if _auto_dump_written or not (cwd / "foliantica.sql").exists():
-                _do_pg_dump(cwd)
-            if enabled and mirror:
-                mirror.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(str(cwd / "foliantica.sql"),
-                             str(mirror / "foliantica.sql"))
-                _sync_uploads(_uploads_path(), mirror / "uploads")
-        elif enabled and mirror and _datadir_available():
-            _do_backup(_db_path(), mirror / "foliantica.db")
+        cwd = Path.cwd()
+        # Only overwrite a dump that we wrote this session.
+        if _auto_dump_written or not (cwd / "foliantica.sql").exists():
+            _do_pg_dump(cwd)
+        if enabled and mirror:
+            mirror.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(str(cwd / "foliantica.sql"),
+                         str(mirror / "foliantica.sql"))
             _sync_uploads(_uploads_path(), mirror / "uploads")
     except Exception:
         pass
@@ -344,10 +287,9 @@ def get_status():
             "enabled":           _enabled,
             "mode":              _mode,
             "mirror_dir":        str(_mirror_dir) if _mirror_dir else None,
-            "datadir_available": _datadir_available() if _enabled else None,
-            "last_sync_at":      _last_sync_at.isoformat()      if _last_sync_at      else None,
-            "drive_restored_at": _drive_restored_at.isoformat() if _drive_restored_at else None,
-            "error":             _last_error,
+            "datadir_available": True if _enabled else None,
+            "last_sync_at": _last_sync_at.isoformat() if _last_sync_at else None,
+            "error":        _last_error,
         }
 
 
@@ -368,9 +310,6 @@ def dump_to_datadir(force: bool = False):
     the existing file's timestamp so the caller can ask the user to confirm before
     overwriting.  Pass force=true to overwrite unconditionally.
     """
-    if USE_SQLITE:
-        raise HTTPException(status_code=400,
-                            detail="Explicit dump requires PostgreSQL mode")
     cwd = Path.cwd()
     dump_path = cwd / "foliantica.sql"
 
@@ -465,10 +404,6 @@ def restore_from_dump():
     The dump is produced by _do_pg_dump() — pure SQL with one statement per line,
     so splitting on ';\\n' is safe for the format we generate.
     """
-    if USE_SQLITE:
-        raise HTTPException(status_code=400,
-                            detail="Restore from dump requires PostgreSQL mode")
-
     # Restore from the sync dir (cwd) — same location the /dump endpoint writes to.
     # Data Mirror is a separate optional backup and is not required for restore.
     dump_path = Path.cwd() / "foliantica.sql"
@@ -481,6 +416,22 @@ def restore_from_dump():
     from sqlalchemy import text
     from database import engine
 
+    # Save machine-local encrypted values before the dump overwrites user_settings.
+    # These columns are intentionally excluded from dumps (they hold ciphertext
+    # encrypted with a machine-local key and are meaningless on other machines),
+    # so restoring the dump would set them to NULL.  We preserve whatever this
+    # machine already has so the user doesn't lose their configured API keys.
+    _saved_keys: dict | None = None
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(text(
+                "SELECT openrouter_api_key, ai_providers_cfg FROM user_settings LIMIT 1"
+            )).fetchone()
+            if row:
+                _saved_keys = {"openrouter_api_key": row[0], "ai_providers_cfg": row[1]}
+    except Exception:
+        pass  # table may not exist yet on fresh install — restore will create it
+
     stmts = 0
     try:
         with engine.connect() as conn:
@@ -490,6 +441,17 @@ def restore_from_dump():
             conn.commit()
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    # Re-apply the machine-local keys that were saved above.
+    if _saved_keys and (_saved_keys["openrouter_api_key"] or _saved_keys["ai_providers_cfg"]):
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(
+                    "UPDATE user_settings "
+                    "SET openrouter_api_key = :k, ai_providers_cfg = :c"
+                ), {"k": _saved_keys["openrouter_api_key"], "c": _saved_keys["ai_providers_cfg"]})
+        except Exception:
+            pass  # best-effort; non-fatal if the restored row has a different schema
 
     mtime = datetime.fromtimestamp(
         dump_path.stat().st_mtime, UTC

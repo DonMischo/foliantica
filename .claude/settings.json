@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem *)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npm audit)",
+      "Bash(docker compose ps)",
+      "PowerShell(cd \"C:\\Users\\micha\\Documents\\GitHub\\foliantica\"; git add *)",
+      "PowerShell(cd \"C:\\Users\\micha\\Documents\\GitHub\\foliantica\"; git commit *)",
+      "PowerShell(cd \"C:\\Users\\micha\\Documents\\GitHub\\foliantica\"; git status *)",
+      "PowerShell(cd \"C:\\Users\\micha\\Documents\\GitHub\\foliantica\"; git log *)",
+      "PowerShell(cd \"C:\\Users\\micha\\Documents\\GitHub\\foliantica\"; git diff *)",
+      "PowerShell(cd \"C:\\Users\\micha\\Documents\\GitHub\\foliantica\\api\"; uv run pytest *)",
+      "PowerShell(git add *)",
+      "PowerShell(git commit *)",
+      "PowerShell(uv run pytest *)"
+    ]
+  }
+}

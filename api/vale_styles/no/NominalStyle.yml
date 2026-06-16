@@ -1,0 +1,71 @@
+# Kilder / Sources:
+#   - Vinje, Finn-Erik: "Moderne norsk" (Universitetsforlaget, 6. utg. 1990) — unngå nominalstil
+#   - NTB Språk: "NTBs språkbok" — bruk aktive verb
+#   - Lie, Svein: "Innføring i norsk syntaks" (Universitetsforlaget, 4. utg. 2003)
+#   - Språkrådet: sprakradet.no — råd om skrivemåte
+#   - Berge, Kjell Lars m.fl.: "Å skape mening med språk" (LNU/Cappelen, 1998)
+extends: substitution
+message: "Nominalstil: '%s' — mer direkte: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- "foreta" + substantiv (Vinje; NTB Språk) ---
+  foreta en vurdering av: vurdere
+  foreta en analyse av: analysere
+  foreta en gjennomgang av: gå gjennom
+  foreta en undersøkelse av: undersøke
+  foreta en kontroll av: kontrollere
+  foreta en inspeksjon av: inspisere
+  foreta en beregning: beregne
+  foreta en revisjon: revidere
+
+  # --- "utføre" + substantiv (Vinje; Lie) ---
+  utføre en beregning: beregne
+  utføre en analyse: analysere
+  utføre en undersøkelse: undersøke
+  utføre en kontroll: kontrollere
+  utføre en inspeksjon: inspisere
+  utføre en test: teste
+  utføre en revisjon: revidere
+
+  # --- "ta" + substantiv (NTB Språk; Vinje) ---
+  ta en beslutning: beslutte / bestemme
+  ta en avgjørelse: avgjøre
+  ta et initiativ til: initiere
+  ta kontakt med: kontakte
+  ta ansvar for: stå ansvarlig for
+
+  # --- "gi" + substantiv (Vinje; Berge m.fl.) ---
+  gi et svar på: svare på
+  gi en forklaring på: forklare
+  gi en beskrivelse av: beskrive
+  gi en oversikt over: oppsummere
+  gi en vurdering av: vurdere
+  gi tillatelse til: tillate
+  gi støtte til: støtte
+  gi råd om: rådgi om
+  gi uttrykk for: uttrykke
+
+  # --- "ha" + abstrakt substantiv (Vinje; Lie) ---
+  ha mulighet til: kunne
+  ha evne til: kunne
+  ha rett til: ha lov til / få
+  ha behov for: trenge
+  ha kjennskap til: kjenne til
+  ha tillit til: stole på
+  ha intensjon om: ha til hensikt å → ville
+  ha betenkeligheter ved: tvile på
+
+  # --- "gjennomføre" + substantiv (NTB Språk; Vinje) ---
+  gjennomføre en undersøkelse: undersøke
+  gjennomføre en analyse: analysere
+  gjennomføre en inspeksjon: inspisere
+  gjennomføre en kontroll: kontrollere
+  gjennomføre en evaluering: evaluere
+  gjennomføre en endring: endre
+  gjennomføre en reform: reformere
+
+  # --- "skje/finne sted" som tomt verb (Vinje; Berge m.fl.) ---
+  det vil skje en økning: det vil øke
+  det vil skje en nedgang: det vil synke
+  det finner sted en endring: det endrer seg

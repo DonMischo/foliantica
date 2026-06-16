@@ -1,0 +1,90 @@
+# Kilder / Sources:
+#   - Hannemand, Bjarne: "Godt Sprog" (Gyldendal, 2009)
+#   - Galberg Jacobsen, Henrik / Jarvad, Pia: "Dansk Sproglære" (Gyldendal, 2010)
+#   - Lund, Jørn: "Sproget i avisen"
+#   - Dansk Sprognævn: dsn.dk — sprogrådgivning
+#   - Sprogportal.dk
+extends: substitution
+message: "Opblæst udtryk: '%s' — kortere: '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Opblæste præpositioner (Hannemand; Dansk Sprognævn) ---
+  inden for rammerne af: i / ved / for
+  med hensyn til: om / vedrørende
+  hvad angår: om / hvad angår → om
+  vedrørende: om
+  i forbindelse med: ved / når / i
+  i henhold til: ifølge / efter
+  i overensstemmelse med: ifølge / efter
+  med henblik på: for at
+  med det formål at: for at
+  i den hensigt at: for at
+  på grund af det faktum at: fordi
+  som følge af det faktum at: fordi
+  i betragtning af at: da / eftersom
+  i lyset af at: da / eftersom
+  med baggrund i: på grund af / baseret på
+  på basis af: baseret på / efter
+  i relation til: i forhold til / om
+  i relation til det: herved / hermed
+
+  # --- Kausale omskrivninger (Hannemand; Lund) ---
+  af den grund at: fordi
+  på grund af det faktum at: fordi
+  som en konsekvens af at: fordi / da
+  i og med at: da / fordi
+
+  # --- Betingede omskrivninger (Galberg Jacobsen; Hannemand) ---
+  i tilfælde af at: hvis
+  i det tilfælde at: hvis
+  under forudsætning af at: hvis / forudsat at
+  forudsat at: hvis
+  i den udstrækning at: hvis / i det omfang
+
+  # --- Temporale omskrivninger (Hannemand; Lund) ---
+  i forbindelse med at: da / når
+  på det tidspunkt da: da / når
+  i løbet af den periode: i / under
+  for øjeblikket: nu
+  i øjeblikket: nu
+  på nuværende tidspunkt: nu
+  på det nuværende tidspunkt: nu
+  på et senere tidspunkt: senere
+
+  # --- Undtagelse / begrænsning (Galberg Jacobsen) ---
+  med undtagelse af: bortset fra / undtagen
+  i mangel af: uden
+  uanset om: hvad enten / om
+
+  # --- Bureaukratiske fyldord (Dansk Sprognævn; Sprogportal) ---
+  det bør bemærkes at: bemærk at
+  det bør fremhæves at: vigtigt er at
+  det kan konstateres at: det fremgår at / det viser sig at
+  det skal bemærkes at: bemærk
+  på den baggrund: derfor
+  i denne anledning: derfor
+  i den forbindelse: i den forbindelse → her
+  i det henseende: her
+  hermed: med dette
+  herigennem: herved / på den måde
+  heraf: af dette / heraf → deraf
+  hvorved: hvorved → og dermed
+  for så vidt angår: hvad angår → om
+
+  # --- Modale omskrivninger (Hannemand; Galberg Jacobsen) ---
+  have mulighed for at: kunne
+  have evne til at: kunne
+  være i stand til at: kunne
+  være berettiget til at: have ret til at / måtte
+  være forpligtet til at: skulle / være nødt til at
+  det er muligt at: måske
+  det kan ikke udelukkes at: muligvis
+  med stor sandsynlighed: sandsynligvis
+
+  # --- Redaktionelle cheviller (Hannemand; Lund) ---
+  som tidligere nævnt: som nævnt
+  som allerede angivet: som angivet
+  som beskrevet ovenfor: som beskrevet
+  kort og godt: kort sagt
+  afslutningsvis og sammenfattende: afslutningsvis

@@ -1,0 +1,155 @@
+# Bronnen / Sources:
+#   - Jan Renkema: "Schrijfwijzer" (4e druk, Boom, 2012)
+#   - Genootschap Onze Taal: taaladvies.net — "woorden van het jaar" / modewoorden
+#   - Nederlandse Taalunie (NTU): taalunie.org
+#   - Van Dale: "Groot woordenboek van de Nederlandse taal" (15e druk, 2015)
+#   - Henk Pander Maat / Leo Lentz: "Schrijven voor lezers" (Boom, 2010)
+extends: existence
+message: "'%s' is een modewoord / jargon — concreter formuleren?"
+level: suggestion
+ignorecase: true
+tokens:
+  # --- Bedrijfs- en managementjargon (Renkema; Genootschap; NTU) ---
+  - \bsynergie\b
+  - \bsynergieën\b
+  - \bsynergistisch\b
+  - \bparadigma\b
+  - \bparadigma's\b
+  - \bparadigmatisch\b
+  - \bdisruptie\b
+  - \bdisruptief\b
+  - \bdisruption\b
+  - \bdigitale transformatie\b
+  - \btransformatie\b
+  - \bveerkracht\b
+  - \bveerkrachtig\b
+  - \becosysteem\b
+  - \becosystemen\b
+  - \bschaalbaarheid\b
+  - \bschaalbaar\b
+  - \bschaalbare\b
+  - \bagiliteit\b
+  - \bagiel\b
+  - \bpivot\b
+  - \bpivotten\b
+  - \bstakeholder\b
+  - \bstakeholders\b
+  - \bbenchmark\b
+  - \bbenchmarks\b
+  - \bbenchmarking\b
+  - \bbest practice\b
+  - \bbest practices\b
+  - \bgoede praktijk\b
+  - \blean\b
+  - \bscrum\b
+  - \bkanban\b
+  - \bsprint\b
+  - \bsprints\b
+  - \bKPI\b
+  - \bKPI's\b
+  - \bROI\b
+  - \bOKR\b
+  - \bOKR's\b
+  - \bUSP\b
+  - \bwin-win\b
+  - \broadmap\b
+  - \bmijlpaal\b
+  - \btractie\b
+  - \btoegevoegde waarde\b
+  - \bwaarde creëren\b
+  - \bwaarde genereren\b
+  - \bhefboom\b
+  - \bhefboomwerking\b
+
+  # --- Startups en technologie (Genootschap; NTU) ---
+  - \bstartup\b
+  - \bstartups\b
+  - \beenhoorn\b
+  - \bgrowth hacking\b
+  - \bgrowth\b
+  - \bscale-up\b
+  - \bpitch\b
+  - \bpitchen\b
+  - \bincubator\b
+  - \baccelerator\b
+  - \bopen innovatie\b
+  - \bhackathon\b
+  - \bhackathons\b
+  - \bfintech\b
+  - \bedtech\b
+  - \bhealthtech\b
+
+  # --- Politieke en sociale modewoorden (Genootschap; Van Dale; NTU) ---
+  - \bgovernance\b
+  - \bbestuurskracht\b
+  - \bverandermanagement\b
+  - \btransversaal\b
+  - \btransversale\b
+  - \bco-creatie\b
+  - \bco-constructie\b
+  - \bempowerment\b
+  - \bemancipatie\b
+  - \bburgerparticipatie\b
+  - \bempoweren\b
+  - \bleiderschap\b
+  - \bvisionair leiderschap\b
+  - \borganisatie-DNA\b
+  - \bpurpose\b
+  - \bnarratie\b
+  - \bnarratief\b
+  - \bnieuwe werkelijkheid\b
+  - \bnieuwe normaliteit\b
+  - \bsamenleving\b
+
+  # --- Lege bijvoeglijke naamwoorden (Renkema; Genootschap; Pander Maat) ---
+  - \binnovatief\b
+  - \binnovatieve\b
+  - \binnovatie\b
+  - \bbaanbrekend\b
+  - \bgrensverleggend\b
+  - \bholistisch\b
+  - \bholistische\b
+  - \bglobaal\b
+  - \bproactief\b
+  - \bproactieve\b
+  - \bdynamisch\b
+  - \bdynamische\b
+  - \bflexibel\b
+  - \bflexibele\b
+  - \buitmuntend\b
+  - \buitmuntende\b
+  - \buitstekend\b
+  - \buitstekende\b
+  - \btoewijding\b
+  - \btransparant\b
+  - \btransparante\b
+  - \btransparantie\b
+  - \binclusief\b
+  - \binclusieve\b
+  - \binclusiviteit\b
+  - \bgeïntegreerd\b
+  - \bgeïntegreerde\b
+  - \brobust\b
+  - \brobuste\b
+
+  # --- Bedrijfsuitdrukkingen (Renkema; Pander Maat) ---
+  - \bimpact maken\b
+  - \bimpact genereren\b
+  - \bimpact hebben\b
+  - \buit de comfortzone stappen\b
+  - \bcomfortzone\b
+  - \bbuiten de gebaande paden denken\b
+  - \bgame changer\b
+  - \bgame-changer\b
+  - \bzonder precedent\b
+  - \bhistorisch\b
+  - \bhistorische\b
+  - \bepochmakend\b
+  - \bwegwijzend\b
+  - \boptimaliseren\b
+  - \bmaximaliseren\b
+  - \bminimaliseren\b
+  - \bpotentialiseren\b
+  - \bbenutten\b
+  - \bhefboomeffect\b
+  - \bsysteemdenken\b

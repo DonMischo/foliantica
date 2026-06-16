@@ -98,12 +98,11 @@ if ($useDockerPg) {
         Write-Host "  $(yellow '[WARN]') Could not start Docker. API will keep retrying for 60 s.')"
     }
 
-    $env:LW_USE_SQLITE = '0'
-    $env:LW_PG_HOST    = $pgHost
-    $env:LW_PG_PORT    = $pgPort
-    $env:LW_PG_USER    = $pgUser
-    $env:LW_PG_PASS    = $pgPass
-    $env:LW_PG_DB      = $pgDb
+    $env:LW_PG_HOST = $pgHost
+    $env:LW_PG_PORT = $pgPort
+    $env:LW_PG_USER = $pgUser
+    $env:LW_PG_PASS = $pgPass
+    $env:LW_PG_DB   = $pgDb
 
 } else {
     # -- Embedded PG mode: start local cluster ---------------------------------
@@ -128,18 +127,18 @@ if ($useDockerPg) {
     }
 
     if (-not $pgReady) {
-        Write-Host "  $(yellow '[WARN]') PostgreSQL did not become ready - falling back to SQLite."
+        Write-Host "  $(red '[ERROR]') PostgreSQL did not become ready within 60 s."
         Write-Host "         Check: $env:TEMP\fol-dev-pg-err.log"
-        $env:LW_USE_SQLITE = '1'
-    } else {
-        Write-Host "  $(cyan 'PostgreSQL')  $(green 'ready on port 5433')"
-        $env:LW_USE_SQLITE = '0'
-        $env:LW_PG_HOST    = '127.0.0.1'
-        $env:LW_PG_PORT    = '5433'
-        $env:LW_PG_USER    = 'foliantica'
-        $env:LW_PG_PASS    = 'foliantica'
-        $env:LW_PG_DB      = 'foliantica'
+        Read-Host "Press Enter to exit"
+        exit 1
     }
+
+    Write-Host "  $(cyan 'PostgreSQL')  $(green 'ready on port 5433')"
+    $env:LW_PG_HOST = '127.0.0.1'
+    $env:LW_PG_PORT = '5433'
+    $env:LW_PG_USER = 'foliantica'
+    $env:LW_PG_PASS = 'foliantica'
+    $env:LW_PG_DB   = 'foliantica'
 }
 Write-Host ""
 

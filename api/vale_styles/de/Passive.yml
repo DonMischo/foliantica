@@ -1,0 +1,23 @@
+extends: existence
+message: "Passivkonstruktion — Aktivform bevorzugen?"
+ignorecase: true
+level: suggestion
+tokens:
+  # Vorgangspassiv (Präteritum) — häufigste Passivform in Erzähltexten
+  - \bwurde\b
+  - \bwurden\b
+
+  # Perfekt-Passiv — eindeutig passivisch, keine Falschpositive
+  - \bworden\b
+
+  # Passiversatz: sein + zu + Infinitiv (Verwaltungssprache, Amtsdeutsch)
+  - \bist zu \w+en\b
+  - \bsind zu \w+en\b
+  - \bwar zu \w+en\b
+  - \bwaren zu \w+en\b
+
+  # Typische Passivfloskeln der Verwaltungssprache
+  - \bes wird gebeten\b
+  - \bes wurde festgestellt\b
+  - \bes ist vorgesehen\b
+  - \bhiermit wird\b

@@ -121,6 +121,75 @@ async def export_project(
         filename   = f"{safe_name}.{ext_map.get(opts.format, opts.format)}"
         media_type = mime_map.get(opts.format, "application/octet-stream")
 
+    elif opts.format in ("mobi", "azw3", "epub-calibre"):
+        s = db.query(UserSettings).first()
+        mode = getattr(s, "calibre_mode", None) or "off" if s else "off"
+        if mode == "off":
+            raise HTTPException(503, "Calibre export is not enabled in settings")
+
+        import json as _json
+        calibre_fmt = "epub" if opts.format == "epub-calibre" else opts.format
+        html        = export_html(project, opts)
+        meta        = _json.loads(project.book_meta) if project.book_meta else {}
+        cover_b64   = project.cover_image
+        _mime_map   = {
+            "mobi":         "application/x-mobipocket-ebook",
+            "azw3":         "application/vnd.amazon.ebook",
+            "epub-calibre": "application/epub+zip",
+        }
+        out_ext    = "epub" if opts.format == "epub-calibre" else opts.format
+
+        if mode == "system":
+            import shutil as _shutil, subprocess as _sp, tempfile as _tf, base64 as _b64, os as _os, sys as _sys
+            from pathlib import Path as _Path
+            if not _shutil.which("ebook-convert"):
+                raise HTTPException(503, "ebook-convert not found on PATH. Install Calibre or switch to Docker mode in settings.")
+            with _tf.TemporaryDirectory() as tmp:
+                src = _Path(tmp) / "input.html"
+                dst = _Path(tmp) / f"output.{calibre_fmt}"
+                src.write_text(html, encoding="utf-8")
+                cmd = ["ebook-convert", str(src), str(dst)]
+                if project.title:              cmd += ["--title", project.title]
+                if meta.get("author"):         cmd += ["--authors", meta["author"]]
+                if meta.get("language", "en"): cmd += ["--language", meta.get("language", "en")]
+                if cover_b64:
+                    cp = _Path(tmp) / "cover.jpg"
+                    cp.write_bytes(_b64.b64decode(cover_b64))
+                    cmd += ["--cover", str(cp)]
+                env = {**_os.environ, "QT_QPA_PLATFORM": "offscreen"}
+                # Isolate child from parent's process group so uvicorn's SIGINT
+                # doesn't propagate into ebook-convert on Windows.
+                flags = _sp.CREATE_NEW_PROCESS_GROUP if _sys.platform == "win32" else 0
+                result = _sp.run(cmd, capture_output=True, text=True, timeout=120, env=env, creationflags=flags)
+                if result.returncode != 0:
+                    raise HTTPException(500, f"ebook-convert failed: {result.stderr[-2000:]}")
+                content = dst.read_bytes()
+
+        else:  # docker
+            calibre_url = (s.calibre_url or "http://localhost:8084").rstrip("/")
+            payload = {
+                "html":     html,
+                "format":   calibre_fmt,
+                "title":    project.title or "",
+                "author":   meta.get("author", ""),
+                "language": meta.get("language", "en"),
+            }
+            if cover_b64:
+                payload["cover"] = cover_b64
+            try:
+                async with httpx.AsyncClient(timeout=120.0) as client:
+                    r = await client.post(f"{calibre_url}/convert", json=payload)
+                r.raise_for_status()
+            except httpx.ConnectError:
+                raise HTTPException(503, "Calibre service is not reachable. Is the container running?")
+            except httpx.HTTPStatusError as exc:
+                raise HTTPException(502, f"Calibre error: {exc.response.text[:200]}")
+            content = r.content
+
+        is_binary  = True
+        filename   = f"{safe_name}.{out_ext}"
+        media_type = _mime_map[opts.format]
+
     else:
         raise HTTPException(400, "Unknown format")
 

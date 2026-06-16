@@ -1,0 +1,153 @@
+# Fuentes / Sources:
+#   - Fernando Lázaro Carreter: "El dardo en la palabra" (Galaxia Gutenberg, 1997)
+#   - Álex Grijelmo: "Defensa apasionada del idioma español" (Taurus, 1998)
+#   - Manuel Seco: "Diccionario de dudas y dificultades de la lengua española" (Espasa, 1998)
+#   - Real Academia Española (RAE): "Diccionario panhispánico de dudas" (DPD, 2005)
+#   - Fundación del Español Urgente (FundéU): fundeu.es — recomendaciones de estilo
+#   - Libro de estilo de El País (Ediciones El País, 2014)
+extends: existence
+message: "'%s' — posible error o uso confuso: comprobar"
+level: warning
+ignorecase: false
+tokens:
+  # --- "eventualmente" usado como "finalmente/con el tiempo" (Lázaro Carreter; RAE DPD) ---
+  # En español: "eventualmente" = "de manera eventual, por si acaso, en algún momento impreciso"
+  # No significa "eventually" (inglés) = "con el tiempo, al final, finalmente"
+  # Influencia del inglés muy extendida en textos periodísticos y académicos.
+  - \beventualmente\b
+  - eventual
+
+  # --- "en base a" — criticado por la RAE (RAE DPD; FundéU; Grijelmo) ---
+  # La RAE lo considera un calco del inglés "based on".
+  # Alternativas: "basándose en", "con base en" (LatAm), "según", "a partir de", "conforme a"
+  - en base a
+  - en base al
+  - en base a los
+  - en base a las
+  - en base a un
+  - en base a una
+
+  # --- "deber" vs. "deber de" confundidos (RAE DPD; Seco; Lázaro Carreter) ---
+  # "deber + inf." = obligación: "Debes estudiar" (tienes la obligación)
+  # "deber de + inf." = probabilidad: "Debe de ser tarde" (supongo que es tarde)
+  # En la práctica, "deber de" se usa para obligaciones por influencia del catalán/francés.
+  - \bdebe de\b
+  - \bdeben de\b
+  - \bdebía de\b
+  - \bdebían de\b
+  - \bdebería de\b
+  - \bdeberían de\b
+
+  # --- Falsos amigos con el inglés (Seco; Lázaro Carreter; FundéU) ---
+
+  # "actualmente" ≠ "actually" (inglés)
+  # "actualmente" = "en este momento, hoy en día" (≠ "en realidad, de hecho")
+  - \bactualmente\b
+
+  # "realizar" usado como "to realize" = "darse cuenta"
+  # En español: "realizar" = "llevar a cabo, ejecutar, hacer"
+  # No "me realicé que..." → "me di cuenta de que..."
+  - \bme realizé\b
+  - \bse realizó de que\b
+  - \bnos realizamos\b
+
+  # "soportar" usado como "to support" = "apoyar"
+  # En español: "soportar" = "aguantar, tolerar"
+  # No "soportamos la iniciativa" → "apoyamos la iniciativa"
+
+  # "sensible" ≠ "sensible" (inglés)
+  # En español: "sensible" = "sensitive" (= que siente fácilmente)
+  # Inglés "sensible" = "razonable, sensato" → en español "razonable", "sensato"
+  - \buna persona sensible\b
+  - \bun enfoque sensible\b
+
+  # --- Queísmo (RAE DPD; Seco; Grijelmo) ---
+  # "estoy seguro que" → "estoy seguro de que"
+  # Omisión incorrecta de "de" antes de "que" en verbos y locuciones que la exigen.
+  - \bestoy seguro que\b
+  - \bconvencido que\b
+  - \bestamos seguros que\b
+  - \bme alegro que\b
+  - \bme alegra que\b
+  - \btengo miedo que\b
+  - \btengo la sensación que\b
+  - \btengo la impresión que\b
+  - \btengo la certeza que\b
+  - \btengo la convicción que\b
+  - \bestoy convencido que\b
+  - \bestoy segura que\b
+  - \btengo consciencia que\b
+  - \bes consciente que\b
+  - \bsoy consciente que\b
+
+  # --- Dequeísmo (RAE DPD; Seco; FundéU) ---
+  # "dice de que" → "dice que"
+  # Adición incorrecta de "de" antes de "que" en verbos que no la exigen.
+  - \bdice de que\b
+  - \bdijo de que\b
+  - \bpienso de que\b
+  - \bcree de que\b
+  - \bopina de que\b
+  - \bsiente de que\b
+  - \bconsidera de que\b
+  - \bsugiere de que\b
+  - \bafirma de que\b
+  - \bseñala de que\b
+  - \bindica de que\b
+  - \bparece de que\b
+  - \bresulta de que\b
+
+  # --- Gerundio de posterioridad (RAE DPD; Lázaro Carreter) ---
+  # El gerundio no puede expresar una acción posterior al verbo principal.
+  # "Llegó a Madrid, muriendo dos días después." → "...y murió dos días después."
+  - \b[Mm]uriendo después\b
+  - \b[Ll]legando a continuación\b
+  - \b[Oo]curriendo luego\b
+
+  # --- Gerundio especificativo (Grijelmo; RAE) ---
+  # El gerundio no puede modificar a un sustantivo con valor de adjetivo especificativo.
+  # "Una ley modificando la constitución" → "Una ley que modifica..."
+  - una ley modificando
+  - un decreto estableciendo
+  - un acuerdo permitiendo
+  - un reglamento regulando
+  - un contrato estableciendo
+
+  # --- "mismo/a" como relativo (Lázaro Carreter; Seco; Grijelmo) ---
+  # "El director llegó. El mismo declaró que..." → "Él declaró que..."
+  # El uso de "el mismo/la misma/los mismos" como pronombre relativo suena burocrático.
+  - \bel mismo que\b
+  - \bla misma que\b
+  - \blos mismos que\b
+  - \blas mismas que\b
+  - \bel mismo declaró\b
+  - \bla misma declaró\b
+  - \blos mismos declararon\b
+  - \blas mismas declararon\b
+  - \bdicho esto\b
+
+  # --- Laísmo / loísmo (RAE DPD; Seco) ---
+  # Laísmo: usar "la/las" como complemento indirecto (solo correcto en le/les)
+  - \bla dije\b
+  - \blas dije\b
+  - \bla expliqué\b
+  - \blas expliqué\b
+  - \bla dije que\b
+  - \bla entregué\b
+  - \blas entregué\b
+  # Loísmo: usar "lo/los" como complemento indirecto
+  - \blo dije\b
+  - \blos dije\b
+  - \blo expliqué\b
+  - \blos expliqué\b
+
+  # --- Perspectivas-coletilla (Grijelmo) ---
+  # Hedging personal innecesario que resta autoridad al texto.
+  - \bdesde mi punto de vista\b
+  - \ben mi opinión\b
+  - \ba mi modo de ver\b
+  - \ba mi entender\b
+  - \ba mi juicio\b
+  - \bpersonalmente creo\b
+  - \bpersonalmente pienso\b
+  - \bpersonalmente considero\b

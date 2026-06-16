@@ -1,0 +1,115 @@
+# Kilder / Sources:
+#   - Vinje, Finn-Erik: "Moderne norsk" (Universitetsforlaget, 6. utg. 1990) — om moteord
+#   - NTB Språk: "NTBs språkbok" — unngå fagsjargong
+#   - Språkrådet: sprakradet.no — "ord og bruk" / moteord
+#   - Bokmålsordboka: bokmaalsordboka.no
+#   - Berge, Kjell Lars m.fl.: "Å skape mening med språk" (LNU/Cappelen, 1998)
+extends: existence
+message: "'%s' er et moteord / sjargong — kan du uttrykke det mer konkret?"
+level: suggestion
+ignorecase: true
+tokens:
+  # --- Forretnings- og ledelsessjargong (Vinje; NTB Språk) ---
+  - \bsynergi\b
+  - \bsynergier\b
+  - \bsynergistisk\b
+  - \bparadigme\b
+  - \bparadigmeskifte\b
+  - \bdisrupsjon\b
+  - \bdisruptiv\b
+  - \bdigital transformasjon\b
+  - \btransformasjon\b
+  - \bresiliens\b
+  - \bresilienta\b
+  - \bøkosystem\b
+  - \bskalerbarhet\b
+  - \bskalerbar\b
+  - \bagilitet\b
+  - \bagil\b
+  - \bpivot\b
+  - \bpivotere\b
+  - \bstakeholder\b
+  - \bstakeholders\b
+  - \bbenchmark\b
+  - \bbest practice\b
+  - \bbest practices\b
+  - \blean\b
+  - \bscrum\b
+  - \bkanban\b
+  - \bsprint\b
+  - \bKPI\b
+  - \bROI\b
+  - \bOKR\b
+  - \bUSP\b
+  - \bwin-win\b
+  - \broadmap\b
+  - \bmerverdi\b
+  - \bskape verdi\b
+  - \bgenerere verdi\b
+  - \bgearingeffekt\b
+
+  # --- Startups og teknologi (Språkrådet; NTB Språk) ---
+  - \bstartup\b
+  - \bstartups\b
+  - \beinhyrning\b
+  - \bgrowth hacking\b
+  - \bscale-up\b
+  - \bpitch\b
+  - \bpitche\b
+  - \binkubator\b
+  - \baccelerator\b
+  - \båpen innovasjon\b
+  - \bhackathon\b
+  - \bfintech\b
+  - \bedtech\b
+  - \bhealthtech\b
+
+  # --- Politiske og sosiale moteord (Vinje; Berge m.fl.) ---
+  - \bgovernance\b
+  - \bco-creation\b
+  - \bempowerment\b
+  - \bborgerdialog\b
+  - \blederskap\b
+  - \bvisionært lederskap\b
+  - \borganisasjonens DNA\b
+  - \bpurpose\b
+  - \bnarrativ\b
+  - \bny virkelighet\b
+  - \bny normalitet\b
+
+  # --- Tomme adjektiver (Vinje; NTB Språk) ---
+  - \binnovativ\b
+  - \binnovative\b
+  - \binnovasjon\b
+  - \bbanebrytende\b
+  - \bgrenseoverskridende\b
+  - \bholistisk\b
+  - \bholistiske\b
+  - \bglobal\b
+  - \bproaktiv\b
+  - \bdynamisk\b
+  - \bfleksibel\b
+  - \bfremragende\b
+  - \bdedikasjon\b
+  - \btransparent\b
+  - \btransparens\b
+  - \binkluderende\b
+  - \binklusiv\b
+  - \binklusivitet\b
+  - \bintegrert\b
+  - \brobust\b
+
+  # --- Forretningsfraser (Vinje; NTB Språk) ---
+  - \bgjøre en forskjell\b
+  - \bskape impact\b
+  - \bgå ut av komfortsonen\b
+  - \bkomfortsone\b
+  - \btenke utenfor boksen\b
+  - \bgame changer\b
+  - \bhistorisk\b
+  - \bepokeskapende\b
+  - \bveiledende\b
+  - \boptimere\b
+  - \bmaksimere\b
+  - \bminimere\b
+  - \bsystemtenkning\b

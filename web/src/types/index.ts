@@ -168,11 +168,59 @@ export interface CorkboardScene {
   node_y: number | null;       // React Flow canvas y position
   pov_character_id: number | null;  // POV character for this scene
   beat: string | null;              // plot beat label
+  card_color: string | null;        // per-card tint (hex), persisted server-side
+}
+
+export interface SceneConnection {
+  id: number;
+  source_scene_id: number;
+  target_scene_id: number;
+  connection_type: string;     // 'foreshadowing' | 'flashback' | 'dependency' | 'parallel' | …
+  label: string | null;
+}
+
+export type CorkboardLayout = "custom" | "cascade" | "circle" | "concentric";
+
+/** Per-project corkboard view preferences, persisted on the project. */
+export interface CorkboardPrefs {
+  layout?: CorkboardLayout;
+  compact?: boolean;
+  show_frames?: boolean;
+  beat_template?: string | null;
+  col_colors?: Record<string, string>;   // subplot column → hex
+  stack_names?: Record<string, string>;  // stack_group → display name
+  filter_subplots?: string[];            // empty/missing = show all
+  filter_beats?: string[];               // empty/missing = show all
+  circle_radius_mult?: number;           // size multiplier for Circle layout (−7…+5, step=1 → −70%…+50%)
+  concentric_radius_mult?: number;       // size multiplier for Concentric layout
+  board_style?: string;                  // board visual theme id (see boardStyles.ts)
 }
 
 export interface CorkboardData {
   scenes: CorkboardScene[];
   subplots: string[];          // names of extra subplot columns (main is implicit)
+  connections: SceneConnection[];
+  prefs: CorkboardPrefs;
+}
+
+/** Project-wide codex relations graph (GET /projects/{id}/graph). */
+export interface RelationsGraphNode {
+  id: string;                // entry name
+  codex_id: number | null;
+  entry_type: string;
+  color: string;
+}
+export interface RelationsGraphEdge {
+  source: string;            // entry name
+  target: string;            // entry name
+  type: string;
+  relation_id: number | null;
+  scene_title: string;
+  via: string;
+}
+export interface RelationsGraph {
+  nodes: RelationsGraphNode[];
+  edges: RelationsGraphEdge[];
 }
 
 // Legacy structure types (used by old structure endpoint, kept for other uses)
@@ -334,6 +382,15 @@ export interface Settings {
   grammar_languages: string[];
   pandoc_enabled: boolean;
   pandoc_url: string;
+  spacy_enabled: boolean;
+  spacy_url: string;
+  calibre_mode: "off" | "system" | "docker";
+  calibre_enabled: boolean;
+  calibre_url: string;
+  vale_mode: "off" | "system" | "docker";
+  vale_enabled: boolean;
+  vale_url: string;
+  vale_config_path: string | null;
   ai_disabled: boolean;
   sync_mirror_enabled: boolean;
   sync_local_dir: string | null;
@@ -362,7 +419,7 @@ export interface FragmentTabs {
   all: string[];
 }
 
-export type SaveStatus = "saved" | "saving" | "error" | "idle";
+export type SaveStatus = "saved" | "saving" | "error" | "idle" | "unsaved";
 
 // Flowing read view shapes
 export interface ChapterReadScene {
@@ -453,6 +510,7 @@ export interface Achievement {
   unlocked_at: string | null;
   progress: number;
   progress_max: number;
+  show_toast: boolean;
   hidden?: boolean;
 }
 

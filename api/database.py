@@ -1,167 +1,44 @@
 import json
 import os
-from sqlalchemy import create_engine, event, text
-from sqlalchemy.exc import OperationalError
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 # ── Engine ────────────────────────────────────────────────────────────────────
-# Set LW_USE_SQLITE=1 in dev mode (LaunchFoliantica.bat) to keep SQLite.
-# In production Electron builds, leave unset — PostgreSQL is used via the
-# embedded-postgres sidecar started by electron/main.js.
 
-USE_SQLITE = os.getenv("LW_USE_SQLITE", "0") == "1"
-
-if USE_SQLITE:
-    DATABASE_URL = "sqlite:///./foliantica.db"
-
-    # One-time migration: rename loreweaver.db → foliantica.db for existing users
-    if os.path.exists("loreweaver.db") and not os.path.exists("foliantica.db"):
-        os.rename("loreweaver.db", "foliantica.db")
-
-    engine = create_engine(
-        DATABASE_URL,
-        connect_args={"check_same_thread": False, "timeout": 30},
-    )
-
-    @event.listens_for(engine, "connect")
-    def set_sqlite_pragma(dbapi_conn, _):
-        cursor = dbapi_conn.cursor()
-        cursor.execute("PRAGMA journal_mode=WAL")
-        cursor.execute("PRAGMA busy_timeout=30000")
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.close()
-
-else:
-    _PG_HOST = os.getenv("LW_PG_HOST", "127.0.0.1")
-    _PG_PORT = os.getenv("LW_PG_PORT", "5433")
-    _PG_USER = os.getenv("LW_PG_USER", "foliantica")
-    _PG_PASS = os.getenv("LW_PG_PASS", "foliantica")
-    _PG_DB   = os.getenv("LW_PG_DB",   "foliantica")
-    DATABASE_URL = (
-        f"postgresql+psycopg2://{_PG_USER}:{_PG_PASS}"
-        f"@{_PG_HOST}:{_PG_PORT}/{_PG_DB}"
-    )
-    engine = create_engine(
-        DATABASE_URL,
-        pool_size=5,
-        max_overflow=10,
-        # Force UTF-8 client encoding so Unicode characters in seed data
-        # (e.g. ≤ in publisher descriptions) don't hit Windows cp1252 limits.
-        connect_args={"options": "-c client_encoding=UTF8"},
-    )
-    # PostgreSQL distinguishes BOOLEAN from INTEGER.  Many existing model columns
-    # are declared as Integer but receive Python bool values (True/False).
-    # psycopg2's default adapter would send those as PostgreSQL booleans, causing
-    # a DatatypeMismatch error.  Override it to send plain integer literals.
-    try:
-        import psycopg2.extensions as _pg_ext
-        _pg_ext.register_adapter(bool, lambda b: _pg_ext.AsIs(int(b)))
-    except ImportError:
-        pass
+_PG_HOST = os.getenv("LW_PG_HOST", "127.0.0.1")
+_PG_PORT = os.getenv("LW_PG_PORT", "5433")
+_PG_USER = os.getenv("LW_PG_USER", "foliantica")
+_PG_PASS = os.getenv("LW_PG_PASS", "foliantica")
+_PG_DB   = os.getenv("LW_PG_DB",   "foliantica")
+DATABASE_URL = (
+    f"postgresql+psycopg2://{_PG_USER}:{_PG_PASS}"
+    f"@{_PG_HOST}:{_PG_PORT}/{_PG_DB}"
+)
+engine = create_engine(
+    DATABASE_URL,
+    pool_size=5,
+    max_overflow=10,
+    # Force UTF-8 client encoding so Unicode characters in seed data
+    # (e.g. ≤ in publisher descriptions) don't hit Windows cp1252 limits.
+    connect_args={"options": "-c client_encoding=UTF8"},
+)
+# PostgreSQL distinguishes BOOLEAN from INTEGER.  Many existing model columns
+# are declared as Integer but receive Python bool values (True/False).
+# psycopg2's default adapter would send those as PostgreSQL booleans, causing
+# a DatatypeMismatch error.  Override it to send plain integer literals.
+try:
+    import psycopg2.extensions as _pg_ext
+    _pg_ext.register_adapter(bool, lambda b: _pg_ext.AsIs(int(b)))
+except ImportError:
+    pass
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def migrate_to_four_level():
-    """
-    One-time migration: Project→Chapter→Scene  →  Project→Act→Chapter→Scene.
-
-    Detected by checking whether the existing 'chapters' table still has a
-    'project_id' column (old schema).  If so:
-      1. Rename 'chapters' → 'acts'
-      2. Create a fresh 'chapters' table with act_id FK
-      3. For every act, create one chapter (same title) and remap its scenes
-    """
-    with engine.begin() as conn:
-        # Check if old chapters table exists and has project_id
-        result = conn.execute(text("PRAGMA table_info(chapters)"))
-        cols = {row[1] for row in result.fetchall()}
-
-        if "project_id" not in cols:
-            return  # Already on new schema (or fresh DB)
-
-        # 1. Rename old chapters → acts
-        conn.execute(text("ALTER TABLE chapters RENAME TO acts"))
-
-        # 2. Create new chapters table
-        conn.execute(text("""
-            CREATE TABLE chapters (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                act_id     INTEGER NOT NULL REFERENCES acts(id) ON DELETE CASCADE,
-                title      TEXT    NOT NULL DEFAULT '',
-                order_index INTEGER NOT NULL DEFAULT 0,
-                created_at  DATETIME DEFAULT (datetime('now'))
-            )
-        """))
-
-        # 3. For each act (old chapter), create one chapter under it and
-        #    remap all scenes that pointed to the old chapter id.
-        acts = conn.execute(text("SELECT id, title FROM acts")).fetchall()
-        for act_id, act_title in acts:
-            conn.execute(text(
-                "INSERT INTO chapters (act_id, title, order_index) "
-                "VALUES (:act_id, :title, 0)"
-            ), {"act_id": act_id, "title": act_title})
-            new_ch_id = conn.execute(text("SELECT last_insert_rowid()")).scalar()
-            conn.execute(text(
-                "UPDATE scenes SET chapter_id = :new_id WHERE chapter_id = :old_id"
-            ), {"new_id": new_ch_id, "old_id": act_id})
-
-
-def migrate_new_columns():
-    """Safely add new columns to existing databases without Alembic."""
-    new_columns = [
-        ("codex_entries", "entry_group", "TEXT"),
-        ("codex_entries", "species",     "TEXT"),
-        ("codex_entries", "subtype",     "TEXT"),
-        ("codex_entries", "tags",        "TEXT DEFAULT '[]'"),
-        ("projects",      "time_config",    "TEXT"),
-        ("projects",      "fragment_tabs",  "TEXT"),
-        ("projects",      "book_meta",              "TEXT"),
-        ("projects",      "shared_codex_project_id", "INTEGER"),
-        ("scenes",        "scene_time",             "TEXT"),
-        ("codex_entries", "is_main_char",            "INTEGER DEFAULT 0"),
-        ("codex_entries", "inventory",               "TEXT"),
-        ("projects",      "cover_image",             "TEXT"),
-        ("codex_entries", "image_path",              "TEXT"),
-        ("user_settings", "enabled_models",          "TEXT DEFAULT '[]'"),
-        ("user_settings", "default_chat_model",      "TEXT"),
-        ("user_settings", "default_synopsis_model",   "TEXT"),
-        ("user_settings", "default_codex_model",      "TEXT"),
-        ("fragments",     "category",                "TEXT"),
-        ("scenes",        "synopsis",                "TEXT"),
-        ("scenes",        "subplot",                 "TEXT"),
-        ("scenes",        "global_order",            "INTEGER"),
-        ("scenes",        "stack_group",             "TEXT"),
-        ("scenes",        "node_x",                  "REAL"),
-        ("scenes",        "node_y",                  "REAL"),
-        ("codex_entries", "name_type",               "TEXT"),
-        ("user_settings", "language",                "TEXT DEFAULT 'en'"),
-        ("user_settings", "show_paragraph_numbers",  "INTEGER DEFAULT 0"),
-        ("user_settings", "typewriter_mode",         "INTEGER DEFAULT 0"),
-        ("user_settings", "typewriter_offset",       "INTEGER DEFAULT 50"),
-        ("user_settings", "session_timer_enabled",   "INTEGER DEFAULT 1"),
-        ("projects",      "subplot_names",            "TEXT DEFAULT '[]'"),
-        ("user_settings", "grammar_check_enabled",    "INTEGER DEFAULT 0"),
-        ("user_settings", "grammar_check_url",        "TEXT DEFAULT 'http://localhost:8081'"),
-        ("user_settings", "grammar_languages",        "TEXT DEFAULT '[\"en\"]'"),
-        ("user_settings", "pandoc_enabled",           "INTEGER DEFAULT 0"),
-        ("user_settings", "pandoc_url",               "TEXT DEFAULT 'http://localhost:8082'"),
-        ("scenes",        "pov_character_id",           "INTEGER"),
-        ("scenes",        "beat",                       "TEXT"),
-        ("scenes",        "scene_type",                 "TEXT"),
-        ("projects",      "main_plot_color",             "TEXT"),
-        ("scenes",        "word_count",                 "INTEGER DEFAULT 0"),
-        ("user_settings", "stats_views",                 "INTEGER DEFAULT 0"),
-        ("user_settings", "export_count",                "INTEGER DEFAULT 0"),
-    ]
-    for table, col, col_type in new_columns:
-        try:
-            with engine.begin() as conn:
-                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}"))
-        except OperationalError:
-            pass  # column already exists
-
+# ── Incremental ALTER TABLE migrations ────────────────────────────────────────
+# Each function is fully idempotent — safe to call on every startup.
+# Each statement runs in its own transaction so a "column already exists"
+# failure on one column never blocks the others.
 
 def migrate_indexes():
     """Create FK indexes on existing databases. Idempotent — uses IF NOT EXISTS."""
@@ -186,58 +63,183 @@ def migrate_indexes():
         ("idx_timeline_events_project_id",   "timeline_events",   "project_id"),
         ("idx_timeline_events_track_id",     "timeline_events",   "track_id"),
     ]
-    with engine.begin() as conn:
-        for idx_name, table, col in indexes:
-            try:
+    for idx_name, table, col in indexes:
+        try:
+            with engine.begin() as conn:
                 conn.execute(text(
                     f"CREATE INDEX IF NOT EXISTS {idx_name} ON {table} ({col})"
                 ))
-            except Exception:
-                pass  # table may not exist yet on first run
+        except Exception:
+            pass  # table may not exist yet on first run
 
 
-def migrate_mention_stats():
-    """Create the mention_stats table if it does not yet exist."""
+def migrate_codex_entry_sharing():
+    """Add share_mode/share_future columns to codex_entries."""
+    for col, col_type in [
+        ("share_mode",   "TEXT NOT NULL DEFAULT 'all'"),
+        ("share_future", "INTEGER NOT NULL DEFAULT 1"),
+    ]:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(f"ALTER TABLE codex_entries ADD COLUMN {col} {col_type}"))
+        except Exception:
+            pass
+
+
+def migrate_ai_disabled():
+    """Add ai_disabled column to user_settings if not present."""
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE user_settings ADD COLUMN ai_disabled INTEGER NOT NULL DEFAULT 0"))
+    except Exception:
+        pass
+
+
+def migrate_research_pdf():
+    """Add pdf_path column to research_items."""
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE research_items ADD COLUMN pdf_path TEXT"))
+    except Exception:
+        pass
+
+
+def migrate_ai_providers():
+    """Add active_provider and ai_providers_cfg columns to user_settings."""
+    for stmt in [
+        "ALTER TABLE user_settings ADD COLUMN active_provider TEXT NOT NULL DEFAULT 'openrouter'",
+        "ALTER TABLE user_settings ADD COLUMN ai_providers_cfg TEXT",
+    ]:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(stmt))
+        except Exception:
+            pass
+
+
+def migrate_corkboard():
+    """Add corkboard persistence columns (scenes.card_color, projects.corkboard_prefs)."""
+    for stmt in [
+        "ALTER TABLE scenes ADD COLUMN card_color TEXT",
+        "ALTER TABLE projects ADD COLUMN corkboard_prefs TEXT",
+    ]:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(stmt))
+        except Exception:
+            pass
+
+
+def migrate_achievement_popup_shown():
+    """Add popup_shown_at column to achievement_unlocks if not present."""
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE achievement_unlocks ADD COLUMN popup_shown_at DATETIME"))
+    except Exception:
+        pass
+
+
+def migrate_sync_mirror():
+    """Add sync_mirror_enabled and sync_local_dir columns to user_settings."""
+    for stmt in [
+        "ALTER TABLE user_settings ADD COLUMN sync_mirror_enabled INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE user_settings ADD COLUMN sync_local_dir TEXT",
+    ]:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(stmt))
+        except Exception:
+            pass
+
+
+def migrate_spacy():
+    """Add spacy_enabled and spacy_url columns to user_settings."""
+    for stmt in [
+        "ALTER TABLE user_settings ADD COLUMN spacy_enabled INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE user_settings ADD COLUMN spacy_url TEXT",
+    ]:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(stmt))
+        except Exception:
+            pass
+
+
+def migrate_calibre():
+    """Add calibre columns to user_settings."""
+    for stmt in [
+        "ALTER TABLE user_settings ADD COLUMN calibre_enabled INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE user_settings ADD COLUMN calibre_url TEXT",
+        "ALTER TABLE user_settings ADD COLUMN calibre_mode TEXT NOT NULL DEFAULT 'off'",
+    ]:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(stmt))
+        except Exception:
+            pass
+
+
+def migrate_vale():
+    """Add vale columns to user_settings."""
+    for stmt in [
+        "ALTER TABLE user_settings ADD COLUMN vale_mode TEXT NOT NULL DEFAULT 'off'",
+        "ALTER TABLE user_settings ADD COLUMN vale_url TEXT",
+        "ALTER TABLE user_settings ADD COLUMN vale_config_path TEXT",
+    ]:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(stmt))
+        except Exception:
+            pass
+
+
+def migrate_vale_custom_rules():
+    """Add vale_custom_rules column to user_settings."""
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE user_settings ADD COLUMN vale_custom_rules TEXT"))
+    except Exception:
+        pass
+
+
+def migrate_project_language():
+    """Add language column to projects."""
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE projects ADD COLUMN language TEXT DEFAULT 'en'"))
+    except Exception:
+        pass
+
+
+def migrate_ai_prompts_word_count():
+    """Add word_count column to ai_prompts if not present."""
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE ai_prompts ADD COLUMN word_count INTEGER NOT NULL DEFAULT 400"))
+    except Exception:
+        pass
+
+
+def migrate_backfill_word_counts():
+    """Backfill scenes.word_count for rows where it is 0 but content exists."""
+    import re as _re
     with engine.begin() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS mention_stats (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                scene_id   INTEGER NOT NULL REFERENCES scenes(id) ON DELETE CASCADE,
-                codex_id   INTEGER NOT NULL REFERENCES codex_entries(id) ON DELETE CASCADE,
-                count      INTEGER NOT NULL DEFAULT 0,
-                UNIQUE (scene_id, codex_id)
-            )
-        """))
-
-
-def migrate_writing_log():
-    """Create the writing_log table if it does not yet exist."""
-    with engine.begin() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS writing_log (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                project_id  INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-                date        TEXT    NOT NULL,
-                words_added INTEGER NOT NULL DEFAULT 0,
-                UNIQUE (project_id, date)
-            )
-        """))
-
-
-def migrate_entry_groups():
-    """Convert entry_group plain-string values to JSON arrays (one-time migration)."""
-    with engine.connect() as conn:
         rows = conn.execute(text(
-            "SELECT id, entry_group FROM codex_entries WHERE entry_group IS NOT NULL"
+            "SELECT id, content FROM scenes "
+            "WHERE (word_count IS NULL OR word_count = 0) "
+            "AND content IS NOT NULL AND content != ''"
         )).fetchall()
-        for row_id, group in rows:
-            if group and not group.startswith("["):
+        for scene_id, content in rows:
+            plain = _re.sub(r"<[^>]+>", "", content)
+            wc = len(plain.split())
+            if wc > 0:
                 conn.execute(
-                    text("UPDATE codex_entries SET entry_group = :val WHERE id = :id"),
-                    {"val": json.dumps([group]), "id": row_id},
+                    text("UPDATE scenes SET word_count = :wc WHERE id = :id"),
+                    {"wc": wc, "id": scene_id},
                 )
-        conn.commit()
 
+
+# ── Static seed data ──────────────────────────────────────────────────────────
 
 DEFAULT_AI_PROMPTS = [
     {
@@ -387,25 +389,16 @@ DEFAULT_AI_PROMPTS = [
 ]
 
 
-def migrate_ai_prompts():
-    """Create ai_prompts table and seed the three built-in defaults if not already present."""
+# ── Seed functions ─────────────────────────────────────────────────────────────
+
+def seed_ai_prompts():
+    """Seed built-in AI prompts; upgrade system text when placeholders are missing."""
+    _required = {
+        "story_generate": ["{{LANGUAGE}}", "{{WORD_COUNT}}"],
+        "lector_review":  ["{{LANGUAGE}}"],
+        "codex_distill":  ["{{LANGUAGE}}"],
+    }
     with engine.begin() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS ai_prompts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL DEFAULT '',
-                description TEXT NOT NULL DEFAULT '',
-                system TEXT NOT NULL DEFAULT '',
-                user_template TEXT NOT NULL DEFAULT '',
-                is_built_in INTEGER NOT NULL DEFAULT 0,
-                built_in_key TEXT,
-                word_count INTEGER NOT NULL DEFAULT 400
-            )
-        """))
-        try:
-            conn.execute(text("ALTER TABLE ai_prompts ADD COLUMN word_count INTEGER NOT NULL DEFAULT 400"))
-        except Exception:
-            pass  # column already exists
         for p in DEFAULT_AI_PROMPTS:
             existing = conn.execute(
                 text("SELECT id FROM ai_prompts WHERE built_in_key = :key"),
@@ -414,202 +407,26 @@ def migrate_ai_prompts():
             if not existing:
                 conn.execute(
                     text("""
-                        INSERT INTO ai_prompts (name, description, system, user_template, is_built_in, built_in_key, word_count)
-                        VALUES (:name, :description, :system, :user_template, :is_built_in, :built_in_key, :word_count)
+                        INSERT INTO ai_prompts
+                            (name, description, system, user_template,
+                             is_built_in, built_in_key, word_count)
+                        VALUES
+                            (:name, :description, :system, :user_template,
+                             :is_built_in, :built_in_key, :word_count)
                     """),
                     {**p, "word_count": p.get("word_count", 400)},
                 )
-        # Upgrade: update built-in system texts when expected placeholders are missing
-        _required = {
-            "story_generate": ["{{LANGUAGE}}", "{{WORD_COUNT}}"],
-            "lector_review":  ["{{LANGUAGE}}"],
-            "codex_distill":  ["{{LANGUAGE}}"],
-        }
-        for p in DEFAULT_AI_PROMPTS:
-            tokens = _required.get(p["built_in_key"], [])
-            row = conn.execute(
-                text("SELECT id, system FROM ai_prompts WHERE built_in_key = :key"),
-                {"key": p["built_in_key"]},
-            ).fetchone()
-            if row and any(t not in (row[1] or "") for t in tokens):
-                conn.execute(
-                    text("UPDATE ai_prompts SET system = :system WHERE id = :id"),
-                    {"system": p["system"], "id": row[0]},
-                )
-
-
-def migrate_scene_versions():
-    """Create scene_versions table."""
-    with engine.begin() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS scene_versions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                scene_id INTEGER NOT NULL REFERENCES scenes(id) ON DELETE CASCADE,
-                content TEXT NOT NULL DEFAULT '',
-                content_hash TEXT NOT NULL DEFAULT '',
-                created_at DATETIME DEFAULT (datetime('now'))
-            )
-        """))
-
-
-def migrate_codex_entry_sharing():
-    """Add share_mode/share_future columns to codex_entries and create codex_entry_access table."""
-    for col, col_type in [
-        ("share_mode",   "TEXT NOT NULL DEFAULT 'all'"),
-        ("share_future", "INTEGER NOT NULL DEFAULT 1"),
-    ]:
-        try:
-            with engine.begin() as conn:
-                conn.execute(text(f"ALTER TABLE codex_entries ADD COLUMN {col} {col_type}"))
-        except OperationalError:
-            pass  # already exists
-    with engine.begin() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS codex_entry_access (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                entry_id   INTEGER NOT NULL REFERENCES codex_entries(id) ON DELETE CASCADE,
-                project_id INTEGER NOT NULL,
-                UNIQUE (entry_id, project_id)
-            )
-        """))
-
-
-def migrate_timeline_tables():
-    """Create timeline_tracks and timeline_events tables if they don't exist yet."""
-    with engine.begin() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS timeline_tracks (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                project_id   INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-                name         TEXT    NOT NULL DEFAULT 'Timeline',
-                color        TEXT    NOT NULL DEFAULT '#6b7280',
-                track_type   TEXT    NOT NULL DEFAULT 'parallel',
-                order_index  INTEGER NOT NULL DEFAULT 0,
-                start_time   TEXT,
-                end_time     TEXT,
-                created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-            )
-        """))
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS timeline_events (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                project_id   INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-                track_id     INTEGER REFERENCES timeline_tracks(id) ON DELETE SET NULL,
-                title        TEXT    NOT NULL DEFAULT 'Untitled Event',
-                description  TEXT,
-                scene_time   TEXT,
-                color        TEXT    NOT NULL DEFAULT '#6b7280',
-                created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-            )
-        """
-        ))
-
-
-def migrate_research():
-    """Create the research_items table if it does not yet exist."""
-    with engine.begin() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS research_items (
-                id                INTEGER PRIMARY KEY AUTOINCREMENT,
-                project_id        INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-                title             TEXT,
-                url               TEXT,
-                url_title         TEXT,
-                url_description   TEXT,
-                url_image         TEXT,
-                text_content      TEXT,
-                image_path        TEXT,
-                linked_scene_id   INTEGER,
-                linked_codex_id   INTEGER,
-                tags              TEXT NOT NULL DEFAULT '[]',
-                created_at        DATETIME DEFAULT (datetime('now')),
-                updated_at        DATETIME DEFAULT (datetime('now'))
-            )
-        """))
-
-
-# ── Standard Manuscript Format export profile options ─────────────────────────
-_SMF_OPTIONS = {
-    "format": "docx",
-    "font": "Times New Roman", "font_size": "12pt", "line_spacing": "2",
-    "paper_size": "letterpaper",
-    "heading_align": "center", "h1_size": "1.5em", "h2_size": "1.25em",
-    "h3_size": "1em", "h3_style": "normal",
-    "paragraph_indent": "1.5em", "text_align": "left",
-    "pdf_margin": "1in", "page_numbers": True, "drop_caps": False,
-    "include_act_headings": False, "include_chapter_headings": True,
-    "include_scene_headings": False,
-}
-_COURIER_OPTIONS = {**_SMF_OPTIONS, "font": "Courier New"}
-
-_BUILTIN_PROFILES = [
-    {
-        "name": "Standard Manuscript Format",
-        "description": (
-            "Industry-standard agent submission format. "
-            "Times New Roman 12pt, double-spaced, 1-inch margins. "
-            "Outputs .docx — the format agents expect."
-        ),
-        "options": _SMF_OPTIONS,
-    },
-    {
-        "name": "Courier Manuscript",
-        "description": (
-            "Traditional Courier New manuscript. "
-            "Some agents and small presses still prefer monospace. "
-            "Same double-spacing and 1-inch margins as SMF."
-        ),
-        "options": _COURIER_OPTIONS,
-    },
-]
-
-
-def migrate_publishing():
-    """Create query_submissions and export_profiles tables; seed built-in profiles."""
-    with engine.begin() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS query_submissions (
-                id                INTEGER PRIMARY KEY AUTOINCREMENT,
-                project_id        INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-                agent_name        TEXT    NOT NULL DEFAULT '',
-                agency            TEXT,
-                email             TEXT,
-                submission_type   TEXT    NOT NULL DEFAULT 'query',
-                date_sent         TEXT,
-                response_deadline TEXT,
-                status            TEXT    NOT NULL DEFAULT 'queried',
-                notes             TEXT,
-                created_at        DATETIME DEFAULT (datetime('now')),
-                updated_at        DATETIME DEFAULT (datetime('now'))
-            )
-        """))
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS export_profiles (
-                id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                project_id   INTEGER REFERENCES projects(id) ON DELETE CASCADE,
-                name         TEXT    NOT NULL DEFAULT '',
-                description  TEXT,
-                is_builtin   INTEGER NOT NULL DEFAULT 0,
-                options_json TEXT    NOT NULL DEFAULT '{}',
-                created_at   DATETIME DEFAULT (datetime('now')),
-                updated_at   DATETIME DEFAULT (datetime('now'))
-            )
-        """))
-        # Seed built-in profiles (idempotent)
-        for p in _BUILTIN_PROFILES:
-            exists = conn.execute(
-                text("SELECT id FROM export_profiles WHERE name = :name AND is_builtin = 1"),
-                {"name": p["name"]},
-            ).fetchone()
-            if not exists:
-                conn.execute(
-                    text("""
-                        INSERT INTO export_profiles
-                            (project_id, name, description, is_builtin, options_json, created_at, updated_at)
-                        VALUES (NULL, :name, :desc, 1, :opts, datetime('now'), datetime('now'))
-                    """),
-                    {"name": p["name"], "desc": p["description"], "opts": json.dumps(p["options"])},
-                )
+            else:
+                tokens = _required.get(p["built_in_key"], [])
+                row = conn.execute(
+                    text("SELECT id, system FROM ai_prompts WHERE built_in_key = :key"),
+                    {"key": p["built_in_key"]},
+                ).fetchone()
+                if row and any(t not in (row[1] or "") for t in tokens):
+                    conn.execute(
+                        text("UPDATE ai_prompts SET system = :system WHERE id = :id"),
+                        {"system": p["system"], "id": row[0]},
+                    )
 
 
 _SMF_BASE = {
@@ -626,7 +443,6 @@ _EPUB_BASE = {
     "include_act_headings": True, "include_chapter_headings": True, "include_scene_headings": False,
     "h1_size": "2em", "h2_size": "1.5em", "h3_size": "1.25em", "h3_style": "normal",
 }
-# German standard: TNR 12pt, 1.5-spaced, A4, 2.5 cm margins (Manuskriptformat)
 _DE_BASE = {
     "format": "docx", "font": "Times New Roman", "font_size": "12pt",
     "line_spacing": "1.5", "text_align": "left", "heading_align": "center",
@@ -634,7 +450,6 @@ _DE_BASE = {
     "include_act_headings": False, "include_chapter_headings": True, "include_scene_headings": False,
     "h1_size": "1.5em", "h2_size": "1.25em", "h3_size": "1em", "h3_style": "normal",
 }
-# French standard: TNR 12pt, double-spaced, A4, 2.5 cm margins
 _FR_BASE = {
     "format": "docx", "font": "Times New Roman", "font_size": "12pt",
     "line_spacing": "2", "text_align": "left", "heading_align": "center",
@@ -642,7 +457,6 @@ _FR_BASE = {
     "include_act_headings": False, "include_chapter_headings": True, "include_scene_headings": False,
     "h1_size": "1.5em", "h2_size": "1.25em", "h3_size": "1em", "h3_style": "normal",
 }
-# Spanish standard: TNR 12pt, 1.5-spaced, A4, 2.5 cm margins
 _ES_BASE = {
     "format": "docx", "font": "Times New Roman", "font_size": "12pt",
     "line_spacing": "1.5", "text_align": "left", "heading_align": "center",
@@ -650,6 +464,27 @@ _ES_BASE = {
     "include_act_headings": False, "include_chapter_headings": True, "include_scene_headings": False,
     "h1_size": "1.5em", "h2_size": "1.25em", "h3_size": "1em", "h3_style": "normal",
 }
+
+_BUILTIN_PROFILES = [
+    {
+        "name": "Standard Manuscript Format",
+        "description": (
+            "Industry-standard agent submission format. "
+            "Times New Roman 12pt, double-spaced, 1-inch margins. "
+            "Outputs .docx — the format agents expect."
+        ),
+        "options": {**_SMF_BASE},
+    },
+    {
+        "name": "Courier Manuscript",
+        "description": (
+            "Traditional Courier New manuscript. "
+            "Some agents and small presses still prefer monospace. "
+            "Same double-spacing and 1-inch margins as SMF."
+        ),
+        "options": {**_SMF_BASE, "font": "Courier New"},
+    },
+]
 
 _PUBLISHER_PROFILES = [
     # ── Standard formats ──────────────────────────────────────────────────────
@@ -1032,220 +867,8 @@ _PUBLISHER_PROFILES = [
 ]
 
 
-def migrate_publisher_profiles():
-    """Create publisher_profiles table and seed reference data (idempotent)."""
-    with engine.begin() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS publisher_profiles (
-                id               INTEGER PRIMARY KEY AUTOINCREMENT,
-                short_name       TEXT    NOT NULL UNIQUE,
-                name             TEXT    NOT NULL DEFAULT '',
-                category         TEXT    NOT NULL DEFAULT 'standard',
-                description      TEXT,
-                word_count_min   INTEGER,
-                word_count_max   INTEGER,
-                accepts_unagented INTEGER NOT NULL DEFAULT 0,
-                submission_url   TEXT,
-                options_json     TEXT    NOT NULL DEFAULT '{}',
-                is_active        INTEGER NOT NULL DEFAULT 1,
-                created_at       DATETIME DEFAULT (datetime('now')),
-                updated_at       DATETIME DEFAULT (datetime('now'))
-            )
-        """))
-        for p in _PUBLISHER_PROFILES:
-            exists = conn.execute(
-                text("SELECT id FROM publisher_profiles WHERE short_name = :sn"),
-                {"sn": p["short_name"]},
-            ).fetchone()
-            params = {
-                "sn":   p["short_name"],
-                "name": p["name"],
-                "cat":  p["category"],
-                "desc": p["description"],
-                "wmin": p["word_count_min"],
-                "wmax": p["word_count_max"],
-                "unag": p["accepts_unagented"],
-                "url":  p["submission_url"],
-                "opts": json.dumps(p["options"]),
-            }
-            if not exists:
-                conn.execute(text("""
-                    INSERT INTO publisher_profiles
-                        (short_name, name, category, description,
-                         word_count_min, word_count_max, accepts_unagented,
-                         submission_url, options_json, is_active,
-                         created_at, updated_at)
-                    VALUES
-                        (:sn, :name, :cat, :desc,
-                         :wmin, :wmax, :unag,
-                         :url, :opts, 1,
-                         datetime('now'), datetime('now'))
-                """), params)
-            else:
-                conn.execute(text("""
-                    UPDATE publisher_profiles
-                    SET name=:name, category=:cat, description=:desc,
-                        word_count_min=:wmin, word_count_max=:wmax,
-                        accepts_unagented=:unag, submission_url=:url,
-                        options_json=:opts, updated_at=datetime('now')
-                    WHERE short_name=:sn
-                """), params)
-
-
-def migrate_achievements():
-    """Create the achievement_unlocks table if it does not yet exist."""
-    with engine.begin() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS achievement_unlocks (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                key         TEXT    NOT NULL UNIQUE,
-                unlocked_at DATETIME DEFAULT (datetime('now'))
-            )
-        """))
-
-
-def migrate_ai_disabled():
-    """Add ai_disabled column to user_settings if not present."""
-    with engine.begin() as conn:
-        try:
-            conn.execute(text("ALTER TABLE user_settings ADD COLUMN ai_disabled INTEGER NOT NULL DEFAULT 0"))
-        except Exception:
-            pass  # column already exists
-
-
-def migrate_research_pdf():
-    """Add pdf_path column to research_items."""
-    with engine.begin() as conn:
-        try:
-            conn.execute(text("ALTER TABLE research_items ADD COLUMN pdf_path TEXT"))
-        except Exception:
-            pass  # column already exists
-
-
-def migrate_research_media():
-    """Create research_media table and migrate legacy image_path / pdf_path rows into it."""
-    with engine.begin() as conn:
-        conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS research_media (
-                id               INTEGER PRIMARY KEY AUTOINCREMENT,
-                research_item_id INTEGER NOT NULL REFERENCES research_items(id) ON DELETE CASCADE,
-                kind             TEXT    NOT NULL,
-                path             TEXT    NOT NULL,
-                order_index      INTEGER NOT NULL DEFAULT 0,
-                created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-            )
-        """))
-
-        # Move any pre-existing image_path / pdf_path values into the new table.
-        # Idempotent: skip if an identical path already exists for that item.
-        rows = conn.execute(text(
-            "SELECT id, image_path, pdf_path FROM research_items "
-            "WHERE image_path IS NOT NULL OR pdf_path IS NOT NULL"
-        )).fetchall()
-
-        for row in rows:
-            for kind, path in (("image", row[1]), ("pdf", row[2])):
-                if not path:
-                    continue
-                already = conn.execute(text(
-                    "SELECT 1 FROM research_media "
-                    "WHERE research_item_id = :rid AND path = :path"
-                ), {"rid": row[0], "path": path}).fetchone()
-                if not already:
-                    conn.execute(text(
-                        "INSERT INTO research_media "
-                        "(research_item_id, kind, path, order_index, created_at) "
-                        "VALUES (:rid, :kind, :path, 0, CURRENT_TIMESTAMP)"
-                    ), {"rid": row[0], "kind": kind, "path": path})
-
-
-def migrate_sync_mirror():
-    """Add sync_mirror_enabled and sync_local_dir columns to user_settings."""
-    with engine.begin() as conn:
-        for stmt in [
-            "ALTER TABLE user_settings ADD COLUMN sync_mirror_enabled INTEGER NOT NULL DEFAULT 0",
-            "ALTER TABLE user_settings ADD COLUMN sync_local_dir TEXT",
-        ]:
-            try:
-                conn.execute(text(stmt))
-            except Exception:
-                pass  # column already exists
-
-
-def migrate_backfill_word_counts():
-    """Backfill scenes.word_count for rows where it is 0 but content exists."""
-    import re as _re
-    with engine.begin() as conn:
-        rows = conn.execute(text(
-            "SELECT id, content FROM scenes "
-            "WHERE (word_count IS NULL OR word_count = 0) "
-            "AND content IS NOT NULL AND content != ''"
-        )).fetchall()
-        for scene_id, content in rows:
-            plain = _re.sub(r"<[^>]+>", "", content)
-            wc = len(plain.split())
-            if wc > 0:
-                conn.execute(
-                    text("UPDATE scenes SET word_count = :wc WHERE id = :id"),
-                    {"wc": wc, "id": scene_id},
-                )
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-# ── PostgreSQL seed functions ─────────────────────────────────────────────────
-# Called by main.py when USE_SQLITE is False.  The schema has already been
-# created by Base.metadata.create_all(); these functions only seed static
-# reference data that would otherwise be inserted by the SQLite migrate_*
-# functions (which use SQLite-specific DDL and cannot run on PostgreSQL).
-
-def seed_ai_prompts():
-    """Seed built-in AI prompts for a fresh PostgreSQL database."""
-    with engine.begin() as conn:
-        for p in DEFAULT_AI_PROMPTS:
-            existing = conn.execute(
-                text("SELECT id FROM ai_prompts WHERE built_in_key = :key"),
-                {"key": p["built_in_key"]},
-            ).fetchone()
-            if not existing:
-                conn.execute(
-                    text("""
-                        INSERT INTO ai_prompts
-                            (name, description, system, user_template,
-                             is_built_in, built_in_key, word_count)
-                        VALUES
-                            (:name, :description, :system, :user_template,
-                             :is_built_in, :built_in_key, :word_count)
-                    """),
-                    {**p, "word_count": p.get("word_count", 400)},
-                )
-            else:
-                # Update system prompt text if expected placeholders are missing
-                _required = {
-                    "story_generate": ["{{LANGUAGE}}", "{{WORD_COUNT}}"],
-                    "lector_review":  ["{{LANGUAGE}}"],
-                    "codex_distill":  ["{{LANGUAGE}}"],
-                }
-                tokens = _required.get(p["built_in_key"], [])
-                row = conn.execute(
-                    text("SELECT id, system FROM ai_prompts WHERE built_in_key = :key"),
-                    {"key": p["built_in_key"]},
-                ).fetchone()
-                if row and any(t not in (row[1] or "") for t in tokens):
-                    conn.execute(
-                        text("UPDATE ai_prompts SET system = :system WHERE id = :id"),
-                        {"system": p["system"], "id": row[0]},
-                    )
-
-
 def seed_publisher_profiles():
-    """Seed publisher reference profiles for a fresh PostgreSQL database."""
+    """Seed publisher reference profiles (idempotent)."""
     with engine.begin() as conn:
         for p in _PUBLISHER_PROFILES:
             exists = conn.execute(
@@ -1288,7 +911,7 @@ def seed_publisher_profiles():
 
 
 def seed_export_profiles():
-    """Seed built-in export profiles for a fresh PostgreSQL database."""
+    """Seed built-in export profiles (idempotent)."""
     with engine.begin() as conn:
         for p in _BUILTIN_PROFILES:
             exists = conn.execute(
@@ -1307,3 +930,11 @@ def seed_export_profiles():
                     {"name": p["name"], "desc": p["description"],
                      "opts": json.dumps(p["options"])},
                 )
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

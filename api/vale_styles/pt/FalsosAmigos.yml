@@ -1,0 +1,116 @@
+# Fontes / Sources:
+#   - Celso Cunha / Lindley Cintra: "Nova Gramática do Português Contemporâneo" (João Sá da Costa, 1984/2014)
+#   - Cláudio Moreno: "Guia Prático de Estilo" (L&PM, 2009)
+#   - Eduardo Martins: "Manual de Redação e Estilo de O Estado de S. Paulo" (1997)
+#   - Academia Brasileira de Letras (ABL)
+#   - Academia das Ciências de Lisboa (ACL)
+#   - José Luís Nunes Moura: "Escrever em Português" (Presença, 2009)
+#   - Guia de Estilo da Folha de S. Paulo (online, em curso)
+extends: existence
+message: "'%s' — possível erro ou uso ambíguo: verificar"
+level: warning
+ignorecase: false
+tokens:
+  # --- "eventualmente" ≠ "eventually" (Cunha/Cintra; ABL) ---
+  # Em português: "eventualmente" = "por acaso, em certos casos, possivelmente"
+  # ≠ inglês "eventually" = "no final, com o tempo, eventualmente → finalmente"
+  # Calco frequente em textos influenciados pelo inglês.
+  - eventualmente\b
+  - eventual\b
+  - eventuais\b
+
+  # --- "atualmente" ≠ "actually" (Moreno; Cunha/Cintra) ---
+  # Em português: "atualmente" = "neste momento, presentemente"
+  # ≠ inglês "actually" = "na verdade, de facto, afinal"
+  - \batualmente\b
+  - \bactualmente\b
+
+  # --- "suportar" ≠ "support" (Moreno; ACL) ---
+  # Em português "suportar" = "aguentar, tolerar, sofrer"
+  # ≠ inglês "support" = "apoiar, sustentar"
+  # Calco frequente: "suportamos a nossa equipa" em vez de "apoiamos"
+  - \bsuportar\b
+  - \bsuporta\b
+  - \bsuportam\b
+  - \bsuportando\b
+
+  # --- "implementar" como calco (Moreno; ABL; ACL) ---
+  # "Implementar" em sentido lato ("pôr em prática, executar") é calco do inglês "to implement".
+  # A língua portuguesa prefere "executar", "aplicar", "realizar", "pôr em prática".
+  - \bimplementar\b
+  - \bimplementação\b
+  - \bimplementado\b
+  - \bimplementada\b
+
+  # --- "consistente" ≠ "consistent" (Moreno; ACL) ---
+  # Em português: "consistente" = "sólido, que tem consistência"
+  # ≠ inglês "consistent" = "coerente, uniforme, consequente"
+  # Erro: "uma estratégia consistente" quando se quer dizer "coerente"
+  - \bconsistente\b
+  - \bconsistentes\b
+  - \bconsistência\b
+
+  # --- "comprometido" ≠ "committed" (Moreno; Martins) ---
+  # Em português: "comprometido" = "prejudicado, em situação difícil; que se comprometeu"
+  # ≠ inglês "committed" = "empenhado, dedicado, determinado"
+  # Calco frequente: "estamos comprometidos" em vez de "estamos empenhados"
+  - \bcomprometido\b
+  - \bcomprometidos\b
+  - \bcomprometida\b
+  - \bcomprometidas\b
+
+  # --- "endereçar" ≠ "address" (Moreno; ABL) ---
+  # Em português: "endereçar" = "enviar, dirigir uma carta/pacote"
+  # ≠ inglês "to address" = "tratar de, abordar, dar resposta a"
+  # Calco frequente: "endereçar o problema" em vez de "tratar do problema"
+  - \bendereçar\b
+  - \bendereçamos\b
+  - \bendereçando\b
+
+  # --- "assumir" + responsabilidades (Moreno; ACL) ---
+  # "Assumir" existe em português mas o uso generalizado como calco do inglês
+  # "to assume" = "supor, presumir" é problemático.
+  # "Assumo que ele virá" vs. "presumo / suponho que ele virá"
+  - \bassumir que\b
+  - \bassumindo que\b
+  - \bassume-se que\b
+
+  # --- "performar" / "performance" (Moreno; Martins; ABL) ---
+  # "Performance" existe em português (espetáculo artístico) mas o uso
+  # como sinónimo de "desempenho, rendimento" é anglicismo evitável.
+  # "Performar" como verbo é neologismo do inglês "to perform".
+  - \bperformance\b
+  - \bperformar\b
+  - \bperforma\b
+  - \bperformando\b
+
+  # --- "ter senso" ≠ "make sense" (Brasil; Moreno) ---
+  # "Faz sentido" = correto em português
+  # "Tem senso" / "não tem senso" = calco literal do inglês "it makes sense / it doesn't make sense"
+  - \btem senso\b
+  - \bnão tem senso\b
+
+  # --- "fazer sentido" usado em excesso (Moreno; Martins) ---
+  # "Fazer sentido" é aceitável mas pode ser substituído por "ser lógico, ser razoável, ter lógica"
+  - \bfaz sentido\b
+  - \bfazer sentido\b
+
+  # --- "grátis" vs. "gratuito" (Cunha/Cintra; ABL) ---
+  # "Grátis" é advérbio ("entrei grátis"), não adjetivo.
+  # Uso adjetival ("entrada grátis") é coloquial mas criticado em registos formais.
+  - \bgrátis\b
+
+  # --- "mídias" vs. "meios de comunicação" (ABL; Moreno) ---
+  # "Mídia" (Brasil) / "média" (Portugal) — o plural "mídias" é criticado por alguns gramáticos.
+  # "Redes sociais" é preferível a "mídias sociais" / "social media".
+  - \bmídias sociais\b
+  - \bmídia social\b
+
+  # --- Perspectivas-cobertura (Moreno: não enfraquecer a própria voz) ---
+  - \bao meu ver\b
+  - \bno meu entender\b
+  - \bdo meu ponto de vista\b
+  - \bna minha opinião\b
+  - \bpessoalmente entendo\b
+  - \bpessoalmente creio\b
+  - \bpessoalmente penso\b

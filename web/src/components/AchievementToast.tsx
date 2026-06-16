@@ -5,6 +5,7 @@ import Link from "next/link";
 import { X, Trophy } from "lucide-react";
 import { AchievementIcon } from "@/components/AchievementIcon";
 import { useAchievements } from "@/store/queries";
+import { achievementsApi } from "@/lib/api";
 import type { Achievement } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +16,10 @@ const IN_MS   = 380;
 const OUT_MS  = 260;
 
 export const ACH_POPUPS_KEY = "ach_popups_enabled";
-const SEEN_KEY = "seen_achievement_keys";
+
+// Module-level guard: tracks keys already queued in this browser session so
+// component remounts (e.g. navigation) never re-show the same toast.
+const _sessionAcked = new Set<string>();
 
 // ── Tier styles ───────────────────────────────────────────────────────────────
 
@@ -223,18 +227,21 @@ export function AchievementToastQueue() {
     const enabled = localStorage.getItem(ACH_POPUPS_KEY) !== "false";
     if (!enabled) { setInitialized(true); return; }
 
-    let seen: string[] = [];
-    try { seen = JSON.parse(localStorage.getItem(SEEN_KEY) ?? "[]"); } catch {}
-    const seenSet = new Set(seen);
+    // show_toast is set server-side: true only for earned achievements whose
+    // popup_shown_at is NULL (i.e. never displayed before, on any machine).
+    // _sessionAcked prevents re-queueing on component remount within one session.
+    const toShow = achievements.filter(
+      (a) => a.show_toast && !_sessionAcked.has(a.key),
+    );
 
-    // Newly earned = earned now but not in the seen list
-    const newlyEarned = achievements.filter((a) => a.earned && !seenSet.has(a.key));
+    if (toShow.length) {
+      const keys = toShow.map((a) => a.key);
+      keys.forEach((k) => _sessionAcked.add(k));
+      // Fire-and-forget: mark shown in DB so they never appear again
+      achievementsApi.ack(keys).catch(() => {});
+      setQueue(toShow);
+    }
 
-    // Mark all currently earned as seen so they won't pop again next visit
-    const allEarned = achievements.filter((a) => a.earned).map((a) => a.key);
-    localStorage.setItem(SEEN_KEY, JSON.stringify(allEarned));
-
-    if (newlyEarned.length) setQueue(newlyEarned);
     setInitialized(true);
   }, [achievements, initialized]);
 

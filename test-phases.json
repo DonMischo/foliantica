@@ -1,0 +1,195 @@
+{
+  "goal": "95% backend coverage, 85% frontend coverage",
+  "phases": [
+    {
+      "id": 1,
+      "title": "Low-hanging CRUD",
+      "status": "done",
+      "estimated_tests": 55,
+      "requires_mocking": false,
+      "files_to_create": [
+        "api/tests/test_acts.py",
+        "api/tests/test_chapters.py",
+        "api/tests/test_fragments.py",
+        "api/tests/test_submissions.py",
+        "api/tests/test_graph.py"
+      ],
+      "covers": {
+        "api/routers/acts.py": ["list", "create", "update", "delete", "reorder", "read_view"],
+        "api/routers/chapters.py": ["list", "create", "update", "delete", "reorder", "read_view"],
+        "api/routers/fragments.py": ["tabs_get", "tabs_update", "list", "create", "update", "delete"],
+        "api/routers/submissions.py": ["list", "create", "update", "delete"],
+        "api/routers/graph.py": ["graph_endpoint"]
+      },
+      "notes": "All DB-only. Seed via ORM fixtures, assert via HTTP. No new dependencies."
+    },
+    {
+      "id": 2,
+      "title": "Codex",
+      "status": "done",
+      "estimated_tests": 35,
+      "requires_mocking": false,
+      "files_to_create": [
+        "api/tests/test_codex.py"
+      ],
+      "covers": {
+        "api/routers/codex.py": [
+          "list", "create", "get", "update", "delete",
+          "sharing_modes", "relations_crud", "scene_mentions", "access"
+        ]
+      },
+      "notes": "Add codex_entry fixture to tests/conftest.py. Test alias auto-creation and shared_codex_project_id filtering."
+    },
+    {
+      "id": 3,
+      "title": "Analytics, timeline, scene commands",
+      "status": "done",
+      "estimated_tests": 45,
+      "requires_mocking": false,
+      "files_to_create": [
+        "api/tests/test_analytics.py",
+        "api/tests/test_time.py",
+        "api/tests/test_scene_commands.py"
+      ],
+      "covers": {
+        "api/routers/analytics.py": ["totals", "ping", "flesch_helpers"],
+        "api/routers/time.py": ["time_config", "timeline_tracks", "timeline_events", "reorder"],
+        "api/routers/scene_commands.py": ["sync", "history", "item_log", "currency_balance", "currency_log", "resync", "_CommandExtractor"]
+      },
+      "notes": "Unit-test _count_syllables, _flesch, _CommandExtractor directly as pure functions."
+    },
+    {
+      "id": 4,
+      "title": "File I/O (images, imports)",
+      "status": "done",
+      "estimated_tests": 30,
+      "requires_mocking": true,
+      "mocking_strategy": "monkeypatch UPLOAD_DIR to tmp_path; multipart via files= kwarg",
+      "files_to_create": [
+        "api/tests/test_images.py",
+        "api/tests/test_imports.py"
+      ],
+      "covers": {
+        "api/routers/images.py": ["project_cover", "codex_image", "scene_image", "research_media"],
+        "api/routers/imports.py": ["story_import", "codex_import", "parse_story_markdown", "parse_codex_markdown"]
+      },
+      "notes": "Unit-test parse_* functions directly. Monkeypatch UPLOAD_DIR to pytest tmp_path."
+    },
+    {
+      "id": 5,
+      "title": "External-proxy routers (grammar, export)",
+      "status": "done",
+      "estimated_tests": 30,
+      "requires_mocking": true,
+      "mocking_strategy": "respx for outbound httpx calls",
+      "setup": ["uv add --dev respx"],
+      "files_to_create": [
+        "api/tests/test_grammar.py",
+        "api/tests/test_export.py"
+      ],
+      "covers": {
+        "api/routers/grammar.py": ["check_happy", "check_connect_error", "check_timeout", "languages"],
+        "api/routers/export.py": ["md", "tex", "epub_style", "pdf_pandoc_mock", "profiles_crud", "structure", "fonts"]
+      },
+      "notes": "Text/md/tex/epub formats need no mock. PDF mocks pandoc endpoint via respx."
+    },
+    {
+      "id": 6,
+      "title": "Scenes extras",
+      "status": "done",
+      "estimated_tests": 20,
+      "requires_mocking": false,
+      "files_to_create": [
+        "api/tests/test_scenes_extra.py"
+      ],
+      "covers": {
+        "api/routers/scenes.py": ["reorder", "versions_create", "versions_list", "versions_restore", "read_view", "mention_stats", "writing_log"]
+      },
+      "notes": "test_content.py already covers basic scene CRUD. This adds version management and derived data."
+    },
+    {
+      "id": 7,
+      "title": "Frontend: framework setup + utility layer",
+      "status": "done",
+      "estimated_tests": 40,
+      "requires_mocking": false,
+      "setup": [
+        "npm install --save-dev vitest @vitejs/plugin-react @testing-library/react @testing-library/user-event @testing-library/jest-dom jsdom",
+        "create web/vitest.config.ts",
+        "create web/src/test-setup.ts"
+      ],
+      "files_to_create": [
+        "web/src/lib/__tests__/utils.test.ts",
+        "web/src/lib/__tests__/nameGenerator.test.ts",
+        "web/src/lib/__tests__/i18n.test.ts",
+        "web/src/lib/__tests__/plotTemplates.test.ts",
+        "web/src/components/editor/__tests__/CodexHighlightExtension.test.ts",
+        "web/src/hooks/__tests__/useAutosave.test.ts"
+      ],
+      "covers": {
+        "web/src/lib/utils.ts": ["cn", "formatWordCount"],
+        "web/src/lib/nameGenerator.ts": ["generateName", "NAME_TYPE_LABELS"],
+        "web/src/lib/i18n.ts": ["LOCALE_NAMES", "t"],
+        "web/src/lib/plotTemplates.ts": ["beat_ids_unique", "positions_valid"],
+        "web/src/components/editor/CodexHighlightExtension.ts": ["patchEntryAliases"],
+        "web/src/hooks/useAutosave.ts": ["debounce", "interval", "localStorage_error"]
+      }
+    },
+    {
+      "id": 8,
+      "title": "Frontend: component tests (selective)",
+      "status": "done",
+      "estimated_tests": 25,
+      "requires_mocking": true,
+      "mocking_strategy": "vi.mock('@/lib/api'); QueryClientProvider wrapper",
+      "files_to_create": [
+        "web/src/components/editor/__tests__/StatusBar.test.tsx",
+        "web/src/components/layout/__tests__/ProjectSidebar.test.tsx",
+        "web/src/components/codex/__tests__/CodexEntryDialog.test.tsx"
+      ],
+      "covers": {
+        "web/src/components/editor/StatusBar.tsx": ["word_count", "save_status"],
+        "web/src/components/layout/ProjectSidebar.tsx": ["nav_items", "active_highlight"],
+        "web/src/components/codex/CodexEntryDialog.tsx": ["form_render", "submit_payload", "empty_name_validation"]
+      }
+    },
+    {
+      "id": 9,
+      "title": "Playwright E2E (optional)",
+      "status": "done",
+      "estimated_tests": 10,
+      "setup": ["npx playwright install --with-deps chromium"],
+      "files_to_create": [
+        "web/e2e/editor-autosave.spec.ts",
+        "web/e2e/ai-streaming.spec.ts"
+      ],
+      "covers": {
+        "TipTap extensions": ["autosave_on_type", "ai_streaming_ghost_text"]
+      },
+      "notes": "Covers TipTap/ProseMirror code that cannot be unit-tested in jsdom."
+    }
+  ],
+  "coverage_targets": {
+    "after_phase_3": { "backend": "65%" },
+    "after_phase_6": { "backend": "90%" },
+    "after_phase_7": { "backend": "90%", "frontend": "75%" },
+    "after_phase_8": { "backend": "90%", "frontend": "85%" }
+  },
+  "exclusions": {
+    "reason": "True 100% is not realistic",
+    "items": [
+      "TipTap/ProseMirror extensions (~700 lines) — untestable without a real browser",
+      "ConnectError defensive catch-alls in export.py / analytics.py",
+      "PostgreSQL-only code paths (2 tests already marked skip)"
+    ],
+    "pragma": "# pragma: no cover / /* c8 ignore file */"
+  },
+  "already_done": {
+    "api/tests/test_content.py": "project/act/chapter/scene CRUD, cascade deletes",
+    "api/tests/test_settings.py": "UserSettings CRUD",
+    "api/tests/test_achievements.py": "achievement unlock + popup logic",
+    "api/tests/test_sync.py": "pg_dump skip encrypted columns, restore endpoint",
+    "api/tests/test_research.py": "research CRUD, scene/codex linking, model_fields_set fix",
+    "api/tests/test_ai.py": "AI error paths + live integration tests (Gemma 4 31B via OpenRouter)"
+  }
+}

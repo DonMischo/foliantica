@@ -46,5 +46,11 @@ def encrypt(plaintext: str) -> str:
     return _fernet.encrypt(plaintext.encode()).decode()
 
 
-def decrypt(ciphertext: str) -> str:
-    return _fernet.decrypt(ciphertext.encode()).decode()
+def decrypt(ciphertext: str) -> str | None:
+    """Decrypt a Fernet token.  Returns None if the token was encrypted with a
+    different key (e.g. database loaded from another machine) rather than raising,
+    so callers treat it as 'no key configured' instead of a 500 error."""
+    try:
+        return _fernet.decrypt(ciphertext.encode()).decode()
+    except Exception:
+        return None

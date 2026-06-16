@@ -1,3 +1,4 @@
+import asyncio
 import os
 from contextlib import asynccontextmanager
 
@@ -11,107 +12,23 @@ from starlette.requests import Request
 from sqlalchemy import text
 
 from database import (
-    engine, USE_SQLITE,
-    # SQLite incremental migrations (existing users upgrading)
-    migrate_to_four_level, migrate_new_columns, migrate_indexes,
-    migrate_entry_groups, migrate_ai_prompts, migrate_scene_versions,
-    migrate_mention_stats, migrate_writing_log, migrate_timeline_tables,
-    migrate_codex_entry_sharing, migrate_research, migrate_publishing,
-    migrate_publisher_profiles, migrate_achievements, migrate_backfill_word_counts,
-    migrate_ai_disabled, migrate_sync_mirror, migrate_research_pdf,
-    migrate_research_media,
-    # PostgreSQL seed functions (fresh DB, no ALTER TABLE needed)
+    engine,
+    migrate_indexes, migrate_codex_entry_sharing,
+    migrate_ai_disabled, migrate_research_pdf,
+    migrate_ai_providers, migrate_corkboard,
+    migrate_achievement_popup_shown, migrate_sync_mirror,
+    migrate_spacy, migrate_calibre, migrate_vale, migrate_vale_custom_rules, migrate_project_language,
+    migrate_ai_prompts_word_count, migrate_backfill_word_counts,
     seed_ai_prompts, seed_publisher_profiles, seed_export_profiles,
 )
 from models import Base
-from routers import projects, acts, chapters, scenes, codex, settings, ai, export, imports, graph, time, fragments, images, scene_commands, grammar, analytics, research, submissions, achievements
+from routers import projects, acts, chapters, scenes, codex, settings, ai, export, imports, graph, time, fragments, images, scene_commands, grammar, analytics, research, submissions, achievements, vale
 from routers import sync as sync_router
 from routers import collab as collab_router
 
-# ── Schema + migrations ───────────────────────────────────────────────────────
-
-if USE_SQLITE:
-    # SQLite path: run incremental migrations for users upgrading from older
-    # versions. migrate_to_four_level() must run before create_all() because
-    # it renames the old 'chapters' table to 'acts'.
-    migrate_to_four_level()
-    Base.metadata.create_all(bind=engine)
-    migrate_new_columns()
-    migrate_indexes()
-    migrate_entry_groups()
-    migrate_ai_prompts()
-    migrate_scene_versions()
-    migrate_mention_stats()
-    migrate_writing_log()
-    migrate_timeline_tables()
-    migrate_codex_entry_sharing()
-    migrate_research()
-    migrate_publishing()
-    migrate_publisher_profiles()
-    migrate_achievements()
-    migrate_backfill_word_counts()
-    migrate_ai_disabled()
-    migrate_sync_mirror()
-    migrate_research_pdf()
-    migrate_research_media()
-else:
-    # PostgreSQL path: create_all() handles the full schema in one shot.
-    # Then seed static reference data that would otherwise come from the
-    # SQLite migrate_* functions (which use SQLite-specific DDL).
-    #
-    # Retry up to 60 s — Docker-managed PG may still be starting when the
-    # API launches (container healthcheck takes a few seconds after `up -d`).
-    import time as _time
-    _pg_ready = False
-    for _attempt in range(60):
-        try:
-            Base.metadata.create_all(bind=engine)
-            _pg_ready = True
-            break
-        except Exception as _e:
-            if _attempt == 0:
-                print(f"[startup] Waiting for PostgreSQL… ({_e.__class__.__name__})", flush=True)
-            _time.sleep(1)
-    if not _pg_ready:
-        raise RuntimeError(
-            "PostgreSQL did not become available within 60 seconds. "
-            "Check that the database is running and the connection settings are correct."
-        )
-    seed_ai_prompts()
-    seed_publisher_profiles()
-    seed_export_profiles()
-
-os.makedirs("uploads", exist_ok=True)
-
-# ── Init sync mirror from stored settings ─────────────────────────────────────
-def _init_sync() -> None:
-    try:
-        with engine.connect() as conn:
-            row = conn.execute(text(
-                "SELECT sync_mirror_enabled, sync_local_dir FROM user_settings LIMIT 1"
-            )).fetchone()
-        # Always call init — in PG mode it starts the background dump thread
-        # unconditionally (regardless of the Data Mirror toggle).
-        if row:
-            sync_router.init(bool(row[0]), row[1])
-        else:
-            sync_router.init(False, None)   # no settings row yet; use defaults
-    except Exception:
-        pass
-
-
-_init_sync()
-
-
-# ── Co-work: SQLAlchemy change-detection hooks ───────────────────────────────
-# after_flush  captures which tables are dirty before the commit clears them.
-# after_commit fires after the transaction succeeds and triggers the broadcast.
-#
-# Both hooks run synchronously inside the async request handler's thread, so
-# collab_router.broadcast_change() uses asyncio.get_running_loop().create_task()
-# to schedule the coroutine on the already-running event loop.
 
 def _register_collab_hooks() -> None:
+    """Register SQLAlchemy flush/commit hooks that broadcast DB changes to co-work guests."""
     from sqlalchemy import event as _sa_event
     from sqlalchemy.orm import Session as _SASession
 
@@ -132,11 +49,66 @@ def _register_collab_hooks() -> None:
             collab_router.broadcast_change(list(tables))
 
 
-_register_collab_hooks()
+def _init_sync() -> None:
+    try:
+        with engine.connect() as conn:
+            row = conn.execute(text(
+                "SELECT sync_mirror_enabled, sync_local_dir FROM user_settings LIMIT 1"
+            )).fetchone()
+        if row:
+            sync_router.init(bool(row[0]), row[1])
+        else:
+            sync_router.init(False, None)
+    except Exception:
+        pass
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # ── Schema: wait up to 60 s for PG (Docker may still be starting) ─────────
+    _pg_ready = False
+    for _attempt in range(60):
+        try:
+            Base.metadata.create_all(bind=engine)
+            _pg_ready = True
+            break
+        except Exception as _e:
+            if _attempt == 0:
+                print(f"[startup] Waiting for PostgreSQL… ({_e.__class__.__name__})", flush=True)
+            await asyncio.sleep(1)
+    if not _pg_ready:
+        raise RuntimeError(
+            "PostgreSQL did not become available within 60 seconds. "
+            "Check that the database is running and the connection settings are correct."
+        )
+
+    # Seed static reference data — skip in tests: _fresh_schema drops all
+    # tables between tests, and seeded rows would break tests expecting empty state.
+    if not os.environ.get("PYTEST_CURRENT_TEST"):
+        seed_ai_prompts()
+        seed_publisher_profiles()
+        seed_export_profiles()
+
+    # Incremental ALTER TABLE migrations — idempotent, safe on every startup.
+    migrate_indexes()
+    migrate_codex_entry_sharing()
+    migrate_ai_disabled()
+    migrate_research_pdf()
+    migrate_ai_providers()
+    migrate_corkboard()
+    migrate_achievement_popup_shown()
+    migrate_sync_mirror()
+    migrate_spacy()
+    migrate_calibre()
+    migrate_vale()
+    migrate_vale_custom_rules()
+    migrate_project_language()
+    migrate_ai_prompts_word_count()
+    migrate_backfill_word_counts()
+
+    os.makedirs("uploads", exist_ok=True)
+    _init_sync()
+    _register_collab_hooks()
     yield
     sync_router.shutdown_backup()
     import asyncio as _asyncio
@@ -243,6 +215,7 @@ app.include_router(fragments.router)
 app.include_router(images.router)
 app.include_router(scene_commands.router)
 app.include_router(grammar.router)
+app.include_router(vale.router)
 app.include_router(analytics.router)
 app.include_router(research.router)
 app.include_router(submissions.router)

@@ -45,6 +45,7 @@ desktop.ini
 .env
 .env.local
 .env.*.local
+.env.test
 
 # ── Logs ──────────────────────────────────────────────────────────────────────
 *.log
@@ -58,6 +59,12 @@ pnpm-debug.log*
 *.temp
 coverage/
 .pytest_cache/
+api/.coverage
+web/test-results/
+
+# ── Claude Code ───────────────────────────────────────────────────────────────
+# settings.json (project permissions) is committed; local overrides are not
+.claude/settings.local.json
 .mypy_cache/
 .ruff_cache/
 api/foliantica.db-wal
@@ -69,3 +76,4 @@ CLAUDE.md
 /.next-standalone
 /.pyinstaller-work
 /dist
+test_out.txt

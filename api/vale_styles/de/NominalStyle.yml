@@ -1,0 +1,137 @@
+# Quellen / Sources:
+#   - Wolf Schneider: "Deutsch fürs Leben" (Rowohlt, 1994), Kap. "Nominalstil"
+#   - Wolf Schneider: "Deutsch! Das Handbuch für attraktives Schreiben" (Rowohlt, 2005)
+#   - Ludwig Reiners: "Stilkunst" (C.H. Beck, 1961), §§ 20-22 "Funktionsverbgefüge"
+#   - Institut für Deutsche Sprache (IDS): Grammis-Datenbank, "Funktionsverbgefüge"
+#   - Bundesverwaltungsamt: "Leitfaden Bürgernahe Sprache" (2002)
+#   - Bundesministerium für Justiz: "Handbuch der Rechtsförmlichkeit" (3. Aufl. 2008)
+extends: substitution
+message: "Nominalstil: '%s' — besser '%s'?"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Funktionsverbgefüge mit "treffen" (Schneider; Reiners) ---
+  eine Entscheidung treffen: entscheiden
+  eine Frage stellen: fragen
+  einen Antrag stellen: beantragen
+  Anordnungen treffen: anordnen
+  Maßnahmen treffen: handeln
+  Maßnahmen ergreifen: handeln
+  Vorsorge treffen: vorsorgen
+  Vereinbarungen treffen: vereinbaren
+  Abmachungen treffen: abmachen
+  Feststellungen treffen: feststellen
+  Vorbereitungen treffen: vorbereiten
+
+  # --- Funktionsverbgefüge mit "stellen" (Schneider; BMJ) ---
+  zur Diskussion stellen: diskutieren
+  zur Verfügung stellen: bereitstellen
+  unter Beweis stellen: beweisen
+  in Frage stellen: bezweifeln
+  auf die Probe stellen: erproben
+  unter Strafe stellen: bestrafen
+  in Aussicht stellen: versprechen
+  in Abrede stellen: abstreiten
+
+  # --- Funktionsverbgefüge mit "nehmen" (Schneider; Reiners) ---
+  in Anspruch nehmen: beanspruchen
+  Rücksicht nehmen auf: berücksichtigen
+  Stellung nehmen: sich äußern
+  Einfluss nehmen auf: beeinflussen
+  Einfluss haben auf: beeinflussen
+  zur Kenntnis nehmen: beachten
+  in Kenntnis setzen: informieren
+  Abstand nehmen von: verzichten auf
+  Einsicht nehmen in: einsehen
+  Anteil nehmen: mitfühlen
+  Bezug nehmen auf: sich beziehen auf
+  Anstoß nehmen an: sich stoßen an
+  Notiz nehmen von: beachten
+  Anlass nehmen zu: nutzen um zu
+  Abschied nehmen: sich verabschieden
+
+  # --- Funktionsverbgefüge mit "bringen" (Schneider; Reiners) ---
+  zur Sprache bringen: ansprechen
+  zum Ausdruck bringen: ausdrücken
+  zum Abschluss bringen: abschließen
+  in Angriff nehmen: anpacken
+  in Verbindung bringen mit: verbinden mit
+  zur Kenntnis bringen: mitteilen
+  in Umlauf bringen: verbreiten
+  in Bewegung bringen: bewegen
+  zu Papier bringen: aufschreiben
+  zu Ende bringen: beenden
+  zu Fall bringen: stürzen
+  auf den Punkt bringen: zusammenfassen
+  zum Einsatz bringen: einsetzen
+  zum Vorschein bringen: zeigen
+  zur Entfaltung bringen: entfalten
+  zur Geltung bringen: hervorheben
+
+  # --- Funktionsverbgefüge mit "kommen" (IDS Grammis; Schneider) ---
+  in Betracht ziehen: erwägen
+  in Erwägung ziehen: erwägen
+  zu dem Schluss kommen: schließen
+  zustande kommen: entstehen
+  zur Anwendung kommen: angewendet werden
+  zur Sprache kommen: erwähnt werden
+  zur Wirkung kommen: wirken
+  zum Tragen kommen: greifen
+  zum Vorschein kommen: erscheinen
+  zum Einsatz kommen: eingesetzt werden
+  zum Abschluss kommen: abgeschlossen werden
+  ins Stocken kommen: stocken
+  in Gang kommen: beginnen
+  in Betracht kommen: infrage kommen
+
+  # --- Funktionsverbgefüge mit "geben" / "machen" (Schneider; Bundesverwaltungsamt) ---
+  bekannt geben: mitteilen
+  bekannt machen: mitteilen
+  eine Aussage machen: aussagen
+  Bekanntschaft machen mit: kennenlernen
+  Gebrauch machen von: benutzen
+  Halt machen: halten
+  Pause machen: pausieren
+  eine Antwort geben: antworten
+  einen Rat geben: raten
+  die Erlaubnis geben: erlauben
+  einen Auftrag geben: beauftragen
+  eine Lösung finden: lösen
+
+  # --- Funktionsverbgefüge mit "haben" / "finden" (IDS; Reiners) ---
+  Bedeutung haben für: bedeutsam sein für
+  Wirkung haben auf: wirken auf
+  Bestand haben: bestehen
+  Gültigkeit haben: gelten
+  Beachtung finden: beachtet werden
+  Verwendung finden: verwendet werden
+  Anerkennung finden: anerkannt werden
+  Erwähnung finden: erwähnt werden
+  Anwendung finden: angewendet werden
+  Verbreitung finden: verbreitet werden
+
+  # --- Streckverben mit "erfolgen" (Schneider: "erfolgen ist immer ersetzbar") ---
+  erfolgt eine Überprüfung: wird überprüft
+  erfolgt eine Zahlung: wird gezahlt
+  erfolgt eine Benachrichtigung: wird benachrichtigt
+  erfolgt eine Veröffentlichung: wird veröffentlicht
+  erfolgt eine Prüfung: wird geprüft
+  erfolgt eine Lieferung: wird geliefert
+  erfolgt eine Überweisung: wird überwiesen
+  findet statt: geschieht
+  kommt zur Anwendung: wird angewendet
+  gelangt zur Verteilung: wird verteilt
+
+  # --- Weitere Streckverben / Streckformen (Schneider; Reiners) ---
+  zur Folge haben: bewirken
+  in Erfüllung gehen: erfüllt werden
+  zur Aufführung bringen: aufführen
+  in Erscheinung treten: auftreten
+  in Wegfall geraten: wegfallen
+  in Vergessenheit geraten: vergessen werden
+  in Auftrag geben: beauftragen
+  ein Gespräch führen: sprechen
+  eine Rede halten: reden
+  einen Vorschlag machen: vorschlagen
+  Kritik üben: kritisieren
+  sich Hoffnung machen: hoffen
