@@ -179,7 +179,7 @@ export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
         {!check.data && !check.isPending && !check.isError && (
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Vale checks your prose for style issues using configured rule packages. Click <strong className="text-foreground">Run Vale</strong> to analyse this scene.
+            Vale checks your prose for style issues using configured rule packages. Click <strong className="text-foreground">Run Style Check</strong> to analyse this scene.
           </p>
         )}
 
@@ -265,7 +265,7 @@ export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
         >
           {check.isPending
             ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Analysing…</>
-            : "Run Vale"}
+            : "Run Style Check"}
         </Button>
         <p className="text-[10px] text-muted-foreground leading-snug">
           {language
