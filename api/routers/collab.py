@@ -17,11 +17,18 @@ Phase 2: Real-time event push + soft locks
 
 Architecture
 ------------
-- Auth middleware (main.py) reads X-Client-IP from the Next.js proxy and
-  requires Bearer JWT for non-localhost clients.
+- The collab WS upgrade is proxied through Next.js (web/server-wrapper.js)
+  to FastAPI over loopback, exactly like REST — both ports never need to be
+  reachable from outside this machine even when co-work is enabled.
+- Host-trust (no JWT needed) is granted via, in order: (1) a per-launch
+  secret only Electron's own window can attach (main.py / this module both
+  check it independently), (2) the request's peer being loopback AND its
+  Origin (if any) matching the web server's own port — necessary because
+  proxying the WS through Next.js means the peer is loopback for ALL
+  traffic now, host and guest alike, so it alone is no longer sufficient.
+  See COWORKING_NETWORK_SECURITY_SUMMARY.md for the full threat model.
 - The WS endpoint reads the JWT from a query-string parameter (?token=...)
-  because browser WebSocket API doesn't support custom headers.
-- Host (127.0.0.1) is always trusted — no JWT needed for either HTTP or WS.
+  because browser WebSocket API doesn't support custom headers for guests.
 - JWT secret is in-process only; guests re-join after API restart.
 """
 
@@ -38,6 +45,7 @@ import uuid
 from datetime import datetime, UTC, timedelta
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 from starlette.websockets import WebSocketDisconnect
 
@@ -650,18 +658,42 @@ def kick_session(session_id: str):
 
 # ── Phase 2: WebSocket ───────────────────────────────────────────────────────
 
+# Same per-launch secret main.py checks for REST — see its definition there
+# and COWORKING_NETWORK_SECURITY_SUMMARY.md for the full rationale.
+_HOST_SECRET = os.environ.get("FOLIANTICA_HOST_SECRET", "")
+
+
+def _origin_matches_web_port(origin: str | None) -> bool:
+    """True if Origin is absent, or its port matches the web server's own
+    port. The WS upgrade is proxied through Next.js (server-wrapper.js) in
+    production, so ws.client.host is loopback for ALL traffic, host and
+    guest alike — it can't distinguish our own page from a malicious browser
+    tab on the same machine doing `new WebSocket(...)` straight to this
+    port. Browsers can't lie about Origin (unlike a header value), so a
+    mismatch reliably catches that case. A guest connecting through a
+    different surface (e.g. the Cloudflare tunnel) also won't match this
+    port — correctly: guests should never get free host-trust here, only a
+    valid JWT grants them access, same as before."""
+    if not origin:
+        return True
+    try:
+        parsed = urlparse(origin)
+    except ValueError:
+        return False
+    web_port = int(os.environ.get("LW_WEB_PORT", "3000"))
+    origin_port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    return origin_port == web_port
+
+
 @router.get("/ws-url")
 def get_ws_url(request: Request):
-    """Return the port the FastAPI server is listening on so the frontend can
-    build the WebSocket URL: ws://<host>:<port>/ws/collab
+    """Tell the frontend whether it should open the collab WebSocket.
 
-    The Next.js proxy cannot tunnel WebSocket upgrades, so the client connects
-    directly to FastAPI.  Both ports are accessible on the same host IP.
+    The WS upgrade is proxied through Next.js (server-wrapper.js) to FastAPI
+    over loopback, exactly like every REST call — so the client always
+    connects to its own page's host:port, no separate port needed.
     """
-    if not is_cowork_enabled():
-        return {"enabled": False, "ws_port": None}
-    port = int(os.environ.get("LW_API_PORT", "8765"))
-    return {"enabled": True, "ws_port": port}
+    return {"enabled": is_cowork_enabled()}
 
 
 @router.websocket("/ws/collab")
@@ -669,10 +701,20 @@ async def ws_collab(ws: WebSocket, token: str = Query(default="")):
     """
     WebSocket endpoint for real-time collaboration.
 
-    Auth:
-      - Connections from 127.0.0.1/::1 are treated as the host — no token needed.
-      - External connections must supply a valid session JWT as ?token=<jwt>.
-        (Browser WebSocket API doesn't support custom headers, so query param it is.)
+    Auth (checked in order — see COWORKING_NETWORK_SECURITY_SUMMARY.md):
+      1. X-Foliantica-Host-Secret header matches FOLIANTICA_HOST_SECRET — set
+         only by Electron's own window via webRequest (page JS can't set
+         custom WS handshake headers at all). Trusted outright.
+      2. Otherwise: the connection's peer must be loopback AND its Origin
+         (if any) must match the web server's own port. Browsers can't lie
+         about Origin, so this still tells our own page apart from a
+         malicious tab on the same machine connecting straight to this port
+         — ws.client.host alone stopped being a useful signal once the WS
+         upgrade started being proxied through Next.js (server-wrapper.js),
+         since that makes it loopback for ALL traffic, host and guest alike.
+      3. Otherwise: a valid session JWT as ?token=<jwt> is required.
+        (Browser WebSocket API doesn't support custom headers for guests
+        without Electron's privileged hook, so query param it is.)
 
     Protocol (JSON messages):
       Client → Server:
@@ -687,8 +729,17 @@ async def ws_collab(ws: WebSocket, token: str = Query(default="")):
         {type:"locks",   locks:[...]}                   lock table updated
         {type:"lock_denied", item_type, item_id, holder}  lock request refused
     """
+    provided_secret = ws.headers.get("x-foliantica-host-secret", "")
+    has_valid_secret = bool(_HOST_SECRET) and hmac.compare_digest(provided_secret, _HOST_SECRET)
+
     client_host = ws.client.host if ws.client else "127.0.0.1"
-    is_local = client_host in ("127.0.0.1", "::1")
+    if client_host.startswith("::ffff:"):
+        client_host = client_host[7:]
+    peer_is_loopback = client_host in ("127.0.0.1", "::1")
+
+    is_local = has_valid_secret or (
+        peer_is_loopback and _origin_matches_web_port(ws.headers.get("origin"))
+    )
 
     # ── Authenticate ──────────────────────────────────────────────────────────
     if is_cowork_enabled() and not is_local:

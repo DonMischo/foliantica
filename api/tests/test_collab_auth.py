@@ -334,11 +334,101 @@ class TestWsUrl:
         assert r.status_code == 200
         assert r.json()["enabled"] is False
 
-    def test_ws_url_enabled(self, client, monkeypatch):
+    def test_ws_url_enabled(self, client):
         collab_mod.set_cowork_enabled(True)
-        monkeypatch.setenv("LW_API_PORT", "9999")
         r = client.get("/api/collab/ws-url")
         assert r.status_code == 200
-        data = r.json()
-        assert data["enabled"] is True
-        assert data["ws_port"] == 9999
+        assert r.json()["enabled"] is True
+
+
+# ── Proxy trust boundary ───────────────────────────────────────────────────────
+# CoworkAuthMiddleware (main.py) must only honor X-Client-IP when the request's
+# actual TCP peer is loopback — i.e. it can only have been set by the local
+# Next.js proxy (route.ts always targets http://127.0.0.1:<port>). Since
+# co-work mode makes FastAPI bind 0.0.0.0, any device on the LAN can otherwise
+# reach the API port directly; if the header were trusted unconditionally, such
+# a device could spoof "X-Client-IP: 127.0.0.1" and gain full host-level access
+# with no token at all.
+
+class TestProxyTrustBoundary:
+
+    def _remote_client(self):
+        """A TestClient whose peer is a real (non-loopback) address —
+        simulating a LAN device hitting FastAPI's exposed port directly,
+        bypassing the Next.js proxy entirely."""
+        from fastapi.testclient import TestClient
+        from main import app
+        return TestClient(app, raise_server_exceptions=True, client=("192.168.1.50", 12345))
+
+    def test_spoofed_header_from_remote_peer_is_rejected(self, client):
+        collab_mod.set_cowork_enabled(True)
+        remote = self._remote_client()
+        remote.headers["X-Client-IP"] = "127.0.0.1"  # spoofed — peer is NOT loopback
+        r = remote.get("/api/collab/invitations")
+        assert r.status_code == 401
+
+    def test_remote_peer_without_header_is_also_rejected(self, client):
+        collab_mod.set_cowork_enabled(True)
+        remote = self._remote_client()
+        r = remote.get("/api/collab/invitations")
+        assert r.status_code == 401
+
+    def test_remote_peer_with_valid_jwt_still_works(self, client):
+        """The fix must not break legitimate non-proxied access — a real
+        guest with a valid session JWT is unaffected by the trust check."""
+        collab_mod.set_cowork_enabled(True)
+        inv = make_invitation(client, name="Remote Guest")
+        data = join_ok(client, token=inv["token"])
+
+        remote = self._remote_client()
+        remote.headers["Authorization"] = f"Bearer {data['jwt']}"
+        r = remote.get("/api/collab/invitations")
+        assert r.status_code == 200
+
+
+# ── Electron host-secret trust ─────────────────────────────────────────────────
+# The secret is the strongest of the three trust signals — it's checked
+# before the peer/X-Client-IP logic and grants trust outright, since only
+# Electron's own window (via webRequest, invisible to page JS or any other
+# local process) can ever attach it. It must work even from a non-loopback
+# peer (the secret alone is sufficient) and a wrong/absent secret must never
+# grant trust by itself.
+
+class TestHostSecret:
+
+    def _remote_client(self):
+        from fastapi.testclient import TestClient
+        from main import app
+        return TestClient(app, raise_server_exceptions=True, client=("192.168.1.50", 12345))
+
+    def test_correct_secret_trusted_even_from_remote_peer(self, client, monkeypatch):
+        import main as main_mod
+        monkeypatch.setattr(main_mod, "_HOST_SECRET", "test-secret-123")
+        collab_mod.set_cowork_enabled(True)
+
+        remote = self._remote_client()
+        remote.headers["X-Foliantica-Host-Secret"] = "test-secret-123"
+        r = remote.get("/api/collab/invitations")
+        assert r.status_code == 200
+
+    def test_wrong_secret_from_remote_peer_is_rejected(self, client, monkeypatch):
+        import main as main_mod
+        monkeypatch.setattr(main_mod, "_HOST_SECRET", "test-secret-123")
+        collab_mod.set_cowork_enabled(True)
+
+        remote = self._remote_client()
+        remote.headers["X-Foliantica-Host-Secret"] = "wrong-guess"
+        r = remote.get("/api/collab/invitations")
+        assert r.status_code == 401
+
+    def test_unset_secret_never_grants_trust(self, client, monkeypatch):
+        """If FOLIANTICA_HOST_SECRET was never configured (e.g. the
+        non-Electron launch path), an empty server-side secret must not
+        match an empty/absent client-supplied header."""
+        import main as main_mod
+        monkeypatch.setattr(main_mod, "_HOST_SECRET", "")
+        collab_mod.set_cowork_enabled(True)
+
+        remote = self._remote_client()
+        r = remote.get("/api/collab/invitations")
+        assert r.status_code == 401

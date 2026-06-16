@@ -162,6 +162,7 @@ if exist "web\.next\standalone\web" (
 ) else (
     robocopy "web\.next\standalone" ".next-standalone" /E /NFL /NDL /NJH /NJS >nul
 )
+copy /y "web\server-wrapper.js" ".next-standalone\server-wrapper.js" >nul
 echo OK  Next.js standalone staged -^> .next-standalone\
 
 

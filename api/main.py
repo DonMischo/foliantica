@@ -1,4 +1,5 @@
 import asyncio
+import hmac
 import os
 from contextlib import asynccontextmanager
 
@@ -120,23 +121,19 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Foliantica API", version="0.1.0", lifespan=lifespan)
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
-# When co-work is enabled the Next.js server forwards requests from guest
-# browsers, so we must allow any origin.  When disabled, restrict to localhost.
-if collab_router.is_cowork_enabled():
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-else:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+# No legitimate browser flow ever calls FastAPI's REST API cross-origin — the
+# frontend always goes through Next.js's same-origin proxy (web/src/lib/api.ts
+# BASE = "/api"), and the collab WebSocket is proxied through Next.js too
+# (server-wrapper.js), so it isn't CORS-governed traffic either. A wildcard
+# here would only ever help an attacker (a malicious page on the host's own
+# machine doing fetch() straight to this port), never a real guest.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ── Co-work auth middleware ───────────────────────────────────────────────────
@@ -146,6 +143,12 @@ else:
 # External clients must supply a valid Bearer JWT issued by /api/collab/join.
 
 _COWORK_PUBLIC_PATHS = {"/api/health", "/api/collab/join", "/api/collab/info"}
+
+# Per-launch secret, set by Electron and injected into its own window's
+# requests only (see electron/main.js + COWORKING_NETWORK_SECURITY_SUMMARY.md).
+# Absent in the non-Electron launch path (StartFoliantica.bat) — host-trust
+# there falls back entirely to the peer + Origin checks below.
+_HOST_SECRET = os.environ.get("FOLIANTICA_HOST_SECRET", "")
 
 class CoworkAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -161,17 +164,42 @@ class CoworkAuthMiddleware(BaseHTTPMiddleware):
         if request.url.path in _COWORK_PUBLIC_PATHS:
             return await call_next(request)
 
-        # Determine real client IP.  The Next.js proxy sets X-Client-IP from
-        # the browser's IP; if absent, fall back to the direct connection IP.
-        client_ip = (
-            request.headers.get("X-Client-IP")
-            or (request.client.host if request.client else "127.0.0.1")
-        )
-        # Uvicorn on dual-stack sockets represents IPv4 loopback as the
-        # IPv4-mapped IPv6 address ::ffff:127.0.0.1.  Normalise it so the
-        # trust check below (and any ban-list lookups) use plain IPv4.
-        if client_ip.startswith("::ffff:"):
-            client_ip = client_ip[7:]
+        # Strongest signal: a secret only Electron's own window can attach
+        # (injected below the page's JS via webRequest, invisible to any
+        # other process or browser tab on the machine). If present and
+        # correct, trust outright — this is the only check that defends
+        # against a malicious LOCAL process that can fake both a genuine
+        # loopback connection and an Origin header, which the checks below
+        # can't distinguish from the real thing.
+        provided_secret = request.headers.get("X-Foliantica-Host-Secret", "")
+        if _HOST_SECRET and hmac.compare_digest(provided_secret, _HOST_SECRET):
+            return await call_next(request)
+
+        # Verified TCP peer of THIS connection — not spoofable by the client,
+        # unlike any header. Uvicorn on dual-stack sockets represents IPv4
+        # loopback as the IPv4-mapped IPv6 address ::ffff:127.0.0.1;
+        # normalise it so the trust check below uses plain IPv4.
+        peer_host = request.client.host if request.client else "127.0.0.1"
+        if peer_host.startswith("::ffff:"):
+            peer_host = peer_host[7:]
+        peer_is_loopback = peer_host in ("127.0.0.1", "::1")
+
+        # X-Client-IP is set by the Next.js proxy (route.ts) to relay the
+        # real browser IP through its own loopback hop to FastAPI. It must
+        # only be trusted when the peer making THIS request is itself
+        # loopback — i.e. it can only have been set by that local proxy
+        # process. Otherwise it's client-suppliable and trivially spoofed:
+        # since co-work makes FastAPI bind 0.0.0.0, any device on the LAN
+        # could otherwise curl this port directly with
+        # "X-Client-IP: 127.0.0.1" and be granted full host-level trust
+        # with zero auth. This mirrors uvicorn's own ProxyHeadersMiddleware,
+        # which only honors X-Forwarded-For from a configured trusted host.
+        if peer_is_loopback:
+            client_ip = request.headers.get("X-Client-IP") or peer_host
+            if client_ip.startswith("::ffff:"):
+                client_ip = client_ip[7:]
+        else:
+            client_ip = peer_host
 
         # Localhost is always trusted (host browser, internal calls)
         if client_ip in ("127.0.0.1", "::1"):

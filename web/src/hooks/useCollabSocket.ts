@@ -41,22 +41,26 @@ export function useCollabSocket() {
     async function connect() {
       if (cancelled) return;
 
-      // Discover whether co-work is enabled and which port WS runs on
-      let wsPort: number;
+      // Discover whether co-work is enabled
       try {
         const res = await fetch("/api/collab/ws-url");
         if (!res.ok) return; // API unavailable — stop silently
-        const data: { enabled: boolean; ws_port: number | null } = await res.json();
-        if (!data.enabled || !data.ws_port) return; // co-work off — don't connect
-        wsPort = data.ws_port;
+        const data: { enabled: boolean } = await res.json();
+        if (!data.enabled) return; // co-work off — don't connect
       } catch {
         scheduleReconnect();
         return;
       }
 
-      const jwt     = getCoworkJwt();
-      const wsUrl   = `ws://${location.hostname}:${wsPort}/api/collab/ws/collab${jwt ? `?token=${encodeURIComponent(jwt)}` : ""}`;
-      const ws      = new WebSocket(wsUrl);
+      // Same host:port as the page itself — the WS upgrade is proxied through
+      // Next.js (server-wrapper.js) to FastAPI, just like every REST call.
+      // This also means it works through the Cloudflare tunnel (which only
+      // ever carried this one port) and respects wss:// on https:// pages
+      // (a plain ws:// from an https: page is blocked as mixed content).
+      const jwt    = getCoworkJwt();
+      const scheme = location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl  = `${scheme}//${location.host}/api/collab/ws/collab${jwt ? `?token=${encodeURIComponent(jwt)}` : ""}`;
+      const ws     = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {

@@ -171,23 +171,48 @@ def db(_fresh_schema):
 def client(db):
     """FastAPI TestClient connected to the per-test database.
 
-    Defaults to X-Client-IP: 127.0.0.1 — the same header the real Next.js
-    proxy sets for the host's own browser requests — so CoworkAuthMiddleware
-    treats requests as coming from the trusted host by default. Without it,
-    httpx's TestClient reports request.client.host as the literal string
-    "testclient" (not "127.0.0.1"), which the middleware's loopback fallback
-    doesn't recognize. Tests simulating a guest/external client still pass
-    their own X-Client-IP per-request (e.g. do_join's client_ip param),
-    which overrides this default.
+    Simulates the real production topology: every HTTP request reaches
+    FastAPI via the Next.js proxy's own loopback hop (route.ts always
+    targets http://127.0.0.1:<port>), host or guest alike — so the TCP
+    peer CoworkAuthMiddleware sees is always 127.0.0.1 in practice. We set
+    that explicitly via TestClient's `client=` param (httpx's default peer
+    is the literal string "testclient", not a loopback address).
+
+    Also defaults X-Client-IP: 127.0.0.1, mirroring what the proxy sets for
+    the host's own browser requests, so requests are host-trusted by
+    default. Tests simulating a guest/external client pass their own
+    X-Client-IP per-request (e.g. do_join's client_ip param), which
+    overrides this default — the middleware only honors that header
+    because the peer above is loopback; see test_collab_auth.py's
+    TestProxyTrustBoundary for the case where it must NOT be honored.
     """
     def _override():
         yield db
 
     app.dependency_overrides[get_db] = _override
-    with TestClient(app, raise_server_exceptions=True) as c:
+    with TestClient(app, raise_server_exceptions=True, client=("127.0.0.1", 51000)) as c:
         c.headers["X-Client-IP"] = "127.0.0.1"
         yield c
     app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.fixture
+def ws_client(client):
+    """Separate TestClient, sharing `client`'s app/db wiring, for WebSocket
+    connections specifically.
+
+    In production the WS endpoint is reached directly by the browser, never
+    through the Next.js proxy (it can't tunnel upgrade requests) — unlike
+    HTTP, where the peer is always the proxy's own loopback hop. httpx's
+    default (non-loopback) peer ("testclient") models that direct-guest
+    connection correctly, so this intentionally does NOT set client=(...)
+    the way the `client` fixture does. Depends on `client` only for fixture
+    ordering (so dependency_overrides is already wired); use `client` for
+    any HTTP setup (e.g. make_invitation) in the same test and this fixture
+    only for .websocket_connect().
+    """
+    with TestClient(app, raise_server_exceptions=True) as c:
+        yield c
 
 
 @pytest.fixture
