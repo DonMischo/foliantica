@@ -729,7 +729,6 @@ export default function ScenePage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Editor */}
         <div className="flex-1 overflow-hidden flex flex-col">
-<<<<<<< HEAD
           {/* Co-work lock banner */}
           {isReadOnly && (
             <div className="flex items-center gap-2 px-4 py-1.5 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900/40 text-xs text-amber-700 dark:text-amber-400 shrink-0">
@@ -750,37 +749,16 @@ export default function ScenePage() {
             readOnly={isReadOnly}
             onOpenChat={aiDisabled ? undefined : () => setChatPanelOpen(true)}
             onOpenTimeline={() => setTimelineCommandOpen(true)}
+            onOpenLink={() => setLinkPanelOpen(true)}
             onWordSelect={(w) => { if (w) setSelectedWord(w); }}
             onFlagsChange={setFlags}
             replaceWordRef={replaceWordRef}
             applyFlagRef={applyFlagRef}
             applyGrammarFixRef={applyGrammarFixRef}
             jumpToGrammarMatchRef={jumpToGrammarMatchRef}
+            jumpToTextRef={jumpToTextRef}
             onPrefillEntry={(data) => { setNewEntryInitial(data); setNewEntryDialogOpen(true); }}
           />
-=======
-          <div className="flex-1 overflow-hidden">
-            <TipTapEditor
-              content={content}
-              onChange={handleContentChange}
-              codexEntries={codexEntries}
-              onCodexEntryClick={handleCodexEntryClick}
-              sceneId={sceneIdNum}
-              aiDisabled={aiDisabled}
-              onOpenChat={aiDisabled ? undefined : () => setChatPanelOpen(true)}
-              onOpenTimeline={() => setTimelineCommandOpen(true)}
-              onOpenLink={() => setLinkPanelOpen(true)}
-              onWordSelect={(w) => { if (w) setSelectedWord(w); }}
-              onFlagsChange={setFlags}
-              replaceWordRef={replaceWordRef}
-              applyFlagRef={applyFlagRef}
-              applyGrammarFixRef={applyGrammarFixRef}
-              jumpToGrammarMatchRef={jumpToGrammarMatchRef}
-              jumpToTextRef={jumpToTextRef}
-              onPrefillEntry={(data) => { setNewEntryInitial(data); setNewEntryDialogOpen(true); }}
-            />
-          </div>
->>>>>>> main
           <StatusBar sceneWordCount={wordCount} />
         </div>
 

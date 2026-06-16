@@ -166,6 +166,7 @@ export default function SettingsPage() {
   const [valeRuleMeta,     setValeRuleMeta]     = useState<Record<string, ValeRuleMeta[]>>({});
   const [valeCustomSaving, setValeCustomSaving] = useState(false);
   const [valeCustomInputs, setValeCustomInputs] = useState<Record<string, string>>({});
+  const [activeTab, setActiveTab] = useState<"ai" | "appearance" | "docker" | "sync" | "cowork">("ai");
   const [showServiceStatus, setShowServiceStatus] = useState(false);
   const { data: serviceStatus, isLoading: statusLoading, refetch: refetchStatus } =
     useServiceStatus(showServiceStatus);
@@ -782,7 +783,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <header className="sticky top-0 z-10 bg-background border-b border-border px-6 py-4 flex items-center gap-3">
         <button onClick={() => router.back()} className="text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-4 w-4" />
@@ -790,8 +791,40 @@ export default function SettingsPage() {
         <h1 className="text-lg font-semibold">{t("settings_title")}</h1>
       </header>
 
-      <main className="max-w-2xl mx-auto px-6 py-8 space-y-8">
+      <div className="flex flex-1 overflow-hidden">
+        {/* ── Sidebar ── */}
+        <aside className="w-52 shrink-0 border-r border-border sticky top-[57px] h-[calc(100vh-57px)] overflow-y-auto">
+          <nav className="p-3 space-y-0.5">
+            {([
+              { id: "ai",         label: "AI Settings",  Icon: Cpu },
+              { id: "appearance", label: "Appearance",    Icon: Palette },
+              { id: "docker",     label: "Docker",        Icon: Container },
+              { id: "sync",       label: "Sync / Mirror", Icon: FolderOpen },
+              { id: "cowork",     label: "Co-Work",       Icon: Users },
+            ] as const).map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setActiveTab(id)}
+                className={cn(
+                  "w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors text-left",
+                  activeTab === id
+                    ? "bg-primary/10 text-primary font-medium"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {label}
+              </button>
+            ))}
+          </nav>
+        </aside>
 
+        {/* ── Content ── */}
+        <main className="flex-1 overflow-y-auto px-8 py-8">
+          <div className="max-w-2xl space-y-8">
+
+        {activeTab === "ai" && (<>
         {/* AI Configuration */}
         <section className="space-y-4">
           <div className="flex items-center gap-2 mb-4">
@@ -1285,8 +1318,14 @@ export default function SettingsPage() {
         </section>
         </>)}
 
-        <div className="border-t border-border" />
+        <div className="pt-2">
+          <Button onClick={handleSave} disabled={updateSettings.isPending}>
+            {saved ? t("settings_saved") : updateSettings.isPending ? t("settings_saving") : t("settings_save")}
+          </Button>
+        </div>
+        </>)}
 
+        {activeTab === "appearance" && (<>
         {/* Appearance */}
         <section className="space-y-4">
           <div className="flex items-center gap-2 mb-4">
@@ -1439,9 +1478,9 @@ export default function SettingsPage() {
             </div>
           </div>
         </section>
+        </>)}
 
-        <div className="border-t border-border" />
-
+        {activeTab === "sync" && (<>
         {/* Sync Dir */}
         <section className="space-y-4">
           <div className="flex items-center justify-between mb-4">
@@ -1660,9 +1699,9 @@ export default function SettingsPage() {
             )}
           </div>
         </section>
+        </>)}
 
-        <div className="border-t border-border" />
-
+        {activeTab === "docker" && (<>
         {/* External Services */}
         <section className="space-y-4">
           {/* Header */}
@@ -3097,8 +3136,14 @@ BasedOnStyles = write-good`}</code>
           </div>
         )}
 
-        <div className="border-t border-border" />
+        <div className="pt-2">
+          <Button onClick={handleSave} disabled={updateSettings.isPending}>
+            {saved ? t("settings_saved") : updateSettings.isPending ? t("settings_saving") : t("settings_save")}
+          </Button>
+        </div>
+        </>)}
 
+        {activeTab === "cowork" && (<>
         {/* Co-Work */}
         <section className="space-y-4">
           <div className="flex items-center gap-2 mb-1">
@@ -3529,7 +3574,9 @@ BasedOnStyles = write-good`}</code>
             />
           )}
         </section>
+        </>)}
 
+        {activeTab === "appearance" && (<>
         <div className="border-t border-border" />
 
         {/* Language */}
@@ -3559,11 +3606,11 @@ BasedOnStyles = write-good`}</code>
           <p className="font-medium text-foreground">{t("settings_about_title")}</p>
           <p>{t("settings_about_desc")}</p>
         </section>
+        </>)}
 
-        <Button onClick={handleSave} disabled={updateSettings.isPending}>
-          {saved ? t("settings_saved") : updateSettings.isPending ? t("settings_saving") : t("settings_save")}
-        </Button>
-      </main>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
