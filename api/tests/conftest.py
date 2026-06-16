@@ -175,12 +175,23 @@ def db(_fresh_schema):
 
 @pytest.fixture
 def client(db):
-    """FastAPI TestClient connected to the per-test database."""
+    """FastAPI TestClient connected to the per-test database.
+
+    Defaults to X-Client-IP: 127.0.0.1 — the same header the real Next.js
+    proxy sets for the host's own browser requests — so CoworkAuthMiddleware
+    treats requests as coming from the trusted host by default. Without it,
+    httpx's TestClient reports request.client.host as the literal string
+    "testclient" (not "127.0.0.1"), which the middleware's loopback fallback
+    doesn't recognize. Tests simulating a guest/external client still pass
+    their own X-Client-IP per-request (e.g. do_join's client_ip param),
+    which overrides this default.
+    """
     def _override():
         yield db
 
     app.dependency_overrides[get_db] = _override
     with TestClient(app, raise_server_exceptions=True) as c:
+        c.headers["X-Client-IP"] = "127.0.0.1"
         yield c
     app.dependency_overrides.pop(get_db, None)
 

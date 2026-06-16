@@ -1,6 +1,7 @@
 """
 Tests for settings, AI provider configuration, and cross-provider model routing.
 """
+import httpx
 import pytest
 from unittest.mock import patch, AsyncMock
 
@@ -193,8 +194,20 @@ class TestPingProvider:
         assert r.status_code == 404
 
     def test_ping_unreachable_returns_false(self, client):
-        # Ollama isn't running in CI — expect reachable: false
-        r = client.get("/api/settings/providers/ollama/ping")
+        # Mock httpx to simulate a connection failure — asserting against a
+        # real network call would pass/fail depending on whether Ollama
+        # happens to be running on the machine executing the test.
+        async def mock_get(*args, **kwargs):
+            raise httpx.ConnectError("connection refused")
+
+        with patch("routers.settings.httpx.AsyncClient") as mock_cls:
+            mock_instance = AsyncMock()
+            mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
+            mock_instance.__aexit__ = AsyncMock(return_value=False)
+            mock_instance.get = mock_get
+            mock_cls.return_value = mock_instance
+
+            r = client.get("/api/settings/providers/ollama/ping")
         assert r.status_code == 200
         assert r.json()["reachable"] is False
 

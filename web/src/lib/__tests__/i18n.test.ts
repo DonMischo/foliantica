@@ -3,12 +3,12 @@ import { translate, LOCALE_NAMES, translations } from "../i18n";
 import type { Locale } from "../i18n";
 
 describe("LOCALE_NAMES", () => {
-  it("has entries for all 9 supported locales", () => {
-    const expected: Locale[] = ["en", "de", "es", "fr", "pt", "sv", "da", "no", "zh"];
+  it("has entries for all 11 supported locales", () => {
+    const expected: Locale[] = ["en", "de", "es", "fr", "pt", "sv", "da", "no", "zh", "ja", "nl"];
     for (const locale of expected) {
       expect(LOCALE_NAMES[locale], `missing name for locale "${locale}"`).toBeTruthy();
     }
-    expect(Object.keys(LOCALE_NAMES).length).toBe(9);
+    expect(Object.keys(LOCALE_NAMES).length).toBe(11);
   });
 
   it("English locale name is 'English'", () => {
