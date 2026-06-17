@@ -134,38 +134,47 @@ export function ValeRulesModal({ open, onClose }: Props) {
 
   // Load entries when rule changes
   useEffect(() => {
-    if (!selectedRule || !selectedLang) return;
+    if (!selectedRule || !selectedLang) {
+      setLoadingEntries(false);
+      return;
+    }
     const cacheKey = `${selectedLang}/${selectedRule}`;
-    if (entriesByKey[cacheKey]) return;
+    if (entriesByKey[cacheKey]) {
+      setLoadingEntries(false);
+      return;
+    }
+    let active = true;
     setLoadingEntries(true);
     valeApi.getRuleEntries(selectedLang, selectedRule)
       .then(r => {
+        if (!active) return;
         setEntriesByKey(prev => ({ ...prev, [cacheKey]: r.entries }));
         setSavedEntriesByKey(prev => ({ ...prev, [cacheKey]: r.entries }));
         setEntryTypes(prev => ({ ...prev, [cacheKey]: r.type }));
       })
       .catch(() => {})
-      .finally(() => setLoadingEntries(false));
+      .finally(() => { if (active) setLoadingEntries(false); });
+    return () => { active = false; };
   }, [selectedLang, selectedRule]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function toggleEntry(key: string) {
     const cacheKey = `${selectedLang}/${selectedRule}`;
-    const current = entriesByKey[cacheKey] ?? [];
-    const entry = current.find(e => e.key === key);
-    if (!entry) return;
-    const newEnabled = !entry.enabled;
-    setEntriesByKey(prev => ({
-      ...prev,
-      [cacheKey]: current.map(e => e.key === key ? { ...e, enabled: newEnabled } : e),
-    }));
+    setEntriesByKey(prev => {
+      const current = prev[cacheKey] ?? [];
+      const entry = current.find(e => e.key === key);
+      if (!entry) return prev;
+      return {
+        ...prev,
+        [cacheKey]: current.map(e => e.key === key ? { ...e, enabled: !e.enabled } : e),
+      };
+    });
   }
 
   function toggleAll(enable: boolean) {
     const cacheKey = `${selectedLang}/${selectedRule}`;
-    const current = entriesByKey[cacheKey] ?? [];
     setEntriesByKey(prev => ({
       ...prev,
-      [cacheKey]: current.map(e => ({ ...e, enabled: enable })),
+      [cacheKey]: (prev[cacheKey] ?? []).map(e => ({ ...e, enabled: enable })),
     }));
   }
 
