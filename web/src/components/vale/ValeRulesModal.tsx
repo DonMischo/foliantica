@@ -251,6 +251,12 @@ export function ValeRulesModal({ open, onClose }: Props) {
     }
   }
 
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  function displayKey(raw: string) {
+    return raw.replace(/^\\b|\\b$/g, "");
+  }
+
   // ── Derived values ────────────────────────────────────────────────────────
 
   const cacheKey = `${selectedLang}/${selectedRule}`;
@@ -395,7 +401,11 @@ export function ValeRulesModal({ open, onClose }: Props) {
                     <ul>
                       {entries.map(entry => (
                         <li key={entry.key}>
-                          <label className="flex items-center gap-3 px-4 py-1.5 cursor-pointer hover:bg-muted/30 transition-colors">
+                          <button
+                            type="button"
+                            onClick={() => toggleEntry(entry.key)}
+                            className="w-full flex items-center gap-3 px-4 py-1.5 text-left hover:bg-muted/30 transition-colors"
+                          >
                             <span className={cn(
                               "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
                               entry.enabled
@@ -404,24 +414,18 @@ export function ValeRulesModal({ open, onClose }: Props) {
                             )}>
                               {entry.enabled && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
                             </span>
-                            <input
-                              type="checkbox"
-                              className="sr-only"
-                              checked={entry.enabled}
-                              onChange={() => toggleEntry(entry.key)}
-                            />
                             {entryType === "substitution" ? (
                               <span className={cn("text-xs flex-1 min-w-0 font-mono", !entry.enabled && "line-through text-muted-foreground/50")}>
-                                <span className="text-foreground/80">{entry.key}</span>
+                                <span className="text-foreground/80">{displayKey(entry.key)}</span>
                                 <span className="text-muted-foreground mx-1.5">→</span>
-                                <span className="text-muted-foreground">{entry.value}</span>
+                                <span className="text-muted-foreground">{displayKey(entry.value)}</span>
                               </span>
                             ) : (
                               <span className={cn("text-xs font-mono", !entry.enabled && "line-through text-muted-foreground/50")}>
-                                {entry.key}
+                                {displayKey(entry.key)}
                               </span>
                             )}
-                          </label>
+                          </button>
                         </li>
                       ))}
                     </ul>
