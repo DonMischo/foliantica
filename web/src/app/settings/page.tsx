@@ -615,13 +615,9 @@ export default function SettingsPage() {
       default_synopsis_model: defaultSynopsisModel || null,
       default_codex_model: defaultCodexModel || null,
       enabled_models: enabledModels,
-      theme,
-      grammar_check_enabled: grammarEnabled,
       grammar_check_url: grammarUrl,
       grammar_languages: grammarLanguages,
-      pandoc_enabled: pandocEnabled,
       pandoc_url: pandocUrl,
-      spacy_enabled: spacyEnabled,
       spacy_url: spacyUrl,
       calibre_mode: calibreMode,
       calibre_url: calibreUrl,
@@ -798,6 +794,14 @@ export default function SettingsPage() {
                 {label}
               </button>
             ))}
+            {(activeTab === "ai" || activeTab === "docker") && (
+              <>
+                <div className="border-t border-border/50 my-2" />
+                <Button size="sm" className="w-full" onClick={handleSave} disabled={updateSettings.isPending}>
+                  {saved ? t("settings_saved") : updateSettings.isPending ? t("settings_saving") : t("settings_save")}
+                </Button>
+              </>
+            )}
           </nav>
         </aside>
 
@@ -1299,11 +1303,6 @@ export default function SettingsPage() {
         </section>
         </>)}
 
-        <div className="pt-2">
-          <Button onClick={handleSave} disabled={updateSettings.isPending}>
-            {saved ? t("settings_saved") : updateSettings.isPending ? t("settings_saving") : t("settings_save")}
-          </Button>
-        </div>
         </>)}
 
         {activeTab === "appearance" && (<>
@@ -1750,7 +1749,11 @@ export default function SettingsPage() {
                 type="button"
                 role="switch"
                 aria-checked={grammarEnabled}
-                onClick={() => setGrammarEnabled(v => !v)}
+                onClick={() => {
+                  const next = !grammarEnabled;
+                  setGrammarEnabled(next);
+                  updateSettings.mutate({ grammar_check_enabled: next });
+                }}
                 className={cn(
                   "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
                   grammarEnabled ? "bg-primary" : "bg-input"
@@ -1800,168 +1803,11 @@ export default function SettingsPage() {
             )}
           </div>
 
-          {/* Pandoc / PDF+EPUB */}
-          <div className="rounded-lg border border-border p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">PDF & EPUB Export (Pandoc)</p>
-                <p className="text-xs text-muted-foreground">Export projects to PDF (via LaTeX) or EPUB format</p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={pandocEnabled}
-                onClick={() => setPandocEnabled(v => !v)}
-                className={cn(
-                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-                  pandocEnabled ? "bg-primary" : "bg-input"
-                )}
-              >
-                <span className={cn(
-                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
-                  pandocEnabled ? "translate-x-4" : "translate-x-0"
-                )} />
-              </button>
-            </div>
-            {pandocEnabled && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">Service URL</Label>
-                <Input
-                  value={pandocUrl}
-                  onChange={e => setPandocUrl(e.target.value)}
-                  placeholder="http://localhost:8082"
-                  className="h-8 text-xs font-mono"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* spaCy NLP */}
-          <div className="rounded-lg border border-border p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Codex Analysis (spaCy)</p>
-                <p className="text-xs text-muted-foreground">Token-aware mention scanning — more accurate than plain text search, handles aliases and word boundaries</p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={spacyEnabled}
-                onClick={() => setSpacyEnabled(v => !v)}
-                className={cn(
-                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-                  spacyEnabled ? "bg-primary" : "bg-input"
-                )}
-              >
-                <span className={cn(
-                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
-                  spacyEnabled ? "translate-x-4" : "translate-x-0"
-                )} />
-              </button>
-            </div>
-            {spacyEnabled && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">Service URL</Label>
-                <Input
-                  value={spacyUrl}
-                  onChange={e => setSpacyUrl(e.target.value)}
-                  placeholder="http://localhost:8083"
-                  className="h-8 text-xs font-mono"
-                />
-                <p className="text-[11px] text-muted-foreground">Falls back to built-in text search if the service is unreachable.</p>
-              </div>
-            )}
-          </div>
-
-          {/* Calibre (EPUB / MOBI / AZW3) */}
-          <div className="rounded-lg border border-border p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Calibre Export</p>
-                <p className="text-xs text-muted-foreground">EPUB, MOBI, AZW3 via Calibre</p>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setCalibreDetecting(true);
-                    setCalibreDetectResult(null);
-                    try {
-                      const result = await settingsApi.detectCalibre();
-                      setCalibreDetectResult(result);
-                      if (result.system) setCalibreMode("system");
-                      else if (result.docker) setCalibreMode("docker");
-                    } catch { /* ignore */ } finally {
-                      setCalibreDetecting(false);
-                    }
-                  }}
-                  disabled={calibreDetecting}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2.5 py-1 rounded border border-border hover:border-primary/50 transition-colors disabled:opacity-50"
-                >
-                  {calibreDetecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                  Auto-detect
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCalibreHelpOpen(true)}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                  title="Setup instructions"
-                >
-                  <HelpCircle className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              {(["off", "system", "docker"] as const).map(mode => (
-                <label key={mode} className="flex items-center gap-2.5 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="calibre-mode"
-                    value={mode}
-                    checked={calibreMode === mode}
-                    onChange={() => setCalibreMode(mode)}
-                    className="accent-primary"
-                  />
-                  <span className="text-sm">
-                    {mode === "off"    && "Off"}
-                    {mode === "system" && "System install"}
-                    {mode === "docker" && "Docker container"}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {mode === "system" && "ebook-convert on PATH"}
-                    {mode === "docker" && "sidecar service"}
-                  </span>
-                </label>
-              ))}
-            </div>
-
-            {calibreMode === "docker" && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">Service URL</Label>
-                <Input
-                  value={calibreUrl}
-                  onChange={e => setCalibreUrl(e.target.value)}
-                  placeholder="http://localhost:8084"
-                  className="h-8 text-xs font-mono"
-                />
-              </div>
-            )}
-
-            {calibreDetectResult && (
-              <p className="text-xs text-muted-foreground">
-                System: {calibreDetectResult.system ? "✓ ebook-convert found" : "✗ not found"}
-                {" · "}
-                Docker: {calibreDetectResult.docker ? "✓ service responding" : "✗ not responding"}
-              </p>
-            )}
-          </div>
-
           {/* Vale prose linter */}
           <div className="rounded-lg border border-border p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">Vale</p>
+                <p className="text-sm font-medium">Style Check</p>
                 <p className="text-xs text-muted-foreground">Prose style linter — checks writing rules, vocabulary, and custom styles</p>
               </div>
               <div className="flex items-center gap-1.5">
@@ -2004,7 +1850,7 @@ export default function SettingsPage() {
                     name="vale-mode"
                     value={mode}
                     checked={valeMode === mode}
-                    onChange={() => setValeMode(mode)}
+                    onChange={() => { setValeMode(mode); updateSettings.mutate({ vale_mode: mode }); }}
                     className="accent-primary"
                   />
                   <span className="text-sm">
@@ -2572,6 +2418,171 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          {/* Pandoc / PDF+EPUB */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">PDF & EPUB Export (Pandoc)</p>
+                <p className="text-xs text-muted-foreground">Export projects to PDF (via LaTeX) or EPUB format</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={pandocEnabled}
+                onClick={() => {
+                  const next = !pandocEnabled;
+                  setPandocEnabled(next);
+                  updateSettings.mutate({ pandoc_enabled: next });
+                }}
+                className={cn(
+                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                  pandocEnabled ? "bg-primary" : "bg-input"
+                )}
+              >
+                <span className={cn(
+                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
+                  pandocEnabled ? "translate-x-4" : "translate-x-0"
+                )} />
+              </button>
+            </div>
+            {pandocEnabled && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Service URL</Label>
+                <Input
+                  value={pandocUrl}
+                  onChange={e => setPandocUrl(e.target.value)}
+                  placeholder="http://localhost:8082"
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* spaCy NLP */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Codex Analysis (spaCy)</p>
+                <p className="text-xs text-muted-foreground">Token-aware mention scanning — more accurate than plain text search, handles aliases and word boundaries</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={spacyEnabled}
+                onClick={() => {
+                  const next = !spacyEnabled;
+                  setSpacyEnabled(next);
+                  updateSettings.mutate({ spacy_enabled: next });
+                }}
+                className={cn(
+                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                  spacyEnabled ? "bg-primary" : "bg-input"
+                )}
+              >
+                <span className={cn(
+                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
+                  spacyEnabled ? "translate-x-4" : "translate-x-0"
+                )} />
+              </button>
+            </div>
+            {spacyEnabled && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Service URL</Label>
+                <Input
+                  value={spacyUrl}
+                  onChange={e => setSpacyUrl(e.target.value)}
+                  placeholder="http://localhost:8083"
+                  className="h-8 text-xs font-mono"
+                />
+                <p className="text-[11px] text-muted-foreground">Falls back to built-in text search if the service is unreachable.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Calibre (EPUB / MOBI / AZW3) */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Calibre Export</p>
+                <p className="text-xs text-muted-foreground">EPUB, MOBI, AZW3 via Calibre</p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setCalibreDetecting(true);
+                    setCalibreDetectResult(null);
+                    try {
+                      const result = await settingsApi.detectCalibre();
+                      setCalibreDetectResult(result);
+                      if (result.system) setCalibreMode("system");
+                      else if (result.docker) setCalibreMode("docker");
+                    } catch { /* ignore */ } finally {
+                      setCalibreDetecting(false);
+                    }
+                  }}
+                  disabled={calibreDetecting}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2.5 py-1 rounded border border-border hover:border-primary/50 transition-colors disabled:opacity-50"
+                >
+                  {calibreDetecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                  Auto-detect
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCalibreHelpOpen(true)}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  title="Setup instructions"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {(["off", "system", "docker"] as const).map(mode => (
+                <label key={mode} className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="calibre-mode"
+                    value={mode}
+                    checked={calibreMode === mode}
+                    onChange={() => { setCalibreMode(mode); updateSettings.mutate({ calibre_mode: mode }); }}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">
+                    {mode === "off"    && "Off"}
+                    {mode === "system" && "System install"}
+                    {mode === "docker" && "Docker container"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {mode === "system" && "ebook-convert on PATH"}
+                    {mode === "docker" && "sidecar service"}
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            {calibreMode === "docker" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Service URL</Label>
+                <Input
+                  value={calibreUrl}
+                  onChange={e => setCalibreUrl(e.target.value)}
+                  placeholder="http://localhost:8084"
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+            )}
+
+            {calibreDetectResult && (
+              <p className="text-xs text-muted-foreground">
+                System: {calibreDetectResult.system ? "✓ ebook-convert found" : "✗ not found"}
+                {" · "}
+                Docker: {calibreDetectResult.docker ? "✓ service responding" : "✗ not responding"}
+              </p>
+            )}
+          </div>
+
           {/* PostgreSQL Database */}
           <div className="rounded-lg border border-border p-4 space-y-4">
 
@@ -2883,7 +2894,7 @@ export default function SettingsPage() {
                     <h3 className="font-semibold text-sm">Save settings and check status</h3>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed pl-7">
-                    Click <strong className="text-foreground">Save settings</strong> at the bottom of the page,
+                    Click <strong className="text-foreground">Save</strong> in the sidebar,
                     then use <strong className="text-foreground">Check status</strong> to confirm the services
                     are running. A green "Running" badge means everything is ready.
                   </p>
@@ -3153,11 +3164,6 @@ BasedOnStyles = write-good`}</code>
           </div>
         )}
 
-        <div className="pt-2">
-          <Button onClick={handleSave} disabled={updateSettings.isPending}>
-            {saved ? t("settings_saved") : updateSettings.isPending ? t("settings_saving") : t("settings_save")}
-          </Button>
-        </div>
         </>)}
 
         {activeTab === "cowork" && (<>

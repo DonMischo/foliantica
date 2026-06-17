@@ -42,9 +42,12 @@ export function CoworkAccessGuard({ children }: { children: React.ReactNode }) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-background">
         <div className="max-w-sm w-full mx-4 p-8 rounded-xl border border-border bg-card shadow-lg text-center">
+          <p className="text-xs text-muted-foreground/70 mb-3">
+            Co-Work is disabled or your invitation has expired.
+          </p>
           <h1 className="text-xl font-semibold mb-2">Invitation required</h1>
           <p className="text-sm text-muted-foreground">
-            This workspace is shared. Ask your host for an invitation link to join.
+            This workspace is shared. Ask your host to activate Co-Work mode and send you an invitation link.
           </p>
         </div>
       </main>

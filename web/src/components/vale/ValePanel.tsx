@@ -177,6 +177,25 @@ export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
 
       {/* Body */}
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+        <div className="space-y-1.5">
+          <Button
+            size="sm"
+            className="w-full"
+            onClick={() => check.mutate({ text, language })}
+            disabled={check.isPending}
+          >
+            {check.isPending
+              ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Analysing…</>
+              : "Run Style Check"}
+          </Button>
+          <p className="text-[10px] text-muted-foreground leading-snug">
+            {language
+              ? <>Language: <span className="text-foreground/70">{langName(language)}</span> <span className="opacity-50">(from Project Info)</span></>
+              : <>Using default English — set language in <span className="opacity-70">Project Info</span></>
+            }
+          </p>
+        </div>
+
         {!check.data && !check.isPending && !check.isError && (
           <p className="text-xs text-muted-foreground leading-relaxed">
             Vale checks your prose for style issues using configured rule packages. Click <strong className="text-foreground">Run Style Check</strong> to analyse this scene.
@@ -255,25 +274,7 @@ export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
         )}
       </div>
 
-      {/* Footer */}
-      <div className="px-3 py-2.5 border-t border-border shrink-0 space-y-2">
-        <Button
-          size="sm"
-          className="w-full"
-          onClick={() => check.mutate({ text, language })}
-          disabled={check.isPending}
-        >
-          {check.isPending
-            ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Analysing…</>
-            : "Run Style Check"}
-        </Button>
-        <p className="text-[10px] text-muted-foreground leading-snug">
-          {language
-            ? <>Language: <span className="text-foreground/70">{langName(language)}</span> <span className="opacity-50">(from Project Info)</span></>
-            : <>Using default English — set language in <span className="opacity-70">Project Info</span></>
-          }
-        </p>
-      </div>
+
     </div>
   );
 }
