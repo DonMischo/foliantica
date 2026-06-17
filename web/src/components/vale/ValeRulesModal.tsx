@@ -5,6 +5,7 @@ import { Check, Loader2, Plus, RefreshCw, AlertTriangle, X } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { valeApi, type ValeCustomRules, type ValeRuleEntry, type ValeRuleMeta } from "@/lib/api";
+import { displayKey } from "@/lib/vale-utils";
 
 const LANGUAGES: { code: string; label: string }[] = [
   { code: "de", label: "Deutsch" },
@@ -249,12 +250,6 @@ export function ValeRulesModal({ open, onClose }: Props) {
       setCustomRules(next);
       saveCustom(next);
     }
-  }
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
-  function displayKey(raw: string) {
-    return raw.replace(/^\\b|\\b$/g, "");
   }
 
   // ── Derived values ────────────────────────────────────────────────────────
