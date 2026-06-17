@@ -295,7 +295,7 @@ export function ValeRulesModal({ open, onClose }: Props) {
         <DialogHeader className="px-5 pt-4 pb-3 border-b border-border shrink-0">
           <div className="flex items-center justify-between gap-3">
             <DialogTitle className="text-base">Vale — Rule Configuration</DialogTitle>
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground mr-7">
               {errorCount > 0 && (
                 <span className="flex items-center gap-1 text-amber-500">
                   <AlertTriangle className="h-3 w-3" />
@@ -518,6 +518,9 @@ export function ValeRulesModal({ open, onClose }: Props) {
                           </div>
                         </div>
                       )}
+                      <p className="px-4 pt-0.5 pb-2 text-[10px] text-muted-foreground/40 leading-relaxed">
+                        <code className="font-mono">\b</code> = word boundary — <code className="font-mono">\bword\b</code> matches <em>whole word</em>, bare <code className="font-mono">word</code> matches anywhere in text
+                      </p>
                     </div>
                   )}
                 </>
