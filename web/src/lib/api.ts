@@ -719,6 +719,18 @@ export interface ValeRuleMeta {
 export type ValeCustomEntries = string[] | Record<string, string>;
 export type ValeCustomRules = Record<string, Record<string, ValeCustomEntries>>;
 
+export interface ValeRuleEntry {
+  key: string;
+  value?: string; // substitution rules only
+}
+
+export interface ValeRuleEntriesResult {
+  type: "existence" | "substitution";
+  entries: ValeRuleEntry[];
+}
+
+export type ValeDisabledEntries = Record<string, Record<string, string[]>>;
+
 export const valeApi = {
   check: (text: string, language?: string) =>
     req<ValeCheckResult>("/vale/check", {
@@ -734,6 +746,15 @@ export const valeApi = {
     req<{ ok: boolean }>("/vale/custom-rules", {
       method: "PUT",
       body: JSON.stringify({ rules }),
+    }),
+  getRuleEntries: (lang: string, ruleName: string) =>
+    req<ValeRuleEntriesResult>(`/vale/rule-entries/${lang}/${ruleName}`),
+  getDisabledEntries: () =>
+    req<{ disabled: ValeDisabledEntries }>("/vale/disabled-entries"),
+  updateDisabledEntries: (disabled: ValeDisabledEntries) =>
+    req<{ ok: boolean }>("/vale/disabled-entries", {
+      method: "PUT",
+      body: JSON.stringify({ disabled }),
     }),
 };
 

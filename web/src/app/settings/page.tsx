@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings, useUpdateSettings, useOpenRouterModels, usePrompts, useCreatePrompt, useUpdatePrompt, useDeletePrompt, useRevertPrompt, useServiceStatus, useSyncStatus } from "@/store/queries";
 import { dataDirApi, settingsApi, syncApi, pgConfigApi, collabApi, aiProvidersApi, valeApi, type PgConfig, type PgActive, type Invitation, type TeacherSession, type CloudflareStatus, type AIProvider, type ValeRuleMeta, type ValeCustomRules } from "@/lib/api";
+import { ValeRulesModal } from "@/components/vale/ValeRulesModal";
 import { AssignmentPicker } from "@/components/collab/AssignmentPicker";
 import QRCode from "react-qr-code";
 import { ACH_POPUPS_KEY } from "@/components/AchievementToast";
@@ -149,6 +150,7 @@ export default function SettingsPage() {
   const [valeDetecting, setValeDetecting]   = useState(false);
   const [valeDetectResult, setValeDetectResult] = useState<{ system: boolean; docker: boolean } | null>(null);
   const [valeHelpOpen, setValeHelpOpen]     = useState(false);
+  const [valeRulesOpen, setValeRulesOpen]   = useState(false);
   const [valeSourcesOpen, setValeSourcesOpen] = useState(false);
   const [valeDeLangOpen,  setValeDeLangOpen]  = useState(false);
   const [valeEsLangOpen,  setValeEsLangOpen]  = useState(false);
@@ -1900,6 +1902,18 @@ export default function SettingsPage() {
               </p>
             )}
 
+            {/* Rule configuration */}
+            {valeMode !== "off" && (
+              <button
+                type="button"
+                onClick={() => setValeRulesOpen(true)}
+                className="w-full flex items-center justify-between px-3 py-2 text-xs rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/30 transition-colors"
+              >
+                <span>Configure rules…</span>
+                <span className="opacity-40 text-[10px]">enable / disable individual checks</span>
+              </button>
+            )}
+
             {/* Custom rule entries */}
             <div className="border border-border/60 rounded-md overflow-hidden">
               <button
@@ -3034,6 +3048,8 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+
+        <ValeRulesModal open={valeRulesOpen} onClose={() => setValeRulesOpen(false)} />
 
         {/* Vale help modal */}
         {valeHelpOpen && (

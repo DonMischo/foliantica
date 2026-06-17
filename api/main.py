@@ -18,7 +18,7 @@ from database import (
     migrate_ai_disabled, migrate_research_pdf,
     migrate_ai_providers, migrate_corkboard,
     migrate_achievement_popup_shown, migrate_sync_mirror,
-    migrate_spacy, migrate_calibre, migrate_vale, migrate_vale_custom_rules, migrate_project_language,
+    migrate_spacy, migrate_calibre, migrate_vale, migrate_vale_custom_rules, migrate_vale_disabled_entries, migrate_project_language,
     migrate_ai_prompts_word_count, migrate_backfill_word_counts,
     seed_ai_prompts, seed_publisher_profiles, seed_export_profiles,
 )
@@ -103,6 +103,7 @@ async def lifespan(app: FastAPI):
     migrate_calibre()
     migrate_vale()
     migrate_vale_custom_rules()
+    migrate_vale_disabled_entries()
     migrate_project_language()
     migrate_ai_prompts_word_count()
     migrate_backfill_word_counts()

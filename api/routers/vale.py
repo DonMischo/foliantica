@@ -43,20 +43,53 @@ class CustomRulesBody(BaseModel):
     rules: dict  # lang -> {rule_name -> list[str] | dict[str, str]}
 
 
+class DisabledEntriesBody(BaseModel):
+    disabled: dict  # lang -> {rule_name -> [entry_key, ...]}
+
+
 def _lang_code(language: str | None) -> str:
     return (language or "").lower()[:2]
 
 
-def _load_styles(language: str | None, custom_rules: dict | None = None) -> dict[str, str]:
+def _load_disabled_entries(s: UserSettings) -> dict:
+    try:
+        return json.loads(getattr(s, "vale_disabled_entries", None) or "{}")
+    except Exception:
+        return {}
+
+
+def _load_styles(
+    language: str | None,
+    custom_rules: dict | None = None,
+    disabled_entries: dict | None = None,
+) -> dict[str, str]:
     """Load Foliantica YAML rules for the given language into a {rel_path: content} dict."""
     lang = _lang_code(language)
     if lang not in _SUPPORTED_LANG_STYLES:
         return {}
     styles: dict[str, str] = {}
     lang_dir = _STYLES_DIR / lang
+    disabled_for_lang: dict = (disabled_entries or {}).get(lang, {})
     if lang_dir.exists():
         for f in sorted(lang_dir.glob("*.yml")):
-            styles[f"Foliantica/{f.name}"] = f.read_text(encoding="utf-8")
+            rule_name = f.stem
+            disabled_keys = set(disabled_for_lang.get(rule_name, []))
+            if not disabled_keys:
+                styles[f"Foliantica/{f.name}"] = f.read_text(encoding="utf-8")
+                continue
+            try:
+                doc = yaml.safe_load(f.read_text(encoding="utf-8"))
+                if doc.get("extends") == "substitution" and isinstance(doc.get("swap"), dict):
+                    doc["swap"] = {k: v for k, v in doc["swap"].items() if k not in disabled_keys}
+                    if not doc["swap"]:
+                        continue
+                elif doc.get("extends") == "existence" and isinstance(doc.get("tokens"), list):
+                    doc["tokens"] = [t for t in doc["tokens"] if t not in disabled_keys]
+                    if not doc["tokens"]:
+                        continue
+                styles[f"Foliantica/{f.name}"] = yaml.dump(doc, allow_unicode=True, default_flow_style=False)
+            except Exception:
+                styles[f"Foliantica/{f.name}"] = f.read_text(encoding="utf-8")
 
     # Inject user custom entries as separate rule files
     if custom_rules and lang in custom_rules:
@@ -108,13 +141,14 @@ async def check_vale(body: CheckRequest, db: Session = Depends(get_db)):
     mode = getattr(s, "vale_mode", None) or "off"
     config_path = getattr(s, "vale_config_path", None) or None
     custom_rules = _load_custom_rules(s)
+    disabled_entries = _load_disabled_entries(s)
 
     if mode == "system":
-        return _check_system(body.text, config_path, body.language, custom_rules)
+        return _check_system(body.text, config_path, body.language, custom_rules, disabled_entries)
 
     # docker mode
     vale_url = (getattr(s, "vale_url", None) or "http://localhost:8085").rstrip("/")
-    styles = _load_styles(body.language, custom_rules)
+    styles = _load_styles(body.language, custom_rules, disabled_entries)
     payload: dict = {
         "text": body.text,
         "language": body.language,
@@ -174,11 +208,47 @@ async def put_custom_rules(body: CustomRulesBody, db: Session = Depends(get_db))
     return {"ok": True}
 
 
+@router.get("/rule-entries/{lang}/{rule_name}")
+async def get_rule_entries(lang: str, rule_name: str):
+    """Return all entries for a built-in rule (no auth needed — reads bundled YAML)."""
+    lang_code = lang.lower()[:2]
+    rule_file = _STYLES_DIR / lang_code / f"{rule_name}.yml"
+    if not rule_file.exists():
+        raise HTTPException(404, "Rule not found")
+    doc = yaml.safe_load(rule_file.read_text(encoding="utf-8"))
+    rule_type = doc.get("extends", "existence")
+    if rule_type == "substitution":
+        entries = [{"key": k, "value": v} for k, v in (doc.get("swap") or {}).items()]
+    else:
+        entries = [{"key": t} for t in (doc.get("tokens") or [])]
+    return {"type": rule_type, "entries": entries}
+
+
+@router.get("/disabled-entries")
+async def get_disabled_entries(db: Session = Depends(get_db)):
+    """Return the user's disabled entry keys per language/rule."""
+    s = db.query(UserSettings).first()
+    return {"disabled": _load_disabled_entries(s) if s else {}}
+
+
+@router.put("/disabled-entries")
+async def put_disabled_entries(body: DisabledEntriesBody, db: Session = Depends(get_db)):
+    """Replace the user's disabled entries map."""
+    s = db.query(UserSettings).first()
+    if not s:
+        s = UserSettings()
+        db.add(s)
+    s.vale_disabled_entries = json.dumps(body.disabled, ensure_ascii=False)
+    db.commit()
+    return {"ok": True}
+
+
 def _check_system(
     text: str,
     config_path: str | None,
     language: str | None = None,
     custom_rules: dict | None = None,
+    disabled_entries: dict | None = None,
 ) -> dict:
     vale_bin = shutil.which("vale")
     if not vale_bin:
@@ -189,7 +259,7 @@ def _check_system(
         )
 
     lang = _lang_code(language)
-    styles = _load_styles(language, custom_rules)
+    styles = _load_styles(language, custom_rules, disabled_entries)
 
     with tempfile.TemporaryDirectory() as tmp:
         src = Path(tmp) / "input.md"
