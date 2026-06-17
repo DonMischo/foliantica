@@ -58,9 +58,11 @@ export function ValeRulesModal({ open, onClose }: Props) {
   const [selectedRule, setSelectedRule] = useState<string>("");
   const [rulesByLang, setRulesByLang] = useState<Record<string, ValeRuleMeta[]>>({});
   const [entriesByKey, setEntriesByKey] = useState<Record<string, ValeRuleEntry[]>>({});
+  const [savedEntriesByKey, setSavedEntriesByKey] = useState<Record<string, ValeRuleEntry[]>>({});
   const [entryTypes, setEntryTypes] = useState<Record<string, "existence" | "substitution">>({});
   const [loadingRules, setLoadingRules] = useState(false);
   const [loadingEntries, setLoadingEntries] = useState(false);
+  const [savingEntries, setSavingEntries] = useState(false);
 
   // Sync state
   const [syncing, setSyncing] = useState(false);
@@ -81,6 +83,7 @@ export function ValeRulesModal({ open, onClose }: Props) {
       setSyncErrors(r.errors ?? {});
       setRulesByLang({});
       setEntriesByKey({});
+      setSavedEntriesByKey({});
       setEntryTypes({});
       setSelectedRule("");
     } catch {
@@ -138,6 +141,7 @@ export function ValeRulesModal({ open, onClose }: Props) {
     valeApi.getRuleEntries(selectedLang, selectedRule)
       .then(r => {
         setEntriesByKey(prev => ({ ...prev, [cacheKey]: r.entries }));
+        setSavedEntriesByKey(prev => ({ ...prev, [cacheKey]: r.entries }));
         setEntryTypes(prev => ({ ...prev, [cacheKey]: r.type }));
       })
       .catch(() => {})
@@ -154,9 +158,6 @@ export function ValeRulesModal({ open, onClose }: Props) {
       ...prev,
       [cacheKey]: current.map(e => e.key === key ? { ...e, enabled: newEnabled } : e),
     }));
-    valeApi.toggleEntry(selectedLang, selectedRule, key, newEnabled).catch(() => {
-      setEntriesByKey(prev => ({ ...prev, [cacheKey]: current }));
-    });
   }
 
   function toggleAll(enable: boolean) {
@@ -166,9 +167,26 @@ export function ValeRulesModal({ open, onClose }: Props) {
       ...prev,
       [cacheKey]: current.map(e => ({ ...e, enabled: enable })),
     }));
-    valeApi.toggleAllEntries(selectedLang, selectedRule, enable).catch(() => {
-      setEntriesByKey(prev => ({ ...prev, [cacheKey]: current }));
+  }
+
+  async function saveEntries() {
+    const ck = `${selectedLang}/${selectedRule}`;
+    const current = entriesByKey[ck] ?? [];
+    const saved = savedEntriesByKey[ck] ?? [];
+    const changed = current.filter(e => {
+      const orig = saved.find(s => s.key === e.key);
+      return orig && orig.enabled !== e.enabled;
     });
+    if (changed.length === 0) return;
+    setSavingEntries(true);
+    try {
+      await Promise.all(changed.map(e => valeApi.toggleEntry(selectedLang, selectedRule, e.key, e.enabled)));
+      setSavedEntriesByKey(prev => ({ ...prev, [ck]: current }));
+    } catch {
+      setEntriesByKey(prev => ({ ...prev, [ck]: saved }));
+    } finally {
+      setSavingEntries(false);
+    }
   }
 
   // ── Custom rule helpers ───────────────────────────────────────────────────
@@ -233,6 +251,10 @@ export function ValeRulesModal({ open, onClose }: Props) {
   const allDisabled = entries.length > 0 && activeCount === 0;
   const rules = rulesByLang[selectedLang] ?? [];
   const errorCount = Object.keys(syncErrors).length;
+  const isDirty = (entriesByKey[cacheKey] ?? []).some(e => {
+    const orig = (savedEntriesByKey[cacheKey] ?? []).find(s => s.key === e.key);
+    return orig && orig.enabled !== e.enabled;
+  });
 
   const customForRule = customRules[selectedLang]?.[selectedRule];
   const customTokens: string[] = entryType === "existence"
@@ -254,7 +276,7 @@ export function ValeRulesModal({ open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden h-[580px] flex flex-col">
+      <DialogContent aria-describedby={undefined} className="max-w-2xl p-0 gap-0 overflow-hidden h-[580px] flex flex-col">
         <DialogHeader className="px-5 pt-4 pb-3 border-b border-border shrink-0">
           <div className="flex items-center justify-between gap-3">
             <DialogTitle className="text-base">Vale — Rule Configuration</DialogTitle>
@@ -325,13 +347,25 @@ export function ValeRulesModal({ open, onClose }: Props) {
                 </select>
               )}
               {entries.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => toggleAll(allDisabled)}
-                  className="shrink-0 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {allDisabled ? "Enable all" : "Disable all"}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => toggleAll(allDisabled)}
+                    className="shrink-0 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {allDisabled ? "Enable all" : "Disable all"}
+                  </button>
+                  {isDirty && (
+                    <button
+                      type="button"
+                      onClick={saveEntries}
+                      disabled={savingEntries}
+                      className="shrink-0 text-xs font-medium text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+                    >
+                      {savingEntries ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                    </button>
+                  )}
+                </>
               )}
             </div>
 
