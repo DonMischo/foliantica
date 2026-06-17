@@ -211,6 +211,42 @@ def migrate_vale_disabled_entries():
         pass
 
 
+def migrate_vale_rule_entries_table():
+    """Create vale_rule_entries table if not present."""
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS vale_rule_entries (
+                    id SERIAL PRIMARY KEY,
+                    lang VARCHAR(4) NOT NULL,
+                    rule_name VARCHAR(64) NOT NULL,
+                    rule_type VARCHAR(16) NOT NULL,
+                    rule_message TEXT,
+                    rule_level VARCHAR(16),
+                    rule_ignorecase INTEGER NOT NULL DEFAULT 1,
+                    entry_key TEXT NOT NULL,
+                    entry_value TEXT,
+                    enabled INTEGER NOT NULL DEFAULT 1,
+                    UNIQUE(lang, rule_name, entry_key)
+                )
+            """))
+    except Exception:
+        pass
+
+
+def migrate_vale_sync_meta():
+    """Add vale_last_synced and vale_sync_errors columns to user_settings."""
+    for stmt in [
+        "ALTER TABLE user_settings ADD COLUMN vale_last_synced TIMESTAMP",
+        "ALTER TABLE user_settings ADD COLUMN vale_sync_errors TEXT",
+    ]:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(stmt))
+        except Exception:
+            pass
+
+
 def migrate_project_language():
     """Add language column to projects."""
     try:

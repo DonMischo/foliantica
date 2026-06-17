@@ -279,6 +279,24 @@ class SceneCommand(Base):
     scene: Mapped["Scene"] = relationship("Scene", back_populates="commands")
 
 
+class ValeRuleEntry(Base):
+    """Built-in Vale style rule entries, seeded from YAML files on demand."""
+    __tablename__ = "vale_rule_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    lang: Mapped[str] = mapped_column(String(4), nullable=False)
+    rule_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    rule_type: Mapped[str] = mapped_column(String(16), nullable=False)        # existence | substitution
+    rule_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    rule_level: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    rule_ignorecase: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    entry_key: Mapped[str] = mapped_column(Text, nullable=False)
+    entry_value: Mapped[Optional[str]] = mapped_column(Text, nullable=True)   # substitution only
+    enabled: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    __table_args__ = (UniqueConstraint("lang", "rule_name", "entry_key"),)
+
+
 class UserSettings(Base):
     __tablename__ = "user_settings"
 
@@ -312,7 +330,9 @@ class UserSettings(Base):
     vale_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     vale_config_path: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     vale_custom_rules: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
-    vale_disabled_entries: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: {lang: {rule: [key, ...]}}
+    vale_disabled_entries: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: legacy, migrated to vale_rule_entries on first sync
+    vale_last_synced: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    vale_sync_errors: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: {filename: error}
     ai_disabled: Mapped[int] = mapped_column(Integer, default=0)
     # Multi-provider AI adapter (Phase 2)
     active_provider: Mapped[str] = mapped_column(String(50), default="openrouter")

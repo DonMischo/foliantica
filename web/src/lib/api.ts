@@ -722,6 +722,7 @@ export type ValeCustomRules = Record<string, Record<string, ValeCustomEntries>>;
 export interface ValeRuleEntry {
   key: string;
   value?: string; // substitution rules only
+  enabled: boolean;
 }
 
 export interface ValeRuleEntriesResult {
@@ -729,7 +730,11 @@ export interface ValeRuleEntriesResult {
   entries: ValeRuleEntry[];
 }
 
-export type ValeDisabledEntries = Record<string, Record<string, string[]>>;
+export interface ValeSyncStatus {
+  last_synced: string | null;
+  errors: Record<string, string>;
+  total_entries: number;
+}
 
 export const valeApi = {
   check: (text: string, language?: string) =>
@@ -749,13 +754,21 @@ export const valeApi = {
     }),
   getRuleEntries: (lang: string, ruleName: string) =>
     req<ValeRuleEntriesResult>(`/vale/rule-entries/${lang}/${ruleName}`),
-  getDisabledEntries: () =>
-    req<{ disabled: ValeDisabledEntries }>("/vale/disabled-entries"),
-  updateDisabledEntries: (disabled: ValeDisabledEntries) =>
-    req<{ ok: boolean }>("/vale/disabled-entries", {
-      method: "PUT",
-      body: JSON.stringify({ disabled }),
+  toggleEntry: (lang: string, ruleName: string, key: string, enabled: boolean) =>
+    req<{ ok: boolean }>(`/vale/rule-entries/${lang}/${ruleName}`, {
+      method: "PATCH",
+      body: JSON.stringify({ key, enabled }),
     }),
+  toggleAllEntries: (lang: string, ruleName: string, enabled: boolean) =>
+    req<{ ok: boolean }>(`/vale/rule-entries/${lang}/${ruleName}`, {
+      method: "PUT",
+      body: JSON.stringify({ enabled }),
+    }),
+  getSyncStatus: () => req<ValeSyncStatus>("/vale/sync-status"),
+  syncRules: () =>
+    req<{ synced: number; errors: Record<string, string>; last_synced: string }>(
+      "/vale/sync-rules", { method: "POST" }
+    ),
 };
 
 export const grammarApi = {
