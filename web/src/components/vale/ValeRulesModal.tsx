@@ -267,11 +267,13 @@ export function ValeRulesModal({ open, onClose }: Props) {
   });
 
   const customForRule = customRules[selectedLang]?.[selectedRule];
-  const customTokens: string[] = entryType === "existence"
-    ? ((customForRule as string[] | undefined) ?? [])
+  // Guard against the race where custom rules load before entryType is known:
+  // customForRule may be the wrong shape if entryType hasn't resolved yet.
+  const customTokens: string[] = entryType === "existence" && Array.isArray(customForRule)
+    ? customForRule
     : [];
-  const customPairs: Record<string, string> = entryType === "substitution"
-    ? ((customForRule as Record<string, string> | undefined) ?? {})
+  const customPairs: Record<string, string> = entryType === "substitution" && customForRule && !Array.isArray(customForRule)
+    ? (customForRule as Record<string, string>)
     : {};
   const customCount = entryType === "existence" ? customTokens.length : Object.keys(customPairs).length;
 

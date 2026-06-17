@@ -162,3 +162,227 @@ describe("ValeRulesModal — \\b legend", () => {
     expect(screen.getByText(/word boundary/)).toBeInTheDocument();
   });
 });
+
+// ── toggleAll ─────────────────────────────────────────────────────────────────
+
+describe("ValeRulesModal — toggleAll", () => {
+  beforeEach(() => { vi.clearAllMocks(); setupDefaults(); });
+
+  it("shows Disable all button when entries are loaded", async () => {
+    await renderOpen();
+    expect(screen.getByRole("button", { name: "Disable all" })).toBeInTheDocument();
+  });
+
+  it("disables all entries and shows Save button", async () => {
+    const user = userEvent.setup();
+    await renderOpen();
+    await user.click(screen.getByRole("button", { name: "Disable all" }));
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+  });
+
+  it("changes label to Enable all after all are disabled", async () => {
+    const user = userEvent.setup();
+    await renderOpen();
+    await user.click(screen.getByRole("button", { name: "Disable all" }));
+    expect(screen.getByRole("button", { name: "Enable all" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Disable all" })).not.toBeInTheDocument();
+  });
+
+  it("does NOT call valeApi.toggleAllEntries immediately", async () => {
+    const user = userEvent.setup();
+    await renderOpen();
+    await user.click(screen.getByRole("button", { name: "Disable all" }));
+    expect(vi.mocked(valeApi.toggleAllEntries)).not.toHaveBeenCalled();
+  });
+});
+
+// ── Substitution entry display ────────────────────────────────────────────────
+
+const subRules = { rules: [{ name: "Redundancy", type: "substitution" as const }] };
+const subEntries = {
+  type: "substitution" as const,
+  entries: [{ key: "\\bweißer Schimmel\\b", value: "Schimmel", enabled: true }],
+};
+
+describe("ValeRulesModal — substitution entries", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaults();
+    vi.mocked(valeApi.getRuleMeta).mockResolvedValue(subRules);
+    vi.mocked(valeApi.getRuleEntries).mockResolvedValue(subEntries);
+  });
+
+  async function renderSubstitution() {
+    render(<ValeRulesModal open={true} onClose={vi.fn()} />);
+    await waitFor(() =>
+      expect(screen.getByText("weißer Schimmel")).toBeInTheDocument()
+    );
+  }
+
+  it("renders key and value with an arrow separator", async () => {
+    await renderSubstitution();
+    expect(screen.getByText("weißer Schimmel")).toBeInTheDocument();
+    expect(screen.getByText("Schimmel")).toBeInTheDocument();
+    // The → separator should appear at least once in the entry row
+    expect(screen.getAllByText("→").length).toBeGreaterThan(0);
+  });
+
+  it("strips \\b from substitution entry keys", async () => {
+    await renderSubstitution();
+    // Entry button text should not contain \b (legend code elements may, that's fine)
+    const entryBtn = screen.getByText("weißer Schimmel").closest("button");
+    expect(entryBtn?.textContent).not.toMatch(/\\b/);
+  });
+});
+
+// ── Rule switching ────────────────────────────────────────────────────────────
+
+describe("ValeRulesModal — rule switching", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaults();
+    vi.mocked(valeApi.getRuleMeta).mockResolvedValue({
+      rules: [
+        { name: "WeaselWords", type: "existence" as const },
+        { name: "Redundancy",  type: "substitution" as const },
+      ],
+    });
+    vi.mocked(valeApi.getRuleEntries).mockImplementation((_, rule) =>
+      Promise.resolve(rule === "Redundancy" ? subEntries : deEntries)
+    );
+  });
+
+  it("loads new entries when the rule dropdown changes", async () => {
+    const user = userEvent.setup();
+    await renderOpen();
+    await user.selectOptions(screen.getByRole("combobox"), "Redundancy");
+    await waitFor(() =>
+      expect(screen.getByText("weißer Schimmel")).toBeInTheDocument()
+    );
+  });
+
+  it("clears the dirty state when switching rules", async () => {
+    const user = userEvent.setup();
+    await renderOpen();
+    // Dirty the first rule
+    await user.click(screen.getByText("gewissermaßen").closest("button")!);
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    // Switch to Redundancy — different cache key, not dirty
+    await user.selectOptions(screen.getByRole("combobox"), "Redundancy");
+    await waitFor(() =>
+      expect(screen.getByText("weißer Schimmel")).toBeInTheDocument()
+    );
+    expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
+  });
+});
+
+// ── Custom rules — existence ──────────────────────────────────────────────────
+
+describe("ValeRulesModal — custom rules (existence)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaults();
+    vi.mocked(valeApi.updateCustomRules).mockResolvedValue({ ok: true });
+  });
+
+  it("add-button is disabled when the custom input is empty", async () => {
+    await renderOpen();
+    const addInput = screen.getByPlaceholderText("Add word or phrase…");
+    const addBtn = addInput.closest("div")!.querySelector("button")!;
+    expect(addBtn).toBeDisabled();
+  });
+
+  it("calls updateCustomRules when a token is submitted via Enter", async () => {
+    const user = userEvent.setup();
+    await renderOpen();
+    await user.type(screen.getByPlaceholderText("Add word or phrase…"), "sozusagen");
+    await user.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(vi.mocked(valeApi.updateCustomRules)).toHaveBeenCalledWith(
+        { de: { WeaselWords: ["sozusagen"] } }
+      )
+    );
+  });
+
+  it("calls updateCustomRules when the + button is clicked", async () => {
+    const user = userEvent.setup();
+    await renderOpen();
+    const addInput = screen.getByPlaceholderText("Add word or phrase…");
+    await user.type(addInput, "sozusagen");
+    const addBtn = addInput.closest("div")!.querySelector("button")!;
+    await user.click(addBtn);
+    await waitFor(() =>
+      expect(vi.mocked(valeApi.updateCustomRules)).toHaveBeenCalledWith(
+        { de: { WeaselWords: ["sozusagen"] } }
+      )
+    );
+  });
+
+  it("removes a custom token when its X button is clicked", async () => {
+    vi.mocked(valeApi.getCustomRules).mockResolvedValue({
+      rules: { de: { WeaselWords: ["vorhandenes"] } },
+    });
+    const user = userEvent.setup();
+    render(<ValeRulesModal open={true} onClose={vi.fn()} />);
+    await waitFor(() =>
+      expect(screen.getByText("vorhandenes")).toBeInTheDocument()
+    );
+    const row = screen.getByText("vorhandenes").closest("div")!;
+    await user.click(row.querySelector("button")!);
+    await waitFor(() =>
+      expect(vi.mocked(valeApi.updateCustomRules)).toHaveBeenCalledWith(
+        { de: { WeaselWords: [] } }
+      )
+    );
+  });
+});
+
+// ── Custom rules — substitution ───────────────────────────────────────────────
+
+describe("ValeRulesModal — custom rules (substitution)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaults();
+    vi.mocked(valeApi.getRuleMeta).mockResolvedValue(subRules);
+    vi.mocked(valeApi.getRuleEntries).mockResolvedValue(subEntries);
+    vi.mocked(valeApi.updateCustomRules).mockResolvedValue({ ok: true });
+  });
+
+  async function renderSub() {
+    render(<ValeRulesModal open={true} onClose={vi.fn()} />);
+    await waitFor(() =>
+      expect(screen.getByText("weißer Schimmel")).toBeInTheDocument()
+    );
+  }
+
+  it("calls updateCustomRules when a pair is submitted via Enter", async () => {
+    const user = userEvent.setup();
+    await renderSub();
+    await user.type(screen.getByPlaceholderText("Original…"), "weißer Schimmel");
+    await user.type(screen.getByPlaceholderText("Replacement…"), "Schimmel");
+    await user.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(vi.mocked(valeApi.updateCustomRules)).toHaveBeenCalledWith({
+        de: { Redundancy: { "weißer Schimmel": "Schimmel" } },
+      })
+    );
+  });
+
+  it("removes a custom pair when its X button is clicked", async () => {
+    vi.mocked(valeApi.getCustomRules).mockResolvedValue({
+      rules: { de: { Redundancy: { "alter Hut": "Klischee" } } },
+    });
+    const user = userEvent.setup();
+    render(<ValeRulesModal open={true} onClose={vi.fn()} />);
+    await waitFor(() =>
+      expect(screen.getByText(/alter Hut/)).toBeInTheDocument()
+    );
+    const row = screen.getByText(/alter Hut/).closest("div")!;
+    await user.click(row.querySelector("button")!);
+    await waitFor(() =>
+      expect(vi.mocked(valeApi.updateCustomRules)).toHaveBeenCalledWith(
+        { de: { Redundancy: {} } }
+      )
+    );
+  });
+});
