@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Loader2, RefreshCw, AlertTriangle } from "lucide-react";
+import { Check, Loader2, Plus, RefreshCw, AlertTriangle, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { valeApi, type ValeRuleEntry, type ValeRuleMeta } from "@/lib/api";
+import { valeApi, type ValeCustomRules, type ValeRuleEntry, type ValeRuleMeta } from "@/lib/api";
 
 const LANGUAGES: { code: string; label: string }[] = [
   { code: "de", label: "Deutsch" },
@@ -68,13 +68,17 @@ export function ValeRulesModal({ open, onClose }: Props) {
   const [syncErrors, setSyncErrors] = useState<Record<string, string>>({});
   const syncChecked = useRef(false);
 
+  // Custom rules state
+  const [customRules, setCustomRules] = useState<ValeCustomRules>({});
+  const [customInputs, setCustomInputs] = useState<Record<string, string>>({});
+  const [customSaving, setCustomSaving] = useState(false);
+
   const runSync = useCallback(async () => {
     setSyncing(true);
     try {
       const r = await valeApi.syncRules();
       setLastSynced(r.last_synced);
       setSyncErrors(r.errors ?? {});
-      // Invalidate cached rules/entries so they reload from DB
       setRulesByLang({});
       setEntriesByKey({});
       setEntryTypes({});
@@ -86,7 +90,13 @@ export function ValeRulesModal({ open, onClose }: Props) {
     }
   }, []);
 
-  // On open: check sync status, auto-sync if never synced
+  // Load custom rules every time the modal opens
+  useEffect(() => {
+    if (!open) return;
+    valeApi.getCustomRules().then(c => setCustomRules(c.rules ?? {})).catch(() => {});
+  }, [open]);
+
+  // On open: check sync status, auto-sync if never synced (once per open)
   useEffect(() => {
     if (!open || syncChecked.current) return;
     syncChecked.current = true;
@@ -140,7 +150,6 @@ export function ValeRulesModal({ open, onClose }: Props) {
     const entry = current.find(e => e.key === key);
     if (!entry) return;
     const newEnabled = !entry.enabled;
-    // Optimistic update
     setEntriesByKey(prev => ({
       ...prev,
       [cacheKey]: current.map(e => e.key === key ? { ...e, enabled: newEnabled } : e),
@@ -162,6 +171,61 @@ export function ValeRulesModal({ open, onClose }: Props) {
     });
   }
 
+  // ── Custom rule helpers ───────────────────────────────────────────────────
+
+  function buildCustomUpdate(entries: string[] | Record<string, string>): ValeCustomRules {
+    return {
+      ...customRules,
+      [selectedLang]: { ...(customRules[selectedLang] ?? {}), [selectedRule]: entries },
+    };
+  }
+
+  async function saveCustom(next: ValeCustomRules) {
+    setCustomSaving(true);
+    try { await valeApi.updateCustomRules(next); } catch {} finally { setCustomSaving(false); }
+  }
+
+  function addCustomEntry() {
+    const ik = `${selectedLang}/${selectedRule}`;
+    const ikB = `${ik}:b`;
+    if (entryType === "existence") {
+      const token = (customInputs[ik] ?? "").trim();
+      if (!token) return;
+      const prev = (customRules[selectedLang]?.[selectedRule] as string[] | undefined) ?? [];
+      if (prev.includes(token)) return;
+      const next = buildCustomUpdate([...prev, token]);
+      setCustomRules(next);
+      setCustomInputs(p => ({ ...p, [ik]: "" }));
+      saveCustom(next);
+    } else {
+      const orig = (customInputs[ik] ?? "").trim();
+      const repl = (customInputs[ikB] ?? "").trim();
+      if (!orig || !repl) return;
+      const prev = (customRules[selectedLang]?.[selectedRule] as Record<string, string> | undefined) ?? {};
+      const next = buildCustomUpdate({ ...prev, [orig]: repl });
+      setCustomRules(next);
+      setCustomInputs(p => ({ ...p, [ik]: "", [ikB]: "" }));
+      saveCustom(next);
+    }
+  }
+
+  function removeCustomEntry(key: string) {
+    if (entryType === "existence") {
+      const prev = (customRules[selectedLang]?.[selectedRule] as string[] | undefined) ?? [];
+      const next = buildCustomUpdate(prev.filter(t => t !== key));
+      setCustomRules(next);
+      saveCustom(next);
+    } else {
+      const prev = { ...((customRules[selectedLang]?.[selectedRule] as Record<string, string> | undefined) ?? {}) };
+      delete prev[key];
+      const next = buildCustomUpdate(prev);
+      setCustomRules(next);
+      saveCustom(next);
+    }
+  }
+
+  // ── Derived values ────────────────────────────────────────────────────────
+
   const cacheKey = `${selectedLang}/${selectedRule}`;
   const entries = entriesByKey[cacheKey] ?? [];
   const entryType = entryTypes[cacheKey] ?? "existence";
@@ -170,15 +234,27 @@ export function ValeRulesModal({ open, onClose }: Props) {
   const rules = rulesByLang[selectedLang] ?? [];
   const errorCount = Object.keys(syncErrors).length;
 
+  const customForRule = customRules[selectedLang]?.[selectedRule];
+  const customTokens: string[] = entryType === "existence"
+    ? ((customForRule as string[] | undefined) ?? [])
+    : [];
+  const customPairs: Record<string, string> = entryType === "substitution"
+    ? ((customForRule as Record<string, string> | undefined) ?? {})
+    : {};
+  const customCount = entryType === "existence" ? customTokens.length : Object.keys(customPairs).length;
+
   const syncLabel = syncing
     ? null
     : lastSynced
       ? new Date(lastSynced).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
       : "Not synced";
 
+  const ik = `${selectedLang}/${selectedRule}`;
+  const ikB = `${ik}:b`;
+
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden h-[560px] flex flex-col">
+      <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden h-[580px] flex flex-col">
         <DialogHeader className="px-5 pt-4 pb-3 border-b border-border shrink-0">
           <div className="flex items-center justify-between gap-3">
             <DialogTitle className="text-base">Vale — Rule Configuration</DialogTitle>
@@ -265,54 +341,152 @@ export function ValeRulesModal({ open, onClose }: Props) {
                 <div className="flex items-center justify-center h-full text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
                 </div>
-              ) : entries.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center mt-8">
-                  {lastSynced ? "No entries" : "Sync to load entries"}
-                </p>
               ) : (
-                <ul>
-                  {entries.map(entry => (
-                    <li key={entry.key}>
-                      <label className="flex items-center gap-3 px-4 py-1.5 cursor-pointer hover:bg-muted/30 transition-colors">
-                        <span className={cn(
-                          "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
-                          entry.enabled
-                            ? "border-primary bg-primary"
-                            : "border-border bg-background"
-                        )}>
-                          {entry.enabled && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
-                        </span>
-                        <input
-                          type="checkbox"
-                          className="sr-only"
-                          checked={entry.enabled}
-                          onChange={() => toggleEntry(entry.key)}
-                        />
-                        {entryType === "substitution" ? (
-                          <span className={cn("text-xs flex-1 min-w-0 font-mono", !entry.enabled && "line-through text-muted-foreground/50")}>
-                            <span className="text-foreground/80">{entry.key}</span>
-                            <span className="text-muted-foreground mx-1.5">→</span>
-                            <span className="text-muted-foreground">{entry.value}</span>
-                          </span>
-                        ) : (
-                          <span className={cn("text-xs font-mono", !entry.enabled && "line-through text-muted-foreground/50")}>
-                            {entry.key}
-                          </span>
-                        )}
-                      </label>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  {entries.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center mt-8">
+                      {lastSynced ? "No entries" : "Sync to load entries"}
+                    </p>
+                  )}
+                  {entries.length > 0 && (
+                    <ul>
+                      {entries.map(entry => (
+                        <li key={entry.key}>
+                          <label className="flex items-center gap-3 px-4 py-1.5 cursor-pointer hover:bg-muted/30 transition-colors">
+                            <span className={cn(
+                              "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
+                              entry.enabled
+                                ? "border-primary bg-primary"
+                                : "border-border bg-background"
+                            )}>
+                              {entry.enabled && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                            </span>
+                            <input
+                              type="checkbox"
+                              className="sr-only"
+                              checked={entry.enabled}
+                              onChange={() => toggleEntry(entry.key)}
+                            />
+                            {entryType === "substitution" ? (
+                              <span className={cn("text-xs flex-1 min-w-0 font-mono", !entry.enabled && "line-through text-muted-foreground/50")}>
+                                <span className="text-foreground/80">{entry.key}</span>
+                                <span className="text-muted-foreground mx-1.5">→</span>
+                                <span className="text-muted-foreground">{entry.value}</span>
+                              </span>
+                            ) : (
+                              <span className={cn("text-xs font-mono", !entry.enabled && "line-through text-muted-foreground/50")}>
+                                {entry.key}
+                              </span>
+                            )}
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Custom entries section */}
+                  {selectedRule && (
+                    <div className="border-t border-border/50 mt-1">
+                      <div className="flex items-center justify-between px-4 py-1.5">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/60">Custom</p>
+                        {customSaving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground/40" />}
+                      </div>
+
+                      {entryType === "existence" ? (
+                        <div className="px-4 space-y-1 pb-3">
+                          {customTokens.map(tok => (
+                            <div key={tok} className="flex items-center gap-2">
+                              <span className="text-xs font-mono flex-1 text-foreground/70">{tok}</span>
+                              <button
+                                type="button"
+                                onClick={() => removeCustomEntry(tok)}
+                                className="text-muted-foreground/50 hover:text-foreground transition-colors"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                          <div className="flex gap-1 pt-0.5">
+                            <input
+                              type="text"
+                              value={customInputs[ik] ?? ""}
+                              onChange={e => setCustomInputs(p => ({ ...p, [ik]: e.target.value }))}
+                              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustomEntry(); } }}
+                              placeholder="Add word or phrase…"
+                              className="flex-1 h-6 text-[11px] bg-background border border-border/60 rounded px-2 focus:outline-none focus:border-primary/50"
+                            />
+                            <button
+                              type="button"
+                              onClick={addCustomEntry}
+                              disabled={!(customInputs[ik] ?? "").trim()}
+                              className="h-6 px-2 rounded border border-border/60 text-[11px] text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors disabled:opacity-30"
+                            >
+                              <Plus className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="px-4 space-y-1 pb-3">
+                          {Object.entries(customPairs).map(([orig, repl]) => (
+                            <div key={orig} className="flex items-center gap-1.5">
+                              <span className="text-xs font-mono text-foreground/70 flex-1 min-w-0 truncate">
+                                {orig}
+                                <span className="text-muted-foreground mx-1">→</span>
+                                {repl}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => removeCustomEntry(orig)}
+                                className="text-muted-foreground/50 hover:text-foreground transition-colors shrink-0"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ))}
+                          <div className="flex gap-1 pt-0.5 items-center">
+                            <input
+                              type="text"
+                              value={customInputs[ik] ?? ""}
+                              onChange={e => setCustomInputs(p => ({ ...p, [ik]: e.target.value }))}
+                              placeholder="Original…"
+                              className="flex-1 h-6 text-[11px] bg-background border border-border/60 rounded px-2 focus:outline-none focus:border-primary/50 font-mono"
+                            />
+                            <span className="text-muted-foreground text-[11px]">→</span>
+                            <input
+                              type="text"
+                              value={customInputs[ikB] ?? ""}
+                              onChange={e => setCustomInputs(p => ({ ...p, [ikB]: e.target.value }))}
+                              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustomEntry(); } }}
+                              placeholder="Replacement…"
+                              className="flex-1 h-6 text-[11px] bg-background border border-border/60 rounded px-2 focus:outline-none focus:border-primary/50 font-mono"
+                            />
+                            <button
+                              type="button"
+                              onClick={addCustomEntry}
+                              disabled={!(customInputs[ik] ?? "").trim() || !(customInputs[ikB] ?? "").trim()}
+                              className="h-6 px-2 rounded border border-border/60 text-[11px] text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors disabled:opacity-30"
+                            >
+                              <Plus className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
             {/* Footer */}
-            {entries.length > 0 && (
+            {(entries.length > 0 || customCount > 0) && (
               <div className="px-4 py-2 border-t border-border shrink-0">
                 <p className="text-[11px] text-muted-foreground">
                   {activeCount} / {entries.length} active
                   {activeCount < entries.length && (
                     <span className="ml-1.5 text-amber-500">· {entries.length - activeCount} disabled</span>
+                  )}
+                  {customCount > 0 && (
+                    <span className="ml-1.5 text-violet-400">· {customCount} custom</span>
                   )}
                 </p>
               </div>
