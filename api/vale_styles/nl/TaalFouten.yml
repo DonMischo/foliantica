@@ -53,10 +53,6 @@ tokens:
   # --- "In het kader van" overgebruik (Renkema; NTU) ---
   - \bin het kader van\b
 
-  # --- Dubbele ontkenning (ANS; Van Dale) ---
-  # Niet standaard in het Nederlands; verschilt van Duits/Frans.
-  - \bniet\b
-
   # --- "Alhoewel" vs. "hoewel" (ANS; Genootschap) ---
   # "Alhoewel" is geaccepteerd maar "hoewel" heeft de voorkeur in formeel schrijven.
   - \balhoewel\b

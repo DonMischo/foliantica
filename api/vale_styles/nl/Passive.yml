@@ -34,14 +34,6 @@ tokens:
   - \bzouden worden\b
 
   # --- Zijn-passief (resultaat / toestand) (ANS; Renkema) ---
-  # Tegenwoordige tijd
-  - \bis\b
-  - \bzijn\b
-
-  # Verleden tijd
-  - \bwas\b
-  - \bwaren\b
-
   # Voltooid tegenwoordige tijd
   - \bis geweest\b
   - \bzijn geweest\b
@@ -49,9 +41,6 @@ tokens:
   # Toekomende tijd
   - \bzal zijn\b
   - \bzullen zijn\b
-
-  # --- Men-constructie (onpersoonlijk passief, Renkema: vermijden) ---
-  - \bmen\b
 
   # --- Er-passief (Renkema; ANS: aanvaardbaar maar nadrukkelijk) ---
   - \ber wordt\b

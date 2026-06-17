@@ -39,12 +39,11 @@ swap:
   eerste debuut: debuut
   nieuwe noviteit: noviteit
   onverwachte verrassing: verrassing
-  onvoorziene omstandigheid: onvoorziene omstandigheid → onvoorziene omstandigheid (reeds redundant)
   valse leugen: leugen
   echte waarheid: waarheid
   samen samenwerken: samenwerken
   samen vergaderen: vergaderen
-  consensus bereiken: consensus bereiken → het eens worden
+  consensus bereiken: het eens worden
   algemene consensus: consensus
   eindresultaat: resultaat
   eindconclusie: conclusie
@@ -65,7 +64,7 @@ swap:
   nu op dit moment: nu
   nooit en te nimmer: nooit
   altijd en eeuwig: altijd
-  reeds eerder: al eerder → reeds
+  reeds eerder: reeds / al
 
   # --- RAS-syndroom — acroniemen met het redundante woord (Van Dale; ANS; Renkema) ---
   # PIN = Personal Identification Number (persoonlijk identificatienummer)
