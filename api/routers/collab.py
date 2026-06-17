@@ -79,6 +79,10 @@ _bans: dict[str, datetime] = {}
 _LOCK_TTL = 30  # seconds without heartbeat before lock expires
 _locks: dict[str, dict] = {}
 
+# Valid access modes per role — controls REST write rights and scene visibility
+_COAUTHOR_MODES: frozenset[str] = frozenset({"default", "appearance_only"})
+_STUDENT_MODES:  frozenset[str] = frozenset({"default", "read_only", "read_only_assigned", "assigned_visible"})
+
 # ── Phase 3 state ─────────────────────────────────────────────────────────────
 
 _PRESENCE_COLORS = [
@@ -321,13 +325,22 @@ def set_cowork_enabled(enabled: bool) -> None:
 
 # ── JWT helpers ───────────────────────────────────────────────────────────────
 
-def _issue_jwt(session_id: str, invitation_id: str, display_name: str, role: str) -> str:
+def _issue_jwt(
+    session_id: str,
+    invitation_id: str,
+    display_name: str,
+    role: str,
+    access_mode: str = "default",
+    assigned_scene_ids: list[int] | None = None,
+) -> str:
     payload = {
-        "session_id":    session_id,
-        "invitation_id": invitation_id,
-        "display_name":  display_name,
-        "role":          role,
-        "exp":           datetime.now(UTC) + timedelta(hours=_JWT_EXPIRE_HOURS),
+        "session_id":         session_id,
+        "invitation_id":      invitation_id,
+        "display_name":       display_name,
+        "role":               role,
+        "access_mode":        access_mode,
+        "assigned_scene_ids": assigned_scene_ids or [],
+        "exp":                datetime.now(UTC) + timedelta(hours=_JWT_EXPIRE_HOURS),
     }
     return jwt.encode(payload, _JWT_SECRET, algorithm=_JWT_ALGORITHM)
 
@@ -451,13 +464,15 @@ class InvitationCreate(BaseModel):
     pin: Optional[str] = None     # plain text; stored as bcrypt hash
     max_sessions: int = 1
     assigned_items: list[dict] = []
+    access_mode: str = "default"  # see _COAUTHOR_MODES / _STUDENT_MODES
 
 class InvitationUpdate(BaseModel):
-    name:           Optional[str]       = None
-    role:           Optional[str]       = None
-    pin:            Optional[str]       = None  # "" = clear PIN
-    max_sessions:   Optional[int]       = None
+    name:           Optional[str]        = None
+    role:           Optional[str]        = None
+    pin:            Optional[str]        = None  # "" = clear PIN
+    max_sessions:   Optional[int]        = None
     assigned_items: Optional[list[dict]] = None
+    access_mode:    Optional[str]        = None
 
 class JoinRequest(BaseModel):
     token:        str
@@ -509,6 +524,13 @@ def list_invitations():
 def create_invitation(body: InvitationCreate):
     if body.role not in ("coauthor", "student"):
         raise HTTPException(status_code=400, detail="role must be 'coauthor' or 'student'")
+    valid_modes = _COAUTHOR_MODES if body.role == "coauthor" else _STUDENT_MODES
+    if body.access_mode not in valid_modes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"access_mode '{body.access_mode}' is not valid for role '{body.role}'. "
+                   f"Valid modes: {sorted(valid_modes)}",
+        )
     invs = _get_invitations()
     inv: dict = {
         "id":             str(uuid.uuid4()),
@@ -518,6 +540,7 @@ def create_invitation(body: InvitationCreate):
         "pin_hash":       _hash_pin(body.pin) if body.pin else None,
         "max_sessions":   max(1, body.max_sessions),
         "assigned_items": body.assigned_items,
+        "access_mode":    body.access_mode,
     }
     invs.append(inv)
     _save_invitations(invs)
@@ -540,6 +563,15 @@ def update_invitation(inv_id: str, body: InvitationUpdate):
                 inv["max_sessions"] = max(1, body.max_sessions)
             if body.assigned_items is not None:
                 inv["assigned_items"] = body.assigned_items
+            if body.access_mode is not None:
+                role = inv.get("role", "coauthor")
+                valid_modes = _COAUTHOR_MODES if role == "coauthor" else _STUDENT_MODES
+                if body.access_mode not in valid_modes:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"access_mode '{body.access_mode}' is not valid for role '{role}'.",
+                    )
+                inv["access_mode"] = body.access_mode
             _save_invitations(invs)
             return _safe_inv(inv)
     raise HTTPException(status_code=404, detail="Invitation not found")
@@ -619,23 +651,33 @@ def join(body: JoinRequest, request: Request):
 
     display_name = body.display_name.strip() or inv["name"]
     session_id   = str(uuid.uuid4())
+    access_mode  = inv.get("access_mode", "default")
     _sessions[session_id] = {
         "session_id":      session_id,
         "invitation_id":   inv["id"],
         "invitation_name": inv["name"],
         "display_name":    display_name,
         "role":            inv["role"],
+        "access_mode":     access_mode,
         "assigned_items":  inv.get("assigned_items", []),
         "joined_at":       datetime.now(UTC).isoformat(),
         "client_ip":       client_ip,
     }
 
-    token = _issue_jwt(session_id, inv["id"], display_name, inv["role"])
+    assigned_scene_ids = [
+        a["id"] for a in inv.get("assigned_items", []) if a.get("type") == "scene"
+    ]
+    token = _issue_jwt(
+        session_id, inv["id"], display_name, inv["role"],
+        access_mode=access_mode,
+        assigned_scene_ids=assigned_scene_ids,
+    )
     return {
         "jwt":          token,
         "session_id":   session_id,
         "display_name": display_name,
         "role":         inv["role"],
+        "access_mode":  access_mode,
         "expires_in":   _JWT_EXPIRE_HOURS * 3600,
     }
 
@@ -664,21 +706,28 @@ _HOST_SECRET = os.environ.get("FOLIANTICA_HOST_SECRET", "")
 
 
 def _origin_matches_web_port(origin: str | None) -> bool:
-    """True if Origin is absent, or its port matches the web server's own
-    port. The WS upgrade is proxied through Next.js (server-wrapper.js) in
-    production, so ws.client.host is loopback for ALL traffic, host and
-    guest alike — it can't distinguish our own page from a malicious browser
-    tab on the same machine doing `new WebSocket(...)` straight to this
-    port. Browsers can't lie about Origin (unlike a header value), so a
-    mismatch reliably catches that case. A guest connecting through a
-    different surface (e.g. the Cloudflare tunnel) also won't match this
-    port — correctly: guests should never get free host-trust here, only a
-    valid JWT grants them access, same as before."""
+    """True if Origin is absent, or it is a loopback origin on the web port.
+
+    The WS upgrade is proxied through Next.js (server-wrapper.js) as a raw
+    socket passthrough — the client's original Origin header reaches FastAPI
+    unchanged, while ws.client.host is always 127.0.0.1 (the proxy hop).
+    We therefore check BOTH the hostname (must be loopback) and the port
+    (must match LW_WEB_PORT) to avoid granting host-trust to a LAN student
+    whose browser sends Origin: http://192.168.x.x:3000 — port matches, but
+    hostname is not loopback, so it must go through the JWT path instead.
+
+    Browsers can't forge the Origin header, so this reliably distinguishes
+    the host's own page (localhost:3000) from remote guests (lan-ip:3000 or
+    Cloudflare tunnel). Non-browser clients that omit Origin are trusted only
+    when no origin is present at all — the host secret check covers Electron."""
     if not origin:
         return True
     try:
         parsed = urlparse(origin)
     except ValueError:
+        return False
+    host = parsed.hostname or ""
+    if host not in ("localhost", "127.0.0.1", "::1", ""):
         return False
     web_port = int(os.environ.get("LW_WEB_PORT", "3000"))
     origin_port = parsed.port or (443 if parsed.scheme == "https" else 80)
@@ -732,28 +781,35 @@ async def ws_collab(ws: WebSocket, token: str = Query(default="")):
     provided_secret = ws.headers.get("x-foliantica-host-secret", "")
     has_valid_secret = bool(_HOST_SECRET) and hmac.compare_digest(provided_secret, _HOST_SECRET)
 
-    client_host = ws.client.host if ws.client else "127.0.0.1"
-    if client_host.startswith("::ffff:"):
-        client_host = client_host[7:]
-    peer_is_loopback = client_host in ("127.0.0.1", "::1")
+    # server-wrapper.js now injects X-Internal-Real-Peer for WS upgrades
+    # (same as it does for REST via route.ts).  Fall back to ws.client.host
+    # for dev mode where the wrapper is not active (plain `next dev`).
+    raw_peer = (
+        ws.headers.get("x-internal-real-peer")
+        or (ws.client.host if ws.client else "127.0.0.1")
+    )
+    if raw_peer.startswith("::ffff:"):
+        raw_peer = raw_peer[7:]
+    peer_is_loopback = raw_peer in ("127.0.0.1", "::1")
 
     is_local = has_valid_secret or (
         peer_is_loopback and _origin_matches_web_port(ws.headers.get("origin"))
     )
 
     # ── Authenticate ──────────────────────────────────────────────────────────
-    # Co-work-enabled is checked here, not as an early "skip everything"
-    # bypass, so that disabling co-work immediately revokes ALL non-trusted
-    # access — including an already-issued JWT — rather than only blocking
-    # new joins. The server's bind address only changes on app restart, so a
-    # LAN device can still reach this port for a while after co-work is
-    # toggled off; this is what actually closes that window.
-    if not is_local:
+    # Token present → always guest, regardless of IP/origin.  The host never
+    # presents a JWT (Electron injects the secret instead, or the loopback +
+    # origin check handles dev mode).  Treating a token-bearing connection as
+    # the host was the root bug: students connecting from localhost (same
+    # machine as the teacher, or dev testing) passed the is_local check and
+    # shared session_id "host", collapsing all presence into one entry and
+    # bypassing assignment enforcement entirely.
+    #
+    # Co-work-enabled is checked for all non-local paths, so disabling
+    # co-work immediately revokes access even for already-issued JWTs.
+    if token:
         if not is_cowork_enabled():
             await ws.close(code=1008, reason="Co-work is disabled")
-            return
-        if not token:
-            await ws.close(code=1008, reason="Authentication required")
             return
         try:
             payload = verify_session_jwt(token)
@@ -761,8 +817,14 @@ async def ws_collab(ws: WebSocket, token: str = Query(default="")):
         except jwt.InvalidTokenError:
             await ws.close(code=1008, reason="Invalid or expired token")
             return
-    else:
+    elif is_local:
         session_id = "host"
+    else:
+        if not is_cowork_enabled():
+            await ws.close(code=1008, reason="Co-work is disabled")
+            return
+        await ws.close(code=1008, reason="Authentication required")
+        return
 
     # ── Connect ───────────────────────────────────────────────────────────────
     await manager.connect(ws, session_id)

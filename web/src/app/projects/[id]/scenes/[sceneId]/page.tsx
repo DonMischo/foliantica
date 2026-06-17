@@ -126,7 +126,9 @@ export default function ScenePage() {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (detail?.item_type === "scene" && detail?.item_id === sceneIdNum) {
-        setLockDenied(detail.holder as string | null);
+        // holder is null for "not_assigned" denials — fall back to reason so
+        // lockDenied is always truthy and isReadOnly triggers correctly.
+        setLockDenied((detail.holder as string) || (detail.reason as string) || "denied");
         setLockDeniedReason(detail.reason as string | null);
       }
     };

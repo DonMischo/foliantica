@@ -1,11 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { useCollabStore } from "@/store/collabStore";
+import { useCollabStore, type PresenceRecord } from "@/store/collabStore";
 import { PresenceBar } from "../PresenceBar";
-
-type PresenceRecord = Parameters<typeof useCollabStore.setState>[0] extends { presence?: infer T }
-  ? T extends (infer U)[] ? U : never
-  : never;
 
 function makeUser(overrides: Partial<PresenceRecord> = {}): PresenceRecord {
   return {

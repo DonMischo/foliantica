@@ -458,3 +458,138 @@ class TestWsHostTrust:
         with client.websocket_connect(WS_PATH) as ws:
             msg = ws.receive_json()
         assert msg["my_session_id"] == "host"
+
+    # ── JWT-on-loopback regression (the primary auth bug) ─────────────────────
+    # Before the fix, a student on the same machine as the teacher (loopback
+    # peer) would pass the is_local check even when presenting a JWT, and get
+    # session_id="host" instead of their real UUID.  The fix: token present
+    # always takes the JWT branch, regardless of peer IP or Origin.
+
+    def test_jwt_on_loopback_peer_gets_guest_session_id(self, client):
+        """Loopback peer + JWT must go through the guest path.
+        This is the primary regression for the session_id='host' collapse bug."""
+        collab_mod.set_cowork_enabled(True)
+        inv = make_invitation(client, name="SameMachine")
+        data = join_ok(client, token=inv["token"])
+
+        # Same loopback peer as the host would use, but with a JWT
+        with client.websocket_connect(f"{WS_PATH}?token={data['jwt']}") as ws:
+            msg = ws.receive_json()
+
+        assert msg["type"] == "state"
+        assert msg["my_session_id"] == data["session_id"]
+        assert msg["my_session_id"] != "host"
+
+    def test_jwt_on_loopback_does_not_evict_host_from_manager(self, client):
+        """Two simultaneous loopback connections — one without JWT (host) and
+        one with JWT (same-machine student) — must each occupy their own slot
+        in the ConnectionManager.  Before the fix, both shared the key 'host',
+        so the student's connect() silently overwrote the teacher's socket."""
+        collab_mod.set_cowork_enabled(True)
+        inv = make_invitation(client, name="SameMachine")
+        data = join_ok(client, token=inv["token"])
+
+        with client.websocket_connect(WS_PATH) as host_ws:
+            host_ws.receive_json()  # consume state
+            with client.websocket_connect(f"{WS_PATH}?token={data['jwt']}") as guest_ws:
+                guest_ws.receive_json()  # consume state
+                assert "host" in collab_mod.manager._connections
+                assert data["session_id"] in collab_mod.manager._connections
+                # The two entries must be different WebSocket instances
+                assert (
+                    collab_mod.manager._connections["host"]
+                    is not collab_mod.manager._connections[data["session_id"]]
+                )
+
+    # ── Hostname check in _origin_matches_web_port ────────────────────────────
+    # Before the fix, _origin_matches_web_port only checked the port (3000==3000),
+    # so a LAN student whose Origin was http://192.168.x.x:3000 would pass the
+    # origin check and — combined with a loopback peer from the proxy hop — be
+    # granted is_local=True.  The fix adds a hostname loopback requirement.
+
+    def test_lan_origin_correct_port_not_trusted_without_jwt(self, client):
+        """Origin with LAN IP (even on the correct port) must not grant host
+        trust — the hostname must be loopback, not just any port-3000 address."""
+        collab_mod.set_cowork_enabled(True)
+        web_port = os.environ.get("LW_WEB_PORT", "3000")
+        with pytest.raises(Exception):
+            with client.websocket_connect(
+                WS_PATH, headers={"origin": f"http://192.168.1.50:{web_port}"}
+            ) as ws:
+                ws.receive_json()
+
+    # ── x-internal-real-peer header ───────────────────────────────────────────
+    # server-wrapper.js strips any client-supplied x-internal-real-peer, then
+    # re-injects the real TCP address.  These tests verify collab.py uses the
+    # header (when present) in place of ws.client.host.
+
+    def test_x_internal_real_peer_loopback_grants_host_trust(self, monkeypatch):
+        """When x-internal-real-peer says 127.0.0.1 (injected by the proxy for
+        a local connection), the endpoint grants host-trust even if the TCP peer
+        visible to FastAPI is not loopback."""
+        collab_mod.set_cowork_enabled(True)
+        web_port = os.environ.get("LW_WEB_PORT", "3000")
+        # TCP peer is remote (simulating FastAPI behind the Next.js proxy)
+        remote = self._remote_client()
+        with remote.websocket_connect(
+            WS_PATH,
+            headers={
+                "x-internal-real-peer": "127.0.0.1",
+                "origin": f"http://localhost:{web_port}",
+            },
+        ) as ws:
+            msg = ws.receive_json()
+        assert msg["my_session_id"] == "host"
+
+    def test_x_internal_real_peer_lan_address_not_trusted_without_jwt(self, client):
+        """When x-internal-real-peer carries a non-loopback address, the loopback
+        TCP peer from the proxy hop does not grant host-trust."""
+        collab_mod.set_cowork_enabled(True)
+        with pytest.raises(Exception):
+            with client.websocket_connect(
+                WS_PATH, headers={"x-internal-real-peer": "192.168.1.50"}
+            ) as ws:
+                ws.receive_json()
+
+
+# ── _origin_matches_web_port unit tests ──────────────────────────────────────
+
+class TestOriginMatchesWebPort:
+    """Unit tests for the _origin_matches_web_port helper.
+
+    This function is the gate that distinguishes the teacher's own browser
+    (Origin: http://localhost:3000) from a LAN student (Origin: http://192.168.x.x:3000).
+    Both arrive with port 3000 — only the loopback hostname check tells them apart.
+    """
+
+    def test_localhost_origin_trusted(self, monkeypatch):
+        monkeypatch.setenv("LW_WEB_PORT", "3000")
+        assert collab_mod._origin_matches_web_port("http://localhost:3000") is True
+
+    def test_loopback_ip_origin_trusted(self, monkeypatch):
+        monkeypatch.setenv("LW_WEB_PORT", "3000")
+        assert collab_mod._origin_matches_web_port("http://127.0.0.1:3000") is True
+
+    def test_lan_ip_origin_rejected(self, monkeypatch):
+        """Same port as the web server, but non-loopback hostname → rejected."""
+        monkeypatch.setenv("LW_WEB_PORT", "3000")
+        assert collab_mod._origin_matches_web_port("http://192.168.1.50:3000") is False
+        assert collab_mod._origin_matches_web_port("http://10.0.0.1:3000") is False
+
+    def test_no_origin_trusted(self):
+        """Absent Origin (non-browser WS client) is trusted; the host secret
+        check handles Electron, and non-browser guests must still present a JWT."""
+        assert collab_mod._origin_matches_web_port(None) is True
+
+    def test_wrong_port_rejected(self, monkeypatch):
+        """Correct loopback hostname but wrong port → rejected."""
+        monkeypatch.setenv("LW_WEB_PORT", "3000")
+        assert collab_mod._origin_matches_web_port("http://localhost:4000") is False
+
+    def test_cloudflare_tunnel_origin_rejected(self, monkeypatch):
+        """Students connecting via Cloudflare tunnel get a trycloudflare.com
+        Origin — that must not be trusted as host."""
+        monkeypatch.setenv("LW_WEB_PORT", "3000")
+        assert collab_mod._origin_matches_web_port(
+            "https://random-words.trycloudflare.com"
+        ) is False

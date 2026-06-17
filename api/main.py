@@ -148,6 +148,19 @@ app.add_middleware(
 
 _COWORK_PUBLIC_PATHS = {"/api/health", "/api/collab/join", "/api/collab/info"}
 
+# REST write policy per access_mode.
+# "all"      → no extra restriction (coauthor.default; student.default handled in scenes router)
+# "settings" → writes allowed only to /api/settings/*
+# "none"     → all writes blocked (status 403)
+_MODE_WRITE_POLICY: dict[str, str] = {
+    "default":            "all",
+    "appearance_only":    "settings",
+    "read_only":          "none",
+    "read_only_assigned": "none",
+    "assigned_visible":   "settings",
+}
+_SETTINGS_PREFIX = "/api/settings"
+
 # Per-launch secret, set by Electron and injected into its own window's
 # requests only (see electron/main.js + COWORKING_NETWORK_SECURITY_SUMMARY.md).
 # Absent in the non-Electron launch path (LaunchFoliantica.bat) — host-trust
@@ -223,11 +236,30 @@ class CoworkAuthMiddleware(BaseHTTPMiddleware):
 
         token = auth[len("Bearer "):]
         try:
-            collab_router.verify_session_jwt(token)
+            payload = collab_router.verify_session_jwt(token)
         except _pyjwt.ExpiredSignatureError:
             return JSONResponse({"detail": "Session expired. Please rejoin."}, status_code=401)
         except _pyjwt.InvalidTokenError:
             return JSONResponse({"detail": "Invalid session token."}, status_code=401)
+
+        # Enforce write policy for the session's access_mode.
+        access_mode = payload.get("access_mode", "default")
+        policy = _MODE_WRITE_POLICY.get(access_mode, "all")
+        if request.method not in ("GET", "HEAD", "OPTIONS"):
+            if policy == "none":
+                return JSONResponse({"detail": "Your session is read-only."}, status_code=403)
+            if policy == "settings" and not request.url.path.startswith(_SETTINGS_PREFIX):
+                return JSONResponse(
+                    {"detail": "Your session only allows appearance settings changes."},
+                    status_code=403,
+                )
+
+        # Inject session context into request.state so routers (e.g. scenes)
+        # can apply fine-grained per-item checks without re-decoding the JWT.
+        request.state.collab_role              = payload.get("role")
+        request.state.collab_access_mode       = access_mode
+        request.state.collab_assigned_scene_ids = payload.get("assigned_scene_ids", [])
+        request.state.collab_hide_unassigned   = access_mode in ("read_only_assigned", "assigned_visible")
 
         return await call_next(request)
 

@@ -415,7 +415,7 @@ export function ValeRulesModal({ open, onClose }: Props) {
                               <span className={cn("text-xs flex-1 min-w-0 font-mono", !entry.enabled && "line-through text-muted-foreground/50")}>
                                 <span className="text-foreground/80">{displayKey(entry.key)}</span>
                                 <span className="text-muted-foreground mx-1.5">→</span>
-                                <span className="text-muted-foreground">{displayKey(entry.value)}</span>
+                                <span className="text-muted-foreground">{displayKey(entry.value ?? "")}</span>
                               </span>
                             ) : (
                               <span className={cn("text-xs font-mono", !entry.enabled && "line-through text-muted-foreground/50")}>

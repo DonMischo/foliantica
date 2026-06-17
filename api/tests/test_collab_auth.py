@@ -458,3 +458,238 @@ class TestHostSecret:
         remote = self._remote_client()
         r = remote.get("/api/collab/invitations")
         assert r.status_code == 401
+
+
+# ── access_mode: invitation validation ────────────────────────────────────────
+
+class TestAccessModeInvitation:
+
+    def test_coauthor_default_access_mode(self, client):
+        inv = make_invitation(client, role="coauthor")
+        assert inv.get("access_mode") == "default"
+
+    def test_coauthor_appearance_only_accepted(self, client):
+        r = client.post("/api/collab/invitations", json={
+            "name": "Observer", "role": "coauthor", "access_mode": "appearance_only"
+        })
+        assert r.status_code == 201
+        assert r.json()["access_mode"] == "appearance_only"
+
+    def test_coauthor_student_mode_rejected(self, client):
+        """A coauthor cannot be given a student-only mode."""
+        r = client.post("/api/collab/invitations", json={
+            "name": "X", "role": "coauthor", "access_mode": "read_only"
+        })
+        assert r.status_code == 400
+
+    def test_student_all_modes_accepted(self, client):
+        for mode in ("default", "read_only", "read_only_assigned", "assigned_visible"):
+            r = client.post("/api/collab/invitations", json={
+                "name": "S", "role": "student", "access_mode": mode
+            })
+            assert r.status_code == 201, f"mode '{mode}' unexpectedly rejected"
+            assert r.json()["access_mode"] == mode
+
+    def test_student_coauthor_mode_rejected(self, client):
+        """A student cannot be given a coauthor-only mode."""
+        r = client.post("/api/collab/invitations", json={
+            "name": "X", "role": "student", "access_mode": "appearance_only"
+        })
+        assert r.status_code == 400
+
+    def test_invalid_mode_string_rejected(self, client):
+        r = client.post("/api/collab/invitations", json={
+            "name": "X", "role": "coauthor", "access_mode": "godmode"
+        })
+        assert r.status_code == 400
+
+    def test_update_invitation_access_mode(self, client):
+        inv = make_invitation(client, role="coauthor")
+        r = client.patch(f"/api/collab/invitations/{inv['id']}",
+                         json={"access_mode": "appearance_only"})
+        assert r.status_code == 200
+        assert r.json()["access_mode"] == "appearance_only"
+
+    def test_update_access_mode_wrong_role_rejected(self, client):
+        inv = make_invitation(client, role="student")
+        r = client.patch(f"/api/collab/invitations/{inv['id']}",
+                         json={"access_mode": "appearance_only"})
+        assert r.status_code == 400
+
+    def test_join_response_includes_access_mode(self, client):
+        r = client.post("/api/collab/invitations", json={
+            "name": "A", "role": "student", "access_mode": "read_only"
+        })
+        inv = r.json()
+        collab_mod.set_cowork_enabled(True)
+        data = join_ok(client, token=inv["token"])
+        assert data.get("access_mode") == "read_only"
+
+    def test_jwt_payload_includes_access_mode_and_assigned_scene_ids(self, client):
+        r = client.post("/api/collab/invitations", json={
+            "name": "A", "role": "student", "access_mode": "default",
+            "assigned_items": [{"type": "scene", "id": 7}, {"type": "scene", "id": 12}],
+        })
+        inv = r.json()
+        collab_mod.set_cowork_enabled(True)
+        data = join_ok(client, token=inv["token"])
+        payload = collab_mod.verify_session_jwt(data["jwt"])
+        assert payload["access_mode"] == "default"
+        assert set(payload["assigned_scene_ids"]) == {7, 12}
+
+
+# ── access_mode: REST write policy (middleware enforcement) ───────────────────
+# Tests use a non-loopback peer so the middleware JWT path is exercised.
+# A non-existent resource ID is used for write tests: 403 = middleware blocked;
+# 404 = middleware passed and router correctly reported resource not found.
+
+class TestAccessModeWritePolicy:
+
+    def _remote(self, jwt_token: str):
+        from fastapi.testclient import TestClient
+        from main import app
+        c = TestClient(app, raise_server_exceptions=True, client=("192.168.1.50", 12345))
+        c.headers["Authorization"] = f"Bearer {jwt_token}"
+        return c
+
+    def _guest_jwt(self, client, *, role: str, access_mode: str, scenes: list[int] | None = None) -> str:
+        items = [{"type": "scene", "id": sid} for sid in (scenes or [])]
+        r = client.post("/api/collab/invitations", json={
+            "name": "G", "role": role, "access_mode": access_mode,
+            "assigned_items": items,
+        })
+        assert r.status_code == 201
+        collab_mod.set_cowork_enabled(True)
+        return join_ok(client, token=r.json()["token"])["jwt"]
+
+    # ── read_only ─────────────────────────────────────────────────────────────
+
+    def test_read_only_blocks_patch(self, client):
+        jwt = self._guest_jwt(client, role="student", access_mode="read_only")
+        r = self._remote(jwt).patch("/api/scenes/99999", json={"title": "X"})
+        assert r.status_code == 403
+
+    def test_read_only_blocks_post(self, client):
+        jwt = self._guest_jwt(client, role="student", access_mode="read_only")
+        r = self._remote(jwt).post("/api/scenes", json={"chapter_id": 1, "title": "X"})
+        assert r.status_code == 403
+
+    def test_read_only_allows_get(self, client):
+        jwt = self._guest_jwt(client, role="student", access_mode="read_only")
+        r = self._remote(jwt).get("/api/collab/sessions")
+        assert r.status_code == 200
+
+    # ── read_only_assigned ────────────────────────────────────────────────────
+
+    def test_read_only_assigned_blocks_patch(self, client):
+        jwt = self._guest_jwt(client, role="student", access_mode="read_only_assigned")
+        r = self._remote(jwt).patch("/api/scenes/99999", json={"title": "X"})
+        assert r.status_code == 403
+
+    def test_read_only_assigned_allows_get(self, client):
+        jwt = self._guest_jwt(client, role="student", access_mode="read_only_assigned")
+        r = self._remote(jwt).get("/api/collab/sessions")
+        assert r.status_code == 200
+
+    # ── appearance_only (coauthor) ────────────────────────────────────────────
+
+    def test_appearance_only_blocks_scene_patch(self, client):
+        jwt = self._guest_jwt(client, role="coauthor", access_mode="appearance_only")
+        r = self._remote(jwt).patch("/api/scenes/99999", json={"title": "X"})
+        assert r.status_code == 403
+
+    def test_appearance_only_allows_settings_patch(self, client):
+        """Writes to /api/settings/* pass through the middleware (router may 404)."""
+        jwt = self._guest_jwt(client, role="coauthor", access_mode="appearance_only")
+        r = self._remote(jwt).patch("/api/settings/99999", json={})
+        assert r.status_code != 403  # middleware allowed it; router says 404/422
+
+    def test_appearance_only_allows_get(self, client):
+        jwt = self._guest_jwt(client, role="coauthor", access_mode="appearance_only")
+        r = self._remote(jwt).get("/api/collab/sessions")
+        assert r.status_code == 200
+
+    # ── assigned_visible (student) ────────────────────────────────────────────
+
+    def test_assigned_visible_blocks_scene_patch(self, client):
+        jwt = self._guest_jwt(client, role="student", access_mode="assigned_visible")
+        r = self._remote(jwt).patch("/api/scenes/99999", json={"title": "X"})
+        assert r.status_code == 403
+
+    def test_assigned_visible_allows_settings_patch(self, client):
+        jwt = self._guest_jwt(client, role="student", access_mode="assigned_visible")
+        r = self._remote(jwt).patch("/api/settings/99999", json={})
+        assert r.status_code != 403
+
+    # ── default modes ─────────────────────────────────────────────────────────
+
+    def test_coauthor_default_passes_writes_to_router(self, client):
+        """Middleware does not block writes for coauthor.default — the router
+        owns the 404 for non-existent resources."""
+        jwt = self._guest_jwt(client, role="coauthor", access_mode="default")
+        r = self._remote(jwt).patch("/api/scenes/99999", json={"title": "X"})
+        assert r.status_code == 404  # middleware passed; router returned 404
+
+    def test_student_default_passes_writes_to_router(self, client):
+        """Middleware does not pre-block writes for student.default — the
+        scenes router checks assignment per-operation."""
+        jwt = self._guest_jwt(client, role="student", access_mode="default", scenes=[42])
+        r = self._remote(jwt).patch("/api/scenes/99999", json={"title": "X"})
+        # 404 (scene doesn't exist) means middleware passed; 403 would mean blocked
+        assert r.status_code == 404
+
+
+# ── access_mode: student.default scene assignment enforcement ─────────────────
+# The scenes router (_collab_check_scene) enforces assignment for student.default
+# once the middleware passes the request through.
+
+class TestStudentDefaultAssignmentEnforcement:
+    """Creates real DB objects so the scenes router can actually run its checks."""
+
+    def _setup_scene(self, client) -> int:
+        """Create a minimal project → act → chapter → scene, return scene_id."""
+        proj_id  = client.post("/api/projects", json={"title": "P"}).json()["id"]
+        act_id   = client.post("/api/acts",     json={"project_id": proj_id, "title": "A"}).json()["id"]
+        ch_id    = client.post("/api/chapters", json={"act_id": act_id, "title": "C"}).json()["id"]
+        scene_id = client.post("/api/scenes",   json={"chapter_id": ch_id, "title": "S"}).json()["id"]
+        return scene_id
+
+    def _remote(self, jwt_token: str):
+        from fastapi.testclient import TestClient
+        from main import app
+        c = TestClient(app, raise_server_exceptions=True, client=("192.168.1.50", 12345))
+        c.headers["Authorization"] = f"Bearer {jwt_token}"
+        return c
+
+    def test_student_default_can_patch_assigned_scene(self, client):
+        scene_id = self._setup_scene(client)
+        r = client.post("/api/collab/invitations", json={
+            "name": "S", "role": "student", "access_mode": "default",
+            "assigned_items": [{"type": "scene", "id": scene_id}],
+        })
+        collab_mod.set_cowork_enabled(True)
+        jwt = join_ok(client, token=r.json()["token"])["jwt"]
+        r = self._remote(jwt).patch(f"/api/scenes/{scene_id}", json={"title": "Mine"})
+        assert r.status_code == 200
+
+    def test_student_default_cannot_patch_unassigned_scene(self, client):
+        scene_id = self._setup_scene(client)
+        r = client.post("/api/collab/invitations", json={
+            "name": "S", "role": "student", "access_mode": "default",
+            "assigned_items": [],  # nothing assigned
+        })
+        collab_mod.set_cowork_enabled(True)
+        jwt = join_ok(client, token=r.json()["token"])["jwt"]
+        r = self._remote(jwt).patch(f"/api/scenes/{scene_id}", json={"title": "Nope"})
+        assert r.status_code == 403
+
+    def test_student_default_cannot_delete_any_scene(self, client):
+        scene_id = self._setup_scene(client)
+        r = client.post("/api/collab/invitations", json={
+            "name": "S", "role": "student", "access_mode": "default",
+            "assigned_items": [{"type": "scene", "id": scene_id}],
+        })
+        collab_mod.set_cowork_enabled(True)
+        jwt = join_ok(client, token=r.json()["token"])["jwt"]
+        r = self._remote(jwt).delete(f"/api/scenes/{scene_id}")
+        assert r.status_code == 403

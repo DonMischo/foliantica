@@ -78,9 +78,9 @@ describe("getLockHolder selector", () => {
 // ── WebSocket message sending ─────────────────────────────────────────────────
 
 function mockOpenWs() {
-  const ws = { readyState: WebSocket.OPEN, send: vi.fn() } as unknown as WebSocket;
-  useCollabStore.setState({ _ws: ws });
-  return ws as { send: ReturnType<typeof vi.fn> };
+  const ws = { readyState: WebSocket.OPEN, send: vi.fn() };
+  useCollabStore.setState({ _ws: ws as unknown as WebSocket });
+  return ws;
 }
 
 describe("CollabStore — WebSocket messages", () => {

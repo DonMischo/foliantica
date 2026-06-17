@@ -42,10 +42,17 @@ function proxyWsUpgrade(req, socket, head) {
   const upstream = net.connect(apiPort, "127.0.0.1");
 
   upstream.on("connect", () => {
+    const realPeer = normalizeLoopback(req.socket && req.socket.remoteAddress);
+
     let requestLines = `${req.method} ${req.url} HTTP/${req.httpVersion}\r\n`;
+    // Forward all headers, stripping any client-supplied INTERNAL_PEER_HEADER
+    // so it cannot be forged, then re-inject from the verified socket address.
     for (let i = 0; i < req.rawHeaders.length; i += 2) {
-      requestLines += `${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}\r\n`;
+      if (req.rawHeaders[i].toLowerCase() !== INTERNAL_PEER_HEADER.toLowerCase()) {
+        requestLines += `${req.rawHeaders[i]}: ${req.rawHeaders[i + 1]}\r\n`;
+      }
     }
+    if (realPeer) requestLines += `${INTERNAL_PEER_HEADER}: ${realPeer}\r\n`;
     requestLines += "\r\n";
     upstream.write(requestLines);
     if (head && head.length) upstream.write(head);
