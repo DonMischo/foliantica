@@ -94,6 +94,8 @@ def _sync_rules_to_db(db: Session) -> dict[str, str]:
                     items = [(t, None) for t in (doc.get("tokens") or [])]
 
                 for entry_key, entry_value in items:
+                    if (lang, rule_name, entry_key) in valid_keys:
+                        continue  # skip duplicate tokens within same file
                     valid_keys.add((lang, rule_name, entry_key))
                     existing = db.query(ValeRuleEntry).filter_by(
                         lang=lang, rule_name=rule_name, entry_key=entry_key
