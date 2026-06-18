@@ -41,10 +41,16 @@ export function useCollabSocket() {
     async function connect() {
       if (cancelled) return;
 
-      // Discover whether co-work is enabled
+      // Discover whether co-work is enabled.
+      // Include the guest JWT if present — the ws-url endpoint is behind the
+      // auth middleware, so LAN guests (non-loopback) need the Bearer header
+      // or they get 401 and the WS never connects.
       try {
-        const res = await fetch("/api/collab/ws-url");
-        if (!res.ok) return; // API unavailable — stop silently
+        const wsJwt = getCoworkJwt();
+        const res = await fetch("/api/collab/ws-url", wsJwt ? {
+          headers: { Authorization: `Bearer ${wsJwt}` },
+        } : undefined);
+        if (!res.ok) { scheduleReconnect(); return; } // retry later
         const data: { enabled: boolean } = await res.json();
         if (!data.enabled) return; // co-work off — don't connect
       } catch {

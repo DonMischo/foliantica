@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
@@ -9,10 +9,28 @@ router = APIRouter(tags=["acts"])
 
 
 @router.get("/api/projects/{project_id}/acts", response_model=list[ActOut])
-def list_acts(project_id: int, db: Session = Depends(get_db)):
+def list_acts(project_id: int, request: Request, db: Session = Depends(get_db)):
     if not db.get(Project, project_id):
         raise HTTPException(404, "Project not found")
-    return db.query(Act).filter(Act.project_id == project_id).order_by(Act.order_index).all()
+    acts = db.query(Act).filter(Act.project_id == project_id).order_by(Act.order_index).all()
+
+    if getattr(request.state, "collab_hide_unassigned", False):
+        allowed = set(getattr(request.state, "collab_assigned_scene_ids", []))
+        if allowed:
+            visible_act_ids = {
+                row[0] for row in (
+                    db.query(Act.id)
+                    .join(Chapter, Chapter.act_id == Act.id)
+                    .join(Scene, Scene.chapter_id == Chapter.id)
+                    .filter(Act.project_id == project_id, Scene.id.in_(allowed))
+                    .all()
+                )
+            }
+            acts = [a for a in acts if a.id in visible_act_ids]
+        else:
+            acts = []
+
+    return acts
 
 
 @router.post("/api/acts", response_model=ActOut, status_code=201)

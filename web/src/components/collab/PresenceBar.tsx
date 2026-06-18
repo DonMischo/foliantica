@@ -12,7 +12,7 @@ function initials(name: string): string {
  * Compact avatar-chip strip shown in the sidebar when co-work is active.
  * Filters out the local session so you only see other people.
  */
-export function PresenceBar() {
+export function PresenceBar({ hostName }: { hostName?: string }) {
   const presence = useCollabStore((s) => s.presence);
   const myId     = useCollabStore((s) => s.mySessionId);
 
@@ -21,6 +21,9 @@ export function PresenceBar() {
 
   const visible  = others.slice(0, 6);
   const overflow = others.length - visible.length;
+
+  const resolveName = (name: string) =>
+    name === "Host" ? (hostName ?? "Main author") : name;
 
   return (
     <div className="px-3 py-1.5 flex items-center gap-1.5 border-b border-border">
@@ -31,11 +34,11 @@ export function PresenceBar() {
           style={{ backgroundColor: r.color }}
           title={
             r.item_type === "scene" && r.item_id != null
-              ? `${r.display_name} — reading a scene`
-              : r.display_name
+              ? `${resolveName(r.display_name)} — reading a scene`
+              : resolveName(r.display_name)
           }
         >
-          {initials(r.display_name)}
+          {initials(resolveName(r.display_name))}
         </span>
       ))}
       {overflow > 0 && (

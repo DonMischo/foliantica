@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings, useUpdateSettings, useOpenRouterModels, usePrompts, useCreatePrompt, useUpdatePrompt, useDeletePrompt, useRevertPrompt, useServiceStatus, useSyncStatus } from "@/store/queries";
-import { dataDirApi, settingsApi, syncApi, pgConfigApi, collabApi, aiProvidersApi, valeApi, type PgConfig, type PgActive, type Invitation, type TeacherSession, type CloudflareStatus, type AIProvider } from "@/lib/api";
+import { dataDirApi, settingsApi, syncApi, pgConfigApi, collabApi, aiProvidersApi, valeApi, getCoworkJwt, type PgConfig, type PgActive, type Invitation, type TeacherSession, type CloudflareStatus, type AIProvider } from "@/lib/api";
 import { ValeRulesModal } from "@/components/vale/ValeRulesModal";
 import { AssignmentPicker } from "@/components/collab/AssignmentPicker";
 import QRCode from "react-qr-code";
@@ -163,6 +163,7 @@ export default function SettingsPage() {
   const [valeNoLangOpen,  setValeNoLangOpen]  = useState(false);
   const [valeHelpOs, setValeHelpOs]         = useState<"windows" | "mac" | "linux">("windows");
   const [activeTab, setActiveTab] = useState<"ai" | "appearance" | "docker" | "sync" | "cowork">("appearance");
+  const isGuest = !!getCoworkJwt();
   const [showServiceStatus, setShowServiceStatus] = useState(false);
   const { data: serviceStatus, isLoading: statusLoading, refetch: refetchStatus } =
     useServiceStatus(showServiceStatus);
@@ -394,6 +395,12 @@ export default function SettingsPage() {
   const handleDeleteInvitation = async (id: string) => {
     await collabApi.deleteInvitation(id);
     setInvitations(prev => prev.filter(i => i.id !== id));
+  };
+
+  const handleToggleCoauthorMode = async (id: string, currentMode: string) => {
+    const newMode = currentMode === "read_only" ? "default" : "read_only";
+    const updated = await collabApi.updateInvitation(id, { access_mode: newMode });
+    setInvitations(prev => prev.map(i => i.id === id ? updated : i));
   };
 
   const handleToggleLink = async (id: string) => {
@@ -705,7 +712,7 @@ export default function SettingsPage() {
               { id: "cowork",     label: "Co-Work",       Icon: Users },
               { id: "docker",     label: "Docker",        Icon: Container },
               { id: "ai",         label: "AI Settings",  Icon: Cpu },
-            ] as const).map(({ id, label, Icon }) => (
+            ] as const).filter(tab => !isGuest || tab.id === "appearance").map(({ id, label, Icon }) => (
               <button
                 key={id}
                 type="button"
@@ -3067,6 +3074,20 @@ BasedOnStyles = write-good`}</code>
                         )}>
                           {inv.role === "student" ? "Student" : "Co-Author"}
                         </span>
+                        {inv.role === "coauthor" && (
+                          <button
+                            onClick={() => handleToggleCoauthorMode(inv.id, inv.access_mode)}
+                            title="Click to toggle access level"
+                            className={cn(
+                              "text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 transition-colors",
+                              inv.access_mode === "read_only"
+                                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50"
+                                : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50"
+                            )}
+                          >
+                            {inv.access_mode === "read_only" ? "Read only" : "Full access"}
+                          </button>
+                        )}
                         {inv.has_pin && <ShieldCheck className="h-3 w-3 text-muted-foreground shrink-0" aria-label="PIN required" />}
                       </div>
                       <div className="flex items-center gap-3 mt-0.5">

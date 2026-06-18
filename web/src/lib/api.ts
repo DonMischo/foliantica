@@ -990,8 +990,9 @@ export const statsApi = {
 // ── Co-Work ───────────────────────────────────────────────────────────────────
 
 export interface AssignedItem {
-  type: "scene";
-  id:   number;
+  type:        "scene";
+  id:          number;
+  permission?: "edit" | "read_only";
 }
 
 export interface Invitation {
@@ -1001,6 +1002,7 @@ export interface Invitation {
   has_pin:        boolean;
   max_sessions:   number;
   assigned_items: AssignedItem[];
+  access_mode:    string;
 }
 
 export interface CloudflareStatus {
@@ -1059,7 +1061,7 @@ export const collabApi = {
     }),
 
   updateInvitation: (id: string, body: Partial<{
-    name: string; role: string; pin: string; max_sessions: number; assigned_items: AssignedItem[];
+    name: string; role: string; pin: string; max_sessions: number; assigned_items: AssignedItem[]; access_mode: string;
   }>) =>
     req<Invitation>(`/collab/invitations/${id}`, {
       method: "PATCH",

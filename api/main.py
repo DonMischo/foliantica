@@ -149,17 +149,15 @@ app.add_middleware(
 _COWORK_PUBLIC_PATHS = {"/api/health", "/api/collab/join", "/api/collab/info"}
 
 # REST write policy per access_mode.
-# "all"      → no extra restriction (coauthor.default; student.default handled in scenes router)
-# "settings" → writes allowed only to /api/settings/*
-# "none"     → all writes blocked (status 403)
+# "all"  → no extra restriction (coauthor.default; student.default handled in scenes router)
+# "none" → all writes blocked (status 403)
 _MODE_WRITE_POLICY: dict[str, str] = {
     "default":            "all",
-    "appearance_only":    "settings",
+    "appearance_only":    "none",
     "read_only":          "none",
     "read_only_assigned": "none",
-    "assigned_visible":   "settings",
+    "assigned_visible":   "none",
 }
-_SETTINGS_PREFIX = "/api/settings"
 
 # Per-launch secret, set by Electron and injected into its own window's
 # requests only (see electron/main.js + COWORKING_NETWORK_SECURITY_SUMMARY.md).
@@ -214,8 +212,17 @@ class CoworkAuthMiddleware(BaseHTTPMiddleware):
         else:
             client_ip = peer_host
 
-        # Localhost is always trusted (host browser, internal calls)
-        if client_ip in ("127.0.0.1", "::1"):
+        # JWT token present → always guest path, regardless of IP.
+        # The host never sends a JWT; token presence is the definitive guest
+        # signal. Without this, a same-machine student (loopback origin) passes
+        # the client_ip trust check below and bypasses JWT enforcement entirely —
+        # the REST equivalent of the WS is_local bypass, fixed by the same
+        # invariant: token present → must be a guest.
+        auth = request.headers.get("Authorization", "")
+
+        # Localhost is always trusted (host browser, internal calls) — but
+        # only when no Bearer token is present (the host never sends one).
+        if client_ip in ("127.0.0.1", "::1") and not auth.startswith("Bearer "):
             return await call_next(request)
 
         # Non-trusted peer: co-work must be enabled for guest access to be
@@ -229,8 +236,7 @@ class CoworkAuthMiddleware(BaseHTTPMiddleware):
         if not collab_router.is_cowork_enabled():
             return JSONResponse({"detail": "Co-work is disabled."}, status_code=403)
 
-        # External client: require a valid Bearer JWT
-        auth = request.headers.get("Authorization", "")
+        # Require a valid Bearer JWT
         if not auth.startswith("Bearer "):
             return JSONResponse({"detail": "Authentication required."}, status_code=401)
 
@@ -248,18 +254,25 @@ class CoworkAuthMiddleware(BaseHTTPMiddleware):
         if request.method not in ("GET", "HEAD", "OPTIONS"):
             if policy == "none":
                 return JSONResponse({"detail": "Your session is read-only."}, status_code=403)
-            if policy == "settings" and not request.url.path.startswith(_SETTINGS_PREFIX):
-                return JSONResponse(
-                    {"detail": "Your session only allows appearance settings changes."},
-                    status_code=403,
-                )
+            # All guests: deleting content and changing settings are host-only
+            if request.method == "DELETE":
+                return JSONResponse({"detail": "Only the host can delete content."}, status_code=403)
+            if request.url.path.startswith("/api/settings"):
+                return JSONResponse({"detail": "Only the host can change settings."}, status_code=403)
 
         # Inject session context into request.state so routers (e.g. scenes)
         # can apply fine-grained per-item checks without re-decoding the JWT.
-        request.state.collab_role              = payload.get("role")
-        request.state.collab_access_mode       = access_mode
+        # Scene permissions dict: int scene_id → "edit" | "read_only"
+        # JWT stores string keys (JSON constraint); convert to int here.
+        raw_perms = payload.get("assigned_scene_permissions", {})
+        request.state.collab_role               = payload.get("role")
+        request.state.collab_access_mode        = access_mode
         request.state.collab_assigned_scene_ids = payload.get("assigned_scene_ids", [])
-        request.state.collab_hide_unassigned   = access_mode in ("read_only_assigned", "assigned_visible")
+        request.state.collab_scene_permissions  = {int(k): v for k, v in raw_perms.items()} if raw_perms else {}
+        request.state.collab_hide_unassigned    = (
+            access_mode in ("read_only_assigned", "assigned_visible")
+            or (payload.get("role") == "student" and access_mode == "default")
+        )
 
         return await call_next(request)
 

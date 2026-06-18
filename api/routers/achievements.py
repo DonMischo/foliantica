@@ -2,7 +2,7 @@ import json
 from calendar import monthrange
 from datetime import date, datetime, UTC, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import func, distinct, text, case
 from sqlalchemy.orm import Session
 

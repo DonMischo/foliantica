@@ -29,7 +29,7 @@ Architecture
   See COWORKING_NETWORK_SECURITY_SUMMARY.md for the full threat model.
 - The WS endpoint reads the JWT from a query-string parameter (?token=...)
   because browser WebSocket API doesn't support custom headers for guests.
-- JWT secret is in-process only; guests re-join after API restart.
+- JWT secret is persisted in config.json; guests survive API restarts.
 """
 
 import asyncio
@@ -62,8 +62,28 @@ router = APIRouter(prefix="/api/collab", tags=["collab"])
 
 _CONFIG_PATH = Path.home() / ".foliantica" / "config.json"
 
-# JWT secret — regenerated each process start; all guest sessions expire on restart.
-_JWT_SECRET: str = secrets.token_hex(32)
+
+def _load_jwt_secret() -> str:
+    """Load the JWT secret from config.json, generating and persisting one if absent."""
+    cfg: dict = {}
+    try:
+        cfg = json.loads(_CONFIG_PATH.read_text("utf-8"))
+        stored = cfg.get("cowork", {}).get("jwt_secret")
+        if isinstance(stored, str) and stored:
+            return stored
+    except Exception:
+        pass
+    secret = secrets.token_hex(32)
+    try:
+        _CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        cfg.setdefault("cowork", {})["jwt_secret"] = secret
+        _CONFIG_PATH.write_text(json.dumps(cfg, indent=2, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+    return secret
+
+
+_JWT_SECRET: str = _load_jwt_secret()
 _JWT_ALGORITHM = "HS256"
 _JWT_EXPIRE_HOURS = 8
 
@@ -80,7 +100,7 @@ _LOCK_TTL = 30  # seconds without heartbeat before lock expires
 _locks: dict[str, dict] = {}
 
 # Valid access modes per role — controls REST write rights and scene visibility
-_COAUTHOR_MODES: frozenset[str] = frozenset({"default", "appearance_only"})
+_COAUTHOR_MODES: frozenset[str] = frozenset({"default", "appearance_only", "read_only"})
 _STUDENT_MODES:  frozenset[str] = frozenset({"default", "read_only", "read_only_assigned", "assigned_visible"})
 
 # ── Phase 3 state ─────────────────────────────────────────────────────────────
@@ -332,15 +352,17 @@ def _issue_jwt(
     role: str,
     access_mode: str = "default",
     assigned_scene_ids: list[int] | None = None,
+    assigned_scene_permissions: dict[int, str] | None = None,
 ) -> str:
     payload = {
-        "session_id":         session_id,
-        "invitation_id":      invitation_id,
-        "display_name":       display_name,
-        "role":               role,
-        "access_mode":        access_mode,
-        "assigned_scene_ids": assigned_scene_ids or [],
-        "exp":                datetime.now(UTC) + timedelta(hours=_JWT_EXPIRE_HOURS),
+        "session_id":                  session_id,
+        "invitation_id":               invitation_id,
+        "display_name":                display_name,
+        "role":                        role,
+        "access_mode":                 access_mode,
+        "assigned_scene_ids":          assigned_scene_ids or [],
+        "assigned_scene_permissions":  assigned_scene_permissions or {},
+        "exp":                         datetime.now(UTC) + timedelta(hours=_JWT_EXPIRE_HOURS),
     }
     return jwt.encode(payload, _JWT_SECRET, algorithm=_JWT_ALGORITHM)
 
@@ -664,13 +686,17 @@ def join(body: JoinRequest, request: Request):
         "client_ip":       client_ip,
     }
 
-    assigned_scene_ids = [
-        a["id"] for a in inv.get("assigned_items", []) if a.get("type") == "scene"
-    ]
+    assigned_items = inv.get("assigned_items", [])
+    assigned_scene_ids = [a["id"] for a in assigned_items if a.get("type") == "scene"]
+    assigned_scene_permissions = {
+        a["id"]: a.get("permission", "edit")
+        for a in assigned_items if a.get("type") == "scene"
+    }
     token = _issue_jwt(
         session_id, inv["id"], display_name, inv["role"],
         access_mode=access_mode,
         assigned_scene_ids=assigned_scene_ids,
+        assigned_scene_permissions=assigned_scene_permissions,
     )
     return {
         "jwt":          token,
@@ -861,20 +887,32 @@ async def ws_collab(ws: WebSocket, token: str = Query(default="")):
                 key       = _lock_key(item_type, item_id)
                 _prune_expired_locks()
 
-                # Students may only lock items explicitly in their assignment
                 sess = _sessions.get(session_id, {})
-                if sess.get("role") == "student" and not _is_assigned(sess, item_type, item_id):
+                denied_reason: str | None = None
+                if sess.get("role") == "student":
+                    if not _is_assigned(sess, item_type, item_id):
+                        denied_reason = "not_assigned"
+                    else:
+                        perm = next(
+                            (a.get("permission", "edit")
+                             for a in sess.get("assigned_items", [])
+                             if a.get("type") == item_type and a.get("id") == item_id),
+                            "edit",
+                        )
+                        if perm == "read_only":
+                            denied_reason = "read_only"
+
+                if denied_reason:
                     await manager.send(session_id, {
                         "type":      "lock_denied",
                         "item_type": item_type,
                         "item_id":   item_id,
                         "holder":    None,
-                        "reason":    "not_assigned",
+                        "reason":    denied_reason,
                     })
                 else:
                     existing = _locks.get(key)
                     if existing and existing["session_id"] != session_id:
-                        # Denied — locked by someone else
                         await manager.send(session_id, {
                             "type":      "lock_denied",
                             "item_type": item_type,

@@ -476,11 +476,18 @@ class TestAccessModeInvitation:
         assert r.json()["access_mode"] == "appearance_only"
 
     def test_coauthor_student_mode_rejected(self, client):
-        """A coauthor cannot be given a student-only mode."""
+        """A coauthor cannot be given a student-only mode (read_only_assigned is student-only)."""
         r = client.post("/api/collab/invitations", json={
-            "name": "X", "role": "coauthor", "access_mode": "read_only"
+            "name": "X", "role": "coauthor", "access_mode": "read_only_assigned"
         })
         assert r.status_code == 400
+
+    def test_coauthor_read_only_accepted(self, client):
+        r = client.post("/api/collab/invitations", json={
+            "name": "Observer", "role": "coauthor", "access_mode": "read_only"
+        })
+        assert r.status_code == 201
+        assert r.json()["access_mode"] == "read_only"
 
     def test_student_all_modes_accepted(self, client):
         for mode in ("default", "read_only", "read_only_assigned", "assigned_visible"):
@@ -598,11 +605,11 @@ class TestAccessModeWritePolicy:
         r = self._remote(jwt).patch("/api/scenes/99999", json={"title": "X"})
         assert r.status_code == 403
 
-    def test_appearance_only_allows_settings_patch(self, client):
-        """Writes to /api/settings/* pass through the middleware (router may 404)."""
+    def test_appearance_only_blocks_settings_patch(self, client):
+        """Settings writes are blocked for all guests — appearance_only no longer exempts them."""
         jwt = self._guest_jwt(client, role="coauthor", access_mode="appearance_only")
         r = self._remote(jwt).patch("/api/settings/99999", json={})
-        assert r.status_code != 403  # middleware allowed it; router says 404/422
+        assert r.status_code == 403
 
     def test_appearance_only_allows_get(self, client):
         jwt = self._guest_jwt(client, role="coauthor", access_mode="appearance_only")
@@ -616,10 +623,28 @@ class TestAccessModeWritePolicy:
         r = self._remote(jwt).patch("/api/scenes/99999", json={"title": "X"})
         assert r.status_code == 403
 
-    def test_assigned_visible_allows_settings_patch(self, client):
+    def test_assigned_visible_blocks_settings_patch(self, client):
+        """Settings writes are blocked for all guests — assigned_visible no longer exempts them."""
         jwt = self._guest_jwt(client, role="student", access_mode="assigned_visible")
         r = self._remote(jwt).patch("/api/settings/99999", json={})
-        assert r.status_code != 403
+        assert r.status_code == 403
+
+    # ── coauthor.read_only ────────────────────────────────────────────────────
+
+    def test_coauthor_read_only_blocks_patch(self, client):
+        jwt = self._guest_jwt(client, role="coauthor", access_mode="read_only")
+        r = self._remote(jwt).patch("/api/scenes/99999", json={"title": "X"})
+        assert r.status_code == 403
+
+    def test_coauthor_read_only_blocks_post(self, client):
+        jwt = self._guest_jwt(client, role="coauthor", access_mode="read_only")
+        r = self._remote(jwt).post("/api/scenes", json={"chapter_id": 1, "title": "X"})
+        assert r.status_code == 403
+
+    def test_coauthor_read_only_allows_get(self, client):
+        jwt = self._guest_jwt(client, role="coauthor", access_mode="read_only")
+        r = self._remote(jwt).get("/api/collab/sessions")
+        assert r.status_code == 200
 
     # ── default modes ─────────────────────────────────────────────────────────
 
@@ -681,7 +706,27 @@ class TestStudentDefaultAssignmentEnforcement:
         collab_mod.set_cowork_enabled(True)
         jwt = join_ok(client, token=r.json()["token"])["jwt"]
         r = self._remote(jwt).patch(f"/api/scenes/{scene_id}", json={"title": "Nope"})
-        assert r.status_code == 403
+        # 404 (not 403): student.default hides unassigned scenes entirely.
+        assert r.status_code == 404
+
+    def test_student_default_scene_list_filtered_to_assigned(self, client):
+        """GET /chapters/:id/scenes must only return the student's 1 assigned scene."""
+        proj_id = client.post("/api/projects", json={"title": "P"}).json()["id"]
+        act_id  = client.post("/api/acts", json={"project_id": proj_id, "title": "A"}).json()["id"]
+        ch_id   = client.post("/api/chapters", json={"act_id": act_id, "title": "C"}).json()["id"]
+        s1 = client.post("/api/scenes", json={"chapter_id": ch_id, "title": "S1"}).json()["id"]
+        s2 = client.post("/api/scenes", json={"chapter_id": ch_id, "title": "S2"}).json()["id"]
+        r = client.post("/api/collab/invitations", json={
+            "name": "S", "role": "student", "access_mode": "default",
+            "assigned_items": [{"type": "scene", "id": s1}],
+        })
+        collab_mod.set_cowork_enabled(True)
+        jwt = join_ok(client, token=r.json()["token"])["jwt"]
+        r = self._remote(jwt).get(f"/api/chapters/{ch_id}/scenes")
+        assert r.status_code == 200
+        ids = [s["id"] for s in r.json()]
+        assert ids == [s1]
+        assert s2 not in ids
 
     def test_student_default_cannot_delete_any_scene(self, client):
         scene_id = self._setup_scene(client)
@@ -692,4 +737,214 @@ class TestStudentDefaultAssignmentEnforcement:
         collab_mod.set_cowork_enabled(True)
         jwt = join_ok(client, token=r.json()["token"])["jwt"]
         r = self._remote(jwt).delete(f"/api/scenes/{scene_id}")
+        assert r.status_code == 403
+
+    def test_coauthor_cannot_delete_any_scene(self, client):
+        """Delete is host-only — coauthors are also blocked."""
+        scene_id = self._setup_scene(client)
+        r = client.post("/api/collab/invitations", json={
+            "name": "A", "role": "coauthor", "access_mode": "default",
+        })
+        collab_mod.set_cowork_enabled(True)
+        jwt = join_ok(client, token=r.json()["token"])["jwt"]
+        r = self._remote(jwt).delete(f"/api/scenes/{scene_id}")
+        assert r.status_code == 403
+
+    def test_student_scene_edit_permission_allows_patch(self, client):
+        scene_id = self._setup_scene(client)
+        r = client.post("/api/collab/invitations", json={
+            "name": "S", "role": "student", "access_mode": "default",
+            "assigned_items": [{"type": "scene", "id": scene_id, "permission": "edit"}],
+        })
+        collab_mod.set_cowork_enabled(True)
+        jwt = join_ok(client, token=r.json()["token"])["jwt"]
+        r = self._remote(jwt).patch(f"/api/scenes/{scene_id}", json={"title": "Mine"})
+        assert r.status_code == 200
+
+    def test_student_scene_read_only_permission_blocks_patch(self, client):
+        scene_id = self._setup_scene(client)
+        r = client.post("/api/collab/invitations", json={
+            "name": "S", "role": "student", "access_mode": "default",
+            "assigned_items": [{"type": "scene", "id": scene_id, "permission": "read_only"}],
+        })
+        collab_mod.set_cowork_enabled(True)
+        jwt = join_ok(client, token=r.json()["token"])["jwt"]
+        r = self._remote(jwt).patch(f"/api/scenes/{scene_id}", json={"title": "Nope"})
+        assert r.status_code == 403
+
+    def test_student_project_list_filtered(self, client):
+        """Student sees only projects that contain their assigned scene."""
+        proj1_id = client.post("/api/projects", json={"title": "P1"}).json()["id"]
+        act1_id  = client.post("/api/acts",     json={"project_id": proj1_id, "title": "A1"}).json()["id"]
+        ch1_id   = client.post("/api/chapters", json={"act_id": act1_id, "title": "C1"}).json()["id"]
+        s1       = client.post("/api/scenes",   json={"chapter_id": ch1_id, "title": "S1"}).json()["id"]
+
+        proj2_id = client.post("/api/projects", json={"title": "P2"}).json()["id"]
+        act2_id  = client.post("/api/acts",     json={"project_id": proj2_id, "title": "A2"}).json()["id"]
+        ch2_id   = client.post("/api/chapters", json={"act_id": act2_id, "title": "C2"}).json()["id"]
+        client.post("/api/scenes", json={"chapter_id": ch2_id, "title": "S2"})
+
+        r = client.post("/api/collab/invitations", json={
+            "name": "S", "role": "student", "access_mode": "default",
+            "assigned_items": [{"type": "scene", "id": s1}],
+        })
+        collab_mod.set_cowork_enabled(True)
+        jwt = join_ok(client, token=r.json()["token"])["jwt"]
+
+        r = self._remote(jwt).get("/api/projects")
+        assert r.status_code == 200
+        ids = [p["id"] for p in r.json()]
+        assert proj1_id in ids
+        assert proj2_id not in ids
+
+    def test_student_act_list_filtered(self, client):
+        """Student sees only acts that contain their assigned scene."""
+        proj_id = client.post("/api/projects", json={"title": "P"}).json()["id"]
+        act1_id = client.post("/api/acts",     json={"project_id": proj_id, "title": "A1"}).json()["id"]
+        ch1_id  = client.post("/api/chapters", json={"act_id": act1_id, "title": "C1"}).json()["id"]
+        s1      = client.post("/api/scenes",   json={"chapter_id": ch1_id, "title": "S1"}).json()["id"]
+
+        act2_id = client.post("/api/acts",     json={"project_id": proj_id, "title": "A2"}).json()["id"]
+        ch2_id  = client.post("/api/chapters", json={"act_id": act2_id, "title": "C2"}).json()["id"]
+        client.post("/api/scenes", json={"chapter_id": ch2_id, "title": "S2"})
+
+        r = client.post("/api/collab/invitations", json={
+            "name": "S", "role": "student", "access_mode": "default",
+            "assigned_items": [{"type": "scene", "id": s1}],
+        })
+        collab_mod.set_cowork_enabled(True)
+        jwt = join_ok(client, token=r.json()["token"])["jwt"]
+
+        r = self._remote(jwt).get(f"/api/projects/{proj_id}/acts")
+        assert r.status_code == 200
+        ids = [a["id"] for a in r.json()]
+        assert act1_id in ids
+        assert act2_id not in ids
+
+    def test_student_chapter_list_filtered(self, client):
+        """Student sees only chapters that contain their assigned scene."""
+        proj_id = client.post("/api/projects", json={"title": "P"}).json()["id"]
+        act_id  = client.post("/api/acts",     json={"project_id": proj_id, "title": "A"}).json()["id"]
+        ch1_id  = client.post("/api/chapters", json={"act_id": act_id, "title": "C1"}).json()["id"]
+        s1      = client.post("/api/scenes",   json={"chapter_id": ch1_id, "title": "S1"}).json()["id"]
+        ch2_id  = client.post("/api/chapters", json={"act_id": act_id, "title": "C2"}).json()["id"]
+        client.post("/api/scenes", json={"chapter_id": ch2_id, "title": "S2"})
+
+        r = client.post("/api/collab/invitations", json={
+            "name": "S", "role": "student", "access_mode": "default",
+            "assigned_items": [{"type": "scene", "id": s1}],
+        })
+        collab_mod.set_cowork_enabled(True)
+        jwt = join_ok(client, token=r.json()["token"])["jwt"]
+
+        r = self._remote(jwt).get(f"/api/acts/{act_id}/chapters")
+        assert r.status_code == 200
+        ids = [c["id"] for c in r.json()]
+        assert ch1_id in ids
+        assert ch2_id not in ids
+
+
+# ── WebSocket lock enforcement ────────────────────────────────────────────────
+
+class TestStudentWsLockEnforcement:
+    """WS lock handler must respect per-scene read_only permissions."""
+
+    def _setup_scene(self, client) -> int:
+        proj_id  = client.post("/api/projects", json={"title": "P"}).json()["id"]
+        act_id   = client.post("/api/acts",     json={"project_id": proj_id, "title": "A"}).json()["id"]
+        ch_id    = client.post("/api/chapters", json={"act_id": act_id, "title": "C"}).json()["id"]
+        scene_id = client.post("/api/scenes",   json={"chapter_id": ch_id, "title": "S"}).json()["id"]
+        return scene_id
+
+    def test_read_only_scene_lock_denied(self, client, ws_client):
+        scene_id = self._setup_scene(client)
+        r = client.post("/api/collab/invitations", json={
+            "name": "S", "role": "student", "access_mode": "default",
+            "assigned_items": [{"type": "scene", "id": scene_id, "permission": "read_only"}],
+        })
+        assert r.status_code == 201
+        collab_mod.set_cowork_enabled(True)
+        jwt_token = join_ok(client, token=r.json()["token"])["jwt"]
+
+        with ws_client.websocket_connect(f"/api/collab/ws/collab?token={jwt_token}") as ws:
+            state = ws.receive_json()
+            assert state["type"] == "state"
+            ws.send_json({"type": "lock", "item_type": "scene", "item_id": scene_id})
+            msg = ws.receive_json()
+        assert msg["type"] == "lock_denied"
+        assert msg["reason"] == "read_only"
+
+    def test_edit_scene_lock_granted(self, client, ws_client):
+        scene_id = self._setup_scene(client)
+        r = client.post("/api/collab/invitations", json={
+            "name": "S", "role": "student", "access_mode": "default",
+            "assigned_items": [{"type": "scene", "id": scene_id, "permission": "edit"}],
+        })
+        assert r.status_code == 201
+        collab_mod.set_cowork_enabled(True)
+        jwt_token = join_ok(client, token=r.json()["token"])["jwt"]
+
+        with ws_client.websocket_connect(f"/api/collab/ws/collab?token={jwt_token}") as ws:
+            state = ws.receive_json()
+            assert state["type"] == "state"
+            ws.send_json({"type": "lock", "item_type": "scene", "item_id": scene_id})
+            msg = ws.receive_json()
+        assert msg["type"] == "locks"
+        assert any(lock["item_id"] == scene_id for lock in msg["locks"])
+
+
+# ── Same-machine bypass regression ───────────────────────────────────────────
+# Bug: the middleware's early-return for loopback client_ip ran BEFORE checking
+# the Authorization header.  A student joining from the same machine as the host
+# (localhost:3000 origin → X-Client-IP: 127.0.0.1) was silently granted full
+# host-level access without any JWT check — same root cause as the WS is_local
+# bypass.
+#
+# Fix: read Authorization before the loopback shortcut; if a Bearer token is
+# present the request MUST be a guest (the host never sends a JWT), so skip the
+# shortcut and go through normal JWT validation.
+#
+# The 'client' fixture uses peer=(127.0.0.1, 51000) + X-Client-IP: 127.0.0.1,
+# which exactly models the same-machine topology.  Adding an Authorization header
+# per-request simulates the student's JWT without needing a separate TestClient.
+
+class TestSameMachineBypass:
+
+    def _guest_jwt(self, client, *, role: str, access_mode: str) -> str:
+        r = client.post("/api/collab/invitations", json={
+            "name": "SameMachine", "role": role, "access_mode": access_mode,
+        })
+        assert r.status_code == 201
+        collab_mod.set_cowork_enabled(True)
+        return join_ok(client, token=r.json()["token"])["jwt"]
+
+    def test_loopback_read_only_student_cannot_patch(self, client):
+        """read_only student from same machine must be blocked on writes."""
+        jwt = self._guest_jwt(client, role="student", access_mode="read_only")
+        r = client.patch("/api/scenes/99999", json={"title": "X"},
+                         headers={"Authorization": f"Bearer {jwt}"})
+        assert r.status_code == 403
+
+    def test_loopback_read_only_student_can_get(self, client):
+        """GET requests are still allowed for a same-machine read_only student."""
+        jwt = self._guest_jwt(client, role="student", access_mode="read_only")
+        r = client.get("/api/collab/sessions",
+                       headers={"Authorization": f"Bearer {jwt}"})
+        assert r.status_code == 200
+
+    def test_loopback_without_jwt_still_trusted_as_host(self, client):
+        """Host's own loopback requests (no Bearer token) must not be broken."""
+        r = client.get("/api/collab/invitations")
+        assert r.status_code == 200
+
+    def test_loopback_cowork_disabled_with_jwt_returns_403(self, client):
+        """Disabling co-work must also revoke same-machine guest sessions."""
+        collab_mod.set_cowork_enabled(True)
+        r = client.post("/api/collab/invitations", json={
+            "name": "S", "role": "student", "access_mode": "read_only"
+        })
+        jwt = join_ok(client, token=r.json()["token"])["jwt"]
+        collab_mod.set_cowork_enabled(False)
+        r = client.get("/api/collab/sessions",
+                       headers={"Authorization": f"Bearer {jwt}"})
         assert r.status_code == 403

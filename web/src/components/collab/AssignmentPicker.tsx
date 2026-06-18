@@ -26,6 +26,12 @@ export function AssignmentPicker({ invitationId, invitationName, current, onClos
   const [selected, setSelected] = useState<Set<number>>(
     new Set(current.filter((a) => a.type === "scene").map((a) => a.id))
   );
+  // Per-scene permissions (only meaningful when the scene is selected)
+  const [permissions, setPermissions] = useState<Record<number, "edit" | "read_only">>(
+    Object.fromEntries(
+      current.filter((a) => a.type === "scene").map((a) => [a.id, a.permission ?? "edit"])
+    )
+  );
   // Chapter IDs with their scene list expanded
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
@@ -78,9 +84,17 @@ export function AssignmentPicker({ invitationId, invitationName, current, onClos
     });
   }
 
+  function setPermission(id: number, perm: "edit" | "read_only") {
+    setPermissions((prev) => ({ ...prev, [id]: perm }));
+  }
+
   async function handleSave() {
     setSaving(true);
-    const items: AssignedItem[] = Array.from(selected).map((id) => ({ type: "scene", id }));
+    const items: AssignedItem[] = Array.from(selected).map((id) => ({
+      type: "scene",
+      id,
+      permission: permissions[id] ?? "edit",
+    }));
     try {
       await collabApi.updateInvitation(invitationId, { assigned_items: items });
       onSaved(items);
@@ -178,26 +192,62 @@ export function AssignmentPicker({ invitationId, invitationName, current, onClos
                     {/* Scene rows */}
                     {isExpanded && (
                       <div className="ml-7 space-y-px">
-                        {chapter.scenes.map((scene, idx) => (
-                          <button
-                            key={scene.id}
-                            onClick={() => toggleScene(scene.id)}
-                            className="w-full flex items-center gap-2 px-2 py-0.5 rounded hover:bg-secondary/40 text-left"
-                          >
-                            <div className={cn(
-                              "h-3 w-3 rounded border flex items-center justify-center shrink-0",
-                              selected.has(scene.id) ? "bg-primary border-primary" : "border-border"
-                            )}>
-                              {selected.has(scene.id) && <Check className="h-2 w-2 text-white" />}
+                        {chapter.scenes.map((scene, idx) => {
+                          const isSel = selected.has(scene.id);
+                          const perm  = permissions[scene.id] ?? "edit";
+                          return (
+                            <div
+                              key={scene.id}
+                              className="w-full flex items-center gap-2 px-2 py-0.5 rounded hover:bg-secondary/40"
+                            >
+                              <button
+                                onClick={() => toggleScene(scene.id)}
+                                className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                              >
+                                <div className={cn(
+                                  "h-3 w-3 rounded border flex items-center justify-center shrink-0",
+                                  isSel ? "bg-primary border-primary" : "border-border"
+                                )}>
+                                  {isSel && <Check className="h-2 w-2 text-white" />}
+                                </div>
+                                <span className="text-[10px] text-muted-foreground/50 tabular-nums w-4 text-right shrink-0">
+                                  {idx + 1}.
+                                </span>
+                                <span className="text-xs text-muted-foreground truncate">
+                                  {scene.title || "(untitled)"}
+                                </span>
+                              </button>
+                              {isSel && (
+                                <div className="flex items-center gap-0.5 shrink-0">
+                                  <button
+                                    onClick={() => setPermission(scene.id, "edit")}
+                                    title="Editable"
+                                    className={cn(
+                                      "text-[9px] px-1.5 py-0.5 rounded font-medium leading-none",
+                                      perm === "edit"
+                                        ? "bg-primary/15 text-primary"
+                                        : "text-muted-foreground/50 hover:text-muted-foreground"
+                                    )}
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => setPermission(scene.id, "read_only")}
+                                    title="Read only"
+                                    className={cn(
+                                      "text-[9px] px-1.5 py-0.5 rounded font-medium leading-none",
+                                      perm === "read_only"
+                                        ? "bg-amber-500/20 text-amber-600 dark:text-amber-400"
+                                        : "text-muted-foreground/50 hover:text-muted-foreground"
+                                    )}
+                                  >
+                                    R/O
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                            <span className="text-[10px] text-muted-foreground/50 tabular-nums w-4 text-right shrink-0">
-                              {idx + 1}.
-                            </span>
-                            <span className="text-xs text-muted-foreground truncate">
-                              {scene.title || "(untitled)"}
-                            </span>
-                          </button>
-                        ))}
+                          );
+                        })}
                         {chapter.scenes.length === 0 && (
                           <p className="text-[10px] text-muted-foreground/40 px-2 py-1">No scenes yet</p>
                         )}

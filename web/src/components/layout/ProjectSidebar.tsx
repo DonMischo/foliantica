@@ -481,6 +481,7 @@ export function ProjectSidebar({ projectId }: Props) {
   const collabConnected         = useCollabStore((s) => s.connected);
   const [syncing, setSyncing] = useState(false);
 
+
   const handleSyncNow = async () => {
     setSyncing(true);
     try { await syncApi.trigger(); } catch {}
@@ -517,10 +518,12 @@ export function ProjectSidebar({ projectId }: Props) {
   return (
     <aside className="flex flex-col h-full w-64 border-r border-border bg-card">
       <div className="flex items-center justify-between px-3 py-3 border-b border-border">
-        <Link href="/" className="flex items-center gap-2 font-semibold text-sm hover:text-primary transition-colors">
-          <img src="/icon.svg" alt="" className="h-4 w-4" />
-          Foliantica
-        </Link>
+        <div className="flex flex-col min-w-0">
+          <Link href="/" className="flex items-center gap-2 font-semibold text-sm hover:text-primary transition-colors">
+            <img src="/icon.svg" alt="" className="h-4 w-4" />
+            Foliantica
+          </Link>
+        </div>
         {/* Live / Offline indicator — only shown when co-work WS is active */}
         {collabConnected && (
           <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-medium">
@@ -534,7 +537,7 @@ export function ProjectSidebar({ projectId }: Props) {
       </div>
 
       {/* Presence strip — avatar chips for other connected sessions */}
-      {collabConnected && <PresenceBar />}
+      {collabConnected && <PresenceBar hostName={project?.book_meta?.author || undefined} />}
 
       <div className="flex items-center justify-between px-3 py-2 text-xs text-muted-foreground uppercase tracking-wider">
         <span>{t("nav_story")}</span>

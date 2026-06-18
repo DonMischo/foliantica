@@ -137,6 +137,7 @@ export default function ScenePage() {
   }, [sceneIdNum]);
 
   const isReadOnly = !!(lockHolder || lockDenied);
+  const hostAuthorName = project?.book_meta?.author || "Main author";
 
   const codexSidebarOpen    = useUIStore((s) => s.codexSidebarOpen);
   const setCodexSidebarOpen = useUIStore((s) => s.setCodexSidebarOpen);
@@ -737,7 +738,16 @@ export default function ScenePage() {
               <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
               {lockDeniedReason === "not_assigned"
                 ? <span>This scene is not in your assignment — read-only.</span>
-                : <span><strong>{lockHolder?.display_name ?? lockDenied}</strong> is editing this scene — read-only for now.</span>
+                : lockDeniedReason === "read_only"
+                  ? <span>This scene is read-only for you.</span>
+                  : <span>
+                      <strong>
+                        {lockHolder
+                          ? (lockHolder.display_name === "Host" ? hostAuthorName : lockHolder.display_name)
+                          : lockDenied}
+                      </strong>
+                      {" "}is editing this scene — read-only for now.
+                    </span>
               }
             </div>
           )}

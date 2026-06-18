@@ -22,18 +22,20 @@ def _collab_check_scene(request: Request, scene_id: int, *, write: bool = False)
     Host requests (no collab_role in state) always pass through.
     """
     role        = getattr(request.state, "collab_role", None)
-    access_mode = getattr(request.state, "collab_access_mode", "default")
     hide        = getattr(request.state, "collab_hide_unassigned", False)
     assigned    = getattr(request.state, "collab_assigned_scene_ids", [])
+    scene_perms = getattr(request.state, "collab_scene_permissions", {})
 
     if hide and scene_id not in assigned:
         raise HTTPException(404, "Scene not found")  # 404 not 403 — don't reveal existence
 
     if write and role == "student":
-        # student.default: writes only allowed on assigned scenes.
-        # Other modes are pre-blocked in CoworkAuthMiddleware before reaching here.
-        if access_mode == "default" and scene_id not in assigned:
+        # student.default: unassigned scenes are already 404-hidden above.
+        # For assigned scenes, enforce per-scene permission.
+        if scene_id not in assigned:
             raise HTTPException(403, "Scene not in your assignment")
+        if scene_perms.get(scene_id, "edit") == "read_only":
+            raise HTTPException(403, "This scene is read-only for your session")
 
 
 # ── Mention scanning ──────────────────────────────────────────────────────────
@@ -236,8 +238,8 @@ def update_scene(scene_id: int, body: SceneUpdate, request: Request, db: Session
 
 @router.delete("/api/scenes/{scene_id}", status_code=204)
 def delete_scene(scene_id: int, request: Request, db: Session = Depends(get_db)):
-    if getattr(request.state, "collab_role", None) == "student":
-        raise HTTPException(403, "Students cannot delete scenes")
+    if getattr(request.state, "collab_role", None) is not None:
+        raise HTTPException(403, "Only the host can delete scenes")
     scene = db.get(Scene, scene_id)
     if not scene:
         raise HTTPException(404, "Scene not found")
