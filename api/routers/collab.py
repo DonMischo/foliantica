@@ -843,6 +843,28 @@ async def ws_collab(ws: WebSocket, token: str = Query(default="")):
         except jwt.InvalidTokenError:
             await ws.close(code=1008, reason="Invalid or expired token")
             return
+        # Restore session if wiped by a backend restart (JWT is still valid)
+        if session_id not in _sessions:
+            scene_ids = payload.get("assigned_scene_ids", [])
+            perm_map  = payload.get("assigned_scene_permissions", {})
+            _sessions[session_id] = {
+                "session_id":      session_id,
+                "invitation_id":   payload.get("invitation_id", ""),
+                "invitation_name": payload.get("display_name", session_id),
+                "display_name":    payload.get("display_name", session_id),
+                "role":            payload.get("role", "coauthor"),
+                "access_mode":     payload.get("access_mode", "default"),
+                "assigned_items":  [
+                    {
+                        "type":       "scene",
+                        "id":         int(sid),
+                        "permission": perm_map.get(str(sid), perm_map.get(sid, "edit")),
+                    }
+                    for sid in scene_ids
+                ],
+                "joined_at": datetime.now(UTC).isoformat(),
+                "client_ip": "",
+            }
     elif is_local:
         session_id = "host"
     else:

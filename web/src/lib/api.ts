@@ -85,6 +85,9 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   });
   if (!res.ok) {
+    if (res.status === 401 && getCoworkJwt()) {
+      window.dispatchEvent(new CustomEvent("cowork:session_expired"));
+    }
     const text = await res.text();
     throw new Error(`${res.status}: ${text}`);
   }

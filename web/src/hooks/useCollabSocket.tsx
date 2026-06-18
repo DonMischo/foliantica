@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getCoworkJwt, getCoworkIdentity } from "@/lib/api";
+import { getCoworkJwt, getCoworkIdentity, clearCoworkSession } from "@/lib/api";
 import { useCollabStore, type PresenceRecord } from "@/store/collabStore";
 
 // Exponential backoff delays (ms) for reconnection attempts
@@ -29,7 +29,8 @@ export function useCollabSocket() {
   const setLocks       = useCollabStore((s) => s.setLocks);
   const setPresence    = useCollabStore((s) => s.setPresence);
   const setMySessionId = useCollabStore((s) => s.setMySessionId);
-  const setWs          = useCollabStore((s) => s.setWs);
+  const setWs             = useCollabStore((s) => s.setWs);
+  const setSessionExpired = useCollabStore((s) => s.setSessionExpired);
 
   const attempt  = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -50,7 +51,14 @@ export function useCollabSocket() {
         const res = await fetch("/api/collab/ws-url", wsJwt ? {
           headers: { Authorization: `Bearer ${wsJwt}` },
         } : undefined);
-        if (!res.ok) { scheduleReconnect(); return; } // retry later
+        if (!res.ok) {
+          if (res.status === 401 && wsJwt) {
+            window.dispatchEvent(new CustomEvent("cowork:session_expired"));
+            return;
+          }
+          scheduleReconnect();
+          return;
+        }
         const data: { enabled: boolean } = await res.json();
         if (!data.enabled) return; // co-work off — don't connect
       } catch {
@@ -143,6 +151,18 @@ export function useCollabSocket() {
       timerRef.current = setTimeout(connect, delay);
     }
 
+    function handleSessionExpired() {
+      cancelled = true;
+      clearTimeout(timerRef.current);
+      wsRef.current?.close();
+      wsRef.current = null;
+      setConnected(false);
+      setWs(null);
+      clearCoworkSession();
+      setSessionExpired(true);
+    }
+    window.addEventListener("cowork:session_expired", handleSessionExpired, { once: true });
+
     connect();
 
     return () => {
@@ -152,13 +172,26 @@ export function useCollabSocket() {
       wsRef.current = null;
       setConnected(false);
       setWs(null);
+      window.removeEventListener("cowork:session_expired", handleSessionExpired);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }
 
-/** Tiny component that mounts the hook — use inside Providers. */
+/** Mounts the socket hook and renders a full-screen overlay if the guest
+ *  JWT was rejected (session expired or revoked). */
 export function CollabSocketProvider() {
   useCollabSocket();
-  return null;
+  const sessionExpired = useCollabStore((s) => s.sessionExpired);
+  if (!sessionExpired) return null;
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/80 backdrop-blur-sm">
+      <div className="rounded-lg border bg-card p-8 shadow-lg text-center space-y-2 max-w-sm">
+        <p className="text-base font-semibold">Session expired</p>
+        <p className="text-sm text-muted-foreground">
+          Your co-work session has ended. Please rejoin using your original link.
+        </p>
+      </div>
+    </div>
+  );
 }
