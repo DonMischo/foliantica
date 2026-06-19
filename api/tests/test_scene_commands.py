@@ -315,3 +315,211 @@ class TestInventorySummary:
         found = next((i for i in items if i["item_id"] == 7), None)
         assert found is not None
         assert found["qty"] == 3
+
+    def test_native_inventory_items_shown(self, client, db, project):
+        from models import CodexEntry
+        entry = CodexEntry(
+            project_id=project["id"], name="Mage", entry_type="character",
+            inventory=json.dumps({
+                "possessions": [{"entry_id": 55, "quantity": 2}],
+                "currencies": [{"name": "Mana", "amount": 100}],
+            }),
+        )
+        db.add(entry)
+        db.commit()
+        db.refresh(entry)
+        r = client.get(f"/api/codex/{entry.id}/inventory-summary")
+        body = r.json()
+        assert any(i["item_id"] == 55 for i in body["items"])
+        assert any(c["name"] == "Mana" for c in body["currencies"])
+
+
+# ── Currency balance with prior scenes ────────────────────────────────────────
+
+class TestCurrencyBalanceWithHistory:
+    def test_balance_from_prior_scene(self, client, db, scene):
+        from models import Scene
+        s2 = Scene(title="S2", chapter_id=scene["chapter_id"],
+                   order_index=1, content="<p></p>")
+        db.add(s2)
+        db.commit()
+        db.refresh(s2)
+
+        _sync(client, scene["id"], [
+            {"command_type": "currency", "character_id": 1,
+             "data": {"currencyName": "Gold", "delta": 75}, "order_index": 0},
+        ])
+
+        r = client.get(f"/api/scenes/{s2.id}/currency-balance",
+                       params={"character_id": 1, "currency_name": "Gold"})
+        assert r.json()["balance"] == 75
+
+    def test_balance_ignores_wrong_currency(self, client, db, scene):
+        from models import Scene
+        s2 = Scene(title="S2", chapter_id=scene["chapter_id"],
+                   order_index=1, content="<p></p>")
+        db.add(s2)
+        db.commit()
+        db.refresh(s2)
+
+        _sync(client, scene["id"], [
+            {"command_type": "currency", "character_id": 1,
+             "data": {"currencyName": "Silver", "delta": 500}, "order_index": 0},
+        ])
+
+        r = client.get(f"/api/scenes/{s2.id}/currency-balance",
+                       params={"character_id": 1, "currency_name": "Gold"})
+        assert r.json()["balance"] == 0
+
+
+# ── GET /projects/{id}/item-log ───────────────────────────────────────────────
+
+class TestProjectItemLog:
+    def test_empty_log(self, client, project):
+        r = client.get(f"/api/projects/{project['id']}/item-log",
+                       params={"item_id": 10, "character_id": 1})
+        assert r.status_code == 200
+        assert r.json() == []
+
+    def test_shows_delta_and_total(self, client, project, scene):
+        _sync(client, scene["id"], [
+            {"command_type": "item", "character_id": 1, "item_id": 10,
+             "data": {"qty": 3}, "order_index": 0},
+        ])
+        r = client.get(f"/api/projects/{project['id']}/item-log",
+                       params={"item_id": 10, "character_id": 1})
+        data = r.json()
+        assert len(data) == 1
+        assert data[0]["delta"] == 3
+        assert data[0]["total"] == 3
+
+    def test_running_total_accumulates(self, client, project, db, scene):
+        from models import Scene
+        s2 = Scene(title="S2", chapter_id=scene["chapter_id"],
+                   order_index=1, content="<p></p>")
+        db.add(s2)
+        db.commit()
+        db.refresh(s2)
+
+        _sync(client, scene["id"], [
+            {"command_type": "item", "character_id": 1, "item_id": 10,
+             "data": {"qty": 2}, "order_index": 0},
+        ])
+        _sync(client, s2.id, [
+            {"command_type": "item", "character_id": 1, "item_id": 10,
+             "data": {"qty": 5}, "order_index": 0},
+        ])
+
+        r = client.get(f"/api/projects/{project['id']}/item-log",
+                       params={"item_id": 10, "character_id": 1})
+        data = r.json()
+        assert data[-1]["total"] == 7
+
+
+# ── GET /projects/{id}/currency-log ──────────────────────────────────────────
+
+class TestProjectCurrencyLog:
+    def test_empty_log(self, client, project):
+        r = client.get(f"/api/projects/{project['id']}/currency-log",
+                       params={"character_id": 1, "currency_name": "Gold"})
+        assert r.status_code == 200
+        assert r.json() == []
+
+    def test_shows_delta_and_balance(self, client, project, scene):
+        _sync(client, scene["id"], [
+            {"command_type": "currency", "character_id": 1,
+             "data": {"currencyName": "Gold", "delta": 100}, "order_index": 0},
+        ])
+        r = client.get(f"/api/projects/{project['id']}/currency-log",
+                       params={"character_id": 1, "currency_name": "Gold"})
+        data = r.json()
+        assert len(data) == 1
+        assert data[0]["delta"] == 100
+        assert data[0]["balance"] == 100
+
+    def test_filters_by_currency_name(self, client, project, scene):
+        _sync(client, scene["id"], [
+            {"command_type": "currency", "character_id": 1,
+             "data": {"currencyName": "Gold", "delta": 50}, "order_index": 0},
+            {"command_type": "currency", "character_id": 1,
+             "data": {"currencyName": "Iron", "delta": 999}, "order_index": 1},
+        ])
+        r = client.get(f"/api/projects/{project['id']}/currency-log",
+                       params={"character_id": 1, "currency_name": "Gold"})
+        data = r.json()
+        assert len(data) == 1
+        assert data[0]["delta"] == 50
+
+
+# ── GET /codex/{id}/item-log ──────────────────────────────────────────────────
+
+class TestCodexItemLog:
+    def _make_entry(self, client, project_id):
+        r = client.post("/api/codex", json={
+            "name": "Fighter", "project_id": project_id, "entry_type": "character",
+        })
+        assert r.status_code == 201
+        return r.json()
+
+    def test_empty_returns_empty(self, client, project):
+        entry = self._make_entry(client, project["id"])
+        r = client.get(f"/api/codex/{entry['id']}/item-log", params={"item_id": 10})
+        assert r.status_code == 200
+        assert r.json() == []
+
+    def test_shows_gain(self, client, project, scene):
+        entry = self._make_entry(client, project["id"])
+        _sync(client, scene["id"], [
+            {"command_type": "item", "character_id": entry["id"], "item_id": 10,
+             "data": {"qty": 5}, "order_index": 0},
+        ])
+        r = client.get(f"/api/codex/{entry['id']}/item-log", params={"item_id": 10})
+        data = r.json()
+        assert len(data) == 1
+        assert data[0]["delta"] == 5
+        assert data[0]["total"] == 5
+
+
+# ── GET /codex/{id}/currency-log ─────────────────────────────────────────────
+
+class TestCodexCurrencyLog:
+    def _make_entry(self, client, project_id):
+        r = client.post("/api/codex", json={
+            "name": "Merchant", "project_id": project_id, "entry_type": "character",
+        })
+        assert r.status_code == 201
+        return r.json()
+
+    def test_empty_returns_empty(self, client, project):
+        entry = self._make_entry(client, project["id"])
+        r = client.get(f"/api/codex/{entry['id']}/currency-log",
+                       params={"currency_name": "Gold"})
+        assert r.status_code == 200
+        assert r.json() == []
+
+    def test_shows_delta_and_balance(self, client, project, scene):
+        entry = self._make_entry(client, project["id"])
+        _sync(client, scene["id"], [
+            {"command_type": "currency", "character_id": entry["id"],
+             "data": {"currencyName": "Gold", "delta": 75}, "order_index": 0},
+        ])
+        r = client.get(f"/api/codex/{entry['id']}/currency-log",
+                       params={"currency_name": "Gold"})
+        data = r.json()
+        assert len(data) == 1
+        assert data[0]["delta"] == 75
+        assert data[0]["balance"] == 75
+
+    def test_filters_other_currencies(self, client, project, scene):
+        entry = self._make_entry(client, project["id"])
+        _sync(client, scene["id"], [
+            {"command_type": "currency", "character_id": entry["id"],
+             "data": {"currencyName": "Gold", "delta": 10}, "order_index": 0},
+            {"command_type": "currency", "character_id": entry["id"],
+             "data": {"currencyName": "Iron", "delta": 999}, "order_index": 1},
+        ])
+        r = client.get(f"/api/codex/{entry['id']}/currency-log",
+                       params={"currency_name": "Gold"})
+        data = r.json()
+        assert len(data) == 1
+        assert data[0]["delta"] == 10
