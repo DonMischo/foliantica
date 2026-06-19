@@ -42,6 +42,9 @@ import { DEFAULT_TIME_CONFIG } from "@/types";
 import { cn } from "@/lib/utils";
 import { PLOT_TEMPLATES } from "@/lib/plotTemplates";
 
+const COMMENT_CATEGORIES = ["Plot", "Character", "Style", "Language", "Continuity", "Research"];
+const CUSTOM_CATEGORIES_KEY = "fol_comment_categories";
+
 function getDayNightLabel(config: typeof DEFAULT_TIME_CONFIG, time: SceneTime | null): "Day" | "Night" | null {
   if (!time) return null;
   const hourUnit = config.units.find(u => u.id === "hour" && u.enabled);
@@ -176,16 +179,28 @@ export default function ScenePage() {
 
   async function handleSubmitComment() {
     if (!pendingComment || !commentBody.trim()) return;
+    const cat = commentCategory.trim();
+    if (customCategoryMode && cat) {
+      try {
+        const stored: string[] = JSON.parse(localStorage.getItem(CUSTOM_CATEGORIES_KEY) ?? "[]");
+        if (!stored.includes(cat)) {
+          localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify([...stored, cat]));
+        }
+      } catch { /* ignore */ }
+    }
     await createComment.mutateAsync({
       from_pos:    pendingComment.from,
       to_pos:      pendingComment.to,
       anchor_text: pendingComment.text.slice(0, 200),
       body:        commentBody.trim(),
       color:       myColor,
+      category:    cat,
     });
     setAddCommentOpen(false);
     setPendingComment(null);
     setCommentBody("");
+    setCommentCategory("");
+    setCustomCategoryMode(false);
     setCommentsPanelOpen(true);
   }
 
@@ -202,8 +217,9 @@ export default function ScenePage() {
   const setFocusMode        = useUIStore((s) => s.setFocusMode);
   const typewriterMode      = useUIStore((s) => s.typewriterMode);
   const setTypewriterMode   = useUIStore((s) => s.setTypewriterMode);
-  const sessionTimerEnabled = useUIStore((s) => s.sessionTimerEnabled);
-  const sessionGoal         = useUIStore((s) => s.sessionGoal);
+  const sessionTimerEnabled  = useUIStore((s) => s.sessionTimerEnabled);
+  const showCodexHighlights  = useUIStore((s) => s.showCodexHighlights);
+  const sessionGoal          = useUIStore((s) => s.sessionGoal);
   const setSessionGoal      = useUIStore((s) => s.setSessionGoal);
   const clearSession        = useUIStore((s) => s.clearSession);
 
@@ -218,6 +234,8 @@ export default function ScenePage() {
   const [addCommentOpen, setAddCommentOpen]       = useState(false);
   const [pendingComment, setPendingComment]       = useState<{ from: number; to: number; text: string } | null>(null);
   const [commentBody, setCommentBody]             = useState("");
+  const [commentCategory, setCommentCategory]     = useState("");
+  const [customCategoryMode, setCustomCategoryMode] = useState(false);
   const replaceWordRef         = useRef<((word: string) => void) | null>(null);
   const applyFlagRef           = useRef<((type: string) => void) | null>(null);
   const applyGrammarFixRef       = useRef<((matched: string, replacement: string, offset: number) => void) | null>(null);
@@ -574,60 +592,17 @@ export default function ScenePage() {
           Codex
         </Button>
 
-        {/* Comments */}
-        <Button
-          size="sm"
-          variant={commentsPanelOpen ? "secondary" : "ghost"}
-          onClick={() => setCommentsPanelOpen(v => !v)}
-          className="gap-1.5 text-xs"
-          title="Comments"
-        >
-          <MessageCircle className="h-3.5 w-3.5" />
-          Comments
-          {sceneComments.filter(c => !c.resolved).length > 0 && (
-            <span className="bg-primary/20 text-primary text-[10px] rounded-full px-1 py-0.5 leading-none">
-              {sceneComments.filter(c => !c.resolved).length}
-            </span>
-          )}
-        </Button>
-
-        {/* Add Comment (active when text selected and user can comment) */}
+        {/* Add Comment */}
         {canComment && (
           <Button
             size="sm"
             variant="ghost"
             onClick={() => triggerCommentRef.current?.()}
             className="gap-1.5 text-xs"
-            title="Add comment for selected text"
+            title="Add comment on selection"
           >
             <MessageSquare className="h-3.5 w-3.5" />
             Comment
-          </Button>
-        )}
-
-        {/* Grammar — only when service is enabled */}
-        {appSettings?.grammar_check_enabled && (
-          <Button
-            size="sm"
-            variant={grammarPanelOpen ? "secondary" : "ghost"}
-            onClick={() => setGrammarPanelOpen(v => !v)}
-            className="gap-1.5 text-xs"
-            title="Grammar check"
-          >
-            <SpellCheck className="h-3.5 w-3.5" />
-            Grammar
-          </Button>
-        )}
-        {appSettings?.vale_enabled && (
-          <Button
-            size="sm"
-            variant={valePanelOpen ? "secondary" : "ghost"}
-            onClick={() => setValePanelOpen(v => !v)}
-            className="gap-1.5 text-xs"
-            title="Style check"
-          >
-            <SpellCheck className="h-3.5 w-3.5" />
-            Style Checker
           </Button>
         )}
 
@@ -724,6 +699,19 @@ export default function ScenePage() {
                 <BookMarked className="h-3.5 w-3.5 text-muted-foreground" />
                 Thesaurus
                 {thesaurusOpen && <Check className="ml-auto h-3 w-3 text-primary" />}
+              </button>
+              <button
+                onClick={() => { setCommentsPanelOpen((v) => !v); setMenuOpen(false); }}
+                className={cn("w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2", commentsPanelOpen && "text-primary")}
+              >
+                <MessageCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                Comments
+                {sceneComments.filter(c => !c.resolved).length > 0 && (
+                  <span className="ml-auto bg-primary/20 text-primary text-[10px] rounded-full px-1 py-0.5 leading-none">
+                    {sceneComments.filter(c => !c.resolved).length}
+                  </span>
+                )}
+                {commentsPanelOpen && sceneComments.filter(c => !c.resolved).length === 0 && <Check className="ml-auto h-3 w-3 text-primary" />}
               </button>
               {appSettings?.grammar_check_enabled && (
                 <button
@@ -840,8 +828,13 @@ export default function ScenePage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Editor */}
         <div className="flex-1 overflow-hidden flex flex-col">
-          {/* Co-work lock banner */}
-          {isReadOnly && (
+          {/* Co-work lock / editor banner */}
+          {isEditor ? (
+            <div className="flex items-center gap-2 px-4 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 border-b border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-700 dark:text-emerald-400 shrink-0">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+              <span>Editor mode — Welcome, <strong>{identity?.name ?? "Editor"}</strong></span>
+            </div>
+          ) : isReadOnly && (
             <div className="flex items-center gap-2 px-4 py-1.5 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900/40 text-xs text-amber-700 dark:text-amber-400 shrink-0">
               <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
               {lockDeniedReason === "not_assigned"
@@ -883,6 +876,7 @@ export default function ScenePage() {
             onCommentRequest={canComment ? handleCommentRequest : undefined}
             triggerCommentRef={triggerCommentRef}
             hasSelectionRef={hasSelectionRef}
+            showCodexHighlights={showCodexHighlights}
           />
           <StatusBar sceneWordCount={wordCount} />
         </div>
@@ -962,7 +956,7 @@ export default function ScenePage() {
         {/* Vale prose check panel */}
         {valePanelOpen && (
           <ValePanel
-            text={content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()}
+            text={content.replace(/<\/?(p|div|br|li|h[1-6]|blockquote|hr)[^>]*>/gi, "\n").replace(/<[^>]+>/g, "").trim()}
             language={project?.book_meta?.language ?? undefined}
             onClose={() => setValePanelOpen(false)}
             onJumpTo={(matched, offset) => jumpToGrammarMatchRef.current?.(matched, offset)}
@@ -982,43 +976,91 @@ export default function ScenePage() {
       </div>
 
       {/* Add Comment dialog */}
-      {addCommentOpen && pendingComment && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={(e) => { if (e.target === e.currentTarget) setAddCommentOpen(false); }}
-        >
-          <div className="bg-card border border-border rounded-xl shadow-xl w-[400px] p-4 space-y-3">
-            <h3 className="text-sm font-semibold">Add Comment</h3>
-            <div
-              className="text-xs italic text-muted-foreground border-l-2 pl-2 line-clamp-2"
-              style={{ borderColor: myColor }}
-            >
-              {pendingComment.text}
-            </div>
-            <textarea
-              autoFocus
-              value={commentBody}
-              onChange={(e) => setCommentBody(e.target.value)}
-              placeholder="Write your comment…"
-              className="w-full h-24 text-xs bg-background border border-input rounded-md px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-ring"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleSubmitComment();
-                if (e.key === "Escape") setAddCommentOpen(false);
-              }}
-            />
-            <div className="flex justify-end gap-2">
-              <Button size="sm" variant="ghost" onClick={() => setAddCommentOpen(false)}>Cancel</Button>
-              <Button
-                size="sm"
-                onClick={handleSubmitComment}
-                disabled={!commentBody.trim() || createComment.isPending}
+      {addCommentOpen && pendingComment && (() => {
+        let customCats: string[] = [];
+        try { customCats = JSON.parse(localStorage.getItem(CUSTOM_CATEGORIES_KEY) ?? "[]"); } catch { /* */ }
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+            onClick={(e) => { if (e.target === e.currentTarget) { setAddCommentOpen(false); setCustomCategoryMode(false); setCommentCategory(""); } }}
+          >
+            <div className="bg-card border border-border rounded-xl shadow-xl w-[420px] p-4 space-y-3">
+              <h3 className="text-sm font-semibold">Add Comment</h3>
+              <div
+                className="text-xs italic text-muted-foreground border-l-2 pl-2 line-clamp-2"
+                style={{ borderColor: myColor }}
               >
-                {createComment.isPending ? "Posting…" : "Post comment"}
-              </Button>
+                {pendingComment.text}
+              </div>
+              <textarea
+                autoFocus
+                value={commentBody}
+                onChange={(e) => setCommentBody(e.target.value)}
+                placeholder="Write your comment…"
+                className="w-full h-24 text-xs bg-background border border-input rounded-md px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleSubmitComment();
+                  if (e.key === "Escape") { setAddCommentOpen(false); setCustomCategoryMode(false); setCommentCategory(""); }
+                }}
+              />
+              {/* Category */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground shrink-0">Category</span>
+                {customCategoryMode ? (
+                  <>
+                    <input
+                      autoFocus
+                      value={commentCategory}
+                      onChange={(e) => setCommentCategory(e.target.value)}
+                      placeholder="Category name…"
+                      className="flex-1 text-xs bg-background border border-input rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") { setCustomCategoryMode(false); setCommentCategory(""); }
+                        if (e.key === "Enter") e.currentTarget.blur();
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => { setCustomCategoryMode(false); setCommentCategory(""); }}
+                    >✕</button>
+                  </>
+                ) : (
+                  <select
+                    value={commentCategory}
+                    onChange={(e) => {
+                      if (e.target.value === "__custom__") {
+                        setCustomCategoryMode(true);
+                        setCommentCategory("");
+                      } else {
+                        setCommentCategory(e.target.value);
+                      }
+                    }}
+                    className="flex-1 text-xs bg-background border border-input rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-ring"
+                  >
+                    <option value="">— none —</option>
+                    {COMMENT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    {customCats.filter((c) => !COMMENT_CATEGORIES.includes(c)).map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                    <option value="__custom__">+ Add custom…</option>
+                  </select>
+                )}
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="ghost" onClick={() => { setAddCommentOpen(false); setCustomCategoryMode(false); setCommentCategory(""); }}>Cancel</Button>
+                <Button
+                  size="sm"
+                  onClick={handleSubmitComment}
+                  disabled={!commentBody.trim() || createComment.isPending}
+                >
+                  {createComment.isPending ? "Posting…" : "Post comment"}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <CodexEntryDialog
         open={newEntryDialogOpen}
