@@ -207,3 +207,195 @@ class TestRestoreEndpoint:
             client.delete(f"/api/projects/{project['id']}")
             assert client.post("/api/sync/restore").status_code == 200
         assert client.get(f"/api/projects/{project['id']}").status_code == 200
+
+
+# ── _pg_literal unit tests ────────────────────────────────────────────────────
+
+class TestPgLiteral:
+    def setup_method(self):
+        from routers.sync import _pg_literal
+        self._pg_literal = _pg_literal
+
+    def test_none_returns_null(self):
+        assert self._pg_literal(None) == "NULL"
+
+    def test_bool_true(self):
+        assert self._pg_literal(True) == "TRUE"
+
+    def test_bool_false(self):
+        assert self._pg_literal(False) == "FALSE"
+
+    def test_int(self):
+        assert self._pg_literal(42) == "42"
+
+    def test_float(self):
+        result = self._pg_literal(3.14)
+        assert "3.14" in result
+
+    def test_string_simple(self):
+        result = self._pg_literal("hello")
+        assert result == "E'hello'"
+
+    def test_string_with_newline(self):
+        result = self._pg_literal("line1\nline2")
+        assert "\\n" in result
+
+    def test_string_with_single_quote(self):
+        result = self._pg_literal("it's")
+        assert "''" in result
+
+
+# ── _iter_sql_statements unit tests ──────────────────────────────────────────
+
+class TestIterSqlStatements:
+    def setup_method(self):
+        from routers.sync import _iter_sql_statements
+        self._iter = _iter_sql_statements
+
+    def test_empty_string(self):
+        assert list(self._iter("")) == []
+
+    def test_single_statement(self):
+        stmts = list(self._iter("SELECT 1;"))
+        assert stmts == ["SELECT 1"]
+
+    def test_multiple_statements(self):
+        sql = "DELETE FROM foo;\nINSERT INTO foo VALUES (1);\n"
+        stmts = list(self._iter(sql))
+        assert len(stmts) == 2
+
+    def test_comment_skipped(self):
+        sql = "-- This is a comment\nSELECT 1;\n"
+        stmts = list(self._iter(sql))
+        assert len(stmts) == 1
+        assert "comment" not in stmts[0]
+
+    def test_semicolon_in_string_not_split(self):
+        sql = "INSERT INTO t VALUES (E'a;b');\n"
+        stmts = list(self._iter(sql))
+        assert len(stmts) == 1
+        assert "a;b" in stmts[0]
+
+    def test_escaped_quote_in_e_string(self):
+        sql = "INSERT INTO t VALUES (E'it''s ok');\n"
+        stmts = list(self._iter(sql))
+        assert len(stmts) == 1
+        assert "it''s ok" in stmts[0]
+
+    def test_backslash_escape_in_e_string(self):
+        sql = r"INSERT INTO t VALUES (E'line1\nline2');" + "\n"
+        stmts = list(self._iter(sql))
+        assert len(stmts) == 1
+
+    def test_trailing_without_semicolon(self):
+        sql = "SELECT 1;\nSELECT 2"  # no trailing semicolon
+        stmts = list(self._iter(sql))
+        assert len(stmts) == 2
+        assert "SELECT 2" in stmts
+
+
+# ── _sync_uploads unit tests ──────────────────────────────────────────────────
+
+class TestSyncUploads:
+    def test_nonexistent_src_is_noop(self, tmp_path):
+        from routers.sync import _sync_uploads
+        src = tmp_path / "no_such_dir"
+        dst = tmp_path / "dst"
+        _sync_uploads(src, dst)  # should not raise
+        assert not dst.exists()
+
+    def test_copies_new_files(self, tmp_path):
+        from routers.sync import _sync_uploads
+        src = tmp_path / "src"
+        dst = tmp_path / "dst"
+        src.mkdir()
+        (src / "file.txt").write_text("hello")
+        _sync_uploads(src, dst)
+        assert (dst / "file.txt").read_text() == "hello"
+
+    def test_skips_already_synced_files(self, tmp_path):
+        from routers.sync import _sync_uploads
+        src = tmp_path / "src"
+        dst = tmp_path / "dst"
+        src.mkdir()
+        dst.mkdir()
+        src_file = src / "file.txt"
+        src_file.write_text("original")
+        dst_file = dst / "file.txt"
+        dst_file.write_text("original")
+        # Make dst newer than src — should not be overwritten
+        import os, time
+        future = time.time() + 3600
+        os.utime(dst_file, (future, future))
+        _sync_uploads(src, dst)
+        assert dst_file.read_text() == "original"
+
+
+# ── GET /api/sync/status ──────────────────────────────────────────────────────
+
+class TestSyncStatus:
+    def test_status_returns_fields(self, client):
+        r = client.get("/api/sync/status")
+        assert r.status_code == 200
+        body = r.json()
+        assert "enabled" in body
+        assert "mode" in body
+        assert "mirror_dir" in body
+        assert "last_sync_at" in body
+        assert "error" in body
+
+
+# ── POST /api/sync/trigger ────────────────────────────────────────────────────
+
+class TestSyncTrigger:
+    def test_trigger_returns_ok(self, client):
+        r = client.post("/api/sync/trigger")
+        assert r.status_code == 200
+        assert r.json()["ok"] is True
+
+
+# ── Restore exception path ────────────────────────────────────────────────────
+
+class TestRestoreExceptionPath:
+    def test_restore_returns_500_on_bad_sql(self, client, tmp_path):
+        dump = tmp_path / "foliantica.sql"
+        dump.write_text("THIS IS NOT VALID SQL;\n")
+        import database as db_module
+        from routers.sync import restore_from_dump
+        with patch("pathlib.Path.cwd", return_value=tmp_path):
+            r = client.post("/api/sync/restore")
+        assert r.status_code == 500
+
+    def test_restore_saves_and_reapplies_keys(self, client, db, test_engine, tmp_path):
+        """Keys present before restore should survive after restore."""
+        from routers.sync import restore_from_dump
+        from crypto import encrypt
+        import database as db_module
+
+        encrypted_key = encrypt("preserved-key")
+        db.add(UserSettings(id=1, openrouter_api_key=encrypted_key))
+        db.commit()
+
+        fixture = Path(__file__).parent / "fixtures" / "user_settings_no_keys.sql"
+        dump = tmp_path / "foliantica.sql"
+        dump.write_text(fixture.read_text())
+
+        with (
+            patch.object(db_module, "engine", test_engine),
+            patch("pathlib.Path.cwd", return_value=tmp_path),
+        ):
+            r = client.post("/api/sync/restore")
+        assert r.status_code == 200
+
+
+# ── Dump endpoint exception path ──────────────────────────────────────────────
+
+class TestDumpExceptionPath:
+    def test_dump_returns_500_on_error(self, client, tmp_path):
+        """If _do_pg_dump raises, /dump returns 500."""
+        with (
+            patch("routers.sync._do_pg_dump", side_effect=Exception("DB error")),
+            patch("pathlib.Path.cwd", return_value=tmp_path),
+        ):
+            r = client.post("/api/sync/dump?force=true")
+        assert r.status_code == 500
