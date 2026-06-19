@@ -529,6 +529,7 @@ export const settingsApi = {
     ai_disabled?: boolean;
     sync_mirror_enabled?: boolean;
     sync_local_dir?: string | null;
+    codex_highlight_enabled?: boolean;
   }) => req<Settings>("/settings", { method: "POST", body: JSON.stringify(data) }),
   getModels: () => req<OpenRouterModel[]>("/settings/models"),
   serviceStatus: () => req<{ languagetool: "ok" | "error" | "offline"; pandoc: "ok" | "error" | "offline"; spacy: "ok" | "error" | "offline"; calibre: "ok" | "error" | "offline"; vale: "ok" | "error" | "offline" }>("/settings/service-status"),
@@ -772,6 +773,57 @@ export const valeApi = {
     req<{ synced: number; errors: Record<string, string>; last_synced: string }>(
       "/vale/sync-rules", { method: "POST" }
     ),
+};
+
+// ── Prose ─────────────────────────────────────────────────────────────────────
+
+export interface ProseRepetitiveStart {
+  word: string;
+  count: number;
+  from_sentence: number;
+}
+
+export interface ProseFlaggedParagraph {
+  paragraph: number;
+  auxiliary_count: number;
+  word_count: number;
+  ratio: number;
+  level: "elevated" | "high";
+}
+
+export interface ProseCheckResult {
+  language: string;
+  word_count: number;
+  sentence_count: number;
+  paragraph_count: number;
+  sentence_variety: {
+    avg_length: number;
+    length_stddev: number;
+    variety: "good" | "moderate" | "low" | "n/a";
+    repetitive_starts: ProseRepetitiveStart[];
+  };
+  auxiliary_density: {
+    flagged_paragraphs: ProseFlaggedParagraph[];
+  };
+  adverb_density: {
+    count: number;
+    ratio: number;
+    level: "ok" | "elevated" | "high";
+  };
+  dialog: {
+    ratio: number;
+    dialog_lines: number;
+    total_lines: number;
+  };
+}
+
+export const proseApi = {
+  check: (text: string, language?: string) =>
+    req<ProseCheckResult>("/prose/check", {
+      method: "POST",
+      body: JSON.stringify({ text, language }),
+      signal: AbortSignal.timeout(30_000),
+    }),
 };
 
 export const grammarApi = {
@@ -1110,6 +1162,7 @@ export interface SceneComment {
   author_name: string;
   author_role: string;
   color:       string;
+  category:    string;
   resolved:    boolean;
   created_at:  string;
 }
@@ -1122,6 +1175,7 @@ export interface CommentCreate {
   ctx_after?:  string | null;
   body:        string;
   color?:      string;
+  category?:   string;
 }
 
 export interface PositionSync {

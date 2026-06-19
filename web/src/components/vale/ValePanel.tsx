@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, AlertTriangle, Info, Loader2, Copy, Check, X } from "lucide-react";
+import { AlertCircle, AlertTriangle, Info, Loader2, Copy, Check, X, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ValeAlert } from "@/lib/api";
-import { useValeCheck } from "@/store/queries";
+import { useValeCheck, useProseCheck } from "@/store/queries";
+import { ProseMetricsDialog } from "./ProseMetricsDialog";
 
 function langName(code: string): string {
   try {
@@ -158,6 +159,15 @@ const SEVERITIES: ValeAlert["Severity"][] = ["error", "warning", "suggestion"];
 
 export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
   const check = useValeCheck();
+  const prose = useProseCheck();
+  const [metricsOpen, setMetricsOpen] = useState(false);
+
+  const runChecks = () => {
+    check.mutate({ text, language });
+    prose.mutate({ text, language });
+  };
+
+  const isPending = check.isPending || prose.isPending;
 
   const byGroup = postProcessAlerts(check.data?.alerts ?? [], text, language).reduce<Record<string, ValeAlert[]>>(
     (acc, a) => { (acc[a.Severity] ??= []).push(a); return acc; },
@@ -181,10 +191,10 @@ export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
           <Button
             size="sm"
             className="w-full"
-            onClick={() => check.mutate({ text, language })}
-            disabled={check.isPending}
+            onClick={runChecks}
+            disabled={isPending}
           >
-            {check.isPending
+            {isPending
               ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Analysing…</>
               : "Run Style Check"}
           </Button>
@@ -196,18 +206,16 @@ export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
           </p>
         </div>
 
-        {!check.data && !check.isPending && !check.isError && (
+        {!check.data && !isPending && !check.isError && (
           <p className="text-xs text-muted-foreground leading-relaxed">
             Vale checks your prose for style issues using configured rule packages. Click <strong className="text-foreground">Run Style Check</strong> to analyse this scene.
           </p>
         )}
 
-        {check.isPending && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-              Analysing…
-            </div>
+        {isPending && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+            Analysing…
           </div>
         )}
 
@@ -232,7 +240,6 @@ export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
               if (!alerts?.length) return null;
               const cfg = SEV[sev];
 
-              // Group by Check rule so the same rule firing N times collapses into one block
               const byRule = alerts.reduce<Record<string, ValeAlert[]>>((acc, a) => {
                 (acc[a.Check] ??= []).push(a);
                 return acc;
@@ -272,9 +279,28 @@ export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
             })}
           </>
         )}
+
+        {/* Prose metrics button — shown once prose data is available */}
+        {prose.data && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full gap-1.5"
+            onClick={() => setMetricsOpen(true)}
+          >
+            <BarChart2 className="h-3.5 w-3.5" />
+            Prose Metrics
+          </Button>
+        )}
       </div>
 
-
+      {prose.data && (
+        <ProseMetricsDialog
+          open={metricsOpen}
+          onOpenChange={setMetricsOpen}
+          result={prose.data}
+        />
+      )}
     </div>
   );
 }
