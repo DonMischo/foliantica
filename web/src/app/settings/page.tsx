@@ -3099,7 +3099,9 @@ BasedOnStyles = write-good`}</code>
                           <p className="text-[11px] text-muted-foreground">
                             {inv.assigned_items.length > 0
                               ? `${inv.assigned_items.length} scene${inv.assigned_items.length !== 1 ? "s" : ""} assigned`
-                              : <span className="text-amber-600 dark:text-amber-400">no scenes assigned</span>}
+                              : inv.role === "editor"
+                                ? "all scenes (default)"
+                                : <span className="text-amber-600 dark:text-amber-400">no scenes assigned</span>}
                           </p>
                         )}
                       </div>

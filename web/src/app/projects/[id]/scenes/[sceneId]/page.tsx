@@ -99,6 +99,12 @@ export default function ScenePage() {
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
   const [linkPanelOpen, setLinkPanelOpen] = useState(false);
 
+  // ── Identity (read once; getCoworkIdentity reads localStorage — no hook needed) ──
+  const identity   = useMemo(() => getCoworkIdentity(), []);
+  const isHost     = !identity;
+  const isEditor   = identity?.role === "editor";
+  const canComment = identity?.role !== "student";
+
   // ── Co-work soft lock + presence ────────────────────────────────────────
   const locks          = useCollabStore((s) => s.locks);
   const mySessionId    = useCollabStore((s) => s.mySessionId);
@@ -112,18 +118,20 @@ export default function ScenePage() {
 
   const lockHolder = getLockHolder(locks, "scene", sceneIdNum, mySessionId);
 
-  // Request lock + announce presence on mount; release/clear on unmount
+  // Request lock + announce presence on mount; release/clear on unmount.
+  // Editors skip the lock request — they can never edit, so acquiring the
+  // lock would just block the actual author without granting any benefit.
   useEffect(() => {
     if (!collabConn) return;
-    requestLock("scene", sceneIdNum);
+    if (!isEditor) requestLock("scene", sceneIdNum);
     sendPresence("scene", sceneIdNum);
     const hb = setInterval(() => sendHeartbeat("scene", sceneIdNum), 20_000);
     return () => {
       clearInterval(hb);
-      releaseLock("scene", sceneIdNum);
+      if (!isEditor) releaseLock("scene", sceneIdNum);
       sendPresence(null, null);
     };
-  }, [collabConn, sceneIdNum, requestLock, releaseLock, sendHeartbeat, sendPresence]);
+  }, [collabConn, sceneIdNum, isEditor, requestLock, releaseLock, sendHeartbeat, sendPresence]);
 
   // Listen for lock_denied custom events from the WS hook
   useEffect(() => {
@@ -140,13 +148,10 @@ export default function ScenePage() {
     return () => window.removeEventListener("cowork:lock_denied", handler);
   }, [sceneIdNum]);
 
-  const isReadOnly = !!(lockHolder || lockDenied);
+  const isReadOnly = isEditor || !!(lockHolder || lockDenied);
   const hostAuthorName = project?.book_meta?.author || "Main author";
 
   // ── Comments ─────────────────────────────────────────────────────────────────
-  const identity       = useMemo(() => getCoworkIdentity(), []);
-  const isHost         = !identity;
-  const canComment     = identity?.role !== "student";
   const presence       = useCollabStore((s) => s.presence);
   const myColor        = useMemo(() => {
     if (isHost) return "#6366f1";
