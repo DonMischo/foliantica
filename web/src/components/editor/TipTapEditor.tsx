@@ -338,7 +338,7 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
       SensitivityMark,
       SearchExtension,
     ],
-    content,
+    content: normalizeQuotes(content),
     onUpdate({ editor }) {
       onChange(editor.getHTML());
       onFlagsChangeRef.current?.(getSensitivityFlags(editor));
@@ -379,7 +379,7 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
         // custom nodes). Dispatch with addToHistory:false so Ctrl+Z can't undo
         // the content load, and preventUpdate so onUpdate doesn't fire.
         const el = document.createElement("div");
-        el.innerHTML = content || "";
+        el.innerHTML = normalizeQuotes(content || "");
         const newDoc = PMDOMParser.fromSchema(editor.schema).parse(el);
         const tr = editor.state.tr
           .replaceWith(0, editor.state.doc.content.size, newDoc.content)

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Prose style checker — structural analysis of creative writing text.
 
 Complements Vale (word/phrase patterns) and LanguageTool (grammar) with
@@ -209,12 +209,12 @@ def _dialog_ratio(plain: str) -> dict:
     """Estimate what share of lines are dialogue."""
     lines = [ln.strip() for ln in plain.split("\n") if ln.strip()]
     _DIALOG_OPENERS = {
-        '"',   # straight double quote
-        """,  # " LEFT DOUBLE QUOTATION MARK
-        """,  # " DOUBLE LOW-9 QUOTATION MARK (German/Polish open)
-        "«",  # « LEFT-POINTING DOUBLE ANGLE (French/Italian open)
-        "–",  # – EN DASH (dialog marker in some European traditions)
-        "—",  # — EM DASH
+        '"',      # U+0022 straight double quote
+        "“",    # U+201C left double quotation mark
+        "„",   # U+201E double low-9 quotation mark (German/Polish open)
+        "«",   # U+00AB left-pointing double angle quotation mark
+        "–",    # U+2013 en dash (dialog marker in some European traditions)
+        "—",    # U+2014 em dash
     }
     dialog = sum(1 for ln in lines if ln and ln[0] in _DIALOG_OPENERS)
     ratio = dialog / len(lines) if lines else 0.0
