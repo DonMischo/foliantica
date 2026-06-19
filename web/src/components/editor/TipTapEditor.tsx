@@ -71,15 +71,19 @@ interface Props {
   showCodexHighlights?: boolean;
 }
 
-// Normalise typographic quotes to ASCII on paste — bundler-safe (no non-ASCII in source).
-const _DQ = new Set([0x201C, 0x201D, 0x201E, 0x201F, 0x275D, 0x275E]); // curly/low-9 double
-const _SQ = new Set([0x2018, 0x2019, 0x201A, 0x2039, 0x203A]);          // curly/low-9 single
-// U+00AB/BB guillemets are intentional (French/Italian/Polish) — not in these sets.
+// Normalise typographic quotes to ASCII on paste.
+// All values are plain decimal integers — no Unicode/hex escapes anywhere,
+// so no bundler can misinterpret the source.
+const _DQ = new Set([0x201C, 0x201D, 0x201E, 0x201F, 0x275D, 0x275E]); // curly/low-9 doubles
+const _SQ = new Set([0x2018, 0x2019, 0x201A, 0x2039, 0x203A]);          // curly/low-9 singles
+const _CH_DQ = String.fromCharCode(34); // " (U+0022) — decimal avoids escape-sequence issues
+const _CH_SQ = String.fromCharCode(39); // ‘ (U+0027)
+// U+00AB/BB guillemets are intentional (French/Italian/Polish) — left untouched.
 function normalizeQuotes(text: string): string {
   return Array.from(text).map(ch => {
     const cp = ch.codePointAt(0)!;
-    if (_DQ.has(cp)) return ‘\x22’; // straight double quote
-    if (_SQ.has(cp)) return ‘\x27’; // straight single quote
+    if (_DQ.has(cp)) return _CH_DQ;
+    if (_SQ.has(cp)) return _CH_SQ;
     return ch;
   }).join(‘’);
 }
