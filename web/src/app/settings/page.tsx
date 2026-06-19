@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Fragment } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database, Users, Copy, Link2, ShieldCheck, ListChecks, Info, ChevronDown, ChevronUp, QrCode, Cloud } from "lucide-react";
+import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database, Users, Copy, Link2, ShieldCheck, ListChecks, Info, ChevronDown, ChevronUp, QrCode, Cloud, Highlighter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -93,6 +93,8 @@ export default function SettingsPage() {
   const setTypewriterOffset     = useUIStore((s) => s.setTypewriterOffset);
   const sessionTimerEnabled     = useUIStore((s) => s.sessionTimerEnabled);
   const setSessionTimerEnabled  = useUIStore((s) => s.setSessionTimerEnabled);
+  const showCodexHighlights     = useUIStore((s) => s.showCodexHighlights);
+  const setShowCodexHighlights  = useUIStore((s) => s.setShowCodexHighlights);
   const [achPopupsEnabled, setAchPopupsEnabled] = useState(() => {
     if (typeof window === "undefined") return true;
     return localStorage.getItem(ACH_POPUPS_KEY) !== "false";
@@ -1339,6 +1341,36 @@ export default function SettingsPage() {
               <span className={cn(
                 "pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
                 sessionTimerEnabled ? "translate-x-4" : "translate-x-0"
+              )} />
+            </button>
+          </div>
+
+          {/* Codex highlights */}
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-2">
+              <Highlighter className="h-3.5 w-3.5 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Codex entry highlights</p>
+                <p className="text-xs text-muted-foreground">Highlight codex entries (characters, places, …) in the editor</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showCodexHighlights}
+              onClick={() => {
+                const next = !showCodexHighlights;
+                setShowCodexHighlights(next);
+                updateSettings.mutate({ codex_highlight_enabled: next });
+              }}
+              className={cn(
+                "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                showCodexHighlights ? "bg-primary" : "bg-input"
+              )}
+            >
+              <span className={cn(
+                "pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
+                showCodexHighlights ? "translate-x-4" : "translate-x-0"
               )} />
             </button>
           </div>

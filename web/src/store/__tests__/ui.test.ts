@@ -65,18 +65,20 @@ describe("UIStore — session timer", () => {
 // ── Settings hydration ────────────────────────────────────────────────────────
 
 describe("UIStore — settings hydration", () => {
-  it("initFromSettings applies the four DB-backed preferences", () => {
+  it("initFromSettings applies the five DB-backed preferences", () => {
     useUIStore.getState().initFromSettings({
       show_paragraph_numbers: true,
       typewriter_mode: true,
       typewriter_offset: 30,
       session_timer_enabled: false,
+      codex_highlight_enabled: false,
     });
     const s = useUIStore.getState();
     expect(s.showParagraphNumbers).toBe(true);
     expect(s.typewriterMode).toBe(true);
     expect(s.typewriterOffset).toBe(30);
     expect(s.sessionTimerEnabled).toBe(false);
+    expect(s.showCodexHighlights).toBe(false);
   });
 
   it("initFromSettings does not touch focusMode, sidebarOpen, or saveStatus", () => {
@@ -86,6 +88,7 @@ describe("UIStore — settings hydration", () => {
       typewriter_mode: false,
       typewriter_offset: 50,
       session_timer_enabled: true,
+      codex_highlight_enabled: true,
     });
     const s = useUIStore.getState();
     expect(s.focusMode).toBe(true);
@@ -99,6 +102,7 @@ describe("UIStore — settings hydration", () => {
       typewriter_mode: false,
       typewriter_offset: 75,
       session_timer_enabled: true,
+      codex_highlight_enabled: true,
     });
     expect(useUIStore.getState().typewriterOffset).toBe(75);
   });

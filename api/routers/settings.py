@@ -70,6 +70,7 @@ def _settings_out(s: UserSettings) -> SettingsOut:
         typewriter_mode=bool(s.typewriter_mode),
         typewriter_offset=s.typewriter_offset if s.typewriter_offset is not None else 50,
         session_timer_enabled=bool(s.session_timer_enabled) if s.session_timer_enabled is not None else True,
+        codex_highlight_enabled=bool(s.codex_highlight_enabled) if getattr(s, "codex_highlight_enabled", None) is not None else True,
         grammar_check_enabled=bool(s.grammar_check_enabled),
         grammar_check_url=s.grammar_check_url or "http://localhost:8081",
         grammar_languages=grammar_langs,
@@ -122,6 +123,8 @@ def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
         s.typewriter_offset = body.typewriter_offset
     if body.session_timer_enabled is not None:
         s.session_timer_enabled = int(body.session_timer_enabled)
+    if body.codex_highlight_enabled is not None:
+        s.codex_highlight_enabled = int(body.codex_highlight_enabled)
     if body.grammar_check_enabled is not None:
         s.grammar_check_enabled = int(body.grammar_check_enabled)
     if body.grammar_check_url is not None:
