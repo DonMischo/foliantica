@@ -516,7 +516,7 @@ export function ValeRulesModal({ open, onClose }: Props) {
                         </div>
                       )}
                       <p className="px-4 pt-0.5 pb-2 text-[10px] text-muted-foreground/40 leading-relaxed">
-                        <code className="font-mono">\b</code> = word boundary — <code className="font-mono">\bword\b</code> matches <em>whole word</em>, bare <code className="font-mono">word</code> matches anywhere in text
+                        <code className="font-mono">\b</code> = word boundary — <code className="font-mono">\bword\b</code> matches <em>whole word</em>, bare <code className="font-mono">word</code> matches anywhere in text · Words match inflected forms too (e.g. <em>perfekt</em> also flags <em>perfekte</em>, <em>perfekten</em>)
                       </p>
                     </div>
                   )}
