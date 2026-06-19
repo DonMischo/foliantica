@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useEditor, EditorContent, type Editor as TiptapEditor } from "@tiptap/react";
@@ -77,7 +77,7 @@ interface Props {
 const _DQ = new Set([0x201C, 0x201D, 0x201E, 0x201F, 0x275D, 0x275E]); // curly/low-9 doubles
 const _SQ = new Set([0x2018, 0x2019, 0x201A, 0x2039, 0x203A]);          // curly/low-9 singles
 const _CH_DQ = String.fromCharCode(34); // " (U+0022) — decimal avoids escape-sequence issues
-const _CH_SQ = String.fromCharCode(39); // ‘ (U+0027)
+const _CH_SQ = String.fromCharCode(39); // ' (U+0027)
 // U+00AB/BB guillemets are intentional (French/Italian/Polish) — left untouched.
 function normalizeQuotes(text: string): string {
   return Array.from(text).map(ch => {
@@ -85,7 +85,7 @@ function normalizeQuotes(text: string): string {
     if (_DQ.has(cp)) return _CH_DQ;
     if (_SQ.has(cp)) return _CH_SQ;
     return ch;
-  }).join(‘’);
+  }).join('');
 }
 
 interface SlashState {
