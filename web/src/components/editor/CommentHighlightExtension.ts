@@ -21,7 +21,7 @@ function buildDecorations(doc: unknown, highlights: CommentHighlight[]): Decorat
       decorations.push(
         Decoration.inline(h.from, h.to, {
           class: "comment-highlight",
-          style: `background-color: ${h.color}33; border-bottom: 2px solid ${h.color};`,
+          style: `background-color: ${h.color}E6; border-bottom: 2px solid ${h.color};`,
           "data-comment-id": String(h.id),
         })
       );

@@ -53,6 +53,7 @@ interface Props {
   applyFlagRef?: React.MutableRefObject<((type: string) => void) | null>;
   applyGrammarFixRef?: React.MutableRefObject<((matched: string, replacement: string, plainOffset: number) => void) | null>;
   jumpToGrammarMatchRef?: React.MutableRefObject<((matched: string, plainOffset: number) => void) | null>;
+  jumpToValeMatchRef?: React.MutableRefObject<((matched: string, skipCount: number) => void) | null>;
   jumpToTextRef?: React.MutableRefObject<((text: string) => void) | null>;
   onPrefillEntry?: (data: Partial<CodexEntry>) => void;
   /** When true the editor is rendered read-only (co-work lock held by another user) */
@@ -94,37 +95,16 @@ interface SlashState {
   command: (item: CommandItem) => void;
 }
 
-// ── Grammar: find Nth occurrence helper ───────────────────────────────────────
-// LanguageTool gives us `plainOffset` — a char position in the same
-// normalised plain text the scene page sent to the API.  We rebuild that same
-// string from the editor HTML, count how many occurrences of `matched` appear
-// before `plainOffset` (= which occurrence index this is), then walk the
-// ProseMirror document to land on exactly that occurrence.
-function grammarFindInDoc(
+// ── Grammar: find Nth occurrence helpers ─────────────────────────────────────
+
+// Walk the ProseMirror doc and return the range of the (skipCount+1)th occurrence.
+function walkDocForNthOccurrence(
   editor: TiptapEditor,
   matched: string,
-  plainOffset: number,
+  skipCount: number,
 ): { from: number; to: number } | null {
   if (!matched) return null;
-
-  // Rebuild the same plain text sent to LanguageTool
-  const plainText = editor.getHTML()
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  // Count occurrences of `matched` strictly before plainOffset → occurrence index
-  let skipCount = 0;
-  let pos = 0;
   const step = Math.max(matched.length, 1);
-  while (pos < plainOffset) {
-    const idx = plainText.indexOf(matched, pos);
-    if (idx === -1 || idx >= plainOffset) break;
-    skipCount++;
-    pos = idx + step;
-  }
-
-  // Walk the ProseMirror doc and find the (skipCount+1)th text occurrence
   let seen = 0;
   let result: { from: number; to: number } | null = null;
   editor.state.doc.descendants((node, pmPos) => {
@@ -142,8 +122,38 @@ function grammarFindInDoc(
       localPos = idx + step;
     }
   });
-
   return result;
+}
+
+// LanguageTool gives us `plainOffset` — a char position in the same
+// space-collapsed plain text the scene page sent to the API.  We rebuild that
+// string from the editor HTML, count how many occurrences of `matched` appear
+// before `plainOffset` (= which occurrence index this is), then walk the doc.
+function grammarFindInDoc(
+  editor: TiptapEditor,
+  matched: string,
+  plainOffset: number,
+): { from: number; to: number } | null {
+  if (!matched) return null;
+
+  // Rebuild the same plain text sent to LanguageTool (space-collapsed, single line).
+  const plainText = editor.getHTML()
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Count occurrences of `matched` strictly before plainOffset → occurrence index
+  let skipCount = 0;
+  let pos = 0;
+  const step = Math.max(matched.length, 1);
+  while (pos < plainOffset) {
+    const idx = plainText.indexOf(matched, pos);
+    if (idx === -1 || idx >= plainOffset) break;
+    skipCount++;
+    pos = idx + step;
+  }
+
+  return walkDocForNthOccurrence(editor, matched, skipCount);
 }
 
 // ── Typewriter scroll helper ───────────────────────────────────────────────────
@@ -165,7 +175,7 @@ function applyTypewriterScroll(
   } catch { /* view not mounted */ }
 }
 
-export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onOpenLink, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, jumpToTextRef, onPrefillEntry, aiDisabled = false, readOnly = false, commentHighlights, getCommentPositionsRef, onCommentRequest, triggerCommentRef, hasSelectionRef, showCodexHighlights = true }: Props) {
+export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onOpenLink, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, jumpToValeMatchRef, jumpToTextRef, onPrefillEntry, aiDisabled = false, readOnly = false, commentHighlights, getCommentPositionsRef, onCommentRequest, triggerCommentRef, hasSelectionRef, showCodexHighlights = true }: Props) {
   const showLineNumbers  = useUIStore((s) => s.showParagraphNumbers);
   const typewriterMode   = useUIStore((s) => s.typewriterMode);
   const typewriterOffset = useUIStore((s) => s.typewriterOffset);
@@ -543,6 +553,32 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
       });
     };
   }, [editor, jumpToGrammarMatchRef]);
+
+  // Vale: jump to Nth occurrence by pre-computed skip count (Vale Span is column-based, not global)
+  useEffect(() => {
+    if (!jumpToValeMatchRef) return;
+    jumpToValeMatchRef.current = (matched: string, skipCount: number) => {
+      if (!editor) return;
+      const range = walkDocForNthOccurrence(editor, matched, skipCount);
+      if (!range) return;
+      editor.chain().focus(undefined, { scrollIntoView: false }).setTextSelection(range).run();
+      requestAnimationFrame(() => {
+        const container = scrollRef.current;
+        if (!container) return;
+        try {
+          const coords = editor.view.coordsAtPos(range.from);
+          const cRect  = container.getBoundingClientRect();
+          const relTop = coords.top - cRect.top;
+          const MARGIN = 80;
+          if (relTop < MARGIN) {
+            container.scrollTop += relTop - MARGIN;
+          } else if (relTop > cRect.height - MARGIN) {
+            container.scrollTop += relTop - cRect.height + MARGIN;
+          }
+        } catch { /* view not mounted */ }
+      });
+    };
+  }, [editor, jumpToValeMatchRef]);
 
   // Jump to first occurrence of a plain-text string (used by codex suggestion clicks)
   useEffect(() => {
