@@ -78,8 +78,8 @@ const _SQ = new Set([0x2018, 0x2019, 0x201A, 0x2039, 0x203A]);          // curly
 function normalizeQuotes(text: string): string {
   return Array.from(text).map(ch => {
     const cp = ch.codePointAt(0)!;
-    if (_DQ.has(cp)) return ‘”’;
-    if (_SQ.has(cp)) return “’”;
+    if (_DQ.has(cp)) return ‘\x22’; // straight double quote
+    if (_SQ.has(cp)) return ‘\x27’; // straight single quote
     return ch;
   }).join(‘’);
 }
