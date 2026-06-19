@@ -71,14 +71,17 @@ interface Props {
   showCodexHighlights?: boolean;
 }
 
-// Map typographic / locale-specific quote characters to ASCII equivalents so
-// that Vale rules, the prose checker, and LanguageTool all see consistent input
-// regardless of whether text was authored in Word, Google Docs, or macOS.
+// Normalise typographic quotes to ASCII on paste — bundler-safe (no non-ASCII in source).
+const _DQ = new Set([0x201C, 0x201D, 0x201E, 0x201F, 0x275D, 0x275E]); // curly/low-9 double
+const _SQ = new Set([0x2018, 0x2019, 0x201A, 0x2039, 0x203A]);          // curly/low-9 single
+// U+00AB/BB guillemets are intentional (French/Italian/Polish) — not in these sets.
 function normalizeQuotes(text: string): string {
-  return text
-    .replace(/[“”„‟❝❞]/g, ‘”’)  // curly/low-9 double → straight “
-    .replace(/[‘’‚‹›]/g, “’”);   // curly/low-9 single → straight ‘
-    // «» are intentional (French/Italian/Polish) — leave them alone
+  return Array.from(text).map(ch => {
+    const cp = ch.codePointAt(0)!;
+    if (_DQ.has(cp)) return ‘”’;
+    if (_SQ.has(cp)) return “’”;
+    return ch;
+  }).join(‘’);
 }
 
 interface SlashState {
