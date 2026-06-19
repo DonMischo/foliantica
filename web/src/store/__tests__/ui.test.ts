@@ -17,6 +17,54 @@ const DEFAULTS = {
 
 beforeEach(() => useUIStore.setState(DEFAULTS));
 
+// ── Simple setters ───────────────────────────────────────────────────────────
+
+describe("UIStore — simple setters", () => {
+  it("setSidebarOpen toggles the sidebar", () => {
+    useUIStore.getState().setSidebarOpen(false);
+    expect(useUIStore.getState().sidebarOpen).toBe(false);
+    useUIStore.getState().setSidebarOpen(true);
+    expect(useUIStore.getState().sidebarOpen).toBe(true);
+  });
+
+  it("setCodexSidebarOpen toggles the codex sidebar", () => {
+    useUIStore.getState().setCodexSidebarOpen(true);
+    expect(useUIStore.getState().codexSidebarOpen).toBe(true);
+  });
+
+  it("setSaveStatus sets the status", () => {
+    useUIStore.getState().setSaveStatus("saving");
+    expect(useUIStore.getState().saveStatus).toBe("saving");
+    useUIStore.getState().setSaveStatus("saved");
+    expect(useUIStore.getState().saveStatus).toBe("saved");
+  });
+
+  it("setShowParagraphNumbers toggles paragraph numbers", () => {
+    useUIStore.getState().setShowParagraphNumbers(true);
+    expect(useUIStore.getState().showParagraphNumbers).toBe(true);
+  });
+
+  it("setTypewriterMode toggles typewriter mode", () => {
+    useUIStore.getState().setTypewriterMode(true);
+    expect(useUIStore.getState().typewriterMode).toBe(true);
+  });
+
+  it("setTypewriterOffset sets the offset value", () => {
+    useUIStore.getState().setTypewriterOffset(25);
+    expect(useUIStore.getState().typewriterOffset).toBe(25);
+  });
+
+  it("setFocusMode toggles focus mode", () => {
+    useUIStore.getState().setFocusMode(true);
+    expect(useUIStore.getState().focusMode).toBe(true);
+  });
+
+  it("setShowCodexHighlights toggles codex highlights", () => {
+    useUIStore.getState().setShowCodexHighlights(false);
+    expect(useUIStore.getState().showCodexHighlights).toBe(false);
+  });
+});
+
 // ── Session timer ─────────────────────────────────────────────────────────────
 
 describe("UIStore — session timer", () => {

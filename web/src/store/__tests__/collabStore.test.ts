@@ -7,9 +7,63 @@ const DEFAULTS = {
   presence: [],
   mySessionId: null,
   _ws: null,
+  sessionExpired: false,
 };
 
 beforeEach(() => useCollabStore.setState(DEFAULTS));
+
+// ── Simple setters ────────────────────────────────────────────────────────────
+
+describe("CollabStore — simple setters", () => {
+  it("setConnected updates the connected flag", () => {
+    useCollabStore.getState().setConnected(true);
+    expect(useCollabStore.getState().connected).toBe(true);
+    useCollabStore.getState().setConnected(false);
+    expect(useCollabStore.getState().connected).toBe(false);
+  });
+
+  it("setSessionExpired updates the sessionExpired flag", () => {
+    useCollabStore.getState().setSessionExpired(true);
+    expect(useCollabStore.getState().sessionExpired).toBe(true);
+  });
+
+  it("setPresence replaces the presence array", () => {
+    const records = [
+      { session_id: "s1", display_name: "Alice", color: "#f00", item_type: "scene", item_id: 1 },
+    ];
+    useCollabStore.getState().setPresence(records);
+    expect(useCollabStore.getState().presence).toEqual(records);
+  });
+
+  it("setPresence with empty array clears presence", () => {
+    useCollabStore.getState().setPresence([]);
+    expect(useCollabStore.getState().presence).toEqual([]);
+  });
+
+  it("setMySessionId stores the session id", () => {
+    useCollabStore.getState().setMySessionId("abc-123");
+    expect(useCollabStore.getState().mySessionId).toBe("abc-123");
+  });
+
+  it("setMySessionId with null clears the id", () => {
+    useCollabStore.getState().setMySessionId("abc-123");
+    useCollabStore.getState().setMySessionId(null);
+    expect(useCollabStore.getState().mySessionId).toBeNull();
+  });
+
+  it("setWs stores the WebSocket reference", () => {
+    const ws = { readyState: WebSocket.OPEN, send: vi.fn() } as unknown as WebSocket;
+    useCollabStore.getState().setWs(ws);
+    expect(useCollabStore.getState()._ws).toBe(ws);
+  });
+
+  it("setWs with null clears the WebSocket", () => {
+    const ws = { readyState: WebSocket.OPEN, send: vi.fn() } as unknown as WebSocket;
+    useCollabStore.getState().setWs(ws);
+    useCollabStore.getState().setWs(null);
+    expect(useCollabStore.getState()._ws).toBeNull();
+  });
+});
 
 // ── setLocks ──────────────────────────────────────────────────────────────────
 
