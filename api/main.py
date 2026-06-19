@@ -1,6 +1,7 @@
 import asyncio
 import hmac
 import os
+import re
 from contextlib import asynccontextmanager
 
 import jwt as _pyjwt
@@ -24,7 +25,7 @@ from database import (
     seed_ai_prompts, seed_publisher_profiles, seed_export_profiles,
 )
 from models import Base
-from routers import projects, acts, chapters, scenes, codex, settings, ai, export, imports, graph, time, fragments, images, scene_commands, grammar, analytics, research, submissions, achievements, vale
+from routers import projects, acts, chapters, scenes, codex, settings, ai, export, imports, graph, time, fragments, images, scene_commands, grammar, analytics, research, submissions, achievements, vale, comments
 from routers import sync as sync_router
 from routers import collab as collab_router
 
@@ -157,7 +158,12 @@ _MODE_WRITE_POLICY: dict[str, str] = {
     "read_only":          "none",
     "read_only_assigned": "none",
     "assigned_visible":   "none",
+    "editor":             "comments",   # read-only except comment endpoints
 }
+
+_COMMENT_PATH_RE = re.compile(
+    r"^/api/scenes/\d+/comments(/sync-positions)?$|^/api/comments/\d+$"
+)
 
 # Per-launch secret, set by Electron and injected into its own window's
 # requests only (see electron/main.js + COWORKING_NETWORK_SECURITY_SUMMARY.md).
@@ -252,26 +258,34 @@ class CoworkAuthMiddleware(BaseHTTPMiddleware):
         access_mode = payload.get("access_mode", "default")
         policy = _MODE_WRITE_POLICY.get(access_mode, "all")
         if request.method not in ("GET", "HEAD", "OPTIONS"):
+            is_comment_path = bool(_COMMENT_PATH_RE.match(request.url.path))
             if policy == "none":
                 return JSONResponse({"detail": "Your session is read-only."}, status_code=403)
-            # All guests: deleting content and changing settings are host-only
-            if request.method == "DELETE":
-                return JSONResponse({"detail": "Only the host can delete content."}, status_code=403)
-            if request.url.path.startswith("/api/settings"):
-                return JSONResponse({"detail": "Only the host can change settings."}, status_code=403)
+            if policy == "comments" and not is_comment_path:
+                return JSONResponse({"detail": "Your session is read-only."}, status_code=403)
+            if policy == "all":
+                # DELETE only allowed for own comments; all other deletes are host-only
+                if request.method == "DELETE" and not is_comment_path:
+                    return JSONResponse({"detail": "Only the host can delete content."}, status_code=403)
+                if request.url.path.startswith("/api/settings"):
+                    return JSONResponse({"detail": "Only the host can change settings."}, status_code=403)
 
         # Inject session context into request.state so routers (e.g. scenes)
         # can apply fine-grained per-item checks without re-decoding the JWT.
         # Scene permissions dict: int scene_id → "edit" | "read_only"
         # JWT stores string keys (JSON constraint); convert to int here.
-        raw_perms = payload.get("assigned_scene_permissions", {})
-        request.state.collab_role               = payload.get("role")
+        raw_perms  = payload.get("assigned_scene_permissions", {})
+        role       = payload.get("role")
+        scene_ids  = payload.get("assigned_scene_ids", [])
+        request.state.collab_role               = role
         request.state.collab_access_mode        = access_mode
-        request.state.collab_assigned_scene_ids = payload.get("assigned_scene_ids", [])
+        request.state.collab_display_name       = payload.get("display_name", "Guest")
+        request.state.collab_assigned_scene_ids = scene_ids
         request.state.collab_scene_permissions  = {int(k): v for k, v in raw_perms.items()} if raw_perms else {}
         request.state.collab_hide_unassigned    = (
             access_mode in ("read_only_assigned", "assigned_visible")
-            or (payload.get("role") == "student" and access_mode == "default")
+            or (role == "student" and access_mode == "default")
+            or (role == "editor" and bool(scene_ids))
         )
 
         return await call_next(request)
@@ -299,6 +313,7 @@ app.include_router(vale.router)
 app.include_router(analytics.router)
 app.include_router(research.router)
 app.include_router(submissions.router)
+app.include_router(comments.router)
 app.include_router(achievements.router)
 app.include_router(sync_router.router)
 app.include_router(collab_router.router)

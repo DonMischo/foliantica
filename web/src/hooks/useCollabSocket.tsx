@@ -21,6 +21,7 @@ const TABLE_TO_QUERY_KEY: Record<string, string[][]> = {
   timeline_tracks: [["timeline-tracks"]],
   research_items:  [["research"]],
   writing_log:     [["writing-log"]],
+  scene_comments:  [["comments"]],
 };
 
 export function useCollabSocket() {

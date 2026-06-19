@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { BookOpen, Sparkles, Clock, Moon, Sun, Archive, History, MessageSquare, Focus, Braces, ChevronDown, AlignCenter, Timer, Flag, BookMarked, MoreHorizontal, Check, SpellCheck, User, ListChecks, Save } from "lucide-react";
+import { BookOpen, Sparkles, Clock, Moon, Sun, Archive, History, MessageSquare, Focus, Braces, ChevronDown, AlignCenter, Timer, Flag, BookMarked, MoreHorizontal, Check, SpellCheck, User, ListChecks, Save, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TipTapEditor } from "@/components/editor/TipTapEditor";
@@ -13,6 +13,7 @@ import { ValePanel } from "@/components/vale/ValePanel";
 import { SENSITIVITY_TYPES, type FlagItem, type SensitivityType } from "@/components/editor/SensitivityExtension";
 import { CodexSidebar } from "@/components/codex/CodexSidebar";
 import { CodexEntryDialog } from "@/components/codex/CodexEntryDialog";
+import { CommentsPanel } from "@/components/collab/CommentsPanel";
 import { VersionHistoryPanel } from "@/components/editor/VersionHistoryPanel";
 import { ChatPanel } from "@/components/editor/ChatPanel";
 import { LinkPanel } from "@/components/editor/LinkPanel";
@@ -21,6 +22,8 @@ import { TimeConfigDialog } from "@/components/time/TimeConfigDialog";
 import { TimelineCommandDialog } from "@/components/timeline/TimelineCommandDialog";
 import { useUIStore } from "@/store/ui";
 import { useCollabStore, getLockHolder } from "@/store/collabStore";
+import { getCoworkIdentity } from "@/lib/api";
+import type { CommentHighlight } from "@/components/editor/CommentHighlightExtension";
 import { useAutosave } from "@/hooks/useAutosave";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -30,6 +33,7 @@ import {
   useCreateFragment, useDeleteScene,
   useSyncSceneCommands, useCreateSceneVersion,
   useUpdateSettings, useSettings,
+  useComments, useCreateComment, useSyncCommentPositions,
 } from "@/store/queries";
 import type { SceneTime, CodexEntry } from "@/types";
 import type { SceneCommandIn } from "@/lib/api";
@@ -139,6 +143,54 @@ export default function ScenePage() {
   const isReadOnly = !!(lockHolder || lockDenied);
   const hostAuthorName = project?.book_meta?.author || "Main author";
 
+  // ── Comments ─────────────────────────────────────────────────────────────────
+  const identity       = useMemo(() => getCoworkIdentity(), []);
+  const isHost         = !identity;
+  const canComment     = identity?.role !== "student";
+  const presence       = useCollabStore((s) => s.presence);
+  const myColor        = useMemo(() => {
+    if (isHost) return "#6366f1";
+    const own = presence.find((p) => p.display_name === identity?.name);
+    return own?.color ?? "#f59e0b";
+  }, [isHost, identity, presence]);
+
+  const { data: sceneComments = [] } = useComments(sceneIdNum);
+  const createComment    = useCreateComment(sceneIdNum);
+  const syncPositions    = useSyncCommentPositions(sceneIdNum);
+
+  const commentHighlights: CommentHighlight[] = useMemo(
+    () => sceneComments.map((c) => ({ id: c.id, from: c.from_pos, to: c.to_pos, color: c.color })),
+    [sceneComments],
+  );
+
+  function handleCommentRequest(from: number, to: number, text: string) {
+    setPendingComment({ from, to, text });
+    setCommentBody("");
+    setAddCommentOpen(true);
+  }
+
+  async function handleSubmitComment() {
+    if (!pendingComment || !commentBody.trim()) return;
+    await createComment.mutateAsync({
+      from_pos:    pendingComment.from,
+      to_pos:      pendingComment.to,
+      anchor_text: pendingComment.text.slice(0, 200),
+      body:        commentBody.trim(),
+      color:       myColor,
+    });
+    setAddCommentOpen(false);
+    setPendingComment(null);
+    setCommentBody("");
+    setCommentsPanelOpen(true);
+  }
+
+  function handleJumpToComment(from: number) {
+    if (!jumpToTextRef.current) return;
+    // Find the comment's anchor text and jump there via the grammar-style text finder
+    const comment = sceneComments.find((c) => c.from_pos === from);
+    if (comment) jumpToTextRef.current(comment.anchor_text);
+  }
+
   const codexSidebarOpen    = useUIStore((s) => s.codexSidebarOpen);
   const setCodexSidebarOpen = useUIStore((s) => s.setCodexSidebarOpen);
   const focusMode           = useUIStore((s) => s.focusMode);
@@ -157,11 +209,18 @@ export default function ScenePage() {
   const [selectedWord, setSelectedWord]           = useState<string>("");
   const [grammarPanelOpen, setGrammarPanelOpen]   = useState(false);
   const [valePanelOpen, setValePanelOpen]         = useState(false);
+  const [commentsPanelOpen, setCommentsPanelOpen] = useState(false);
+  const [addCommentOpen, setAddCommentOpen]       = useState(false);
+  const [pendingComment, setPendingComment]       = useState<{ from: number; to: number; text: string } | null>(null);
+  const [commentBody, setCommentBody]             = useState("");
   const replaceWordRef         = useRef<((word: string) => void) | null>(null);
   const applyFlagRef           = useRef<((type: string) => void) | null>(null);
-  const applyGrammarFixRef     = useRef<((matched: string, replacement: string, offset: number) => void) | null>(null);
-  const jumpToGrammarMatchRef  = useRef<((matched: string, offset: number) => void) | null>(null);
-  const jumpToTextRef          = useRef<((text: string) => void) | null>(null);
+  const applyGrammarFixRef       = useRef<((matched: string, replacement: string, offset: number) => void) | null>(null);
+  const jumpToGrammarMatchRef    = useRef<((matched: string, offset: number) => void) | null>(null);
+  const jumpToTextRef            = useRef<((text: string) => void) | null>(null);
+  const getCommentPositionsRef   = useRef<(() => CommentHighlight[]) | null>(null);
+  const triggerCommentRef        = useRef<(() => void) | null>(null);
+  const hasSelectionRef          = useRef<(() => boolean) | null>(null);
 
   // Characters for POV selector
   const characters = useMemo(
@@ -290,7 +349,20 @@ export default function ScenePage() {
     }
   };
 
-  const { saveNow } = useAutosave({ sceneId: sceneIdNum, content, enabled: !!scene });
+  const { saveNow: _saveNow } = useAutosave({ sceneId: sceneIdNum, content, enabled: !!scene });
+
+  const saveNow = useCallback(() => {
+    _saveNow();
+    // Sync drift-corrected comment positions (host and coauthors only)
+    if (isHost || identity?.role === "coauthor") {
+      const positions = getCommentPositionsRef.current?.() ?? [];
+      if (positions.length > 0) {
+        syncPositions.mutate(
+          positions.map((p) => ({ id: p.id, from_pos: p.from, to_pos: p.to }))
+        );
+      }
+    }
+  }, [_saveNow, isHost, identity, syncPositions]);
 
   // ESC exits focus mode; Ctrl/Cmd+S saves immediately
   useEffect(() => {
@@ -496,6 +568,37 @@ export default function ScenePage() {
           <BookOpen className="h-3.5 w-3.5" />
           Codex
         </Button>
+
+        {/* Comments */}
+        <Button
+          size="sm"
+          variant={commentsPanelOpen ? "secondary" : "ghost"}
+          onClick={() => setCommentsPanelOpen(v => !v)}
+          className="gap-1.5 text-xs"
+          title="Comments"
+        >
+          <MessageCircle className="h-3.5 w-3.5" />
+          Comments
+          {sceneComments.filter(c => !c.resolved).length > 0 && (
+            <span className="bg-primary/20 text-primary text-[10px] rounded-full px-1 py-0.5 leading-none">
+              {sceneComments.filter(c => !c.resolved).length}
+            </span>
+          )}
+        </Button>
+
+        {/* Add Comment (active when text selected and user can comment) */}
+        {canComment && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => triggerCommentRef.current?.()}
+            className="gap-1.5 text-xs"
+            title="Add comment for selected text"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            Comment
+          </Button>
+        )}
 
         {/* Grammar — only when service is enabled */}
         {appSettings?.grammar_check_enabled && (
@@ -770,6 +873,11 @@ export default function ScenePage() {
             jumpToGrammarMatchRef={jumpToGrammarMatchRef}
             jumpToTextRef={jumpToTextRef}
             onPrefillEntry={(data) => { setNewEntryInitial(data); setNewEntryDialogOpen(true); }}
+            commentHighlights={commentHighlights}
+            getCommentPositionsRef={getCommentPositionsRef}
+            onCommentRequest={canComment ? handleCommentRequest : undefined}
+            triggerCommentRef={triggerCommentRef}
+            hasSelectionRef={hasSelectionRef}
           />
           <StatusBar sceneWordCount={wordCount} />
         </div>
@@ -856,7 +964,56 @@ export default function ScenePage() {
           />
         )}
 
+        {/* Comments panel */}
+        {commentsPanelOpen && (
+          <CommentsPanel
+            sceneId={sceneIdNum}
+            isHost={isHost}
+            onClose={() => setCommentsPanelOpen(false)}
+            onJumpTo={handleJumpToComment}
+          />
+        )}
+
       </div>
+
+      {/* Add Comment dialog */}
+      {addCommentOpen && pendingComment && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={(e) => { if (e.target === e.currentTarget) setAddCommentOpen(false); }}
+        >
+          <div className="bg-card border border-border rounded-xl shadow-xl w-[400px] p-4 space-y-3">
+            <h3 className="text-sm font-semibold">Add Comment</h3>
+            <div
+              className="text-xs italic text-muted-foreground border-l-2 pl-2 line-clamp-2"
+              style={{ borderColor: myColor }}
+            >
+              {pendingComment.text}
+            </div>
+            <textarea
+              autoFocus
+              value={commentBody}
+              onChange={(e) => setCommentBody(e.target.value)}
+              placeholder="Write your comment…"
+              className="w-full h-24 text-xs bg-background border border-input rounded-md px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) handleSubmitComment();
+                if (e.key === "Escape") setAddCommentOpen(false);
+              }}
+            />
+            <div className="flex justify-end gap-2">
+              <Button size="sm" variant="ghost" onClick={() => setAddCommentOpen(false)}>Cancel</Button>
+              <Button
+                size="sm"
+                onClick={handleSubmitComment}
+                disabled={!commentBody.trim() || createComment.isPending}
+              >
+                {createComment.isPending ? "Posting…" : "Post comment"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <CodexEntryDialog
         open={newEntryDialogOpen}

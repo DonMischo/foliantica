@@ -1001,7 +1001,7 @@ export interface AssignedItem {
 export interface Invitation {
   id:             string;
   name:           string;
-  role:           "coauthor" | "student";
+  role:           "coauthor" | "student" | "editor";
   has_pin:        boolean;
   max_sessions:   number;
   assigned_items: AssignedItem[];
@@ -1022,7 +1022,7 @@ export interface TeacherSession {
   session_id:      string;
   display_name:    string;
   invitation_name: string;
-  role:            "coauthor" | "student";
+  role:            "coauthor" | "student" | "editor";
   color:           string;
   assigned_items:  AssignedItem[];
   item_type:       string | null;
@@ -1094,4 +1094,64 @@ export const collabApi = {
 
   cloudflareClose: () =>
     req<{ active: false }>("/collab/cloudflare/close", { method: "POST" }),
+};
+
+// ── Scene Comments ────────────────────────────────────────────────────────────
+
+export interface SceneComment {
+  id:          number;
+  scene_id:    number;
+  from_pos:    number;
+  to_pos:      number;
+  anchor_text: string;
+  ctx_before:  string | null;
+  ctx_after:   string | null;
+  body:        string;
+  author_name: string;
+  author_role: string;
+  color:       string;
+  resolved:    boolean;
+  created_at:  string;
+}
+
+export interface CommentCreate {
+  from_pos:    number;
+  to_pos:      number;
+  anchor_text: string;
+  ctx_before?: string | null;
+  ctx_after?:  string | null;
+  body:        string;
+  color?:      string;
+}
+
+export interface PositionSync {
+  id:       number;
+  from_pos: number;
+  to_pos:   number;
+}
+
+export const commentsApi = {
+  list: (sceneId: number) =>
+    req<SceneComment[]>(`/scenes/${sceneId}/comments`),
+
+  create: (sceneId: number, data: CommentCreate) =>
+    req<SceneComment>(`/scenes/${sceneId}/comments`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (commentId: number, data: { body?: string; resolved?: boolean; from_pos?: number; to_pos?: number }) =>
+    req<SceneComment>(`/comments/${commentId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (commentId: number) =>
+    req<void>(`/comments/${commentId}`, { method: "DELETE" }),
+
+  syncPositions: (sceneId: number, updates: PositionSync[]) =>
+    req<{ ok: true }>(`/scenes/${sceneId}/comments/sync-positions`, {
+      method: "POST",
+      body: JSON.stringify(updates),
+    }),
 };

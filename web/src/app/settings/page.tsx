@@ -299,7 +299,7 @@ export default function SettingsPage() {
   const [invitations,        setInvitations]        = useState<Invitation[]>([]);
   const [coworkLoading,      setCoworkLoading]      = useState(false);
   const [newInvName,         setNewInvName]         = useState("");
-  const [newInvRole,         setNewInvRole]         = useState<"coauthor"|"student">("coauthor");
+  const [newInvRole,         setNewInvRole]         = useState<"coauthor"|"student"|"editor">("coauthor");
   const [newInvPin,          setNewInvPin]          = useState("");
   const [newInvMaxSessions,  setNewInvMaxSessions]  = useState(1);
   const [copiedInvId,        setCopiedInvId]        = useState<string | null>(null);
@@ -2936,7 +2936,7 @@ BasedOnStyles = write-good`}</code>
             <h2 className="text-base font-semibold">Co-Work</h2>
           </div>
           <p className="text-xs text-muted-foreground">
-            Let co-authors or students join your project over your local network.
+            Let co-authors, editors, or students join your project over your local network.
             Each person gets a named invitation link. A restart is required to change the bind address.
           </p>
 
@@ -3070,9 +3070,10 @@ BasedOnStyles = write-good`}</code>
                         <span className={cn(
                           "text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0",
                           inv.role === "student" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                                                 : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                          : inv.role === "editor"  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                                   : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
                         )}>
-                          {inv.role === "student" ? "Student" : "Co-Author"}
+                          {inv.role === "student" ? "Student" : inv.role === "editor" ? "Editor" : "Co-Author"}
                         </span>
                         {inv.role === "coauthor" && (
                           <button
@@ -3094,7 +3095,7 @@ BasedOnStyles = write-good`}</code>
                         <p className="text-[11px] text-muted-foreground">
                           max {inv.max_sessions} session{inv.max_sessions !== 1 ? "s" : ""}
                         </p>
-                        {inv.role === "student" && (
+                        {(inv.role === "student" || inv.role === "editor") && (
                           <p className="text-[11px] text-muted-foreground">
                             {inv.assigned_items.length > 0
                               ? `${inv.assigned_items.length} scene${inv.assigned_items.length !== 1 ? "s" : ""} assigned`
@@ -3103,8 +3104,8 @@ BasedOnStyles = write-good`}</code>
                         )}
                       </div>
                     </div>
-                    {/* Assign scenes button — students only */}
-                    {inv.role === "student" && (
+                    {/* Assign scenes button — students and editors */}
+                    {(inv.role === "student" || inv.role === "editor") && (
                       <button
                         onClick={() => setAssigningInv(inv)}
                         className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
@@ -3185,10 +3186,11 @@ BasedOnStyles = write-good`}</code>
                   />
                   <select
                     value={newInvRole}
-                    onChange={e => setNewInvRole(e.target.value as "coauthor" | "student")}
+                    onChange={e => setNewInvRole(e.target.value as "coauthor" | "student" | "editor")}
                     className="h-8 rounded-md border border-input bg-background px-2 text-xs"
                   >
                     <option value="coauthor">Co-Author</option>
+                    <option value="editor">Editor</option>
                     <option value="student">Student</option>
                   </select>
                 </div>
@@ -3245,11 +3247,11 @@ BasedOnStyles = write-good`}</code>
                           <span className="text-xs font-medium truncate">{sess.display_name}</span>
                           <span className={cn(
                             "text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0",
-                            sess.role === "student"
-                              ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                              : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                            sess.role === "student" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                            : sess.role === "editor"  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                                      : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
                           )}>
-                            {sess.role === "student" ? "Student" : "Co-Author"}
+                            {sess.role === "student" ? "Student" : sess.role === "editor" ? "Editor" : "Co-Author"}
                           </span>
                         </div>
                         <p className="text-[11px] text-muted-foreground mt-0.5">

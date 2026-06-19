@@ -18,6 +18,7 @@ import Suggestion, { exitSuggestion } from "@tiptap/suggestion";
 import type { EditorView } from "@tiptap/pm/view";
 import type { CodexEntry } from "@/types";
 import { createCodexHighlightPlugin, patchEntryAliases, type PatchedEntry, PLUGIN_KEY } from "./CodexHighlightExtension";
+import { createCommentHighlightPlugin, setCommentHighlights, getCommentPositions, type CommentHighlight } from "./CommentHighlightExtension";
 import { TagDecorationExtension } from "./TagDecorationExtension";
 import { LineNumberExtension } from "./LineNumberExtension";
 import { GhostTextMark } from "./GhostTextExtension";
@@ -55,6 +56,16 @@ interface Props {
   onPrefillEntry?: (data: Partial<CodexEntry>) => void;
   /** When true the editor is rendered read-only (co-work lock held by another user) */
   readOnly?: boolean;
+  /** Comment highlight decorations — updated externally after load/save */
+  commentHighlights?: CommentHighlight[];
+  /** Ref filled with a function that returns the current (possibly drift-corrected) comment positions */
+  getCommentPositionsRef?: React.MutableRefObject<(() => CommentHighlight[]) | null>;
+  /** Called when user selects text and wants to add a comment — receives {from, to, text} */
+  onCommentRequest?: (from: number, to: number, text: string) => void;
+  /** Ref filled with a function that calls onCommentRequest with the current editor selection */
+  triggerCommentRef?: React.MutableRefObject<(() => void) | null>;
+  /** Ref filled with a function that returns whether there is a non-empty text selection */
+  hasSelectionRef?: React.MutableRefObject<(() => boolean) | null>;
 }
 
 interface SlashState {
@@ -134,7 +145,7 @@ function applyTypewriterScroll(
   } catch { /* view not mounted */ }
 }
 
-export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onOpenLink, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, jumpToTextRef, onPrefillEntry, aiDisabled = false, readOnly = false }: Props) {
+export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onOpenLink, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, jumpToTextRef, onPrefillEntry, aiDisabled = false, readOnly = false, commentHighlights, getCommentPositionsRef, onCommentRequest, triggerCommentRef, hasSelectionRef }: Props) {
   const showLineNumbers  = useUIStore((s) => s.showParagraphNumbers);
   const typewriterMode   = useUIStore((s) => s.typewriterMode);
   const typewriterOffset = useUIStore((s) => s.typewriterOffset);
@@ -144,6 +155,11 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
   const onClickRef = useRef(onCodexEntryClick);
   entriesRef.current = patchEntryAliases(codexEntries);
   onClickRef.current = onCodexEntryClick;
+
+  const commentHighlightsRef  = useRef<CommentHighlight[]>(commentHighlights ?? []);
+  const onCommentRequestRef   = useRef(onCommentRequest);
+  commentHighlightsRef.current  = commentHighlights ?? [];
+  onCommentRequestRef.current   = onCommentRequest;
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -185,6 +201,20 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
         createCodexHighlightPlugin(
           () => entriesRef.current,
           (id) => onClickRef.current(id)
+        ),
+      ];
+    },
+  });
+
+  const CommentHighlight = Extension.create({
+    name: "commentHighlight",
+    addProseMirrorPlugins() {
+      return [
+        createCommentHighlightPlugin(
+          () => commentHighlightsRef.current,
+          (id) => {
+            // Scroll the comment panel to the clicked card (parent handles via onCommentRequest)
+          },
         ),
       ];
     },
@@ -272,6 +302,7 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
       TableCell,
       TableHeader,
       CodexHighlight,
+      CommentHighlight,
       TagDecorationExtension,
       NoteNode,
       CurrencyNode,
@@ -328,6 +359,38 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
     const { tr } = editor.state;
     editor.view.dispatch(tr.setMeta(PLUGIN_KEY, true));
   }, [codexEntries, editor]);
+
+  // Push comment highlights into the plugin whenever the prop changes
+  useEffect(() => {
+    if (!editor || !commentHighlights) return;
+    setCommentHighlights(editor.view, commentHighlights);
+  }, [editor, commentHighlights]);
+
+  // Wire getCommentPositionsRef so parent can read drift-corrected positions on save
+  useEffect(() => {
+    if (!getCommentPositionsRef) return;
+    getCommentPositionsRef.current = () => editor ? getCommentPositions(editor.view) : [];
+  }, [editor, getCommentPositionsRef]);
+
+  // Wire comment trigger refs
+  useEffect(() => {
+    if (!triggerCommentRef) return;
+    triggerCommentRef.current = () => {
+      if (!editor || !onCommentRequestRef.current) return;
+      const { from, to, empty } = editor.state.selection;
+      if (empty) return;
+      const text = editor.state.doc.textBetween(from, to, " ").trim();
+      if (text) onCommentRequestRef.current(from, to, text);
+    };
+  }, [editor, triggerCommentRef]);
+
+  useEffect(() => {
+    if (!hasSelectionRef) return;
+    hasSelectionRef.current = () => {
+      if (!editor) return false;
+      return !editor.state.selection.empty;
+    };
+  }, [editor, hasSelectionRef]);
 
   // Toggle focus-dim plugin when focusMode changes
   useEffect(() => {

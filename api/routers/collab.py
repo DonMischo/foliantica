@@ -102,6 +102,7 @@ _locks: dict[str, dict] = {}
 # Valid access modes per role — controls REST write rights and scene visibility
 _COAUTHOR_MODES: frozenset[str] = frozenset({"default", "appearance_only", "read_only"})
 _STUDENT_MODES:  frozenset[str] = frozenset({"default", "read_only", "read_only_assigned", "assigned_visible"})
+_EDITOR_MODES:   frozenset[str] = frozenset({"editor"})
 
 # ── Phase 3 state ─────────────────────────────────────────────────────────────
 
@@ -544,13 +545,21 @@ def list_invitations():
 
 @router.post("/invitations", status_code=201)
 def create_invitation(body: InvitationCreate):
-    if body.role not in ("coauthor", "student"):
-        raise HTTPException(status_code=400, detail="role must be 'coauthor' or 'student'")
-    valid_modes = _COAUTHOR_MODES if body.role == "coauthor" else _STUDENT_MODES
-    if body.access_mode not in valid_modes:
+    if body.role not in ("coauthor", "student", "editor"):
+        raise HTTPException(status_code=400, detail="role must be 'coauthor', 'student', or 'editor'")
+    # Auto-select the correct default when the caller doesn't specify a mode
+    effective_mode = body.access_mode
+    if effective_mode == "default" and body.role == "editor":
+        effective_mode = "editor"
+    valid_modes = (
+        _COAUTHOR_MODES if body.role == "coauthor"
+        else _EDITOR_MODES if body.role == "editor"
+        else _STUDENT_MODES
+    )
+    if effective_mode not in valid_modes:
         raise HTTPException(
             status_code=400,
-            detail=f"access_mode '{body.access_mode}' is not valid for role '{body.role}'. "
+            detail=f"access_mode '{effective_mode}' is not valid for role '{body.role}'. "
                    f"Valid modes: {sorted(valid_modes)}",
         )
     invs = _get_invitations()
@@ -562,7 +571,7 @@ def create_invitation(body: InvitationCreate):
         "pin_hash":       _hash_pin(body.pin) if body.pin else None,
         "max_sessions":   max(1, body.max_sessions),
         "assigned_items": body.assigned_items,
-        "access_mode":    body.access_mode,
+        "access_mode":    effective_mode,
     }
     invs.append(inv)
     _save_invitations(invs)
@@ -587,7 +596,11 @@ def update_invitation(inv_id: str, body: InvitationUpdate):
                 inv["assigned_items"] = body.assigned_items
             if body.access_mode is not None:
                 role = inv.get("role", "coauthor")
-                valid_modes = _COAUTHOR_MODES if role == "coauthor" else _STUDENT_MODES
+                valid_modes = (
+                    _COAUTHOR_MODES if role == "coauthor"
+                    else _EDITOR_MODES if role == "editor"
+                    else _STUDENT_MODES
+                )
                 if body.access_mode not in valid_modes:
                     raise HTTPException(
                         status_code=400,
