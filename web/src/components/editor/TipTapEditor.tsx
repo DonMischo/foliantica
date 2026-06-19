@@ -36,6 +36,7 @@ import { SearchExtension } from "./SearchExtension";
 import { SearchBar } from "./SearchBar";
 import { EditorContext } from "@/contexts/EditorContext";
 import { useUIStore } from "@/store/ui";
+import { htmlToGrammarPlainText, computeGrammarSkipCount } from "@/lib/grammarUtils";
 
 interface Props {
   content: string;
@@ -135,24 +136,8 @@ function grammarFindInDoc(
   plainOffset: number,
 ): { from: number; to: number } | null {
   if (!matched) return null;
-
-  // Rebuild the same plain text sent to LanguageTool (space-collapsed, single line).
-  const plainText = editor.getHTML()
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  // Count occurrences of `matched` strictly before plainOffset → occurrence index
-  let skipCount = 0;
-  let pos = 0;
-  const step = Math.max(matched.length, 1);
-  while (pos < plainOffset) {
-    const idx = plainText.indexOf(matched, pos);
-    if (idx === -1 || idx >= plainOffset) break;
-    skipCount++;
-    pos = idx + step;
-  }
-
+  const plainText = htmlToGrammarPlainText(editor.getHTML());
+  const skipCount = computeGrammarSkipCount(plainText, matched, plainOffset);
   return walkDocForNthOccurrence(editor, matched, skipCount);
 }
 

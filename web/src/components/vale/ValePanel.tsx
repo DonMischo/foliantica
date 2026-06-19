@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import type { ValeAlert } from "@/lib/api";
 import { useValeCheck, useProseCheck } from "@/store/queries";
 import { ProseMetricsDialog } from "./ProseMetricsDialog";
+import { postProcessAlerts, computeValeSkipCount } from "@/lib/vale-utils";
 
 function langName(code: string): string {
   try {
@@ -16,35 +17,6 @@ function langName(code: string): string {
   }
 }
 
-// German articles / relative pronouns that legitimately double up after a comma
-// in relative clauses ("die Frauen, die die Bücher lesen").
-const DE_RELATIVE = new Set([
-  "die", "der", "das", "dem", "den", "des",
-  "welche", "welcher", "welches", "welchem", "welchen",
-  "was", "wer", "wen", "wem",
-]);
-
-// Downgrade Vale.Repetition hits that are almost certainly valid relative-clause
-// constructions rather than true typos.
-function postProcessAlerts(alerts: ValeAlert[], text: string, language: string | undefined): ValeAlert[] {
-  const lang = (language ?? "").toLowerCase().slice(0, 2);
-  if (lang !== "de") return alerts;
-
-  return alerts.map(alert => {
-    if (alert.Check !== "Vale.Repetition") return alert;
-    const word = alert.Match.toLowerCase().split(/\s+/)[0];
-    if (!DE_RELATIVE.has(word)) return alert;
-    // Span is 1-based column into `text`; look for a comma with only whitespace
-    // between it and the start of the repeated word.
-    const offset = alert.Span[0] - 1;
-    const before = text.slice(Math.max(0, offset - 12), offset);
-    const commaIdx = before.lastIndexOf(",");
-    if (commaIdx !== -1 && before.slice(commaIdx + 1).trim() === "") {
-      return { ...alert, Severity: "warning" as const };
-    }
-    return alert;
-  });
-}
 
 // ── Friendly display names for Vale built-in rules ────────────────────────────
 const RULE_LABELS: Record<string, string> = {
@@ -82,21 +54,7 @@ function AlertCard({ alert, text, onJumpTo }: { alert: ValeAlert; text: string; 
   const handleClick = () => {
     if (hasDetails) setExpanded(e => !e);
     if (onJumpTo) {
-      // Vale Span[0] is a 1-based column within alert.Line (not a global offset).
-      // Compute global char offset in the newline-stripped text, then count
-      // how many prior occurrences of Match exist — that gives the skip count.
-      const lines = text.split("\n");
-      const globalOffset = lines.slice(0, alert.Line - 1).reduce((s, l) => s + l.length + 1, 0) + alert.Span[0] - 1;
-      let skipCount = 0;
-      let pos = 0;
-      const step = Math.max(alert.Match.length, 1);
-      while (pos < globalOffset) {
-        const idx = text.indexOf(alert.Match, pos);
-        if (idx === -1 || idx >= globalOffset) break;
-        skipCount++;
-        pos = idx + step;
-      }
-      onJumpTo(alert.Match, skipCount);
+      onJumpTo(alert.Match, computeValeSkipCount(text, alert));
     }
   };
 
