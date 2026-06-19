@@ -1,0 +1,32 @@
+# Filterwoorden — afstandswoorden in narratieve fictie.
+extends: existence
+message: "Filterwoord '%s' — kan de lezer direct in de ervaring worden geplaatst?"
+level: suggestion
+ignorecase: true
+tokens:
+  # Cognitieve afstandsfilters
+  - \bbesefte\b
+  - \bmerkte\b
+  - \bherinnerde zich\b
+  - \bbegreep\b
+  - \bbeslist\b
+  - \bvroeg zich af\b
+
+  # Schijnfilters
+  - \bscheen\b
+  - \bleek\b
+  - \bzag eruit\b
+
+  # Ritmeverbrekers
+  - \bplotselinge\b
+  - \bplotseling\b
+  - \bineens\b
+  - \bopeens\b
+  - \bdirect\b
+  - \bonmiddellijk\b
+  - \bbrutaal\b
+
+  # Zwakke vertelversterkers
+  - \bop de een of andere manier\b
+  - \bop een of andere manier\b
+  - \bop de een of andere wijze\b

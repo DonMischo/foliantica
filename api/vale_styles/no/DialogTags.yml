@@ -1,0 +1,20 @@
+# Dialogverber utover «sa/spurte» — said-bookisms på norsk.
+extends: existence
+message: "Dialogtag '%s' — «sa» eller «spurte» er ofte mer usynlig; eller bruk en handling."
+level: suggestion
+ignorecase: true
+tokens:
+  - \butbrøt\b
+  - \bropte\b
+  - \bbrølte\b
+  - \bhvisket\b
+  - \bmumlede\b
+  - \bsuste\b
+  - \bknurret\b
+  - \bstønnet\b
+  - \bsukket\b
+  - \blo\b
+  - \bfniste\b
+  - \bhånlo\b
+  - \bflomset\b
+  - \bhostet\b

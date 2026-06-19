@@ -32,7 +32,7 @@ from models import UserSettings, ValeRuleEntry
 router = APIRouter(prefix="/api/vale", tags=["vale"])
 
 _STYLES_DIR = Path(__file__).parent.parent / "vale_styles"
-_SUPPORTED_LANG_STYLES = {"en", "de", "es", "fr", "it", "nl", "pt", "sv", "da", "no"}
+_SUPPORTED_LANG_STYLES = {"en", "de", "es", "fr", "it", "nl", "pt", "sv", "da", "no", "pl"}
 _UNSUPPORTED_LANGS = {"zh", "ja", "ko", "ar"}
 
 

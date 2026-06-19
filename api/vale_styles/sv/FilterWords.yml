@@ -1,0 +1,32 @@
+# Filterord — avståndsskapande ord i skönlitterärt skrivande.
+extends: existence
+message: "Filterord '%s' — kan läsaren placeras direkt i upplevelsen?"
+level: suggestion
+ignorecase: true
+tokens:
+  # Kognitiva distansfilter
+  - \binsåg\b
+  - \bförstod\b
+  - \bkände igen\b
+  - \bbestämde sig\b
+  - \bundrade\b
+  - \bmindes\b
+  - \bkom ihåg\b
+
+  # Skenfilter
+  - \bverkade\b
+  - \btycktes\b
+  - \bsåg ut att\b
+
+  # Rytmbrytare
+  - \bplötsligt\b
+  - \bplötsligen\b
+  - \bmed ens\b
+  - \bpå en gång\b
+  - \bomedelbart\b
+  - \bblixtsnabbt\b
+  - \bbraskt\b
+
+  # Svaga berättarförstärkare
+  - \bpå något sätt\b
+  - \bpå ett eller annat sätt\b

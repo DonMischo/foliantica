@@ -1,0 +1,22 @@
+# Filterord — afstandsskabende ord i skønlitterær skrivning.
+extends: existence
+message: "Filterord '%s' — kan læseren placeres direkte i oplevelsen?"
+level: suggestion
+ignorecase: true
+tokens:
+  - \bindså\b
+  - \bforstod\b
+  - \bgenkendte\b
+  - \bbesluttede sig\b
+  - \bundrede sig\b
+  - \bhuskede\b
+  - \bsyntes\b
+  - \bvirkede\b
+  - \bså ud til\b
+  - \bpludselig\b
+  - \bbrat\b
+  - \bmed ét\b
+  - \bøjeblikkeligt\b
+  - \bstraks\b
+  - \bpå en eller anden måde\b
+  - \bpå en måde\b

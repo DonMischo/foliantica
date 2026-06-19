@@ -1,0 +1,40 @@
+# Czasowniki dialogowe poza «powiedział/zapytał» — said-bookisms po polsku.
+extends: existence
+message: "Czasownik dialogowy '%s' — «powiedział» lub «zapytał» jest zazwyczaj bardziej przezroczysty; lub użyj działania."
+level: suggestion
+ignorecase: true
+tokens:
+  # Markery głośności
+  - \bzawołał\b
+  - \bzawołała\b
+  - \bkrzyknął\b
+  - \bkrzyknęła\b
+  - \brevknął\b
+  - \bwrzasnął\b
+  - \bwrzasnęła\b
+  - \bszepnął\b
+  - \bszepnęła\b
+  - \bmruknął\b
+  - \bmruknęła\b
+  - \bsyknął\b
+  - \bsyknęła\b
+
+  # Emocjonalnie nacechowane czasowniki
+  - \bwarknął\b
+  - \bwarknęła\b
+  - \bjęknął\b
+  - \bjęknęła\b
+  - \bwestchnął\b
+  - \bwestchnęła\b
+  - \bśmiał się\b
+  - \bśmiała się\b
+  - \bchichotał\b
+  - \bchichotała\b
+  - \bdrwił\b
+  - \bdrwiła\b
+
+  # Fizjologicznie wątpliwe
+  - \bdyszał\b
+  - \bdyszała\b
+  - \bkasłał\b
+  - \bkasłała\b

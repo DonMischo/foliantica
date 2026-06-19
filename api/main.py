@@ -15,17 +15,10 @@ from sqlalchemy import text
 
 from database import (
     engine,
-    migrate_indexes, migrate_codex_entry_sharing,
-    migrate_ai_disabled, migrate_research_pdf,
-    migrate_ai_providers, migrate_corkboard,
-    migrate_achievement_popup_shown, migrate_sync_mirror,
-    migrate_spacy, migrate_calibre, migrate_vale, migrate_vale_custom_rules, migrate_vale_disabled_entries,
-    migrate_vale_rule_entries_table, migrate_vale_sync_meta, migrate_project_language,
-    migrate_ai_prompts_word_count, migrate_backfill_word_counts,
     seed_ai_prompts, seed_publisher_profiles, seed_export_profiles,
 )
 from models import Base
-from routers import projects, acts, chapters, scenes, codex, settings, ai, export, imports, graph, time, fragments, images, scene_commands, grammar, analytics, research, submissions, achievements, vale, comments
+from routers import projects, acts, chapters, scenes, codex, settings, ai, export, imports, graph, time, fragments, images, scene_commands, grammar, analytics, research, submissions, achievements, vale, comments, prose
 from routers import sync as sync_router
 from routers import collab as collab_router
 
@@ -91,26 +84,6 @@ async def lifespan(app: FastAPI):
         seed_ai_prompts()
         seed_publisher_profiles()
         seed_export_profiles()
-
-    # Incremental ALTER TABLE migrations — idempotent, safe on every startup.
-    migrate_indexes()
-    migrate_codex_entry_sharing()
-    migrate_ai_disabled()
-    migrate_research_pdf()
-    migrate_ai_providers()
-    migrate_corkboard()
-    migrate_achievement_popup_shown()
-    migrate_sync_mirror()
-    migrate_spacy()
-    migrate_calibre()
-    migrate_vale()
-    migrate_vale_custom_rules()
-    migrate_vale_disabled_entries()
-    migrate_vale_rule_entries_table()
-    migrate_vale_sync_meta()
-    migrate_project_language()
-    migrate_ai_prompts_word_count()
-    migrate_backfill_word_counts()
 
     os.makedirs("uploads", exist_ok=True)
     _init_sync()
@@ -315,6 +288,7 @@ app.include_router(research.router)
 app.include_router(submissions.router)
 app.include_router(comments.router)
 app.include_router(achievements.router)
+app.include_router(prose.router)
 app.include_router(sync_router.router)
 app.include_router(collab_router.router)
 
