@@ -62,7 +62,7 @@ const SEV = {
 
 // ── Alert card ────────────────────────────────────────────────────────────────
 
-function AlertCard({ alert, onJumpTo }: { alert: ValeAlert; onJumpTo?: (matched: string, offset: number) => void }) {
+function AlertCard({ alert, text, onJumpTo }: { alert: ValeAlert; text: string; onJumpTo?: (matched: string, skipCount: number) => void }) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const cfg = SEV[alert.Severity] ?? SEV.suggestion;
@@ -81,7 +81,23 @@ function AlertCard({ alert, onJumpTo }: { alert: ValeAlert; onJumpTo?: (matched:
 
   const handleClick = () => {
     if (hasDetails) setExpanded(e => !e);
-    onJumpTo?.(alert.Match, alert.Span[0] - 1);
+    if (onJumpTo) {
+      // Vale Span[0] is a 1-based column within alert.Line (not a global offset).
+      // Compute global char offset in the newline-stripped text, then count
+      // how many prior occurrences of Match exist — that gives the skip count.
+      const lines = text.split("\n");
+      const globalOffset = lines.slice(0, alert.Line - 1).reduce((s, l) => s + l.length + 1, 0) + alert.Span[0] - 1;
+      let skipCount = 0;
+      let pos = 0;
+      const step = Math.max(alert.Match.length, 1);
+      while (pos < globalOffset) {
+        const idx = text.indexOf(alert.Match, pos);
+        if (idx === -1 || idx >= globalOffset) break;
+        skipCount++;
+        pos = idx + step;
+      }
+      onJumpTo(alert.Match, skipCount);
+    }
   };
 
   // Rule name: e.g. "write-good.Weasel" → show short name "Weasel" + package "write-good"
@@ -152,7 +168,7 @@ interface Props {
   text: string;
   language?: string;
   onClose: () => void;
-  onJumpTo?: (matched: string, offset: number) => void;
+  onJumpTo?: (matched: string, skipCount: number) => void;
 }
 
 const SEVERITIES: ValeAlert["Severity"][] = ["error", "warning", "suggestion"];
@@ -268,7 +284,7 @@ export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
                             )}
                           </p>
                           <div className="space-y-1.5">
-                            {ruleAlerts.map((a, i) => <AlertCard key={i} alert={a} onJumpTo={onJumpTo} />)}
+                            {ruleAlerts.map((a, i) => <AlertCard key={i} alert={a} text={text} onJumpTo={onJumpTo} />)}
                           </div>
                         </div>
                       );

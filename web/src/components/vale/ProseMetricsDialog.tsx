@@ -1,6 +1,6 @@
 "use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { ProseCheckResult } from "@/lib/api";
 
@@ -259,6 +259,7 @@ export function ProseMetricsDialog({ open, onOpenChange, result }: Props) {
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Prose Metrics</DialogTitle>
+          <DialogDescription>Structural analysis of your scene's prose style.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 pb-2">

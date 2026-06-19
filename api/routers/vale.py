@@ -228,12 +228,15 @@ def _inject_custom_rules(styles: dict[str, str], lang: str, custom_rules: dict |
         if not entries:
             continue
         if isinstance(entries, list):
+            # Use `raw` patterns so each token matches inflected forms
+            # (e.g. "perfekt" also catches "perfekte", "perfekten", etc.)
+            raw = [r"\b" + re.escape(t) + r"\w*" for t in entries]
             doc = {
                 "extends": "existence",
                 "message": "'%s' — custom rule",
                 "level": "suggestion",
                 "ignorecase": True,
-                "tokens": entries,
+                "raw": raw,
             }
         elif isinstance(entries, dict):
             doc = {
