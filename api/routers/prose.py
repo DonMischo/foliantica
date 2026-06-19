@@ -101,7 +101,12 @@ _ADV_SUFFIXES: dict[str, tuple[str, ...]] = {
 # ── Text utilities ────────────────────────────────────────────────────────────
 
 def _strip_html(text: str) -> str:
-    return re.sub(r"<[^>]+>", "", text or "")
+    if not text:
+        return ""
+    # Replace block-level closing/self-closing tags with newlines first so that
+    # paragraph and line structure survives tag removal.
+    t = re.sub(r"</?(p|div|br|li|h[1-6]|blockquote|hr)[^>]*>", "\n", text, flags=re.IGNORECASE)
+    return re.sub(r"<[^>]+>", "", t)
 
 
 def _split_sentences(plain: str) -> list[str]:
