@@ -42,6 +42,13 @@ def _auth(role: str, display_name: str = "Alice") -> dict:
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
+@pytest.fixture(autouse=True)
+def enable_cowork():
+    """JWT-authenticated requests require co-work to be enabled in middleware."""
+    collab_mod.set_cowork_enabled(True)
+    yield
+    collab_mod.set_cowork_enabled(False)
+
 COMMENT_BODY = {
     "from_pos": 0, "to_pos": 5,
     "anchor_text": "Hello",

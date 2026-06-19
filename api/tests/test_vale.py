@@ -819,7 +819,7 @@ class TestInjectCustomRules:
 
 class TestCustomRulesValidation:
     def test_invalid_regex_returns_400(self, client):
-        rules = {"de": {"Buzzwords": [r"\bperfekt\w{0,4"]}}  # unclosed brace
+        rules = {"de": {"Buzzwords": [r"\bperfekt(unclosed"]}}  # unclosed group
         r = client.put("/api/vale/custom-rules", json={"rules": rules})
         assert r.status_code == 400
         assert "Invalid regex" in r.json()["detail"]
@@ -837,12 +837,12 @@ class TestCustomRulesValidation:
 
     def test_multiple_entries_validated_all(self, client):
         # First entry valid, second invalid — should still 400
-        rules = {"de": {"Buzzwords": [r"\bperfekt\w*", r"\bbroken["]}}
+        rules = {"de": {"Buzzwords": [r"\bperfekt\w*", r"\bbroken("]}}
         r = client.put("/api/vale/custom-rules", json={"rules": rules})
         assert r.status_code == 400
 
     def test_invalid_regex_detail_names_the_pattern(self, client):
-        bad_pattern = r"\btest["
+        bad_pattern = r"\btest("
         rules = {"en": {"Jargon": [bad_pattern]}}
         r = client.put("/api/vale/custom-rules", json={"rules": rules})
         assert r.status_code == 400

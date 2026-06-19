@@ -340,7 +340,7 @@ class TestAdverbDensity:
         words = ["quickly", "slowly", "ran", "the", "dog"]
         r = _adverb_density(words, "en")
         assert r["count"] == 2
-        assert r["level"] == "ok"  # 2/5 = 0.4? wait — check threshold
+        assert r["level"] == "high"  # 2/5 = 40% ratio > 8% threshold → high
 
     def test_english_high_density(self):
         # 8/10 = 0.8 → "high"
