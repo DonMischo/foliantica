@@ -13,6 +13,7 @@ PUT  /api/vale/custom-rules           — replace custom rule entries
 """
 
 import json
+import re
 import shutil
 import subprocess
 import sys

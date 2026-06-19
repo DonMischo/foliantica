@@ -49,7 +49,7 @@ def _scan_mentions(content: str, entries: list[CodexEntry]) -> dict[int, int]:
         names = [n for n in names if n]
         if not names:
             continue
-        pattern = r"\b(?:" + "|".join(re.escape(n) for n in names) + r")\b"
+        pattern = r"(?<!\w)(?:" + "|".join(re.escape(n) for n in names) + r")(?!\w)"
         c = len(re.findall(pattern, plain, re.IGNORECASE))
         if c:
             counts[entry.id] = c
