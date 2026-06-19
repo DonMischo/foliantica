@@ -139,6 +139,7 @@ class SceneComment(Base):
     author_name: Mapped[str]           = mapped_column(String(255), nullable=False)
     author_role: Mapped[str]           = mapped_column(String(50),  nullable=False, default="host")
     color:       Mapped[str]           = mapped_column(String(7),   nullable=False, default="#6366f1")
+    category:    Mapped[str]           = mapped_column(String(100), nullable=False, default="")
     resolved:    Mapped[int]           = mapped_column(Integer, nullable=False, default=0)
     created_at:  Mapped[datetime]      = mapped_column(DateTime, default=_now)
 
@@ -339,6 +340,7 @@ class UserSettings(Base):
     typewriter_mode: Mapped[int] = mapped_column(Integer, default=0)
     typewriter_offset: Mapped[int] = mapped_column(Integer, default=50)
     session_timer_enabled: Mapped[int] = mapped_column(Integer, default=1)
+    codex_highlight_enabled: Mapped[int] = mapped_column(Integer, default=1)
     # External service settings
     grammar_check_enabled: Mapped[int] = mapped_column(Integer, default=0)
     grammar_check_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

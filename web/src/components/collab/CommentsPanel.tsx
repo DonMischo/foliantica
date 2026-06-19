@@ -21,14 +21,24 @@ export function CommentsPanel({ sceneId, isHost, onClose, onJumpTo }: Props) {
   const deleteComment = useDeleteComment(sceneId);
   const identity = getCoworkIdentity();
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [filterCategory, setFilterCategory] = useState("");
 
   function isOwn(c: SceneComment): boolean {
     if (isHost) return true;
     return c.author_name === (identity?.name ?? "");
   }
 
-  const unresolved = comments.filter((c) => !c.resolved);
-  const resolved   = comments.filter((c) => c.resolved);
+  // Collect all categories present in this scene's comments
+  const allCategories = Array.from(
+    new Set(comments.map((c) => c.category).filter(Boolean))
+  ).sort();
+
+  const filtered = filterCategory
+    ? comments.filter((c) => c.category === filterCategory)
+    : comments;
+
+  const unresolved = filtered.filter((c) => !c.resolved);
+  const resolved   = filtered.filter((c) => c.resolved);
 
   return (
     <div className="w-72 shrink-0 border-l border-border bg-card flex flex-col h-full">
@@ -48,13 +58,46 @@ export function CommentsPanel({ sceneId, isHost, onClose, onJumpTo }: Props) {
         </button>
       </div>
 
+      {/* Category filter pills */}
+      {allCategories.length > 0 && (
+        <div className="px-3 py-2 border-b border-border shrink-0 flex flex-wrap gap-1">
+          <button
+            onClick={() => setFilterCategory("")}
+            className={cn(
+              "text-[10px] px-2 py-0.5 rounded-full border transition-colors",
+              filterCategory === ""
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-transparent text-muted-foreground border-border hover:border-foreground/40"
+            )}
+          >
+            All
+          </button>
+          {allCategories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setFilterCategory(filterCategory === cat ? "" : cat)}
+              className={cn(
+                "text-[10px] px-2 py-0.5 rounded-full border transition-colors",
+                filterCategory === cat
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-transparent text-muted-foreground border-border hover:border-foreground/40"
+              )}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* List */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
         {isLoading && (
           <p className="text-xs text-muted-foreground text-center py-6">Loading…</p>
         )}
-        {!isLoading && comments.length === 0 && (
-          <p className="text-xs text-muted-foreground text-center py-6">No comments yet.</p>
+        {!isLoading && filtered.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center py-6">
+            {filterCategory ? "No comments in this category." : "No comments yet."}
+          </p>
         )}
 
         {unresolved.map((c) => (
@@ -123,6 +166,11 @@ function CommentCard({ comment: c, expanded, isHost, canDelete, onToggle, onJump
           style={{ background: c.color }}
         />
         <span className="font-medium truncate flex-1">{c.author_name}</span>
+        {c.category && (
+          <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-secondary text-muted-foreground leading-none">
+            {c.category}
+          </span>
+        )}
         <span className="text-muted-foreground/60 shrink-0 text-[10px]">
           {new Date(c.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
         </span>

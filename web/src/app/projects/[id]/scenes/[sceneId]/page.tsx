@@ -240,6 +240,7 @@ export default function ScenePage() {
   const applyFlagRef           = useRef<((type: string) => void) | null>(null);
   const applyGrammarFixRef       = useRef<((matched: string, replacement: string, offset: number) => void) | null>(null);
   const jumpToGrammarMatchRef    = useRef<((matched: string, offset: number) => void) | null>(null);
+  const jumpToValeMatchRef       = useRef<((matched: string, skipCount: number) => void) | null>(null);
   const jumpToTextRef            = useRef<((text: string) => void) | null>(null);
   const getCommentPositionsRef   = useRef<(() => CommentHighlight[]) | null>(null);
   const triggerCommentRef        = useRef<(() => void) | null>(null);
@@ -869,6 +870,7 @@ export default function ScenePage() {
             applyFlagRef={applyFlagRef}
             applyGrammarFixRef={applyGrammarFixRef}
             jumpToGrammarMatchRef={jumpToGrammarMatchRef}
+            jumpToValeMatchRef={jumpToValeMatchRef}
             jumpToTextRef={jumpToTextRef}
             onPrefillEntry={(data) => { setNewEntryInitial(data); setNewEntryDialogOpen(true); }}
             commentHighlights={commentHighlights}
@@ -959,7 +961,7 @@ export default function ScenePage() {
             text={content.replace(/<\/?(p|div|br|li|h[1-6]|blockquote|hr)[^>]*>/gi, "\n").replace(/<[^>]+>/g, "").trim()}
             language={project?.book_meta?.language ?? undefined}
             onClose={() => setValePanelOpen(false)}
-            onJumpTo={(matched, offset) => jumpToGrammarMatchRef.current?.(matched, offset)}
+            onJumpTo={(matched, skipCount) => jumpToValeMatchRef.current?.(matched, skipCount)}
           />
         )}
 

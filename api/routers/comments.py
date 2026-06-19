@@ -18,6 +18,7 @@ class CommentIn(BaseModel):
     ctx_after:   Optional[str] = None
     body:        str
     color:       str = "#6366f1"
+    category:    str = ""
 
 
 class CommentUpdate(BaseModel):
@@ -25,6 +26,7 @@ class CommentUpdate(BaseModel):
     resolved: Optional[bool] = None
     from_pos: Optional[int]  = None
     to_pos:   Optional[int]  = None
+    category: Optional[str]  = None
 
 
 class PositionSync(BaseModel):
@@ -45,6 +47,7 @@ class CommentOut(BaseModel):
     author_name: str
     author_role: str
     color:       str
+    category:    str
     resolved:    bool
     created_at:  str
 
@@ -59,6 +62,7 @@ class CommentOut(BaseModel):
             ctx_before=obj.ctx_before, ctx_after=obj.ctx_after,
             body=obj.body, author_name=obj.author_name,
             author_role=obj.author_role, color=obj.color,
+            category=getattr(obj, "category", "") or "",
             resolved=bool(obj.resolved),
             created_at=obj.created_at.isoformat(),
         )
@@ -91,6 +95,7 @@ def create_comment(scene_id: int, body: CommentIn, request: Request, db: Session
         author_name=getattr(request.state, "collab_display_name", "Host"),
         author_role=role or "host",
         color=body.color,
+        category=body.category,
         resolved=0,
     )
     db.add(comment)
@@ -119,6 +124,7 @@ def update_comment(comment_id: int, body: CommentUpdate, request: Request, db: S
     if body.resolved is not None: comment.resolved = 1 if body.resolved else 0
     if body.from_pos is not None: comment.from_pos = body.from_pos
     if body.to_pos   is not None: comment.to_pos   = body.to_pos
+    if body.category is not None: comment.category = body.category
 
     db.commit()
     db.refresh(comment)
