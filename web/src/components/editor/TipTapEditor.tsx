@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useEditor, EditorContent, type Editor as TiptapEditor } from "@tiptap/react";
+import { DOMParser as PMDOMParser } from "@tiptap/pm/model";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Typography } from "@tiptap/extension-typography";
@@ -66,6 +67,18 @@ interface Props {
   triggerCommentRef?: React.MutableRefObject<(() => void) | null>;
   /** Ref filled with a function that returns whether there is a non-empty text selection */
   hasSelectionRef?: React.MutableRefObject<(() => boolean) | null>;
+  /** When false, the CodexHighlight extension is omitted entirely */
+  showCodexHighlights?: boolean;
+}
+
+// Map typographic / locale-specific quote characters to ASCII equivalents so
+// that Vale rules, the prose checker, and LanguageTool all see consistent input
+// regardless of whether text was authored in Word, Google Docs, or macOS.
+function normalizeQuotes(text: string): string {
+  return text
+    .replace(/[“”„‟❝❞]/g, ‘”’)  // curly/low-9 double → straight “
+    .replace(/[‘’‚‹›]/g, “’”);   // curly/low-9 single → straight ‘
+    // «» are intentional (French/Italian/Polish) — leave them alone
 }
 
 interface SlashState {
@@ -145,7 +158,7 @@ function applyTypewriterScroll(
   } catch { /* view not mounted */ }
 }
 
-export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onOpenLink, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, jumpToTextRef, onPrefillEntry, aiDisabled = false, readOnly = false, commentHighlights, getCommentPositionsRef, onCommentRequest, triggerCommentRef, hasSelectionRef }: Props) {
+export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onOpenLink, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, jumpToTextRef, onPrefillEntry, aiDisabled = false, readOnly = false, commentHighlights, getCommentPositionsRef, onCommentRequest, triggerCommentRef, hasSelectionRef, showCodexHighlights = true }: Props) {
   const showLineNumbers  = useUIStore((s) => s.showParagraphNumbers);
   const typewriterMode   = useUIStore((s) => s.typewriterMode);
   const typewriterOffset = useUIStore((s) => s.typewriterOffset);
@@ -153,8 +166,10 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
 
   const entriesRef = useRef<PatchedEntry[]>(patchEntryAliases(codexEntries));
   const onClickRef = useRef(onCodexEntryClick);
+  const showCodexRef = useRef(showCodexHighlights);
   entriesRef.current = patchEntryAliases(codexEntries);
   onClickRef.current = onCodexEntryClick;
+  showCodexRef.current = showCodexHighlights;
 
   const commentHighlightsRef  = useRef<CommentHighlight[]>(commentHighlights ?? []);
   const onCommentRequestRef   = useRef(onCommentRequest);
@@ -199,7 +214,7 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
     addProseMirrorPlugins() {
       return [
         createCodexHighlightPlugin(
-          () => entriesRef.current,
+          () => showCodexRef.current ? entriesRef.current : [],
           (id) => onClickRef.current(id)
         ),
       ];
@@ -323,6 +338,11 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
     },
     editorProps: {
       attributes: { class: "story-prose prose-invert max-w-2xl mx-auto w-full focus:outline-none min-h-full px-8 py-6", spellcheck: "true" },
+      // Normalise smart/curly quotes to ASCII equivalents on paste so that
+      // prose detection and Vale rules see consistent characters regardless of
+      // where the text was authored (Word, Google Docs, macOS, etc.).
+      transformPastedText: (text) => normalizeQuotes(text),
+      transformPastedHTML: (html) => normalizeQuotes(html),
       // Intercept ProseMirror's own "scroll cursor into view" so we own the
       // scroll entirely — no race condition with the browser/PM auto-scroll.
       handleScrollToSelection: (view) => {
@@ -348,17 +368,33 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
     if (content !== prevSceneContent.current && content !== editor.getHTML()) {
       prevSceneContent.current = content;
       queueMicrotask(() => {
-        editor.commands.setContent(content || "", { emitUpdate: false });
+        // Parse HTML → ProseMirror doc using the editor's full schema (including
+        // custom nodes). Dispatch with addToHistory:false so Ctrl+Z can't undo
+        // the content load, and preventUpdate so onUpdate doesn't fire.
+        const el = document.createElement("div");
+        el.innerHTML = content || "";
+        const newDoc = PMDOMParser.fromSchema(editor.schema).parse(el);
+        const tr = editor.state.tr
+          .replaceWith(0, editor.state.doc.content.size, newDoc.content)
+          .setMeta("addToHistory", false)
+          .setMeta("preventUpdate", true);
+        editor.view.dispatch(tr);
+        // Re-push comment highlights: the replaceWith above triggers the
+        // drift-map branch in the comment plugin, which corrupts pre-loaded
+        // positions. Re-pushing from the ref fixes them.
+        if (commentHighlightsRef.current.length > 0) {
+          setCommentHighlights(editor.view, commentHighlightsRef.current);
+        }
       });
     }
   }, [content, editor]);
 
-  // Re-trigger codex decorations when entries change
+  // Re-trigger codex decorations when entries change or the toggle flips
   useEffect(() => {
     if (!editor) return;
     const { tr } = editor.state;
     editor.view.dispatch(tr.setMeta(PLUGIN_KEY, true));
-  }, [codexEntries, editor]);
+  }, [codexEntries, showCodexHighlights, editor]);
 
   // Push comment highlights into the plugin whenever the prop changes
   useEffect(() => {

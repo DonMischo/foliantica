@@ -83,7 +83,9 @@ _AUXILIARIES: dict[str, frozenset[str]] = {
 # Only suffixes that are predominantly adverbial (low noun/adjective collision).
 _ADV_SUFFIXES: dict[str, tuple[str, ...]] = {
     "en": ("ly",),
-    "de": ("weise", "erweise", "maßen"),  # -lich excluded: too many adjectives
+    # -ig (≥7) and -lich (≥8) catch manner adverbs; overlap with adjectives is
+    # acceptable — adjective overuse is similarly worth flagging in prose.
+    "de": ("weise", "erweise", "maßen", "ig", "lich"),
     "fr": ("ment",),
     "es": ("mente",),
     "pt": ("mente",),
@@ -187,10 +189,17 @@ def _auxiliary_density(paragraphs: list[str], lang: str) -> dict:
     return {"flagged_paragraphs": flagged}
 
 
+_ADV_MIN_LEN: dict[str, int] = {"ig": 7, "lich": 8}
+
 def _adverb_density(words: list[str], lang: str) -> dict:
-    """Estimate adverb density via suffix matching (min 5-char words to avoid noise)."""
+    """Estimate adverb density via suffix matching."""
     suffixes = _ADV_SUFFIXES.get(lang) or _ADV_SUFFIXES["en"]
-    count = sum(1 for w in words if len(w) >= 5 and any(w.endswith(s) for s in suffixes))
+    def _matches(w: str) -> bool:
+        for s in suffixes:
+            if w.endswith(s) and len(w) >= _ADV_MIN_LEN.get(s, 5):
+                return True
+        return False
+    count = sum(1 for w in words if _matches(w))
     ratio = count / len(words) if words else 0.0
     level = "high" if ratio >= 0.08 else ("elevated" if ratio >= 0.05 else "ok")
     return {"count": count, "ratio": round(ratio, 3), "level": level}
@@ -199,10 +208,15 @@ def _adverb_density(words: list[str], lang: str) -> dict:
 def _dialog_ratio(plain: str) -> dict:
     """Estimate what share of lines are dialogue."""
     lines = [ln.strip() for ln in plain.split("\n") if ln.strip()]
-    dialog = sum(
-        1 for ln in lines
-        if ln[0] in {'"', "“", "«", "–", "—"} if ln
-    )
+    _DIALOG_OPENERS = {
+        '”',   # straight double quote
+        ““”,  # “ LEFT DOUBLE QUOTATION MARK
+        “„”,  # „ DOUBLE LOW-9 QUOTATION MARK (German/Polish open)
+        “«”,  # « LEFT-POINTING DOUBLE ANGLE (French/Italian open)
+        “–“,  # – EN DASH (dialog marker in some European traditions)
+        “—“,  # — EM DASH
+    }
+    dialog = sum(1 for ln in lines if ln and ln[0] in _DIALOG_OPENERS)
     ratio = dialog / len(lines) if lines else 0.0
     return {
         "ratio": round(ratio, 3),
