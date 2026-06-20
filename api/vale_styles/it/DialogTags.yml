@@ -1,0 +1,29 @@
+# Verbi di dialogo oltre «disse/chiese» — said-bookisms in italiano.
+extends: existence
+message: "Verbo di dialogo '%s' — «disse» o «chiese» è spesso più trasparente; altrimenti usa un'azione."
+level: suggestion
+ignorecase: true
+tokens:
+  # Marcatori di volume
+  - \besclamò\b
+  - \bgridò\b
+  - \burlò\b
+  - \bvociferò\b
+  - \bbisbigliò\b
+  - \bmormorò\b
+  - \bsibilò\b
+
+  # Verbi emotivamente carichi
+  - \bringhiò\b
+  - \bbrontolò\b
+  - \bgemette\b
+  - \bsospirò\b
+  - \brise\b
+  - \bsghignazzò\b
+  - \bschernì\b
+  - \birrise\b
+
+  # Verbi fisiologicamente discutibili
+  - \bansimò\b
+  - \bboccheggò\b
+  - \btossì\b

@@ -1,0 +1,29 @@
+# Verbos de diálogo além de «disse/perguntou» — said-bookisms em português.
+extends: existence
+message: "Verbo de diálogo '%s' — «disse» ou «perguntou» costuma ser mais invisível; ou usa uma ação."
+level: suggestion
+ignorecase: true
+tokens:
+  # Marcadores de volume
+  - \bexclamou\b
+  - \bgritou\b
+  - \bbramou\b
+  - \bvociferou\b
+  - \bsussurrou\b
+  - \bmurmurou\b
+  - \bsibilou\b
+
+  # Verbos emocionalmente carregados
+  - \brosnou\b
+  - \bresmungou\b
+  - \bgemeu\b
+  - \bsuspirou\b
+  - \briu-se\b
+  - \bgargalhou\b
+  - \bzombou\b
+  - \bescarneceu\b
+
+  # Verbos fisiologicamente questionáveis
+  - \bofegou\b
+  - \bpanteou\b
+  - \btossiu\b

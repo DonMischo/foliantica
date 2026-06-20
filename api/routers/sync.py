@@ -11,7 +11,6 @@ Architecture:
       2. Mirrors uploads/ → sync_local_dir/uploads/, copying only files
          that are new or have a newer mtime (no unnecessary I/O).
 """
-import os
 import shutil
 import threading
 from datetime import datetime, UTC
@@ -436,7 +435,10 @@ def restore_from_dump():
     try:
         with engine.connect() as conn:
             for stmt in _iter_sql_statements(sql_text):
-                conn.execute(text(stmt))
+                # exec_driver_sql bypasses SQLAlchemy's :name parameter scanning,
+                # which would otherwise misread JSON values like ": null" or
+                # ": false" as bind parameters and raise InvalidRequestError.
+                conn.exec_driver_sql(stmt)
                 stmts += 1
             conn.commit()
     except Exception as exc:

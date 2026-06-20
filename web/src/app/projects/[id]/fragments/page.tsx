@@ -140,17 +140,33 @@ function ClippingDialog({
 
   const addTag = () => {
     const t = tagInput.trim().toLowerCase();
-    if (t && !tags.includes(t)) { setTags([...tags, t]); setTagInput(""); }
+    if (!t || tags.includes(t)) { setTagInput(""); return; }
+    const next = [...tags, t];
+    setTags(next);
+    setTagInput("");
+    if (initial) updateResearch.mutate({ id: initial.id, data: { tags: next } });
+  };
+
+  const removeTagFromDialog = (tag: string) => {
+    const next = tags.filter((x) => x !== tag);
+    setTags(next);
+    if (initial) updateResearch.mutate({ id: initial.id, data: { tags: next } });
   };
 
   const handleSave = async () => {
+    // Flush any tag typed but not yet committed via Enter / Add button
+    const pendingTag = tagInput.trim().toLowerCase();
+    const finalTags = pendingTag && !tags.includes(pendingTag)
+      ? [...tags, pendingTag]
+      : tags;
+
     setSaving(true);
     try {
       const payload = {
         title: title.trim() || undefined,
         url: url.trim() || undefined,
         text_content: text.trim() || undefined,
-        tags,
+        tags: finalTags,
       };
       let itemId: number;
       if (initial) {
@@ -268,8 +284,8 @@ function ClippingDialog({
                 <div className="flex flex-wrap gap-1">
                   {tags.map(t => (
                     <span key={t} className="flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                      #{t}
-                      <button onClick={() => setTags(tags.filter(x => x !== t))}><X className="h-2.5 w-2.5" /></button>
+                      {t}
+                      <button onClick={() => removeTagFromDialog(t)}><X className="h-2.5 w-2.5" /></button>
                     </span>
                   ))}
                 </div>
@@ -430,18 +446,35 @@ function PdfPopup({ url, name, onClose }: { url: string; name: string; onClose: 
 // ── Clipping card ─────────────────────────────────────────────────────────────
 
 function ClippingCard({
-  item, projectId, onEdit,
-}: { item: ResearchItem; projectId: number; onEdit: (item: ResearchItem) => void }) {
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [isHovered, setIsHovered]   = useState(false);
-  const [activeIdx, setActiveIdx]   = useState(0);
-  const [lightbox, setLightbox]     = useState(false);
-  const [pdfOpen, setPdfOpen]       = useState<number | null>(null); // media id
+  item, projectId, onEdit, onTagClick,
+}: { item: ResearchItem; projectId: number; onEdit: (item: ResearchItem) => void; onTagClick?: (tag: string) => void }) {
+  const [isDragOver, setIsDragOver]   = useState(false);
+  const [isHovered, setIsHovered]     = useState(false);
+  const [activeIdx, setActiveIdx]     = useState(0);
+  const [lightbox, setLightbox]       = useState(false);
+  const [pdfOpen, setPdfOpen]         = useState<number | null>(null);
+  const [addingTag, setAddingTag]     = useState(false);
+  const [tagInput, setTagInput]       = useState("");
+  const tagInputRef                   = useRef<HTMLInputElement>(null);
 
   const deleteItem   = useDeleteResearch(projectId);
+  const updateItem   = useUpdateResearch(projectId);
   const refetchUrl   = useRefetchResearchUrl(projectId);
   const uploadMedia  = useUploadResearchMedia(projectId);
   const deleteMedia  = useDeleteResearchMedia(projectId);
+
+  const commitTag = () => {
+    const t = tagInput.trim().toLowerCase();
+    if (t && !item.tags.includes(t)) {
+      updateItem.mutate({ id: item.id, data: { tags: [...item.tags, t] } });
+    }
+    setTagInput("");
+    setAddingTag(false);
+  };
+
+  const removeTag = (tag: string) => {
+    updateItem.mutate({ id: item.id, data: { tags: item.tags.filter((t) => t !== tag) } });
+  };
 
   const displayTitle  = item.title || item.url_title || item.url || "Untitled";
   const uploadedMedia = item.media;
@@ -468,6 +501,10 @@ function ClippingCard({
     input.onchange = () => { Array.from(input.files ?? []).forEach(handleFile); };
     input.click();
   };
+
+  useEffect(() => {
+    if (addingTag) tagInputRef.current?.focus();
+  }, [addingTag]);
 
   // Close lightbox / PDF on Escape
   useEffect(() => {
@@ -702,13 +739,52 @@ function ClippingCard({
           {item.text_content}
         </blockquote>
       )}
-      {item.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {item.tags.map(t => (
-            <span key={t} className="text-[10px] bg-primary/10 text-primary px-1.5 py-0 rounded-full">#{t}</span>
-          ))}
-        </div>
-      )}
+      <div className="flex flex-wrap gap-1 items-center">
+        {item.tags.map((t) => (
+          <span key={t} className="group/tag inline-flex items-center gap-0.5 text-[10px] bg-primary/10 text-primary rounded-full">
+            <button
+              onClick={() => onTagClick?.(t)}
+              className="pl-1.5 pr-0.5 py-px hover:bg-primary/25 rounded-l-full transition-colors"
+            >
+              {t}
+            </button>
+            <button
+              onClick={() => removeTag(t)}
+              className="pr-1 pl-0 py-px opacity-0 group-hover/tag:opacity-100 hover:text-destructive transition-opacity rounded-r-full"
+              title="Remove tag"
+            >
+              <X className="h-2.5 w-2.5" />
+            </button>
+          </span>
+        ))}
+
+        {addingTag ? (
+          <input
+            ref={tagInputRef}
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onBlur={commitTag}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); commitTag(); }
+              if (e.key === "Escape") { setTagInput(""); setAddingTag(false); }
+            }}
+            placeholder="tag…"
+            className="text-[10px] bg-secondary/60 border border-border rounded px-1.5 py-0.5 focus:outline-none w-20"
+          />
+        ) : (
+          <button
+            onClick={() => setAddingTag(true)}
+            className={cn(
+              "text-[10px] px-1.5 py-0.5 rounded transition-colors",
+              item.tags.length > 0
+                ? "text-muted-foreground/40 hover:text-muted-foreground hover:bg-secondary/60 opacity-0 group-hover:opacity-100"
+                : "text-muted-foreground/40 hover:text-muted-foreground hover:bg-secondary/60"
+            )}
+          >
+            + tag
+          </button>
+        )}
+      </div>
 
       {/* Link chips */}
       <div className="flex flex-wrap gap-1 mt-auto">
@@ -806,11 +882,11 @@ function useFragmentEdit(fragment: FragmentItem, projectId: number) {
   };
 }
 
-// ── Fragment card (grid view) ─────────────────────────────────────────────────
+// ── Fragment popup (focused editor) ──────────────────────────────────────────
 
-function FragmentCard({
-  fragment, projectId, allTabs,
-}: { fragment: FragmentItem; projectId: number; allTabs: string[] }) {
+function FragmentPopup({
+  fragment, projectId, allTabs, onClose,
+}: { fragment: FragmentItem; projectId: number; allTabs: string[]; onClose: () => void }) {
   const {
     editingTitle, setEditingTitle, localTitle, setLocalTitle,
     localContent, setLocalContent, localCategory, setLocalCategory,
@@ -819,121 +895,275 @@ function FragmentCard({
     wordCount, deleteFragment,
   } = useFragmentEdit(fragment, projectId);
 
-  const contentRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    const el = contentRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = el.scrollHeight + "px";
-  }, [localContent]);
-
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { text: labelText, derived } = fragmentLabel({ ...fragment, title: fragment.title });
 
-  return (
-    <div className="group relative bg-card border border-border rounded-lg p-3 space-y-2 hover:border-border/80 transition-colors">
-      <div className="flex items-center gap-1.5 min-h-[24px]">
-        {editingTitle ? (
-          <Input
-            value={localTitle}
-            onChange={(e) => setLocalTitle(e.target.value)}
-            onBlur={commitTitle}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") commitTitle(); }}
-            className="h-6 text-xs px-1 flex-1"
-            autoFocus
-          />
-        ) : (
-          <button
-            className="flex-1 text-left text-xs font-medium truncate min-h-[20px]"
-            onDoubleClick={() => setEditingTitle(true)}
-            title="Double-click to rename"
-          >
-            {fragment.title ? (
-              <span className="text-foreground/80 hover:text-foreground">{fragment.title}</span>
-            ) : (
-              <span className="text-muted-foreground italic">{derived ? labelText : "Untitled"}</span>
-            )}
-          </button>
-        )}
+  // Focus textarea on open (unless title is being edited)
+  useEffect(() => {
+    if (!fragment.title) textareaRef.current?.focus();
+  }, [fragment.title]);
 
-        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 shrink-0 transition-opacity">
-          <div className="relative">
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent
+        className="flex flex-col gap-0 p-0 overflow-hidden max-w-2xl"
+        style={{ height: "min(80vh, 640px)" }}
+        aria-describedby={undefined}
+      >
+        <DialogTitle className="sr-only">{fragment.title || "Fragment"}</DialogTitle>
+        {/* Header */}
+        <div className="shrink-0 flex items-center gap-2 pl-4 pr-10 py-3 border-b border-border">
+          {editingTitle ? (
+            <Input
+              value={localTitle}
+              onChange={(e) => setLocalTitle(e.target.value)}
+              onBlur={commitTitle}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") commitTitle(); }}
+              className="h-7 text-sm px-2 flex-1"
+              autoFocus
+            />
+          ) : (
             <button
-              onClick={() => setShowMove((v) => !v)}
-              className="text-muted-foreground hover:text-foreground p-0.5 rounded"
-              title="Move to tab"
+              className="flex-1 text-left text-sm font-medium truncate min-h-[28px] hover:text-primary transition-colors"
+              onDoubleClick={() => setEditingTitle(true)}
+              title="Double-click to rename"
             >
-              <MoreHorizontal className="h-3.5 w-3.5" />
+              {fragment.title
+                ? <span className="text-foreground/90">{fragment.title}</span>
+                : <span className="text-muted-foreground italic">{derived ? labelText : "Untitled"}</span>
+              }
             </button>
-            {showMove && (
-              <div className="absolute right-0 top-6 z-20 bg-popover border border-border rounded-md shadow-lg py-1 min-w-[130px]">
-                {allTabs
-                  .filter((t) => t !== fragment.tab)
-                  .map((t) => (
+          )}
+          <div className="flex items-center gap-0.5 shrink-0">
+            <div className="relative">
+              <button
+                onClick={() => setShowMove((v) => !v)}
+                className="text-muted-foreground hover:text-foreground p-1 rounded"
+                title="Move to tab"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+              {showMove && (
+                <div className="absolute right-0 top-8 z-20 bg-popover border border-border rounded-md shadow-lg py-1 min-w-[130px]">
+                  {allTabs.filter((t) => t !== fragment.tab).map((t) => (
                     <button
                       key={t}
-                      onClick={() => moveToTab(t)}
+                      onClick={() => { moveToTab(t); onClose(); }}
                       className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-secondary text-left capitalize"
                     >
                       <TabIcon tab={t} />
                       {t}
                     </button>
                   ))}
-              </div>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => { deleteFragment.mutate(fragment.id); onClose(); }}
+              className="text-muted-foreground hover:text-destructive p-1 rounded"
+              title="Delete fragment"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <textarea
+          ref={textareaRef}
+          value={localContent}
+          onChange={(e) => { setLocalContent(e.target.value); scheduleContentSave(e.target.value); }}
+          placeholder="Write something…"
+          className="flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none px-4 py-3 leading-relaxed"
+        />
+
+        {/* Footer */}
+        <div className="shrink-0 flex items-center justify-between px-4 py-2.5 border-t border-border text-[10px] text-muted-foreground/60">
+          <div className="flex items-center gap-2">
+            <span>{new Date(fragment.updated_at).toLocaleDateString()}</span>
+            {editingCategory ? (
+              <input
+                value={localCategory}
+                onChange={e => setLocalCategory(e.target.value)}
+                onBlur={commitCategory}
+                onKeyDown={e => { if (e.key === "Enter" || e.key === "Escape") commitCategory(); }}
+                placeholder="category…"
+                className="text-[10px] bg-secondary/60 border border-border rounded px-1.5 py-0.5 focus:outline-none w-24"
+                autoFocus
+              />
+            ) : (
+              <button
+                onClick={() => setEditingCategory(true)}
+                className={cn(
+                  "text-[10px] px-1.5 py-0.5 rounded transition-colors",
+                  localCategory
+                    ? "bg-primary/15 text-primary hover:bg-primary/25"
+                    : "text-muted-foreground/30 hover:text-muted-foreground hover:bg-secondary/60"
+                )}
+              >
+                {localCategory || "+ label"}
+              </button>
             )}
           </div>
-          <button
-            onClick={() => deleteFragment.mutate(fragment.id)}
-            className="text-muted-foreground hover:text-destructive p-0.5 rounded"
-            title="Delete fragment"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          <span>{wordCount} words</span>
         </div>
-      </div>
 
-      <textarea
-        ref={contentRef}
-        value={localContent}
-        onChange={(e) => { setLocalContent(e.target.value); scheduleContentSave(e.target.value); }}
-        placeholder="Write something..."
-        className="w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none min-h-[60px] leading-relaxed"
-        rows={3}
-      />
+        {showMove && <div className="fixed inset-0 z-10" onClick={() => setShowMove(false)} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
 
-      <div className="flex items-center justify-between text-[10px] text-muted-foreground/50">
-        <div className="flex items-center gap-1.5">
-          <span>{new Date(fragment.updated_at).toLocaleDateString()}</span>
-          {editingCategory ? (
-            <input
-              value={localCategory}
-              onChange={e => setLocalCategory(e.target.value)}
-              onBlur={commitCategory}
-              onKeyDown={e => { if (e.key === "Enter" || e.key === "Escape") commitCategory(); }}
-              placeholder="category…"
-              className="text-[10px] bg-secondary/60 border border-border rounded px-1.5 py-0.5 focus:outline-none w-24"
+// ── Fragment card (grid view) ─────────────────────────────────────────────────
+
+function FragmentCard({
+  fragment, projectId, allTabs,
+}: { fragment: FragmentItem; projectId: number; allTabs: string[] }) {
+  const [popupOpen, setPopupOpen] = useState(false);
+  const {
+    editingTitle, setEditingTitle, localTitle, setLocalTitle,
+    localContent, setLocalContent, localCategory, setLocalCategory,
+    editingCategory, setEditingCategory, showMove, setShowMove,
+    scheduleContentSave, commitTitle, commitCategory, moveToTab,
+    wordCount, deleteFragment,
+  } = useFragmentEdit(fragment, projectId);
+
+  const { text: labelText, derived } = fragmentLabel({ ...fragment, title: fragment.title });
+
+  return (
+    <>
+      <div
+        className={cn(
+          "group relative bg-card border border-border rounded-lg flex flex-col h-56 transition-colors cursor-pointer",
+          "hover:border-primary/40 hover:shadow-sm",
+        )}
+        onClick={() => setPopupOpen(true)}
+      >
+        {/* Header */}
+        <div
+          className="shrink-0 flex items-center gap-1.5 px-3 pt-3 pb-1.5 min-h-[36px]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {editingTitle ? (
+            <Input
+              value={localTitle}
+              onChange={(e) => setLocalTitle(e.target.value)}
+              onBlur={commitTitle}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") commitTitle(); }}
+              className="h-6 text-xs px-1 flex-1"
               autoFocus
             />
           ) : (
-            <button
-              onClick={() => setEditingCategory(true)}
-              className={cn(
-                "text-[10px] px-1.5 py-0.5 rounded transition-colors",
-                localCategory
-                  ? "bg-primary/15 text-primary hover:bg-primary/25"
-                  : "text-muted-foreground/30 hover:text-muted-foreground hover:bg-secondary/60"
-              )}
-              title="Set category"
+            <span
+              className="flex-1 text-xs font-medium truncate text-foreground/80"
+              onDoubleClick={() => setEditingTitle(true)}
+              title={fragment.title ?? undefined}
             >
-              {localCategory || "+ label"}
-            </button>
+              {fragment.title
+                ? fragment.title
+                : <span className="text-muted-foreground italic">{derived ? labelText : "Untitled"}</span>
+              }
+            </span>
           )}
+
+          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 shrink-0 transition-opacity">
+            <button
+              onClick={(e) => { e.stopPropagation(); setPopupOpen(true); }}
+              className="text-muted-foreground hover:text-foreground p-0.5 rounded"
+              title="Expand"
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+            </button>
+            <div className="relative">
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowMove((v) => !v); }}
+                className="text-muted-foreground hover:text-foreground p-0.5 rounded"
+                title="Move to tab"
+              >
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </button>
+              {showMove && (
+                <div className="absolute right-0 top-6 z-20 bg-popover border border-border rounded-md shadow-lg py-1 min-w-[130px]">
+                  {allTabs.filter((t) => t !== fragment.tab).map((t) => (
+                    <button
+                      key={t}
+                      onClick={(e) => { e.stopPropagation(); moveToTab(t); }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-secondary text-left capitalize"
+                    >
+                      <TabIcon tab={t} />
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); deleteFragment.mutate(fragment.id); }}
+              className="text-muted-foreground hover:text-destructive p-0.5 rounded"
+              title="Delete fragment"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
-        <span>{wordCount} words</span>
+
+        {/* Scrollable content — click inside textarea doesn't bubble to card */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-3">
+          <textarea
+            value={localContent}
+            onChange={(e) => { setLocalContent(e.target.value); scheduleContentSave(e.target.value); }}
+            placeholder="Click to expand…"
+            className="w-full min-h-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground/30 focus:outline-none leading-relaxed"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+
+        {/* Footer */}
+        <div
+          className="shrink-0 flex items-center justify-between px-3 pb-2.5 pt-1.5 text-[10px] text-muted-foreground/50"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center gap-1.5">
+            <span>{new Date(fragment.updated_at).toLocaleDateString()}</span>
+            {editingCategory ? (
+              <input
+                value={localCategory}
+                onChange={e => setLocalCategory(e.target.value)}
+                onBlur={commitCategory}
+                onKeyDown={e => { if (e.key === "Enter" || e.key === "Escape") commitCategory(); }}
+                placeholder="category…"
+                className="text-[10px] bg-secondary/60 border border-border rounded px-1.5 py-0.5 focus:outline-none w-24"
+                autoFocus
+              />
+            ) : (
+              <button
+                onClick={() => setEditingCategory(true)}
+                className={cn(
+                  "text-[10px] px-1.5 py-0.5 rounded transition-colors",
+                  localCategory
+                    ? "bg-primary/15 text-primary hover:bg-primary/25"
+                    : "text-muted-foreground/30 hover:text-muted-foreground hover:bg-secondary/60"
+                )}
+              >
+                {localCategory || "+ label"}
+              </button>
+            )}
+          </div>
+          <span>{wordCount} w</span>
+        </div>
+
+        {showMove && <div className="fixed inset-0 z-10" onClick={() => setShowMove(false)} />}
       </div>
 
-      {showMove && <div className="fixed inset-0 z-10" onClick={() => setShowMove(false)} />}
-    </div>
+      {popupOpen && (
+        <FragmentPopup
+          fragment={fragment}
+          projectId={projectId}
+          allTabs={allTabs}
+          onClose={() => setPopupOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -1124,11 +1354,12 @@ export default function FragmentsPage() {
   // Research is always the first tab (not stored in DB — it's special)
   const allDisplayTabs = [RESEARCH_TAB, ...allTabs];
 
-  const [activeTab, setActiveTab]   = useState(RESEARCH_TAB);
-  const [addingTab, setAddingTab]   = useState(false);
-  const [newTabName, setNewTabName] = useState("");
-  const [viewMode, setViewMode]     = useState<ViewMode>("grid");
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [activeTab, setActiveTab]           = useState(RESEARCH_TAB);
+  const [addingTab, setAddingTab]           = useState(false);
+  const [newTabName, setNewTabName]         = useState("");
+  const [viewMode, setViewMode]             = useState<ViewMode>("grid");
+  const [expandedId, setExpandedId]         = useState<number | null>(null);
+  const [fragmentCategoryFilter, setFragmentCategoryFilter] = useState<string | null>(null);
 
   // Research search / filter state
   const [researchSearch, setResearchSearch]   = useState("");
@@ -1145,8 +1376,8 @@ export default function FragmentsPage() {
     }
   }, [allTabs, activeTab]);
 
-  // Reset list expansion when tab / view mode changes
-  useEffect(() => { setExpandedId(null); }, [activeTab, viewMode]);
+  // Reset list expansion and category filter when tab / view mode changes
+  useEffect(() => { setExpandedId(null); setFragmentCategoryFilter(null); }, [activeTab, viewMode]);
 
   // Derived research data
   const allResearchTags = [...new Set(researchItems.flatMap(i => i.tags))].sort();
@@ -1165,10 +1396,18 @@ export default function FragmentsPage() {
     return true;
   });
 
-  // Newest first: sort by updated_at descending so just-created fragments surface to the top
-  const tabFragments = fragments
-    .filter((f) => f.tab === activeTab)
-    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+  // All fragments in the active tab — unfiltered (used for category pills)
+  const rawTabFragments = fragments.filter((f) => f.tab === activeTab);
+  const allTabCategories = [...new Set(
+    rawTabFragments.filter((f) => f.category).map((f) => f.category as string)
+  )].sort();
+
+  // Apply category filter then sort newest first
+  const tabFragments = (
+    fragmentCategoryFilter
+      ? rawTabFragments.filter((f) => f.category === fragmentCategoryFilter)
+      : rawTabFragments
+  ).sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 
   const openAddClipping = () => { setEditingClipping(null); setClippingOpen(true); };
   const openEditClipping = (item: ResearchItem) => { setEditingClipping(item); setClippingOpen(true); };
@@ -1380,7 +1619,7 @@ export default function FragmentsPage() {
                         : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
                     )}
                   >
-                    #{tag}
+                    {tag}
                   </button>
                 ))}
                 {(researchSearch || researchTagFilter.length > 0) && (
@@ -1425,6 +1664,9 @@ export default function FragmentsPage() {
                     item={item}
                     projectId={projectId}
                     onEdit={openEditClipping}
+                    onTagClick={(tag) => setResearchTagFilter((prev) =>
+                      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                    )}
                   />
                 ))}
               </div>
@@ -1433,7 +1675,35 @@ export default function FragmentsPage() {
         ) : (
           /* ── Fragment grid / list ────────────────────────────────────────── */
           <div className="p-4">
-            {tabFragments.length === 0 ? (
+            {/* Category filter pills */}
+            {allTabCategories.length > 0 && (
+              <div className="flex items-center gap-2 flex-wrap mb-3">
+                {allTabCategories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setFragmentCategoryFilter((prev) => prev === cat ? null : cat)}
+                    className={cn(
+                      "text-xs px-2.5 py-1 rounded-full transition-colors",
+                      fragmentCategoryFilter === cat
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                    )}
+                  >
+                    {cat}
+                  </button>
+                ))}
+                {fragmentCategoryFilter && (
+                  <button
+                    onClick={() => setFragmentCategoryFilter(null)}
+                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5"
+                  >
+                    <X className="h-3 w-3" /> Clear
+                  </button>
+                )}
+              </div>
+            )}
+
+            {rawTabFragments.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground gap-3 py-16">
                 <TabIcon tab={activeTab} className="h-8 w-8 opacity-20" />
                 <div>
@@ -1449,8 +1719,19 @@ export default function FragmentsPage() {
                   New fragment
                 </Button>
               </div>
+            ) : tabFragments.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground gap-3 py-16">
+                <TabIcon tab={activeTab} className="h-8 w-8 opacity-20" />
+                <p className="font-medium">No fragments match "{fragmentCategoryFilter}"</p>
+                <button
+                  onClick={() => setFragmentCategoryFilter(null)}
+                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5"
+                >
+                  <X className="h-3 w-3" /> Clear filter
+                </button>
+              </div>
             ) : viewMode === "grid" ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+              <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))" }}>
                 {tabFragments.map((fragment) => (
                   <FragmentCard
                     key={fragment.id}

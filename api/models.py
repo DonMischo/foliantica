@@ -119,6 +119,31 @@ class Scene(Base):
         "SceneCommand", back_populates="scene", cascade="all, delete-orphan",
         order_by="SceneCommand.order_index"
     )
+    comments: Mapped[list["SceneComment"]] = relationship(
+        "SceneComment", back_populates="scene", cascade="all, delete-orphan",
+        order_by="SceneComment.created_at"
+    )
+
+
+class SceneComment(Base):
+    __tablename__ = "scene_comments"
+
+    id:          Mapped[int]           = mapped_column(Integer, primary_key=True, index=True)
+    scene_id:    Mapped[int]           = mapped_column(Integer, ForeignKey("scenes.id", ondelete="CASCADE"), index=True)
+    from_pos:    Mapped[int]           = mapped_column(Integer, nullable=False)
+    to_pos:      Mapped[int]           = mapped_column(Integer, nullable=False)
+    anchor_text: Mapped[str]           = mapped_column(Text, nullable=False)
+    ctx_before:  Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    ctx_after:   Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    body:        Mapped[str]           = mapped_column(Text, nullable=False)
+    author_name: Mapped[str]           = mapped_column(String(255), nullable=False)
+    author_role: Mapped[str]           = mapped_column(String(50),  nullable=False, default="host")
+    color:       Mapped[str]           = mapped_column(String(7),   nullable=False, default="#6366f1")
+    category:    Mapped[str]           = mapped_column(String(100), nullable=False, default="")
+    resolved:    Mapped[int]           = mapped_column(Integer, nullable=False, default=0)
+    created_at:  Mapped[datetime]      = mapped_column(DateTime, default=_now)
+
+    scene: Mapped["Scene"] = relationship("Scene", back_populates="comments")
 
 
 class EntryType(str, enum.Enum):
@@ -279,6 +304,24 @@ class SceneCommand(Base):
     scene: Mapped["Scene"] = relationship("Scene", back_populates="commands")
 
 
+class ValeRuleEntry(Base):
+    """Built-in Vale style rule entries, seeded from YAML files on demand."""
+    __tablename__ = "vale_rule_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    lang: Mapped[str] = mapped_column(String(4), nullable=False)
+    rule_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    rule_type: Mapped[str] = mapped_column(String(16), nullable=False)        # existence | substitution
+    rule_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    rule_level: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    rule_ignorecase: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    entry_key: Mapped[str] = mapped_column(Text, nullable=False)
+    entry_value: Mapped[Optional[str]] = mapped_column(Text, nullable=True)   # substitution only
+    enabled: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    __table_args__ = (UniqueConstraint("lang", "rule_name", "entry_key"),)
+
+
 class UserSettings(Base):
     __tablename__ = "user_settings"
 
@@ -297,6 +340,7 @@ class UserSettings(Base):
     typewriter_mode: Mapped[int] = mapped_column(Integer, default=0)
     typewriter_offset: Mapped[int] = mapped_column(Integer, default=50)
     session_timer_enabled: Mapped[int] = mapped_column(Integer, default=1)
+    codex_highlight_enabled: Mapped[int] = mapped_column(Integer, default=1)
     # External service settings
     grammar_check_enabled: Mapped[int] = mapped_column(Integer, default=0)
     grammar_check_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -312,6 +356,9 @@ class UserSettings(Base):
     vale_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     vale_config_path: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     vale_custom_rules: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
+    vale_disabled_entries: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: legacy, migrated to vale_rule_entries on first sync
+    vale_last_synced: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    vale_sync_errors: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: {filename: error}
     ai_disabled: Mapped[int] = mapped_column(Integer, default=0)
     # Multi-provider AI adapter (Phase 2)
     active_provider: Mapped[str] = mapped_column(String(50), default="openrouter")

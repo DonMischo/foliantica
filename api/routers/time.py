@@ -1,10 +1,9 @@
-import json
 import json as _json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import Project, Scene, Act, Chapter, TimelineTrack, TimelineEvent
+from models import Project, Scene, TimelineTrack, TimelineEvent
 from schemas import (
     TimeConfig, TimeConfigOut, DEFAULT_TIME_UNITS, DEFAULT_DAY_NIGHT,
     TimelineTrackCreate, TimelineTrackUpdate, TimelineTrackOut,
@@ -17,7 +16,7 @@ router = APIRouter(tags=["time"])
 def _get_or_default(project: Project) -> TimeConfig:
     if project.time_config:
         try:
-            data = json.loads(project.time_config)
+            data = _json.loads(project.time_config)
             return TimeConfig(**data)
         except Exception:
             pass
@@ -51,11 +50,7 @@ def _sibling_project_ids(project: Project, db: Session) -> list[int]:
 
 @router.get("/api/projects/{project_id}/timeline")
 def get_timeline(project_id: int, db: Session = Depends(get_db)):
-    project = (
-        db.query(Project)
-        .filter(Project.id == project_id)
-        .first()
-    )
+    project = db.get(Project, project_id)
     if not project:
         raise HTTPException(404, "Project not found")
 
@@ -80,7 +75,7 @@ def get_timeline(project_id: int, db: Session = Depends(get_db)):
                     if not scene.scene_time:
                         continue
                     try:
-                        time_data = json.loads(scene.scene_time)
+                        time_data = _json.loads(scene.scene_time)
                     except Exception:
                         continue
 

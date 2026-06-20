@@ -1,0 +1,150 @@
+# Sources / Attribution:
+#   - Joseph M. Williams: "Style: Lessons in Clarity and Grace" (Pearson, 14th ed., 2014)
+#   - Helen Sword: "Zombie Nouns" (New York Times Opinionator, July 2012)
+#   - Bryan A. Garner: "Garner's Modern English Usage" (OUP, 4th ed., 2016)
+#   - Plain English Campaign: "The A to Z of Alternative Words" (2000)
+#   - UK Government Digital Service: Content Design Guide (https://www.gov.uk/guidance/content-design)
+extends: substitution
+message: "Nominalization: '%s' — consider the verb form '%s'"
+level: suggestion
+ignorecase: true
+swap:
+  # --- make + noun (Williams: the canonical English nominalization pattern) ---
+  make a decision: decide
+  make the decision: decide
+  make a choice: choose
+  make the choice: choose
+  make an attempt: attempt
+  make a recommendation: recommend
+  make a suggestion: suggest
+  make a request: request
+  make a commitment: commit
+  make an assessment: assess
+  make a complaint: complain
+  make an announcement: announce
+  make a claim: claim
+  make a contribution: contribute
+  make a determination: determine
+  make an improvement: improve
+  make a judgment: judge
+  make a modification: modify
+  make a proposal: propose
+  make a selection: select
+  make a statement: state
+  make a transition: transition
+  make a calculation: calculate
+  make a revision: revise
+  make a comparison: compare
+  make a distinction: distinguish
+  make an adjustment: adjust
+  make an assumption: assume
+  make an observation: observe
+  make a prediction: predict
+  make a reference to: refer to
+  make use of: use
+
+  # --- take + noun (Williams, Garner) ---
+  take action: act
+  take steps: act
+  take measures: act
+  take a decision: decide
+  take a look: look
+  take a position: position
+  take into consideration: consider
+  take into account: consider
+  take note of: note
+  take responsibility for: be responsible for
+
+  # --- give + noun (Plain English Campaign) ---
+  give consideration to: consider
+  give thought to: think about
+  give attention to: attend to
+  give support to: support
+  give approval to: approve
+  give authorization to: authorize
+  give recognition to: recognize
+  give an explanation: explain
+  give a description: describe
+
+  # --- have + noun (Williams) ---
+  have a discussion: discuss
+  have a conversation about: talk about
+  have a meeting: meet
+  have a tendency to: tend to
+  have an effect on: affect
+  have an impact on: affect
+  have an influence on: influence
+  have knowledge of: know
+  have an understanding of: understand
+  have a preference for: prefer
+
+  # --- conduct / perform + noun (Garner, GDS) ---
+  conduct an analysis: analyze
+  conduct an investigation: investigate
+  conduct a review: review
+  conduct a study: study
+  conduct a survey: survey
+  conduct an assessment: assess
+  conduct an experiment: experiment
+  perform an analysis: analyze
+  perform a review: review
+  perform an assessment: assess
+  perform maintenance on: maintain
+
+  # --- provide + noun (GDS, Plain English Campaign) ---
+  provide assistance: assist
+  provide support to: support
+  provide guidance: guide
+  provide clarification: clarify
+  provide an explanation: explain
+  provide a description: describe
+  provide an update: update
+  provide a solution: solve
+  provide information: inform
+
+  # --- reach / come to / arrive at + noun (Williams) ---
+  reach an agreement: agree
+  reach a conclusion: conclude
+  reach a decision: decide
+  reach an understanding: understand
+  come to a conclusion: conclude
+  come to an agreement: agree
+  come to a decision: decide
+  come to a realization: realize
+  arrive at a conclusion: conclude
+  arrive at a decision: decide
+
+  # --- carry out / undertake + noun (GDS) ---
+  carry out an investigation: investigate
+  carry out a review: review
+  carry out an analysis: analyze
+  carry out an assessment: assess
+  undertake a review: review
+  undertake an investigation: investigate
+  undertake a study: study
+
+  # --- be in / be of + noun (Garner, Plain English Campaign) ---
+  be in agreement: agree
+  be in compliance with: comply with
+  be in violation of: violate
+  be in possession of: possess
+  be of the opinion that: think
+  be under the impression that: think
+  be in a position to: be able to
+  be of assistance: help
+  be in receipt of: have received
+
+  # --- offer / present + noun (Williams) ---
+  offer an explanation: explain
+  offer a suggestion: suggest
+  offer assistance: assist
+  present an argument: argue
+  present a solution: solve
+
+  # --- Streckverben — stretched verb phrases (Williams, Sword) ---
+  is in need of: needs
+  is indicative of: indicates
+  is representative of: represents
+  is supportive of: supports
+  is reflective of: reflects
+  is illustrative of: illustrates

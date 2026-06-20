@@ -1,0 +1,34 @@
+# Palabras-filtro — verbos de distancia en escritura de ficción.
+extends: existence
+message: "Palabra-filtro '%s' — ¿se puede colocar al lector directamente en la experiencia?"
+level: suggestion
+ignorecase: true
+tokens:
+  # Filtros cognitivos de distancia
+  - \bse dio cuenta\b
+  - \breconoció\b
+  - \bcomprendió\b
+  - \bdecidió\b
+  - \bse preguntó\b
+  - \brecordó\b
+  - \bse acordó\b
+
+  # Filtros de apariencia
+  - \bpareció\b
+  - \bparecía\b
+  - \btenía el aspecto\b
+
+  # Disruptores de ritmo
+  - \bde repente\b
+  - \bde pronto\b
+  - \bde golpe\b
+  - \bde súbito\b
+  - \binmediatamente\b
+  - \binstantáneamente\b
+  - \bbruscamente\b
+  - \bde improviso\b
+
+  # Debilitadores narrativos
+  - \bde alguna manera\b
+  - \bde algún modo\b
+  - \bde alguna forma\b

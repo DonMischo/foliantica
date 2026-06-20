@@ -11,6 +11,7 @@ Tests for api/routers/vale.py and Vale settings integration.
 
 import json
 import subprocess
+import yaml
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -459,6 +460,253 @@ class TestValeCustomRules:
         assert not any("Custom_" in k for k in style_keys)
 
 
+# ── Sync status ──────────────────────────────────────────────────────────────
+
+class TestValeSyncStatus:
+    def test_sync_status_before_any_sync(self, client):
+        r = client.get("/api/vale/sync-status")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["last_synced"] is None
+        assert data["total_entries"] == 0
+        assert data["errors"] == {}
+
+    def test_sync_status_after_sync(self, client):
+        client.post("/api/vale/sync-rules")
+        r = client.get("/api/vale/sync-status")
+        data = r.json()
+        assert data["last_synced"] is not None
+        assert data["total_entries"] > 0
+        assert data["errors"] == {}
+
+
+# ── Sync rules ────────────────────────────────────────────────────────────────
+
+class TestValeSync:
+    def test_sync_creates_entries(self, client, db):
+        from models import ValeRuleEntry
+        r = client.post("/api/vale/sync-rules")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["synced"] > 0
+        assert "last_synced" in data
+        assert isinstance(data["errors"], dict)
+        assert db.query(ValeRuleEntry).count() > 0
+
+    def test_sync_preserves_disabled_flag(self, client, db):
+        from models import ValeRuleEntry
+        client.post("/api/vale/sync-rules")
+        client.patch("/api/vale/rule-entries/de/WeaselWords",
+                     json={"key": r"\bgewissermaßen\b", "enabled": False})
+        client.post("/api/vale/sync-rules")
+        db.expire_all()
+        entry = db.query(ValeRuleEntry).filter_by(
+            lang="de", rule_name="WeaselWords", entry_key=r"\bgewissermaßen\b"
+        ).first()
+        assert entry is not None
+        assert entry.enabled == 0
+
+    def test_sync_deletes_stale_entries(self, client, db):
+        from models import ValeRuleEntry
+        db.add(ValeRuleEntry(
+            lang="de", rule_name="FakeRule", rule_type="existence",
+            entry_key=r"\btoken_that_does_not_exist\b", enabled=1,
+        ))
+        db.commit()
+        client.post("/api/vale/sync-rules")
+        db.expire_all()
+        assert db.query(ValeRuleEntry).filter_by(lang="de", rule_name="FakeRule").first() is None
+
+    def test_sync_is_idempotent(self, client):
+        r1 = client.post("/api/vale/sync-rules").json()
+        r2 = client.post("/api/vale/sync-rules").json()
+        assert r1["synced"] == r2["synced"]
+        assert r1["errors"] == r2["errors"]
+
+
+# ── Rule entries ──────────────────────────────────────────────────────────────
+
+class TestValeRuleEntriesDB:
+    def test_get_entries_yaml_fallback_before_sync(self, client):
+        r = client.get("/api/vale/rule-entries/de/WeaselWords")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["type"] == "existence"
+        assert len(data["entries"]) > 0
+        assert all(e["enabled"] is True for e in data["entries"])
+
+    def test_get_entries_from_db_after_sync(self, client):
+        client.post("/api/vale/sync-rules")
+        r = client.get("/api/vale/rule-entries/de/WeaselWords")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["type"] == "existence"
+        assert len(data["entries"]) > 0
+        for e in data["entries"]:
+            assert "enabled" in e
+            assert isinstance(e["enabled"], bool)
+
+    def test_get_substitution_entries_have_value(self, client):
+        client.post("/api/vale/sync-rules")
+        r = client.get("/api/vale/rule-entries/de/Redundancy")
+        assert r.status_code == 200
+        data = r.json()
+        assert data["type"] == "substitution"
+        assert len(data["entries"]) > 0
+        for e in data["entries"]:
+            assert "key" in e
+            assert "value" in e
+
+    def test_get_entries_404_for_unknown_rule(self, client):
+        r = client.get("/api/vale/rule-entries/de/NonExistentRule")
+        assert r.status_code == 404
+
+    def test_patch_toggles_single_entry(self, client, db):
+        from models import ValeRuleEntry
+        client.post("/api/vale/sync-rules")
+        r = client.patch("/api/vale/rule-entries/de/WeaselWords",
+                         json={"key": r"\bgewissermaßen\b", "enabled": False})
+        assert r.status_code == 200
+        assert r.json()["ok"] is True
+        db.expire_all()
+        entry = db.query(ValeRuleEntry).filter_by(
+            lang="de", rule_name="WeaselWords", entry_key=r"\bgewissermaßen\b"
+        ).first()
+        assert entry.enabled == 0
+        client.patch("/api/vale/rule-entries/de/WeaselWords",
+                     json={"key": r"\bgewissermaßen\b", "enabled": True})
+        db.expire_all()
+        assert db.query(ValeRuleEntry).filter_by(
+            lang="de", rule_name="WeaselWords", entry_key=r"\bgewissermaßen\b"
+        ).first().enabled == 1
+
+    def test_patch_404_when_not_synced(self, client):
+        r = client.patch("/api/vale/rule-entries/de/WeaselWords",
+                         json={"key": r"\bgewissermaßen\b", "enabled": False})
+        assert r.status_code == 404
+
+    def test_put_disables_all_entries_in_rule(self, client, db):
+        from models import ValeRuleEntry
+        client.post("/api/vale/sync-rules")
+        r = client.put("/api/vale/rule-entries/de/WeaselWords", json={"enabled": False})
+        assert r.status_code == 200
+        assert r.json()["ok"] is True
+        db.expire_all()
+        entries = db.query(ValeRuleEntry).filter_by(lang="de", rule_name="WeaselWords").all()
+        assert len(entries) > 0
+        assert all(e.enabled == 0 for e in entries)
+
+    def test_put_reenables_all_entries_in_rule(self, client, db):
+        from models import ValeRuleEntry
+        client.post("/api/vale/sync-rules")
+        client.put("/api/vale/rule-entries/de/WeaselWords", json={"enabled": False})
+        client.put("/api/vale/rule-entries/de/WeaselWords", json={"enabled": True})
+        db.expire_all()
+        entries = db.query(ValeRuleEntry).filter_by(lang="de", rule_name="WeaselWords").all()
+        assert all(e.enabled == 1 for e in entries)
+
+    def test_rule_meta_from_db_after_sync(self, client):
+        client.post("/api/vale/sync-rules")
+        r = client.get("/api/vale/rule-meta/de")
+        assert r.status_code == 200
+        rules = r.json()["rules"]
+        names = [rule["name"] for rule in rules]
+        assert "WeaselWords" in names
+        assert "Redundancy" in names
+        for rule in rules:
+            assert rule["type"] in ("existence", "substitution")
+
+
+# ── Disabled entries excluded from style loading ──────────────────────────────
+
+class TestValeLoadStylesDB:
+    def test_disabled_rule_excluded_from_check(self, client):
+        _enable_system(client)
+        client.post("/api/vale/sync-rules")
+        client.put("/api/vale/rule-entries/de/WeaselWords", json={"enabled": False})
+
+        written_files: list[str] = []
+
+        def capture_run(cmd, **kw):
+            import os
+            cwd = kw.get("cwd", "")
+            styles_path = os.path.join(cwd, "styles", "Foliantica")
+            if os.path.isdir(styles_path):
+                written_files.extend(os.listdir(styles_path))
+            return _fake_run("{}", 0)
+
+        with (
+            patch("routers.vale.shutil.which", return_value="/usr/bin/vale"),
+            patch("routers.vale.subprocess.run", side_effect=capture_run),
+        ):
+            r = client.post("/api/vale/check", json={"text": "Text.", "language": "de"})
+
+        assert r.status_code == 200
+        assert "WeaselWords.yml" not in written_files
+        assert len(written_files) > 0
+
+    def test_yaml_fallback_used_before_sync(self, client):
+        _enable_system(client)
+        written_files: list[str] = []
+
+        def capture_run(cmd, **kw):
+            import os
+            cwd = kw.get("cwd", "")
+            styles_path = os.path.join(cwd, "styles", "Foliantica")
+            if os.path.isdir(styles_path):
+                written_files.extend(os.listdir(styles_path))
+            return _fake_run("{}", 0)
+
+        with (
+            patch("routers.vale.shutil.which", return_value="/usr/bin/vale"),
+            patch("routers.vale.subprocess.run", side_effect=capture_run),
+        ):
+            r = client.post("/api/vale/check", json={"text": "Text.", "language": "de"})
+
+        assert r.status_code == 200
+        assert "WeaselWords.yml" in written_files
+
+
+# ── Legacy disabled entries migration ────────────────────────────────────────
+
+class TestValeDisabledMigration:
+    def test_first_sync_migrates_legacy_disabled_entries(self, client, db):
+        from models import UserSettings, ValeRuleEntry
+        s = UserSettings()
+        s.vale_disabled_entries = json.dumps({
+            "de": {"WeaselWords": [r"\bgewissermaßen\b"]}
+        })
+        db.add(s)
+        db.commit()
+        r = client.post("/api/vale/sync-rules")
+        assert r.status_code == 200
+        db.expire_all()
+        entry = db.query(ValeRuleEntry).filter_by(
+            lang="de", rule_name="WeaselWords", entry_key=r"\bgewissermaßen\b"
+        ).first()
+        assert entry is not None
+        assert entry.enabled == 0
+        s2 = db.query(UserSettings).first()
+        assert s2.vale_disabled_entries is None
+
+    def test_second_sync_does_not_re_apply_legacy_json(self, client, db):
+        from models import UserSettings, ValeRuleEntry
+        client.post("/api/vale/sync-rules")
+        client.patch("/api/vale/rule-entries/de/WeaselWords",
+                     json={"key": r"\bgewissermaßen\b", "enabled": True})
+        db.expire_all()
+        s = db.query(UserSettings).first()
+        s.vale_disabled_entries = json.dumps({"de": {"WeaselWords": [r"\bgewissermaßen\b"]}})
+        db.commit()
+        client.post("/api/vale/sync-rules")
+        db.expire_all()
+        entry = db.query(ValeRuleEntry).filter_by(
+            lang="de", rule_name="WeaselWords", entry_key=r"\bgewissermaßen\b"
+        ).first()
+        assert entry is not None
+        assert entry.enabled == 1
+
+
 # ── Live tests — real vale binary ─────────────────────────────────────────────
 
 VALE_LIVE_URL = "http://localhost:8085"
@@ -486,3 +734,116 @@ class TestValeLive:
         r = client.get("/api/settings/detect-vale")
         assert r.status_code == 200
         assert r.json()["system"] is True
+
+
+# ── _inject_custom_rules unit tests ──────────────────────────────────────────
+
+class TestInjectCustomRules:
+    """Unit tests for the _inject_custom_rules helper (no HTTP, no DB)."""
+
+    from routers.vale import _inject_custom_rules as _inject  # imported at class body
+
+    def _inject(self, styles, lang, rules):
+        from routers.vale import _inject_custom_rules
+        _inject_custom_rules(styles, lang, rules)
+
+    def _parse_style(self, styles: dict, key: str) -> dict:
+        assert key in styles, f"Expected key {key!r} in styles, got: {list(styles)}"
+        return yaml.safe_load(styles[key])
+
+    def test_no_op_when_custom_rules_none(self):
+        styles: dict = {}
+        self._inject(styles, "de", None)
+        assert styles == {}
+
+    def test_no_op_when_lang_not_in_rules(self):
+        styles: dict = {}
+        self._inject(styles, "fr", {"de": {"Buzzwords": ["perfekt"]}})
+        assert styles == {}
+
+    def test_plain_word_wrapped_with_inflection_pattern(self):
+        styles: dict = {}
+        self._inject(styles, "de", {"de": {"Buzzwords": ["perfekt"]}})
+        doc = self._parse_style(styles, "Foliantica/Custom_Buzzwords.yml")
+        assert doc["extends"] == "existence"
+        assert r"\bperfekt\w*" in doc["raw"]
+
+    def test_raw_pattern_passed_through_unchanged(self):
+        styles: dict = {}
+        self._inject(styles, "de", {"de": {"Buzzwords": [r"\bperfekt\w{0,4}"]}})
+        doc = self._parse_style(styles, "Foliantica/Custom_Buzzwords.yml")
+        assert r"\bperfekt\w{0,4}" in doc["raw"]
+        # Must NOT be double-wrapped
+        assert r"\b\bperfekt" not in doc["raw"][0]
+
+    def test_mixed_plain_and_raw_entries(self):
+        styles: dict = {}
+        self._inject(styles, "de", {"de": {"Buzzwords": ["perfekt", r"\bsuper\w*"]}})
+        doc = self._parse_style(styles, "Foliantica/Custom_Buzzwords.yml")
+        raw = doc["raw"]
+        assert r"\bperfekt\w*" in raw
+        assert r"\bsuper\w*" in raw
+
+    def test_existence_rule_has_correct_fields(self):
+        styles: dict = {}
+        self._inject(styles, "en", {"en": {"Jargon": ["synergy"]}})
+        doc = self._parse_style(styles, "Foliantica/Custom_Jargon.yml")
+        assert doc["extends"] == "existence"
+        assert doc["level"] == "suggestion"
+        assert doc["ignorecase"] is True
+        assert "raw" in doc
+
+    def test_substitution_rule_generated_from_dict(self):
+        styles: dict = {}
+        self._inject(styles, "de", {"de": {"Redundancy": {"alter Hase": "Hase"}}})
+        doc = self._parse_style(styles, "Foliantica/Custom_Redundancy.yml")
+        assert doc["extends"] == "substitution"
+        assert doc["swap"] == {"alter Hase": "Hase"}
+
+    def test_empty_entries_skipped(self):
+        styles: dict = {}
+        self._inject(styles, "de", {"de": {"Buzzwords": []}})
+        assert "Foliantica/Custom_Buzzwords.yml" not in styles
+
+    def test_multiple_rules_for_same_language(self):
+        styles: dict = {}
+        self._inject(styles, "de", {"de": {
+            "Buzzwords": ["perfekt"],
+            "Redundancy": {"alter Hase": "Hase"},
+        }})
+        assert "Foliantica/Custom_Buzzwords.yml" in styles
+        assert "Foliantica/Custom_Redundancy.yml" in styles
+
+
+# ── put_custom_rules regex validation ─────────────────────────────────────────
+
+class TestCustomRulesValidation:
+    def test_invalid_regex_returns_400(self, client):
+        rules = {"de": {"Buzzwords": [r"\bperfekt(unclosed"]}}  # unclosed group
+        r = client.put("/api/vale/custom-rules", json={"rules": rules})
+        assert r.status_code == 400
+        assert "Invalid regex" in r.json()["detail"]
+
+    def test_valid_regex_saves_successfully(self, client):
+        rules = {"de": {"Buzzwords": [r"\bperfekt\w{0,4}"]}}
+        r = client.put("/api/vale/custom-rules", json={"rules": rules})
+        assert r.status_code == 200
+
+    def test_plain_words_bypass_regex_validation(self, client):
+        # Plain words have no backslash — skipped by validator, always accepted
+        rules = {"de": {"Buzzwords": ["perfekt", "absolut"]}}
+        r = client.put("/api/vale/custom-rules", json={"rules": rules})
+        assert r.status_code == 200
+
+    def test_multiple_entries_validated_all(self, client):
+        # First entry valid, second invalid — should still 400
+        rules = {"de": {"Buzzwords": [r"\bperfekt\w*", r"\bbroken("]}}
+        r = client.put("/api/vale/custom-rules", json={"rules": rules})
+        assert r.status_code == 400
+
+    def test_invalid_regex_detail_names_the_pattern(self, client):
+        bad_pattern = r"\btest("
+        rules = {"en": {"Jargon": [bad_pattern]}}
+        r = client.put("/api/vale/custom-rules", json={"rules": rules})
+        assert r.status_code == 400
+        assert bad_pattern in r.json()["detail"]

@@ -47,13 +47,12 @@ swap:
   von Seiten: von
   vonseiten der: von
   seitens der: von
-  in Höhe von: über
+  in Höhe von: von
   in einem Ausmaß von: um
   in der Lage sein zu: können
   unter Aufwendung von: mit
   unter Verwendung von: mit
-  an die Hand geben: geben
-  zu Rate ziehen: befragen
+  zu Rate ziehen: konsultieren
   in Anlehnung an: nach
   in Übereinstimmung mit: gemäß
   im Widerspruch zu: gegen
@@ -86,7 +85,7 @@ swap:
   im Hinblick auf die Tatsache dass: da
   aus dem Grund weil: weil
   der Grund hierfür liegt darin dass: weil
-  dies liegt daran dass: das liegt daran: denn
+  dies liegt daran dass: weil
 
   # --- Finalphrasen (Bundesverwaltungsamt; BMJ) ---
   zum Zwecke der: für
@@ -107,8 +106,8 @@ swap:
   es gilt zu beachten: bitte beachten
   es gilt festzustellen: festzustellen ist
   es muss berücksichtigt werden: zu berücksichtigen ist
-  es lässt sich sagen dass: man kann sagen:
-  es darf nicht vergessen werden: wichtig:
+  es lässt sich sagen dass: man kann sagen
+  es darf nicht vergessen werden: wichtig
 
   # --- Nominalgruppenaufblähungen (Schneider; Bundesverwaltungsamt) ---
   die Tatsache dass: dass

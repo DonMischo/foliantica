@@ -1,6 +1,6 @@
 import json
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
@@ -37,8 +37,26 @@ def _project_to_out(p: Project, parent_title: Optional[str] = None) -> dict:
 
 
 @router.get("", response_model=list[ProjectOut])
-def list_projects(db: Session = Depends(get_db)):
+def list_projects(request: Request, db: Session = Depends(get_db)):
     projects = db.query(Project).order_by(Project.updated_at.desc()).all()
+
+    if getattr(request.state, "collab_hide_unassigned", False):
+        allowed = set(getattr(request.state, "collab_assigned_scene_ids", []))
+        if allowed:
+            visible_project_ids = {
+                row[0] for row in (
+                    db.query(Project.id)
+                    .join(Act, Act.project_id == Project.id)
+                    .join(Chapter, Chapter.act_id == Act.id)
+                    .join(Scene, Scene.chapter_id == Chapter.id)
+                    .filter(Scene.id.in_(allowed))
+                    .all()
+                )
+            }
+            projects = [p for p in projects if p.id in visible_project_ids]
+        else:
+            projects = []
+
     parent_ids = {p.shared_codex_project_id for p in projects if p.shared_codex_project_id}
     parent_map: dict[int, str] = {}
     if parent_ids:

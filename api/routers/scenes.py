@@ -2,7 +2,7 @@ import re
 import json
 import hashlib
 from datetime import datetime, UTC
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -13,6 +13,29 @@ from schemas import SceneCreate, SceneOut, SceneUpdate, ReorderRequest, SceneVer
 
 def _now() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
+
+
+def _collab_check_scene(request: Request, scene_id: int, *, write: bool = False) -> None:
+    """Raise 403/404 when the requesting guest session restricts access.
+
+    Called by scene endpoints that need assignment or visibility enforcement.
+    Host requests (no collab_role in state) always pass through.
+    """
+    role        = getattr(request.state, "collab_role", None)
+    hide        = getattr(request.state, "collab_hide_unassigned", False)
+    assigned    = getattr(request.state, "collab_assigned_scene_ids", [])
+    scene_perms = getattr(request.state, "collab_scene_permissions", {})
+
+    if hide and scene_id not in assigned:
+        raise HTTPException(404, "Scene not found")  # 404 not 403 — don't reveal existence
+
+    if write and role == "student":
+        # student.default: unassigned scenes are already 404-hidden above.
+        # For assigned scenes, enforce per-scene permission.
+        if scene_id not in assigned:
+            raise HTTPException(403, "Scene not in your assignment")
+        if scene_perms.get(scene_id, "edit") == "read_only":
+            raise HTTPException(403, "This scene is read-only for your session")
 
 
 # ── Mention scanning ──────────────────────────────────────────────────────────
@@ -26,7 +49,7 @@ def _scan_mentions(content: str, entries: list[CodexEntry]) -> dict[int, int]:
         names = [n for n in names if n]
         if not names:
             continue
-        pattern = r"\b(?:" + "|".join(re.escape(n) for n in names) + r")\b"
+        pattern = r"(?<!\w)(?:" + "|".join(re.escape(n) for n in names) + r")(?!\w)"
         c = len(re.findall(pattern, plain, re.IGNORECASE))
         if c:
             counts[entry.id] = c
@@ -130,10 +153,14 @@ def _count_words(content: str) -> int:
 
 
 @router.get("/api/chapters/{chapter_id}/scenes", response_model=list[SceneOut])
-def list_scenes(chapter_id: int, db: Session = Depends(get_db)):
+def list_scenes(chapter_id: int, request: Request, db: Session = Depends(get_db)):
     if not db.get(Chapter, chapter_id):
         raise HTTPException(404, "Chapter not found")
-    return db.query(Scene).filter(Scene.chapter_id == chapter_id).order_by(Scene.order_index).all()
+    q = db.query(Scene).filter(Scene.chapter_id == chapter_id)
+    if getattr(request.state, "collab_hide_unassigned", False):
+        allowed = getattr(request.state, "collab_assigned_scene_ids", [])
+        q = q.filter(Scene.id.in_(allowed))
+    return q.order_by(Scene.order_index).all()
 
 
 @router.post("/api/scenes", response_model=SceneOut, status_code=201)
@@ -154,18 +181,20 @@ def create_scene(body: SceneCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/api/scenes/{scene_id}", response_model=SceneOut)
-def get_scene(scene_id: int, db: Session = Depends(get_db)):
+def get_scene(scene_id: int, request: Request, db: Session = Depends(get_db)):
     scene = db.get(Scene, scene_id)
     if not scene:
         raise HTTPException(404, "Scene not found")
+    _collab_check_scene(request, scene_id)
     return scene
 
 
 @router.patch("/api/scenes/{scene_id}", response_model=SceneOut)
-def update_scene(scene_id: int, body: SceneUpdate, db: Session = Depends(get_db)):
+def update_scene(scene_id: int, body: SceneUpdate, request: Request, db: Session = Depends(get_db)):
     scene = db.get(Scene, scene_id)
     if not scene:
         raise HTTPException(404, "Scene not found")
+    _collab_check_scene(request, scene_id, write=True)
     data = body.model_dump(exclude_none=True)
     if "content" in data:
         if not scene.title and not body.title:
@@ -208,7 +237,9 @@ def update_scene(scene_id: int, body: SceneUpdate, db: Session = Depends(get_db)
 
 
 @router.delete("/api/scenes/{scene_id}", status_code=204)
-def delete_scene(scene_id: int, db: Session = Depends(get_db)):
+def delete_scene(scene_id: int, request: Request, db: Session = Depends(get_db)):
+    if getattr(request.state, "collab_role", None) is not None:
+        raise HTTPException(403, "Only the host can delete scenes")
     scene = db.get(Scene, scene_id)
     if not scene:
         raise HTTPException(404, "Scene not found")

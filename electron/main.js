@@ -8,6 +8,14 @@ const path = require("path");
 const { spawn } = require("child_process");
 const net = require("net");
 const fs = require("fs");
+const crypto = require("crypto");
+
+// Random per-launch secret, injected into the main window's own requests
+// (fetch + WS handshake) below so the API/web servers can recognize traffic
+// from our own privileged window even if it arrives via a genuinely-loopback
+// connection — e.g. another locally-running process can't fake this, unlike
+// a Host header or a TCP peer address. See COWORKING_NETWORK_SECURITY_SUMMARY.md.
+const hostSecret = crypto.randomBytes(32).toString("hex");
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -139,6 +147,17 @@ function createMain(webPort) {
   });
 
   if (savedWin.maximized) mainWin.maximize();
+
+  // Mark every request from our own window (fetch + the collab WS handshake)
+  // with the per-launch secret. Scoped to this window's own origin only, so
+  // the secret is never sent to any third-party resource the page might load.
+  mainWin.webContents.session.webRequest.onBeforeSendHeaders(
+    { urls: [`http://127.0.0.1:${webPort}/*`] },
+    (details, callback) => {
+      details.requestHeaders["X-Foliantica-Host-Secret"] = hostSecret;
+      callback({ requestHeaders: details.requestHeaders });
+    }
+  );
 
   mainWin.loadURL(`http://127.0.0.1:${webPort}`);
 
@@ -538,6 +557,17 @@ async function startServers() {
   const webPort = await findFreePort();
 
   if (isProd) {
+    // ── Co-work bind address ──────────────────────────────────────────────────
+    // Only the web server needs to listen on all interfaces so LAN/internet
+    // guests can connect — the API server-wrapper.js proxies the collab
+    // WebSocket through it too, so FastAPI itself never needs to be reachable
+    // from outside this machine. The setting is read from config.json before
+    // any process is spawned (changing it requires an app restart).
+    const lwCfgForCowork = loadLwConfig();
+    const coworkEnabled  = !!(lwCfgForCowork?.cowork?.enabled);
+    const webBindHost    = coworkEnabled ? "0.0.0.0" : "127.0.0.1";
+    if (coworkEnabled) log("[cowork] Co-Work enabled — binding web server to 0.0.0.0");
+
     // ── Embedded PostgreSQL ───────────────────────────────────────────────────
     const pgResult = await startPostgres();
 
@@ -553,8 +583,10 @@ async function startServers() {
         ...process.env,
         LW_API_PORT: String(apiPort),
         LW_API_HOST: "127.0.0.1",
+        LW_WEB_PORT: String(webPort),
         LW_DATA_DIR: dataDir,
         LW_RESOURCES_DIR: process.resourcesPath,
+        FOLIANTICA_HOST_SECRET: hostSecret,
         // PostgreSQL connection — use Docker PG values if provided, else defaults
         LW_PG_HOST: pgResult.pgHost || "127.0.0.1",
         LW_PG_PORT: pgResult.pgPort || String(PG_PORT),
@@ -571,7 +603,9 @@ async function startServers() {
     // ── Next.js standalone ────────────────────────────────────────────────────
     // ELECTRON_RUN_AS_NODE=1 makes Electron behave as plain Node.js,
     // allowing us to reuse the bundled runtime without shipping a separate node binary.
-    const nextServer = path.join(process.resourcesPath, "web", "server.js");
+    // server-wrapper.js wraps the generated server.js to also proxy the
+    // collab WebSocket upgrade through to FastAPI over loopback.
+    const nextServer = path.join(process.resourcesPath, "web", "server-wrapper.js");
     log(`[web] server path: ${nextServer}`);
     log(`[web] execPath: ${process.execPath}`);
     nextProc = spawn(
@@ -582,9 +616,10 @@ async function startServers() {
           ...process.env,
           ELECTRON_RUN_AS_NODE: "1",
           PORT: String(webPort),
-          HOSTNAME: "127.0.0.1",
+          HOSTNAME: webBindHost,
           LW_API_PORT: String(apiPort),
           NODE_ENV: "production",
+          FOLIANTICA_HOST_SECRET: hostSecret,
         },
         cwd: path.dirname(nextServer),
         stdio: ["ignore", "pipe", "pipe"],

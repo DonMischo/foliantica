@@ -5,7 +5,6 @@ import re
 import zipfile
 import httpx
 from pathlib import Path
-from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from sqlalchemy import text

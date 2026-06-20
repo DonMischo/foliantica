@@ -3,14 +3,17 @@
 import { useState, useEffect, useRef, Fragment } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database, Info, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database, Users, Copy, Link2, ShieldCheck, ListChecks, Info, ChevronDown, ChevronUp, QrCode, Cloud, Highlighter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings, useUpdateSettings, useOpenRouterModels, usePrompts, useCreatePrompt, useUpdatePrompt, useDeletePrompt, useRevertPrompt, useServiceStatus, useSyncStatus } from "@/store/queries";
-import { dataDirApi, settingsApi, syncApi, pgConfigApi, aiProvidersApi, valeApi, type PgConfig, type PgActive, type AIProvider, type ValeRuleMeta, type ValeCustomRules } from "@/lib/api";
+import { dataDirApi, settingsApi, syncApi, pgConfigApi, collabApi, aiProvidersApi, valeApi, getCoworkJwt, type PgConfig, type PgActive, type Invitation, type TeacherSession, type CloudflareStatus, type AIProvider } from "@/lib/api";
+import { ValeRulesModal } from "@/components/vale/ValeRulesModal";
+import { AssignmentPicker } from "@/components/collab/AssignmentPicker";
+import QRCode from "react-qr-code";
 import { ACH_POPUPS_KEY } from "@/components/AchievementToast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useUIStore } from "@/store/ui";
@@ -90,6 +93,8 @@ export default function SettingsPage() {
   const setTypewriterOffset     = useUIStore((s) => s.setTypewriterOffset);
   const sessionTimerEnabled     = useUIStore((s) => s.sessionTimerEnabled);
   const setSessionTimerEnabled  = useUIStore((s) => s.setSessionTimerEnabled);
+  const showCodexHighlights     = useUIStore((s) => s.showCodexHighlights);
+  const setShowCodexHighlights  = useUIStore((s) => s.setShowCodexHighlights);
   const [achPopupsEnabled, setAchPopupsEnabled] = useState(() => {
     if (typeof window === "undefined") return true;
     return localStorage.getItem(ACH_POPUPS_KEY) !== "false";
@@ -147,6 +152,7 @@ export default function SettingsPage() {
   const [valeDetecting, setValeDetecting]   = useState(false);
   const [valeDetectResult, setValeDetectResult] = useState<{ system: boolean; docker: boolean } | null>(null);
   const [valeHelpOpen, setValeHelpOpen]     = useState(false);
+  const [valeRulesOpen, setValeRulesOpen]   = useState(false);
   const [valeSourcesOpen, setValeSourcesOpen] = useState(false);
   const [valeDeLangOpen,  setValeDeLangOpen]  = useState(false);
   const [valeEsLangOpen,  setValeEsLangOpen]  = useState(false);
@@ -158,12 +164,8 @@ export default function SettingsPage() {
   const [valeDaLangOpen,  setValeDaLangOpen]  = useState(false);
   const [valeNoLangOpen,  setValeNoLangOpen]  = useState(false);
   const [valeHelpOs, setValeHelpOs]         = useState<"windows" | "mac" | "linux">("windows");
-  const [valeCustomOpen,   setValeCustomOpen]   = useState(false);
-  const [valeCustomLang,   setValeCustomLang]   = useState("de");
-  const [valeCustomRules,  setValeCustomRules]  = useState<ValeCustomRules>({});
-  const [valeRuleMeta,     setValeRuleMeta]     = useState<Record<string, ValeRuleMeta[]>>({});
-  const [valeCustomSaving, setValeCustomSaving] = useState(false);
-  const [valeCustomInputs, setValeCustomInputs] = useState<Record<string, string>>({});
+  const [activeTab, setActiveTab] = useState<"ai" | "appearance" | "docker" | "sync" | "cowork">("appearance");
+  const isGuest = !!getCoworkJwt();
   const [showServiceStatus, setShowServiceStatus] = useState(false);
   const { data: serviceStatus, isLoading: statusLoading, refetch: refetchStatus } =
     useServiceStatus(showServiceStatus);
@@ -292,6 +294,148 @@ export default function SettingsPage() {
   const [dumpState,     setDumpState]     = useState<"idle"|"busy"|"ok"|"error">("idle");
   const [dumpMsg,       setDumpMsg]       = useState("");
   const [dumpConflict,  setDumpConflict]  = useState<{ dump_time: string } | null>(null);
+
+  // ── Co-Work ───────────────────────────────────────────────────────────────
+  const [coworkEnabled,      setCoworkEnabled]      = useState(false);
+  const [coworkInfo,         setCoworkInfo]         = useState<{ lan_ip: string; lan_url: string; active_sessions: number } | null>(null);
+  const [invitations,        setInvitations]        = useState<Invitation[]>([]);
+  const [coworkLoading,      setCoworkLoading]      = useState(false);
+  const [newInvName,         setNewInvName]         = useState("");
+  const [newInvRole,         setNewInvRole]         = useState<"coauthor"|"student"|"editor">("coauthor");
+  const [newInvPin,          setNewInvPin]          = useState("");
+  const [newInvMaxSessions,  setNewInvMaxSessions]  = useState(1);
+  const [copiedInvId,        setCopiedInvId]        = useState<string | null>(null);
+  const [copiedCfInvId,      setCopiedCfInvId]      = useState<string | null>(null);
+  const [expandedInvId,      setExpandedInvId]      = useState<string | null>(null);
+  const [invTokenInfo,       setInvTokenInfo]       = useState<Record<string, { token: string; join_url: string }>>({});
+  const [coworkToggleBusy,   setCoworkToggleBusy]   = useState(false);
+  const [assigningInv,       setAssigningInv]       = useState<Invitation | null>(null);
+  const [teacherSessions,    setTeacherSessions]    = useState<TeacherSession[]>([]);
+  const [teacherLoading,     setTeacherLoading]     = useState(false);
+
+  // ── Cloudflare Tunnel state ───────────────────────────────────────────────
+  const [cfStatus,           setCfStatus]           = useState<CloudflareStatus | null>(null);
+  const [cfBusy,             setCfBusy]             = useState(false);
+  const [cfError,            setCfError]            = useState<string | null>(null);
+
+  useEffect(() => {
+    collabApi.info().then(d => {
+      setCoworkEnabled(d.enabled);
+      setCoworkInfo(d);
+    }).catch(() => {});
+    collabApi.listInvitations().then(setInvitations).catch(() => {});
+    collabApi.cloudflareStatus().then(setCfStatus).catch(() => {});
+  }, []);
+
+  const handleCfOpen = async () => {
+    setCfBusy(true);
+    setCfError(null);
+    try {
+      const result = await collabApi.cloudflareOpen();
+      setCfStatus(prev => prev ? { ...prev, active: true, url: result.url } : prev);
+    } catch (e: any) {
+      setCfError(e.message ?? "Failed to start Cloudflare tunnel");
+    } finally {
+      setCfBusy(false);
+    }
+  };
+
+  const handleCfClose = async () => {
+    setCfBusy(true);
+    setCfError(null);
+    try {
+      await collabApi.cloudflareClose();
+      setCfStatus(prev => prev ? { ...prev, active: false, url: null } : prev);
+    } finally {
+      setCfBusy(false);
+    }
+  };
+
+  const loadTeacherView = () => {
+    setTeacherLoading(true);
+    collabApi.teacherView()
+      .then(setTeacherSessions)
+      .catch(() => {})
+      .finally(() => setTeacherLoading(false));
+  };
+
+  // Reload teacher view whenever co-work section is visible
+  useEffect(() => {
+    if (coworkEnabled) loadTeacherView();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coworkEnabled]);
+
+  const handleCoworkToggle = async (enabled: boolean) => {
+    setCoworkToggleBusy(true);
+    try {
+      await collabApi.toggle(enabled);
+      setCoworkEnabled(enabled);
+    } finally {
+      setCoworkToggleBusy(false);
+    }
+  };
+
+  const handleCreateInvitation = async () => {
+    if (!newInvName.trim()) return;
+    setCoworkLoading(true);
+    try {
+      const inv = await collabApi.createInvitation({
+        name: newInvName.trim(),
+        role: newInvRole,
+        pin: newInvPin || undefined,
+        max_sessions: newInvMaxSessions,
+      });
+      setInvitations(prev => [...prev, inv]);
+      setNewInvName("");
+      setNewInvPin("");
+      setNewInvMaxSessions(1);
+    } finally {
+      setCoworkLoading(false);
+    }
+  };
+
+  const handleDeleteInvitation = async (id: string) => {
+    await collabApi.deleteInvitation(id);
+    setInvitations(prev => prev.filter(i => i.id !== id));
+  };
+
+  const handleToggleCoauthorMode = async (id: string, currentMode: string) => {
+    const newMode = currentMode === "read_only" ? "default" : "read_only";
+    const updated = await collabApi.updateInvitation(id, { access_mode: newMode });
+    setInvitations(prev => prev.map(i => i.id === id ? updated : i));
+  };
+
+  const handleToggleLink = async (id: string) => {
+    if (expandedInvId === id) { setExpandedInvId(null); return; }
+    if (!invTokenInfo[id]) {
+      try {
+        const info = await collabApi.getInvitationToken(id);
+        setInvTokenInfo(prev => ({ ...prev, [id]: info }));
+      } catch { return; }
+    }
+    setExpandedInvId(id);
+  };
+
+  const handleCopyLink = async (id: string) => {
+    try {
+      const info = invTokenInfo[id] ?? await collabApi.getInvitationToken(id);
+      setInvTokenInfo(prev => ({ ...prev, [id]: info }));
+      await navigator.clipboard.writeText(info.join_url);
+      setCopiedInvId(id);
+      setTimeout(() => setCopiedInvId(null), 2000);
+    } catch {}
+  };
+
+  const handleCopyCloudflareLink = async (id: string) => {
+    if (!cfStatus?.url) return;
+    try {
+      const info = invTokenInfo[id] ?? await collabApi.getInvitationToken(id);
+      setInvTokenInfo(prev => ({ ...prev, [id]: info }));
+      await navigator.clipboard.writeText(`${cfStatus.url}/join?token=${info.token}`);
+      setCopiedCfInvId(id);
+      setTimeout(() => setCopiedCfInvId(null), 2000);
+    } catch {}
+  };
 
   useEffect(() => {
     dataDirApi.get().then((res) => {
@@ -476,13 +620,9 @@ export default function SettingsPage() {
       default_synopsis_model: defaultSynopsisModel || null,
       default_codex_model: defaultCodexModel || null,
       enabled_models: enabledModels,
-      theme,
-      grammar_check_enabled: grammarEnabled,
       grammar_check_url: grammarUrl,
       grammar_languages: grammarLanguages,
-      pandoc_enabled: pandocEnabled,
       pandoc_url: pandocUrl,
-      spacy_enabled: spacyEnabled,
       spacy_url: spacyUrl,
       calibre_mode: calibreMode,
       calibre_url: calibreUrl,
@@ -555,77 +695,8 @@ export default function SettingsPage() {
     );
   }
 
-  // ── Vale custom rules helpers ─────────────────────────────────────────────
-
-  async function loadValeCustomRules() {
-    try {
-      const data = await valeApi.getCustomRules();
-      setValeCustomRules(data.rules ?? {});
-    } catch { /* ignore */ }
-  }
-
-  async function loadValeRuleMeta(lang: string) {
-    if (valeRuleMeta[lang]) return;
-    try {
-      const data = await valeApi.getRuleMeta(lang);
-      setValeRuleMeta(prev => ({ ...prev, [lang]: data.rules ?? [] }));
-    } catch { /* ignore */ }
-  }
-
-  async function saveValeCustom(rules: ValeCustomRules) {
-    setValeCustomSaving(true);
-    try { await valeApi.updateCustomRules(rules); } catch { /* ignore */ }
-    finally { setValeCustomSaving(false); }
-  }
-
-  function addExistenceEntry(lang: string, ruleName: string, token: string) {
-    const t = token.trim();
-    if (!t) return;
-    const prev = (valeCustomRules[lang]?.[ruleName] as string[] | undefined) ?? [];
-    if (prev.includes(t)) return;
-    const next: ValeCustomRules = {
-      ...valeCustomRules,
-      [lang]: { ...(valeCustomRules[lang] ?? {}), [ruleName]: [...prev, t] },
-    };
-    setValeCustomRules(next);
-    saveValeCustom(next);
-  }
-
-  function removeExistenceEntry(lang: string, ruleName: string, token: string) {
-    const prev = (valeCustomRules[lang]?.[ruleName] as string[] | undefined) ?? [];
-    const next: ValeCustomRules = {
-      ...valeCustomRules,
-      [lang]: { ...(valeCustomRules[lang] ?? {}), [ruleName]: prev.filter(e => e !== token) },
-    };
-    setValeCustomRules(next);
-    saveValeCustom(next);
-  }
-
-  function addSubstitutionEntry(lang: string, ruleName: string, original: string, replacement: string) {
-    const o = original.trim(), r = replacement.trim();
-    if (!o || !r) return;
-    const prev = (valeCustomRules[lang]?.[ruleName] as Record<string, string> | undefined) ?? {};
-    const next: ValeCustomRules = {
-      ...valeCustomRules,
-      [lang]: { ...(valeCustomRules[lang] ?? {}), [ruleName]: { ...prev, [o]: r } },
-    };
-    setValeCustomRules(next);
-    saveValeCustom(next);
-  }
-
-  function removeSubstitutionEntry(lang: string, ruleName: string, key: string) {
-    const prev = { ...((valeCustomRules[lang]?.[ruleName] as Record<string, string> | undefined) ?? {}) };
-    delete prev[key];
-    const next: ValeCustomRules = {
-      ...valeCustomRules,
-      [lang]: { ...(valeCustomRules[lang] ?? {}), [ruleName]: prev },
-    };
-    setValeCustomRules(next);
-    saveValeCustom(next);
-  }
-
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <header className="sticky top-0 z-10 bg-background border-b border-border px-6 py-4 flex items-center gap-3">
         <button onClick={() => router.back()} className="text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-4 w-4" />
@@ -633,8 +704,48 @@ export default function SettingsPage() {
         <h1 className="text-lg font-semibold">{t("settings_title")}</h1>
       </header>
 
-      <main className="max-w-2xl mx-auto px-6 py-8 space-y-8">
+      <div className="flex flex-1 overflow-hidden">
+        {/* ── Sidebar ── */}
+        <aside className="w-52 shrink-0 border-r border-border sticky top-[57px] h-[calc(100vh-57px)] overflow-y-auto">
+          <nav className="p-3 space-y-0.5">
+            {([
+              { id: "appearance", label: "Appearance",    Icon: Palette },
+              { id: "sync",       label: "Sync / Mirror", Icon: FolderOpen },
+              { id: "cowork",     label: "Co-Work",       Icon: Users },
+              { id: "docker",     label: "Docker",        Icon: Container },
+              { id: "ai",         label: "AI Settings",  Icon: Cpu },
+            ] as const).filter(tab => !isGuest || tab.id === "appearance").map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setActiveTab(id)}
+                className={cn(
+                  "w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors text-left",
+                  activeTab === id
+                    ? "bg-primary/10 text-primary font-medium"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {label}
+              </button>
+            ))}
+            {(activeTab === "ai" || activeTab === "docker") && (
+              <>
+                <div className="border-t border-border/50 my-2" />
+                <Button size="sm" className="w-full" onClick={handleSave} disabled={updateSettings.isPending}>
+                  {saved ? t("settings_saved") : updateSettings.isPending ? t("settings_saving") : t("settings_save")}
+                </Button>
+              </>
+            )}
+          </nav>
+        </aside>
 
+        {/* ── Content ── */}
+        <main className="flex-1 overflow-y-auto px-8 py-8">
+          <div className="max-w-2xl space-y-8">
+
+        {activeTab === "ai" && (<>
         {/* AI Configuration */}
         <section className="space-y-4">
           <div className="flex items-center gap-2 mb-4">
@@ -1128,8 +1239,9 @@ export default function SettingsPage() {
         </section>
         </>)}
 
-        <div className="border-t border-border" />
+        </>)}
 
+        {activeTab === "appearance" && (<>
         {/* Appearance */}
         <section className="space-y-4">
           <div className="flex items-center gap-2 mb-4">
@@ -1233,6 +1345,36 @@ export default function SettingsPage() {
             </button>
           </div>
 
+          {/* Codex highlights */}
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-2">
+              <Highlighter className="h-3.5 w-3.5 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Codex entry highlights</p>
+                <p className="text-xs text-muted-foreground">Highlight codex entries (characters, places, …) in the editor</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showCodexHighlights}
+              onClick={() => {
+                const next = !showCodexHighlights;
+                setShowCodexHighlights(next);
+                updateSettings.mutate({ codex_highlight_enabled: next });
+              }}
+              className={cn(
+                "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                showCodexHighlights ? "bg-primary" : "bg-input"
+              )}
+            >
+              <span className={cn(
+                "pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
+                showCodexHighlights ? "translate-x-4" : "translate-x-0"
+              )} />
+            </button>
+          </div>
+
           {/* Achievement popups */}
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-2">
@@ -1285,6 +1427,42 @@ export default function SettingsPage() {
 
         <div className="border-t border-border" />
 
+        {/* Language */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2 mb-4">
+            <Globe className="h-4 w-4 text-primary" />
+            <h2 className="text-base font-semibold">{t("settings_language")}</h2>
+            <span
+              className="text-muted-foreground hover:text-foreground cursor-help"
+              title="The UI language. Project language (used for grammar and style checks) is set per project."
+            >
+              <HelpCircle className="h-3.5 w-3.5" />
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            <Select value={locale} onValueChange={(v) => setLocale(v as Locale)}>
+              <SelectTrigger className="w-full max-w-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.entries(LOCALE_NAMES) as [Locale, string][]).map(([code, name]) => (
+                  <SelectItem key={code} value={code}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </section>
+
+        <div className="border-t border-border" />
+
+        {/* About */}
+        <section className="space-y-2 text-sm text-muted-foreground">
+          <p className="font-medium text-foreground">{t("settings_about_title")}</p>
+          <p>{t("settings_about_desc")}</p>
+        </section>
+        </>)}
+
+        {activeTab === "sync" && (<>
         {/* Sync Dir */}
         <section className="space-y-4">
           <div className="flex items-center justify-between mb-4">
@@ -1503,9 +1681,9 @@ export default function SettingsPage() {
             )}
           </div>
         </section>
+        </>)}
 
-        <div className="border-t border-border" />
-
+        {activeTab === "docker" && (<>
         {/* External Services */}
         <section className="space-y-4">
           {/* Header */}
@@ -1537,7 +1715,11 @@ export default function SettingsPage() {
                 type="button"
                 role="switch"
                 aria-checked={grammarEnabled}
-                onClick={() => setGrammarEnabled(v => !v)}
+                onClick={() => {
+                  const next = !grammarEnabled;
+                  setGrammarEnabled(next);
+                  updateSettings.mutate({ grammar_check_enabled: next });
+                }}
                 className={cn(
                   "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
                   grammarEnabled ? "bg-primary" : "bg-input"
@@ -1587,168 +1769,11 @@ export default function SettingsPage() {
             )}
           </div>
 
-          {/* Pandoc / PDF+EPUB */}
-          <div className="rounded-lg border border-border p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">PDF & EPUB Export (Pandoc)</p>
-                <p className="text-xs text-muted-foreground">Export projects to PDF (via LaTeX) or EPUB format</p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={pandocEnabled}
-                onClick={() => setPandocEnabled(v => !v)}
-                className={cn(
-                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-                  pandocEnabled ? "bg-primary" : "bg-input"
-                )}
-              >
-                <span className={cn(
-                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
-                  pandocEnabled ? "translate-x-4" : "translate-x-0"
-                )} />
-              </button>
-            </div>
-            {pandocEnabled && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">Service URL</Label>
-                <Input
-                  value={pandocUrl}
-                  onChange={e => setPandocUrl(e.target.value)}
-                  placeholder="http://localhost:8082"
-                  className="h-8 text-xs font-mono"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* spaCy NLP */}
-          <div className="rounded-lg border border-border p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Codex Analysis (spaCy)</p>
-                <p className="text-xs text-muted-foreground">Token-aware mention scanning — more accurate than plain text search, handles aliases and word boundaries</p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={spacyEnabled}
-                onClick={() => setSpacyEnabled(v => !v)}
-                className={cn(
-                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-                  spacyEnabled ? "bg-primary" : "bg-input"
-                )}
-              >
-                <span className={cn(
-                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
-                  spacyEnabled ? "translate-x-4" : "translate-x-0"
-                )} />
-              </button>
-            </div>
-            {spacyEnabled && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">Service URL</Label>
-                <Input
-                  value={spacyUrl}
-                  onChange={e => setSpacyUrl(e.target.value)}
-                  placeholder="http://localhost:8083"
-                  className="h-8 text-xs font-mono"
-                />
-                <p className="text-[11px] text-muted-foreground">Falls back to built-in text search if the service is unreachable.</p>
-              </div>
-            )}
-          </div>
-
-          {/* Calibre (EPUB / MOBI / AZW3) */}
-          <div className="rounded-lg border border-border p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Calibre Export</p>
-                <p className="text-xs text-muted-foreground">EPUB, MOBI, AZW3 via Calibre</p>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setCalibreDetecting(true);
-                    setCalibreDetectResult(null);
-                    try {
-                      const result = await settingsApi.detectCalibre();
-                      setCalibreDetectResult(result);
-                      if (result.system) setCalibreMode("system");
-                      else if (result.docker) setCalibreMode("docker");
-                    } catch { /* ignore */ } finally {
-                      setCalibreDetecting(false);
-                    }
-                  }}
-                  disabled={calibreDetecting}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2.5 py-1 rounded border border-border hover:border-primary/50 transition-colors disabled:opacity-50"
-                >
-                  {calibreDetecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                  Auto-detect
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCalibreHelpOpen(true)}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                  title="Setup instructions"
-                >
-                  <HelpCircle className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              {(["off", "system", "docker"] as const).map(mode => (
-                <label key={mode} className="flex items-center gap-2.5 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="calibre-mode"
-                    value={mode}
-                    checked={calibreMode === mode}
-                    onChange={() => setCalibreMode(mode)}
-                    className="accent-primary"
-                  />
-                  <span className="text-sm">
-                    {mode === "off"    && "Off"}
-                    {mode === "system" && "System install"}
-                    {mode === "docker" && "Docker container"}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {mode === "system" && "ebook-convert on PATH"}
-                    {mode === "docker" && "sidecar service"}
-                  </span>
-                </label>
-              ))}
-            </div>
-
-            {calibreMode === "docker" && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">Service URL</Label>
-                <Input
-                  value={calibreUrl}
-                  onChange={e => setCalibreUrl(e.target.value)}
-                  placeholder="http://localhost:8084"
-                  className="h-8 text-xs font-mono"
-                />
-              </div>
-            )}
-
-            {calibreDetectResult && (
-              <p className="text-xs text-muted-foreground">
-                System: {calibreDetectResult.system ? "✓ ebook-convert found" : "✗ not found"}
-                {" · "}
-                Docker: {calibreDetectResult.docker ? "✓ service responding" : "✗ not responding"}
-              </p>
-            )}
-          </div>
-
           {/* Vale prose linter */}
           <div className="rounded-lg border border-border p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">Vale</p>
+                <p className="text-sm font-medium">Style Check</p>
                 <p className="text-xs text-muted-foreground">Prose style linter — checks writing rules, vocabulary, and custom styles</p>
               </div>
               <div className="flex items-center gap-1.5">
@@ -1791,7 +1816,7 @@ export default function SettingsPage() {
                     name="vale-mode"
                     value={mode}
                     checked={valeMode === mode}
-                    onChange={() => setValeMode(mode)}
+                    onChange={() => { setValeMode(mode); updateSettings.mutate({ vale_mode: mode }); }}
                     className="accent-primary"
                   />
                   <span className="text-sm">
@@ -1841,191 +1866,17 @@ export default function SettingsPage() {
               </p>
             )}
 
-            {/* Custom rule entries */}
-            <div className="border border-border/60 rounded-md overflow-hidden">
+            {/* Rule configuration */}
+            {valeMode !== "off" && (
               <button
                 type="button"
-                onClick={async () => {
-                  if (!valeCustomOpen) {
-                    await Promise.all([loadValeCustomRules(), loadValeRuleMeta(valeCustomLang)]);
-                  }
-                  setValeCustomOpen(o => !o);
-                }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                onClick={() => setValeRulesOpen(true)}
+                className="w-full flex items-center justify-between px-3 py-2 text-xs rounded-md border border-border/60 text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-muted/30 transition-colors"
               >
-                <Sparkles className="h-3.5 w-3.5 shrink-0 text-violet-400" />
-                <span className="flex-1 text-left">Your custom rules</span>
-                {valeCustomSaving && <Loader2 className="h-3 w-3 animate-spin" />}
-                {valeCustomOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                <span>Configure rules…</span>
+                <span className="opacity-40 text-[10px]">enable / disable individual checks</span>
               </button>
-              {valeCustomOpen && (
-                <div className="px-3 pb-3 pt-2 space-y-3 border-t border-border/60 bg-muted/20">
-                  <p className="text-[11px] text-muted-foreground">Add words or phrases to any rule category. Your entries are checked alongside the built-in rules.</p>
-
-                  {/* Language tabs */}
-                  <div className="flex flex-wrap gap-1">
-                    {([
-                      { code: "de", label: "Deutsch" },
-                      { code: "es", label: "Español" },
-                      { code: "fr", label: "Français" },
-                      { code: "it", label: "Italiano" },
-                      { code: "pt", label: "Português" },
-                      { code: "nl", label: "Nederlands" },
-                      { code: "sv", label: "Svenska" },
-                      { code: "da", label: "Dansk" },
-                      { code: "no", label: "Norsk" },
-                    ] as const).map(({ code, label }) => (
-                      <button
-                        key={code}
-                        type="button"
-                        onClick={async () => {
-                          setValeCustomLang(code);
-                          await loadValeRuleMeta(code);
-                        }}
-                        className={cn(
-                          "text-[11px] px-2 py-0.5 rounded border transition-colors",
-                          valeCustomLang === code
-                            ? "border-primary/50 bg-primary/10 text-foreground"
-                            : "border-border text-muted-foreground hover:text-foreground"
-                        )}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Rule rows */}
-                  <div className="space-y-4">
-                    {(valeRuleMeta[valeCustomLang] ?? []).length === 0 && (
-                      <p className="text-[11px] text-muted-foreground italic">Loading…</p>
-                    )}
-                    {(valeRuleMeta[valeCustomLang] ?? []).map(rule => {
-                      const ik  = `${valeCustomLang}:${rule.name}`;
-                      const ikB = `${ik}:b`;
-                      const tokens = rule.type === "existence"
-                        ? ((valeCustomRules[valeCustomLang]?.[rule.name] as string[] | undefined) ?? [])
-                        : [];
-                      const pairs = rule.type === "substitution"
-                        ? ((valeCustomRules[valeCustomLang]?.[rule.name] as Record<string, string> | undefined) ?? {})
-                        : {};
-
-                      return (
-                        <div key={rule.name} className="space-y-1.5">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[11px] font-medium text-foreground/80">{rule.name}</span>
-                            <span className="text-[9px] px-1 rounded border border-border/60 text-muted-foreground uppercase tracking-wide">
-                              {rule.type === "existence" ? "words" : "pairs"}
-                            </span>
-                          </div>
-
-                          {rule.type === "existence" ? (
-                            <div className="space-y-1.5">
-                              {tokens.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
-                                  {tokens.map(tok => (
-                                    <span key={tok} className="inline-flex items-center gap-0.5 text-[11px] bg-muted/60 border border-border/60 rounded px-1.5 py-0.5">
-                                      {tok}
-                                      <button
-                                        type="button"
-                                        onClick={() => removeExistenceEntry(valeCustomLang, rule.name, tok)}
-                                        className="text-muted-foreground hover:text-foreground transition-colors ml-0.5"
-                                      >
-                                        <X className="h-2.5 w-2.5" />
-                                      </button>
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                              <div className="flex gap-1">
-                                <input
-                                  type="text"
-                                  value={valeCustomInputs[ik] ?? ""}
-                                  onChange={e => setValeCustomInputs(p => ({ ...p, [ik]: e.target.value }))}
-                                  onKeyDown={e => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault();
-                                      addExistenceEntry(valeCustomLang, rule.name, valeCustomInputs[ik] ?? "");
-                                      setValeCustomInputs(p => ({ ...p, [ik]: "" }));
-                                    }
-                                  }}
-                                  placeholder="Add word or phrase…"
-                                  className="flex-1 h-7 text-[11px] bg-background border border-border rounded px-2 focus:outline-none focus:border-primary/50"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    addExistenceEntry(valeCustomLang, rule.name, valeCustomInputs[ik] ?? "");
-                                    setValeCustomInputs(p => ({ ...p, [ik]: "" }));
-                                  }}
-                                  className="text-[11px] px-2 h-7 rounded border border-border hover:border-primary/50 text-muted-foreground hover:text-foreground transition-colors"
-                                >
-                                  Add
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="space-y-1.5">
-                              {Object.entries(pairs).length > 0 && (
-                                <div className="space-y-1">
-                                  {Object.entries(pairs).map(([orig, repl]) => (
-                                    <div key={orig} className="flex items-center gap-1 text-[11px]">
-                                      <span className="bg-muted/60 border border-border/60 rounded px-1.5 py-0.5 font-mono">{orig}</span>
-                                      <span className="text-muted-foreground">→</span>
-                                      <span className="bg-muted/60 border border-border/60 rounded px-1.5 py-0.5 font-mono">{repl}</span>
-                                      <button
-                                        type="button"
-                                        onClick={() => removeSubstitutionEntry(valeCustomLang, rule.name, orig)}
-                                        className="text-muted-foreground hover:text-foreground transition-colors ml-1"
-                                      >
-                                        <X className="h-2.5 w-2.5" />
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                              <div className="flex gap-1 items-center">
-                                <input
-                                  type="text"
-                                  value={valeCustomInputs[ik] ?? ""}
-                                  onChange={e => setValeCustomInputs(p => ({ ...p, [ik]: e.target.value }))}
-                                  placeholder="Original…"
-                                  className="flex-1 h-7 text-[11px] bg-background border border-border rounded px-2 focus:outline-none focus:border-primary/50 font-mono"
-                                />
-                                <span className="text-muted-foreground text-[11px]">→</span>
-                                <input
-                                  type="text"
-                                  value={valeCustomInputs[ikB] ?? ""}
-                                  onChange={e => setValeCustomInputs(p => ({ ...p, [ikB]: e.target.value }))}
-                                  onKeyDown={e => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault();
-                                      addSubstitutionEntry(valeCustomLang, rule.name, valeCustomInputs[ik] ?? "", valeCustomInputs[ikB] ?? "");
-                                      setValeCustomInputs(p => ({ ...p, [ik]: "", [ikB]: "" }));
-                                    }
-                                  }}
-                                  placeholder="Replacement…"
-                                  className="flex-1 h-7 text-[11px] bg-background border border-border rounded px-2 focus:outline-none focus:border-primary/50 font-mono"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    addSubstitutionEntry(valeCustomLang, rule.name, valeCustomInputs[ik] ?? "", valeCustomInputs[ikB] ?? "");
-                                    setValeCustomInputs(p => ({ ...p, [ik]: "", [ikB]: "" }));
-                                  }}
-                                  className="text-[11px] px-2 h-7 rounded border border-border hover:border-primary/50 text-muted-foreground hover:text-foreground transition-colors"
-                                >
-                                  Add
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
+            )}
 
             {/* Built-in style rule sources */}
             <div className="border border-border/60 rounded-md overflow-hidden">
@@ -2359,6 +2210,171 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          {/* Pandoc / PDF+EPUB */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">PDF & EPUB Export (Pandoc)</p>
+                <p className="text-xs text-muted-foreground">Export projects to PDF (via LaTeX) or EPUB format</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={pandocEnabled}
+                onClick={() => {
+                  const next = !pandocEnabled;
+                  setPandocEnabled(next);
+                  updateSettings.mutate({ pandoc_enabled: next });
+                }}
+                className={cn(
+                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                  pandocEnabled ? "bg-primary" : "bg-input"
+                )}
+              >
+                <span className={cn(
+                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
+                  pandocEnabled ? "translate-x-4" : "translate-x-0"
+                )} />
+              </button>
+            </div>
+            {pandocEnabled && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Service URL</Label>
+                <Input
+                  value={pandocUrl}
+                  onChange={e => setPandocUrl(e.target.value)}
+                  placeholder="http://localhost:8082"
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* spaCy NLP */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Codex Analysis (spaCy)</p>
+                <p className="text-xs text-muted-foreground">Token-aware mention scanning — more accurate than plain text search, handles aliases and word boundaries</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={spacyEnabled}
+                onClick={() => {
+                  const next = !spacyEnabled;
+                  setSpacyEnabled(next);
+                  updateSettings.mutate({ spacy_enabled: next });
+                }}
+                className={cn(
+                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                  spacyEnabled ? "bg-primary" : "bg-input"
+                )}
+              >
+                <span className={cn(
+                  "pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
+                  spacyEnabled ? "translate-x-4" : "translate-x-0"
+                )} />
+              </button>
+            </div>
+            {spacyEnabled && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Service URL</Label>
+                <Input
+                  value={spacyUrl}
+                  onChange={e => setSpacyUrl(e.target.value)}
+                  placeholder="http://localhost:8083"
+                  className="h-8 text-xs font-mono"
+                />
+                <p className="text-[11px] text-muted-foreground">Falls back to built-in text search if the service is unreachable.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Calibre (EPUB / MOBI / AZW3) */}
+          <div className="rounded-lg border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Calibre Export</p>
+                <p className="text-xs text-muted-foreground">EPUB, MOBI, AZW3 via Calibre</p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setCalibreDetecting(true);
+                    setCalibreDetectResult(null);
+                    try {
+                      const result = await settingsApi.detectCalibre();
+                      setCalibreDetectResult(result);
+                      if (result.system) setCalibreMode("system");
+                      else if (result.docker) setCalibreMode("docker");
+                    } catch { /* ignore */ } finally {
+                      setCalibreDetecting(false);
+                    }
+                  }}
+                  disabled={calibreDetecting}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground px-2.5 py-1 rounded border border-border hover:border-primary/50 transition-colors disabled:opacity-50"
+                >
+                  {calibreDetecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                  Auto-detect
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCalibreHelpOpen(true)}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                  title="Setup instructions"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {(["off", "system", "docker"] as const).map(mode => (
+                <label key={mode} className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="calibre-mode"
+                    value={mode}
+                    checked={calibreMode === mode}
+                    onChange={() => { setCalibreMode(mode); updateSettings.mutate({ calibre_mode: mode }); }}
+                    className="accent-primary"
+                  />
+                  <span className="text-sm">
+                    {mode === "off"    && "Off"}
+                    {mode === "system" && "System install"}
+                    {mode === "docker" && "Docker container"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {mode === "system" && "ebook-convert on PATH"}
+                    {mode === "docker" && "sidecar service"}
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            {calibreMode === "docker" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Service URL</Label>
+                <Input
+                  value={calibreUrl}
+                  onChange={e => setCalibreUrl(e.target.value)}
+                  placeholder="http://localhost:8084"
+                  className="h-8 text-xs font-mono"
+                />
+              </div>
+            )}
+
+            {calibreDetectResult && (
+              <p className="text-xs text-muted-foreground">
+                System: {calibreDetectResult.system ? "✓ ebook-convert found" : "✗ not found"}
+                {" · "}
+                Docker: {calibreDetectResult.docker ? "✓ service responding" : "✗ not responding"}
+              </p>
+            )}
+          </div>
+
           {/* PostgreSQL Database */}
           <div className="rounded-lg border border-border p-4 space-y-4">
 
@@ -2670,7 +2686,7 @@ export default function SettingsPage() {
                     <h3 className="font-semibold text-sm">Save settings and check status</h3>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed pl-7">
-                    Click <strong className="text-foreground">Save settings</strong> at the bottom of the page,
+                    Click <strong className="text-foreground">Save</strong> in the sidebar,
                     then use <strong className="text-foreground">Check status</strong> to confirm the services
                     are running. A green "Running" badge means everything is ready.
                   </p>
@@ -2811,6 +2827,8 @@ export default function SettingsPage() {
           </div>
         )}
 
+        <ValeRulesModal open={valeRulesOpen} onClose={() => setValeRulesOpen(false)} />
+
         {/* Vale help modal */}
         {valeHelpOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => setValeHelpOpen(false)}>
@@ -2940,40 +2958,373 @@ BasedOnStyles = write-good`}</code>
           </div>
         )}
 
-        <div className="border-t border-border" />
+        </>)}
 
-        {/* Language */}
+        {activeTab === "cowork" && (<>
+        {/* Co-Work */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2 mb-4">
-            <Globe className="h-4 w-4 text-primary" />
-            <h2 className="text-base font-semibold">{t("settings_language")}</h2>
+          <div className="flex items-center gap-2 mb-1">
+            <Users className="h-4 w-4 text-primary" />
+            <h2 className="text-base font-semibold">Co-Work</h2>
           </div>
-          <div className="space-y-1.5">
-            <Select value={locale} onValueChange={(v) => setLocale(v as Locale)}>
-              <SelectTrigger className="w-full max-w-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.entries(LOCALE_NAMES) as [Locale, string][]).map(([code, name]) => (
-                  <SelectItem key={code} value={code}>{name}</SelectItem>
+          <p className="text-xs text-muted-foreground">
+            Let co-authors, editors, or students join your project over your local network.
+            Each person gets a named invitation link. A restart is required to change the bind address.
+          </p>
+
+          {/* Enable toggle */}
+          <div className="flex items-center justify-between rounded-lg border border-border p-4">
+            <div>
+              <p className="text-sm font-medium">Enable Co-Work mode</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Binds the server to <code className="font-mono text-[11px]">0.0.0.0</code> so guests can connect.
+                {coworkEnabled && coworkInfo && (
+                  <span className="ml-1 text-primary">
+                    LAN: <code className="font-mono text-[11px]">{coworkInfo.lan_url}</code>
+                  </span>
+                )}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={coworkEnabled}
+              disabled={coworkToggleBusy}
+              onClick={() => handleCoworkToggle(!coworkEnabled)}
+              className={cn(
+                "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors disabled:opacity-50",
+                coworkEnabled ? "bg-primary" : "bg-input"
+              )}
+            >
+              <span className={cn(
+                "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-background shadow-lg ring-0 transition-transform",
+                coworkEnabled ? "translate-x-4" : "translate-x-0"
+              )} />
+            </button>
+          </div>
+
+          {coworkEnabled && (
+            <>
+              {/* Network info */}
+              {coworkInfo && (
+                <div className="rounded-md bg-muted/40 border border-border px-3 py-2 flex items-center gap-3 text-xs">
+                  <Link2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span className="text-muted-foreground">LAN URL:</span>
+                  <code className="font-mono text-[11px] text-foreground flex-1">{coworkInfo.lan_url}/join?token=…</code>
+                  <span className="text-muted-foreground">{coworkInfo.active_sessions} active</span>
+                </div>
+              )}
+
+              {/* Internet Access — Cloudflare Tunnel */}
+              <div className="rounded-lg border border-border p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-3.5 w-3.5 text-muted-foreground" />
+                    <p className="text-sm font-medium">Cloudflare Tunnel</p>
+                    <span className="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-full font-medium shrink-0">
+                      HTTPS · recommended
+                    </span>
+                  </div>
+                  {cfStatus?.active && (
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 shrink-0">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Active
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Creates an encrypted HTTPS tunnel via Cloudflare&apos;s network — no router
+                  configuration or port forwarding needed. Requires{" "}
+                  <a
+                    href="https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/installation/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    cloudflared
+                  </a>{" "}
+                  to be installed. Traffic passes through Cloudflare servers.
+                </p>
+                {cfStatus?.active && cfStatus.url && (
+                  <div className="flex items-center gap-2 rounded-md bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 px-3 py-2 text-xs">
+                    <span className="text-muted-foreground shrink-0">Tunnel URL:</span>
+                    <a
+                      href={cfStatus.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 font-mono text-[11px] text-emerald-950 dark:text-emerald-100 truncate hover:underline"
+                    >
+                      {cfStatus.url}
+                    </a>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(cfStatus.url!).catch(() => {})}
+                      className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                      title="Copy base URL"
+                    >
+                      <Copy className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+                {cfStatus?.active && (
+                  <p className="text-[11px] text-muted-foreground">
+                    This URL has no invitation info embedded — share a per-invitation link below instead.
+                  </p>
+                )}
+                {cfError && (
+                  <p className="text-xs text-destructive bg-destructive/10 rounded px-2 py-1.5">{cfError}</p>
+                )}
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant={cfStatus?.active ? "destructive" : "outline"}
+                    onClick={cfStatus?.active ? handleCfClose : handleCfOpen}
+                    disabled={cfBusy || !cfStatus}
+                  >
+                    {cfBusy
+                      ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />{cfStatus?.active ? "Closing…" : "Starting…"}</>
+                      : cfStatus?.active ? "Close tunnel" : "Open tunnel"
+                    }
+                  </Button>
+                </div>
+              </div>
+
+              {/* Invitations list */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Invitations</p>
+                {invitations.length === 0 && (
+                  <p className="text-xs text-muted-foreground italic">No invitations yet.</p>
+                )}
+                {invitations.map(inv => (
+                  <div key={inv.id} className="rounded-lg border border-border">
+                  <div className="p-3 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium truncate">{inv.name}</span>
+                        <span className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0",
+                          inv.role === "student" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                          : inv.role === "editor"  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                                   : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                        )}>
+                          {inv.role === "student" ? "Student" : inv.role === "editor" ? "Editor" : "Co-Author"}
+                        </span>
+                        {inv.role === "coauthor" && (
+                          <button
+                            onClick={() => handleToggleCoauthorMode(inv.id, inv.access_mode)}
+                            title="Click to toggle access level"
+                            className={cn(
+                              "text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 transition-colors",
+                              inv.access_mode === "read_only"
+                                ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/50"
+                                : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50"
+                            )}
+                          >
+                            {inv.access_mode === "read_only" ? "Read only" : "Full access"}
+                          </button>
+                        )}
+                        {inv.has_pin && <ShieldCheck className="h-3 w-3 text-muted-foreground shrink-0" aria-label="PIN required" />}
+                      </div>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <p className="text-[11px] text-muted-foreground">
+                          max {inv.max_sessions} session{inv.max_sessions !== 1 ? "s" : ""}
+                        </p>
+                        {(inv.role === "student" || inv.role === "editor") && (
+                          <p className="text-[11px] text-muted-foreground">
+                            {inv.assigned_items.length > 0
+                              ? `${inv.assigned_items.length} scene${inv.assigned_items.length !== 1 ? "s" : ""} assigned`
+                              : inv.role === "editor"
+                                ? "all scenes (default)"
+                                : <span className="text-amber-600 dark:text-amber-400">no scenes assigned</span>}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {/* Assign scenes button — students and editors */}
+                    {(inv.role === "student" || inv.role === "editor") && (
+                      <button
+                        onClick={() => setAssigningInv(inv)}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                        title="Assign scenes"
+                      >
+                        <ListChecks className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleToggleLink(inv.id)}
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                      title="Show join link"
+                    >
+                      <QrCode className="h-3.5 w-3.5" />
+                      <ChevronDown className={cn("h-3 w-3 transition-transform", expandedInvId === inv.id && "rotate-180")} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteInvitation(inv.id)}
+                      className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                      title="Revoke invitation"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+
+                  {expandedInvId === inv.id && invTokenInfo[inv.id] && (
+                    <div className="px-3 pb-3 pt-1 border-t border-border space-y-3">
+                      {/* Local LAN link — QR + URL */}
+                      <div className="flex items-start gap-3">
+                        <div className="bg-white p-1.5 rounded-md border border-border shrink-0">
+                          <QRCode value={invTokenInfo[inv.id].join_url} size={88} />
+                        </div>
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <p className="text-[10px] font-medium text-muted-foreground">Local link</p>
+                          <code className="block text-[11px] font-mono text-foreground break-all">
+                            {invTokenInfo[inv.id].join_url}
+                          </code>
+                          <button
+                            onClick={() => handleCopyLink(inv.id)}
+                            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {copiedInvId === inv.id
+                              ? <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                              : <Copy className="h-3 w-3" />}
+                            Copy local link
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Cloudflare link — only when the tunnel is active */}
+                      {cfStatus?.active && cfStatus.url && (
+                        <button
+                          onClick={() => handleCopyCloudflareLink(inv.id)}
+                          className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {copiedCfInvId === inv.id
+                            ? <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                            : <Cloud className="h-3 w-3" />}
+                          Copy Cloudflare link
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  </div>
                 ))}
-              </SelectContent>
-            </Select>
+              </div>
+
+              {/* New invitation form */}
+              <div className="rounded-lg border border-dashed border-border p-3 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">New invitation</p>
+                <div className="flex gap-2">
+                  <Input
+                    value={newInvName}
+                    onChange={e => setNewInvName(e.target.value)}
+                    placeholder="Name  (e.g. Alice, Student Group A)"
+                    className="text-xs h-8 flex-1"
+                    onKeyDown={e => e.key === "Enter" && handleCreateInvitation()}
+                  />
+                  <select
+                    value={newInvRole}
+                    onChange={e => setNewInvRole(e.target.value as "coauthor" | "student" | "editor")}
+                    className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                  >
+                    <option value="coauthor">Co-Author</option>
+                    <option value="editor">Editor</option>
+                    <option value="student">Student</option>
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={newInvPin}
+                    onChange={e => setNewInvPin(e.target.value)}
+                    placeholder="PIN (optional)"
+                    type="password"
+                    className="text-xs h-8 flex-1"
+                  />
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground">Max</span>
+                    <Input
+                      type="number"
+                      min={1} max={20}
+                      value={newInvMaxSessions}
+                      onChange={e => setNewInvMaxSessions(Number(e.target.value))}
+                      className="text-xs h-8 w-16 text-center"
+                    />
+                  </div>
+                  <Button size="sm" className="h-8 shrink-0" onClick={handleCreateInvitation} disabled={coworkLoading || !newInvName.trim()}>
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Teacher view — live sessions */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-muted-foreground">Live sessions</p>
+                  <button
+                    onClick={loadTeacherView}
+                    disabled={teacherLoading}
+                    className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+                    title="Refresh"
+                  >
+                    <RefreshCw className={cn("h-3 w-3", teacherLoading && "animate-spin")} />
+                  </button>
+                </div>
+                {teacherSessions.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No active sessions.</p>
+                ) : (
+                  teacherSessions.map(sess => (
+                    <div key={sess.session_id} className="rounded-lg border border-border p-2.5 flex items-center gap-3">
+                      <span
+                        className="h-6 w-6 rounded-full shrink-0 inline-flex items-center justify-center text-[9px] font-bold text-white"
+                        style={{ backgroundColor: sess.color }}
+                      >
+                        {sess.display_name.split(/\s+/).map((w: string) => w[0]?.toUpperCase() ?? "").slice(0, 2).join("")}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium truncate">{sess.display_name}</span>
+                          <span className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0",
+                            sess.role === "student" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                            : sess.role === "editor"  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                                      : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                          )}>
+                            {sess.role === "student" ? "Student" : sess.role === "editor" ? "Editor" : "Co-Author"}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {sess.item_type === "scene" && sess.item_id != null
+                            ? `Viewing a scene`
+                            : "Browsing"}
+                          {sess.role === "student" && sess.assigned_items.length > 0
+                            ? ` · ${sess.assigned_items.length} scene${sess.assigned_items.length !== 1 ? "s" : ""} assigned`
+                            : ""}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Assignment picker modal */}
+          {assigningInv && (
+            <AssignmentPicker
+              invitationId={assigningInv.id}
+              invitationName={assigningInv.name}
+              current={assigningInv.assigned_items}
+              onClose={() => setAssigningInv(null)}
+              onSaved={(items) => {
+                setInvitations(prev =>
+                  prev.map(i => i.id === assigningInv.id ? { ...i, assigned_items: items } : i)
+                );
+              }}
+            />
+          )}
+        </section>
+        </>)}
+
+
           </div>
-        </section>
-
-        <div className="border-t border-border" />
-
-        {/* About */}
-        <section className="space-y-2 text-sm text-muted-foreground">
-          <p className="font-medium text-foreground">{t("settings_about_title")}</p>
-          <p>{t("settings_about_desc")}</p>
-        </section>
-
-        <Button onClick={handleSave} disabled={updateSettings.isPending}>
-          {saved ? t("settings_saved") : updateSettings.isPending ? t("settings_saving") : t("settings_save")}
-        </Button>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

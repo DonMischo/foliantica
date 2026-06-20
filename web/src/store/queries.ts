@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient, useQueries } from "@tanstack/react-query";
-import { projectsApi, actsApi, chaptersApi, scenesApi, codexApi, settingsApi, timeApi, fragmentsApi, imagesApi, sceneCommandsApi, promptsApi, versionsApi, mentionStatsApi, writingLogApi, synopsisApi, timelineTracksApi, timelineEventsApi, grammarApi, valeApi, fontsApi, seriesApi, analyticsApi, researchApi, submissionsApi, exportProfilesApi, publishersApi, achievementsApi, statsApi, syncApi, type StatsTotals, type SyncStatus } from "@/lib/api";
-import type { GrammarCheckResult, ValeCheckResult, PovStats, QuerySubmissionCreate, ExportProfileCreate } from "@/lib/api";
+import { projectsApi, actsApi, chaptersApi, scenesApi, codexApi, settingsApi, timeApi, fragmentsApi, imagesApi, sceneCommandsApi, promptsApi, versionsApi, mentionStatsApi, writingLogApi, synopsisApi, timelineTracksApi, timelineEventsApi, grammarApi, valeApi, proseApi, fontsApi, seriesApi, analyticsApi, researchApi, submissionsApi, exportProfilesApi, publishersApi, achievementsApi, statsApi, syncApi, commentsApi, type StatsTotals, type SyncStatus, type SceneComment, type CommentCreate, type PositionSync } from "@/lib/api";
+import type { GrammarCheckResult, ValeCheckResult, ProseCheckResult, PovStats, QuerySubmissionCreate, ExportProfileCreate } from "@/lib/api";
 import type { SceneCommandIn, ProjectItemLogEntry, ProjectCurrencyLogEntry, OpenRouterModel } from "@/lib/api";
 import type { AIPrompt, ProjectSceneItem, SceneVersion, SceneVersionDetail, CorkboardAct, CorkboardData, CorkboardPrefs, RelationsGraph, SeriesData, ProjectAnalytics, ResearchItem, QuerySubmission, ExportProfile, PublisherProfile } from "@/types";
 
@@ -670,6 +670,11 @@ export const useValeCheck = () =>
     mutationFn: ({ text, language }) => valeApi.check(text, language),
   });
 
+export const useProseCheck = () =>
+  useMutation<ProseCheckResult, Error, { text: string; language?: string }>({
+    mutationFn: ({ text, language }) => proseApi.check(text, language),
+  });
+
 export const usePandocFonts = (enabled = true) =>
   useQuery({
     queryKey: ["pandoc-fonts"],
@@ -1038,3 +1043,45 @@ export const useSyncStatus = () =>
     refetchInterval: 30_000,
     staleTime: 0,
   });
+
+// ── Scene Comments ────────────────────────────────────────────────────────────
+
+export const useComments = (sceneId: number) =>
+  useQuery<SceneComment[]>({
+    queryKey: ["comments", sceneId],
+    queryFn: () => commentsApi.list(sceneId),
+    enabled: sceneId > 0,
+  });
+
+export const useCreateComment = (sceneId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CommentCreate) => commentsApi.create(sceneId, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["comments", sceneId] }),
+  });
+};
+
+export const useUpdateComment = (sceneId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Parameters<typeof commentsApi.update>[1] }) =>
+      commentsApi.update(id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["comments", sceneId] }),
+  });
+};
+
+export const useDeleteComment = (sceneId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => commentsApi.delete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["comments", sceneId] }),
+  });
+};
+
+export const useSyncCommentPositions = (sceneId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (updates: PositionSync[]) => commentsApi.syncPositions(sceneId, updates),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["comments", sceneId] }),
+  });
+};

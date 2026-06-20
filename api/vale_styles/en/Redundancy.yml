@@ -1,68 +1,153 @@
+# Sources / Attribution:
+#   - William Strunk & E.B. White: "The Elements of Style" (Macmillan, 1959)
+#   - William Zinsser: "On Writing Well" (HarperCollins, 1976)
+#   - Bryan A. Garner: "Garner's Modern English Usage" (OUP, 4th ed., 2016)
+#   - Wikipedia: "List of English pleonasms" (https://en.wikipedia.org/wiki/Pleonasm)
 extends: substitution
-message: "'%s' is redundant — consider '%s'."
-level: warning
+message: "Redundant: '%s' — '%s' already implies the rest"
+level: suggestion
+ignorecase: true
 swap:
-  # Classic English pleonasms
+  # --- Outcome / result pleonasms (Garner, Zinsser) ---
   end result: result
+  end goal: goal
+  end product: product
+  final outcome: outcome
+  final conclusion: conclusion
+  final result: result
+  overall plan: plan
+  basic fundamentals: fundamentals
+  fundamental basics: basics
+  added bonus: bonus
+  added extra: extra
+  added addition: addition
+
+  # --- Surprise / novelty (Garner) ---
+  unexpected surprise: surprise
+  sudden surprise: surprise
+  new innovation: innovation
+  new invention: invention
+  new initiative: initiative
+  new recruit: recruit
+  new discovery: discovery
+  first introduced: introduced
+  first began: began
+  first created: created
+  first invented: invented
+  original founder: founder
+
+  # --- Past / future (Strunk & White, Garner) ---
   past history: history
+  past record: record
   past experience: experience
+  past precedent: precedent
+  old adage: adage
   future plans: plans
   future prospects: prospects
+  future outlook: outlook
+  advance planning: planning
   advance warning: warning
   advance notice: notice
-  added bonus: bonus
-  free gift: free
-  safe haven: haven
-  true facts: facts
-  unexpected surprise: surprise
-  final conclusion: conclusion
-  final outcome: outcome
+  forward planning: planning
+
+  # --- Certainty / completeness (Garner) ---
+  completely finished: finished
+  completely empty: empty
+  completely full: full
+  completely surrounded: surrounded
+  totally unique: unique
+  very unique: unique
+  absolutely unique: unique
+  absolutely certain: certain
+  absolutely essential: essential
+  absolutely necessary: necessary
+  actual fact: fact
+  true fact: fact
+  honest truth: truth
   close proximity: proximity
-  brief moment: moment
-  sudden crisis: crisis
-  new innovation: innovation
-  new recruit: recruit
-  old adage: adage
-  foreign imports: imports
-  basic fundamentals: fundamentals
+  exact same: same
   general consensus: consensus
-  past memories: memories
-  temporary reprieve: reprieve
+  consensus of opinion: consensus
+  mutual cooperation: cooperation
+  mutual agreement: agreement
+
+  # --- Direction / motion (Zinsser, Garner) ---
   revert back: revert
   return back: return
   refer back: refer
+  reflect back: reflect
   repeat again: repeat
-  join together: join
+  reiterate again: reiterate
+  rise up: rise
+  descend down: descend
+  advance forward: advance
+  proceed forward: proceed
+  plan ahead: plan
   merge together: merge
+  join together: join
   combine together: combine
-  sum total: total
-  exactly the same: the same
+  link together: link
+  connect together: connect
+  gather together: gather
+  cooperate together: cooperate
+  collaborate together: collaborate
 
-  # Redundant intensifiers on absolutes (write-good misses these)
+  # --- Size / appearance (Garner) ---
+  large in size: large
+  small in size: small
+  round in shape: round
+  red in color: red
+  short in length: short
+  heavy in weight: heavy
+  young in age: young
+  tall in height: tall
+  visible to the eye: visible
+  audible to the ear: audible
+
+  # --- Intensifiers on absolutes (Garner) ---
   very unique: unique
   completely unique: unique
-  absolutely unique: unique
-  very essential: essential
-  completely essential: essential
-  very unanimous: unanimous
-  very infinite: infinite
   very perfect: perfect
   completely perfect: perfect
   absolutely perfect: perfect
+  very unanimous: unanimous
+  very infinite: infinite
+  very essential: essential
 
-  # Bureaucratic / legal pairs
+  # --- Bureaucratic doublets (Garner) ---
   null and void: void
   first and foremost: first
   each and every: every
   various different: various
   any and all: all
+  cease and desist: stop
+  sum total: total
+  past memories: memories
 
-  # RAS syndrome
+  # --- Brief / short (Strunk & White) ---
+  brief summary: summary
+  short summary: summary
+  brief overview: overview
+  brief synopsis: synopsis
+
+  # --- Miscellaneous (Garner, Wikipedia) ---
+  safe haven: haven
+  free gift: gift
+  foreign imports: imports
+  surrounded on all sides: surrounded
+  close down: close
+  open up: open
+
+  # --- RAS syndrome (Wikipedia) ---
   PIN number: PIN
   ATM machine: ATM
   HIV virus: HIV
   LCD display: LCD
   PDF format: PDF
-  GPS system: GPS
   ISBN number: ISBN
+  RAM memory: RAM
+  GPS system: GPS
+  AC current: AC
+  DC current: DC
+  URL address: URL
   Please RSVP: RSVP

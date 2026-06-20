@@ -1,0 +1,42 @@
+# Słowa-filtry — czasowniki dystansu narracyjnego w prozie.
+# Źródła:
+#   - Renni Browne & Dave King: "Self-Editing for Fiction Writers"
+#   - Zasady głębokiego POV (deep point of view) w literaturze
+extends: existence
+message: "Słowo-filtr '%s' — czy można umieścić czytelnika bezpośrednio w doświadczeniu?"
+level: suggestion
+ignorecase: true
+tokens:
+  # Poznawcze filtry dystansu
+  - \buświadomił sobie\b
+  - \buświadomiła sobie\b
+  - \buznał\b
+  - \buznała\b
+  - \bzrozumiał\b
+  - \bzrozumiała\b
+  - \bzdecydował\b
+  - \bzdecydowała\b
+  - \bzastanawiał się\b
+  - \bzastanawiała się\b
+  - \bprzypomniał sobie\b
+  - \bprzypo mniała sobie\b
+
+  # Filtry pozoru
+  - \bwydawało mu się\b
+  - \bwydawało jej się\b
+  - \bwyglądało\b
+  - \bwyglądał na\b
+
+  # Przerywniki rytmu
+  - \bnagle\b
+  - \bniespodziewanie\b
+  - \bznienacka\b
+  - \bnatychmiast\b
+  - \bw jednej chwili\b
+  - \bw mgnieniu oka\b
+  - \bgwałtownie\b
+
+  # Osłabiacze narracyjne
+  - \bjakoś\b
+  - \bw jakiś sposób\b
+  - \bw pewien sposób\b

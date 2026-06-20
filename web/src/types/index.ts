@@ -394,6 +394,7 @@ export interface Settings {
   ai_disabled: boolean;
   sync_mirror_enabled: boolean;
   sync_local_dir: string | null;
+  codex_highlight_enabled: boolean;
 }
 
 // ── Fragments ─────────────────────────────────────────────────────────────────

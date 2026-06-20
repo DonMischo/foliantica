@@ -11,6 +11,10 @@ level: suggestion
 ignorecase: true
 tokens:
   # --- Unternehmens-Buzzwords (Schneider; GfdS Unwörter) ---
+  # NOTE: "Agilität/agil, Roadmap, Milestone(s), KPI(s), Scrum, Lean, Stakeholder(s),
+  # Digitalisierung, Benchmark(s)/benchmarken, Skalierung/skalierbar/skalieren,
+  # Ökosystem, ROI, USP, Transformation/transformativ" entfernt — das sind etablierte
+  # Fach-/Geschäftsbegriffe, kein Modewort-Indikator für sich allein.
   - Mehrwert
   - Synergien
   - Synergie
@@ -18,48 +22,23 @@ tokens:
   - Paradigmenwechsel
   - Disruption
   - disruptiv
-  - Transformation
-  - transformativ
-  - Digitalisierung
-  - \bdigital transformieren\b
-  - Agilität
-  - \bagil\b
-  - Roadmap
-  - Milestone
-  - Milestones
-  - \bKPI\b
-  - KPIs
-  - \bUSP\b
-  - \bROI\b
   - \bWin-Win\b
   - \bBest Practice\b
   - \bBest Practices\b
   - \bState of the Art\b
-  - Benchmark
-  - Benchmarks
-  - benchmarken
-  - Ökosystem
-  - Skalierung
-  - skalierbar
-  - skalieren
   - \bPivot\b
   - pivotieren
-  - Stakeholder
-  - Stakeholders
   - \bBonus-Malus\b
-  - \bLean\b
-  - \bScrum\b
   - Agilisierung
   - \bNew Work\b
   - \bWork-Life-Balance\b
 
   # --- Politische Modewörter (GfdS Unwort; Schneider) ---
+  # NOTE: "evidenzbasiert, Resilienz/resilient" entfernt — etablierte Fachbegriffe
+  # in Wissenschaft, Technik und Politik, kein zuverlässiges Modewort-Signal.
   - Leitkultur
   - alternativlos
   - Schuldenbremse
-  - evidenzbasiert
-  - Resilienz
-  - resilient
   - \bNachhaltigkeit\b
   - \bnachhaltig\b
   - Vernetzung
@@ -73,35 +52,22 @@ tokens:
   - Leuchttürme
 
   # --- Vage Positivadjektive (Schneider; Sick) ---
-  - \binnovativ\b
-  - Innovation
-  - Innovationen
+  # NOTE: "Innovation(en)/innovativ, Kompetenz(en)/kompetent, motiviert, engagiert,
+  # dynamisch, flexibel, modern, intelligent, smart, digital, exzellent/Exzellenz,
+  # zukunftsfähig" entfernt — normale, häufig sachlich zutreffende Adjektive/Substantive,
+  # kein verlässliches Buzzword-Signal für sich allein.
   - \bganzheitlich\b
   - zukunftsorientiert
   - kundenorientiert
   - \bproaktiv\b
   - \boutstanding\b
-  - \bexzellent\b
-  - Exzellenz
-  - \bKompetenz\b
-  - Kompetenzen
   - \bQualität leben\b
   - \bLeidenschaft\b
   - \bHerzblut\b
   - \bmit Passion\b
   - \bBegeisterung\b
-  - \bkompetent\b
-  - \bmotiviert\b
-  - \bengagiert\b
-  - \bdynamisch\b
-  - \bflexibel\b
-  - \bmodern\b
   - \bzukunftsweisend\b
   - \bfortschrittlich\b
-  - \bzukunftsfähig\b
-  - \bintelligent\b
-  - \bsmart\b
-  - \bdigital\b
 
   # --- Unternehmensphrasen (Sick; Schneider) ---
   - \bauf Augenhöhe\b

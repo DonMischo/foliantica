@@ -9,14 +9,22 @@ Isolation guarantee:
   imported.  The _ensure_test_db fixture (session-scoped) creates that database
   if it doesn't exist.  Every test then drops and recreates the schema for full
   per-test isolation.
+
+Co-work isolation:
+  isolated_state (autouse) resets all collab module-level state and redirects
+  the config file path before every test so ~/.foliantica/config.json is never
+  read or written during the test run.
 """
 import os
 import shutil
 import subprocess
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pathlib import Path
 
+import routers.collab as collab_mod
+from routers.collab import router as collab_router
 from models import Base
 from database import engine as _engine, SessionLocal as _SessionLocal, get_db
 from main import app  # noqa: must import after api/conftest.py sets env vars
@@ -122,6 +130,33 @@ def _fresh_schema(_ensure_test_db):
     # cleanup happens implicitly on next test's drop_all
 
 
+@pytest.fixture(autouse=True)
+def isolated_state(tmp_path, monkeypatch):
+    """Reset all collab module-level state and redirect config before every test."""
+    collab_mod._sessions.clear()
+    collab_mod._bans.clear()
+    collab_mod._locks.clear()
+    collab_mod._presence.clear()
+    collab_mod.manager._connections.clear()
+
+    collab_mod._cf_active = False
+    collab_mod._cf_url = None
+    collab_mod._cf_process = None
+
+    monkeypatch.setattr(collab_mod, "_CONFIG_PATH", tmp_path / "config.json")
+
+    yield
+
+    collab_mod._sessions.clear()
+    collab_mod._bans.clear()
+    collab_mod._locks.clear()
+    collab_mod._presence.clear()
+    collab_mod.manager._connections.clear()
+    collab_mod._cf_active = False
+    collab_mod._cf_url = None
+    collab_mod._cf_process = None
+
+
 @pytest.fixture
 def db(_fresh_schema):
     """SQLAlchemy session for direct DB seeding / assertions."""
@@ -134,14 +169,58 @@ def db(_fresh_schema):
 
 @pytest.fixture
 def client(db):
-    """FastAPI TestClient connected to the per-test database."""
+    """FastAPI TestClient connected to the per-test database.
+
+    Simulates the real production topology: every HTTP request reaches
+    FastAPI via the Next.js proxy's own loopback hop (route.ts always
+    targets http://127.0.0.1:<port>), host or guest alike — so the TCP
+    peer CoworkAuthMiddleware sees is always 127.0.0.1 in practice. We set
+    that explicitly via TestClient's `client=` param (httpx's default peer
+    is the literal string "testclient", not a loopback address).
+
+    Also defaults X-Client-IP: 127.0.0.1, mirroring what the proxy sets for
+    the host's own browser requests, so requests are host-trusted by
+    default. Tests simulating a guest/external client pass their own
+    X-Client-IP per-request (e.g. do_join's client_ip param), which
+    overrides this default — the middleware only honors that header
+    because the peer above is loopback; see test_collab_auth.py's
+    TestProxyTrustBoundary for the case where it must NOT be honored.
+    """
     def _override():
         yield db
 
     app.dependency_overrides[get_db] = _override
-    with TestClient(app, raise_server_exceptions=True) as c:
+    with TestClient(app, raise_server_exceptions=True, client=("127.0.0.1", 51000)) as c:
+        c.headers["X-Client-IP"] = "127.0.0.1"
         yield c
     app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.fixture
+def ws_client(client):
+    """Separate TestClient, sharing `client`'s app/db wiring, for WebSocket
+    connections specifically.
+
+    In production the WS endpoint is reached directly by the browser, never
+    through the Next.js proxy (it can't tunnel upgrade requests) — unlike
+    HTTP, where the peer is always the proxy's own loopback hop. httpx's
+    default (non-loopback) peer ("testclient") models that direct-guest
+    connection correctly, so this intentionally does NOT set client=(...)
+    the way the `client` fixture does. Depends on `client` only for fixture
+    ordering (so dependency_overrides is already wired); use `client` for
+    any HTTP setup (e.g. make_invitation) in the same test and this fixture
+    only for .websocket_connect().
+    """
+    with TestClient(app, raise_server_exceptions=True) as c:
+        yield c
+
+
+@pytest.fixture
+def collab_client():
+    """Minimal FastAPI TestClient with only the collab router (no DB needed)."""
+    a = FastAPI()
+    a.include_router(collab_router)
+    return TestClient(a, raise_server_exceptions=True)
 
 
 # ── Convenience seeders ───────────────────────────────────────────────────────
@@ -186,3 +265,36 @@ def scene(client, chapter):
 def test_engine():
     """Expose the shared engine for tests that need to patch module-level engines."""
     return _engine
+
+
+# ── Co-work API helpers (imported by test_collab.py) ─────────────────────────
+
+def make_invitation(client, *, name="Alice", role="coauthor", pin=None,
+                    max_sessions=1, assigned_items=None):
+    """POST /api/collab/invitations and assert 201."""
+    body: dict = {"name": name, "role": role, "max_sessions": max_sessions}
+    if pin is not None:
+        body["pin"] = pin
+    if assigned_items is not None:
+        body["assigned_items"] = assigned_items
+    r = client.post("/api/collab/invitations", json=body)
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+def do_join(client, *, token, display_name="Guest", pin=None, client_ip=None):
+    """POST /api/collab/join, return the raw Response."""
+    body = {"token": token, "display_name": display_name}
+    if pin is not None:
+        body["pin"] = pin
+    headers = {}
+    if client_ip:
+        headers["X-Client-IP"] = client_ip
+    return client.post("/api/collab/join", json=body, headers=headers)
+
+
+def join_ok(client, *, token, display_name="Guest", pin=None):
+    """POST /api/collab/join and assert 200, return JSON."""
+    r = do_join(client, token=token, display_name=display_name, pin=pin)
+    assert r.status_code == 200, r.text
+    return r.json()

@@ -83,13 +83,6 @@ tokens:
   - \bc'est nous\b
   - \bc'est vous\b
 
-  # --- Perspectivations-coûte — signalement (Girodet) ---
-  # Hedging personnel qui affaiblit inutilement le propos.
-  - \bde mon point de vue\b
-  - à mon avis
-  - \bselon moi\b
-  - à mon sens
-  - \bpour ma part\b
-  - \bpersonnellement je pense\b
-  - \bpersonnellement je crois\b
-  - \bà mon humble avis\b
+  # NOTE: le hedging personnel (« à mon avis », « selon moi », etc.) a été retiré d'ici —
+  # ces tokens sont déjà couverts dans WeaselWords.yml ; les garder dans les deux fichiers
+  # produisait une double alerte pour la même phrase.

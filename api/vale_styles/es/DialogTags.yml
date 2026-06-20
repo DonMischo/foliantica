@@ -1,0 +1,33 @@
+# Verbos de diálogo más allá de «dijo/preguntó» — said-bookisms en español.
+extends: existence
+message: "Verbo de diálogo '%s' — «dijo» o «preguntó» suele ser más invisible; o usa una acción en su lugar."
+level: suggestion
+ignorecase: true
+tokens:
+  # Marcadores de volumen
+  - \bexclamó\b
+  - \bgritó\b
+  - \bbramó\b
+  - \bvociferó\b
+  - \bchilló\b
+  - \bsusurró\b
+  - \bmusitó\b
+  - \bmurmuró\b
+  - \bsiseó\b
+  - \bsisuró\b
+
+  # Verbos emocionalmente cargados
+  - \bgruñó\b
+  - \bladró\b
+  - \bgemió\b
+  - \blloriqueo\b
+  - \bsuspiró\b
+  - \bse rio\b
+  - \bcarcajeó\b
+  - \bprofirió\b
+  - \bse burló\b
+
+  # Verbos fisiológicamente cuestionables
+  - \bjadeó\b
+  - \bresopló\b
+  - \btosió\b

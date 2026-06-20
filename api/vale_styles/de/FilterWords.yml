@@ -1,0 +1,42 @@
+# Filterwörter — Distanzwörter im kreativen Schreiben.
+# Quellen:
+#   - Wolf Schneider: "Deutsch fürs Leben" (Rowohlt, 1994)
+#   - Renni Browne & Dave King: "Self-Editing for Fiction Writers" (dt. Übertragung)
+#   - Petra Hartmann: "Schreiben wie ein Profi" (Fischer, 2015)
+extends: existence
+message: "Filterwort '%s' — kann man den Leser direkt ins Erleben versetzen?"
+level: suggestion
+ignorecase: true
+tokens:
+  # Kognitive Distanzfilter
+  - \bmerkte\b
+  - \bbemerkte\b
+  - \berkannte\b
+  - \brealisierte\b
+  - \bverstand\b
+  - \bdachte\b
+  - \bfragte sich\b
+  - \bwunderte sich\b
+  - \berinnerste sich\b
+  - \bbeschloss\b
+  - \bentschied\b
+
+  # Erscheinungsfilter
+  - \bschien\b
+  - \bwirkte\b
+  - \bsah aus\b
+
+  # Pacingbrecher
+  - \bplötzlich\b
+  - \burplötzlich\b
+  - \bauf einmal\b
+  - \bmit einem Mal\b
+  - \bsofort\b
+  - \bschlagartig\b
+  - \bblitzartig\b
+  - \bjäh\b
+
+  # Schwache Verstärker im Erzähltext
+  - \birgendwie\b
+  - \birgendwas\b
+  - \beinfach so\b

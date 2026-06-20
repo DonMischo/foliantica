@@ -20,12 +20,11 @@ _NIGHT_TIME  = {"year": 1, "month": 2, "day": 3, "hour": 22}  # Night time (22 >
 
 
 def _set_scene_time(db, scene_id, time_data):
-    """Set scene_time directly via ORM to avoid SQLAlchemy identity-map caching issues."""
+    """Set scene_time directly via ORM."""
     from models import Scene
     s = db.get(Scene, scene_id)
     s.scene_time = json.dumps(time_data)
     db.commit()
-    db.expire_all()
 
 
 def _make_track(client, project_id, **kwargs):

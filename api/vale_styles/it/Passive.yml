@@ -23,13 +23,10 @@ tokens:
   - \berano stati\b
   - \berano state\b
 
-  # Presente (viene/vengono + participio — passivo perifrastico con "venire")
-  - \bviene\b
-  - \bvengono\b
-
-  # Imperfetto (veniva/venivano)
-  - \bveniva\b
-  - \bvenivano\b
+  # NOTE: "viene/vengono/veniva/venivano" (passivo con "venire") e "va/vanno/andava/andavano"
+  # (passivo con "andare") sono stati rimossi — sono identici al presente di "venire" (venire =
+  # to come) e "andare" (andare = to go) usati come verbi pieni (es. "viene a casa", "va a casa",
+  # entrambi attivi), e producono troppi falsi positivi.
 
   # Futuro (sarà/saranno)
   - \bsarà\b
@@ -38,13 +35,6 @@ tokens:
   # Condizionale (sarebbe/sarebbero)
   - \bsarebbe\b
   - \bsarebbero\b
-
-  # --- Passivo con "andare" (obbligo / necessità) ---
-  # "va esaminato" = "deve essere esaminato" — comune nel burocratico
-  - \bva\b
-  - \bvanno\b
-  - \bandava\b
-  - \bandavano\b
 
   # --- Passivo progressivo — "sta venendo" (calco dell'inglese, criticato da Calvino) ---
   # "Il progetto sta venendo esaminato" → "Si sta esaminando il progetto"
