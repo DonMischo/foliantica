@@ -1,0 +1,33 @@
+# Parole-filtro — verbi di distanza nella narrativa.
+extends: existence
+message: "Parola-filtro '%s' — si può immergere il lettore direttamente nell'esperienza?"
+level: suggestion
+ignorecase: true
+tokens:
+  # Filtri cognitivi di distanza
+  - \bsi rese conto\b
+  - \briconobbe\b
+  - \bcapì\b
+  - \bdecise\b
+  - \bsi chiese\b
+  - \bricordò\b
+  - \bsi ricordò\b
+
+  # Filtri di apparenza
+  - \bsembrava\b
+  - \bpareva\b
+  - \baveva l'aria\b
+
+  # Disruptori di ritmo
+  - \bimprovvisamente\b
+  - \ball'improvviso\b
+  - \bdi colpo\b
+  - \bdi punto in bianco\b
+  - \bimmediatamente\b
+  - \bistantaneamente\b
+  - \bbruscamente\b
+
+  # Indebolitori narrativi
+  - \bin qualche modo\b
+  - \bin un certo senso\b
+  - \bin qualche maniera\b

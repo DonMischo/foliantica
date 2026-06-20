@@ -18,7 +18,7 @@ swap:
   betreffende: over
   inzake: over
   ter zake van: over
-  met het oog op: voor / met het oog op → gelet op
+  met het oog op: gelet op
   in het licht van: gezien
   gelet op het feit dat: omdat
   vanuit het oogpunt van: vanuit
@@ -35,18 +35,17 @@ swap:
   voorafgaand aan: voor
   aansluitend op: na
   in aansluiting op: na
-  naar aanleiding van: door / naar aanleiding van → vanwege
-  op basis van: op basis van → volgens
-  conform: overeenkomstig → volgens
+  naar aanleiding van: vanwege
+  op basis van: volgens
+  conform: volgens
   overeenkomstig: volgens
-  ingevolge: krachtens → volgens
+  ingevolge: volgens
   krachtens: volgens / op grond van
   bij wijze van: als
   in de vorm van: als
   voor zover het betreft: voor
 
   # --- Causale omhaal (Renkema; Pander Maat) ---
-  vanwege het feit dat: omdat
   omwille van het feit dat: omdat
   gezien het feit dat: omdat / omdat
   door het feit dat: doordat
@@ -56,7 +55,7 @@ swap:
   # --- Conditionele omhaal (Renkema; NTU) ---
   in het geval dat: als
   in het geval waarin: als
-  voor het geval dat: voor het geval dat → mocht
+  voor het geval dat: mocht
   indien en voor zover: als
   mits en voor zover: mits
   op voorwaarde dat: mits
@@ -65,7 +64,6 @@ swap:
   voorafgaand aan: voor
   voorafgaande aan: voor
   aansluitend aan: na
-  ten tijde van: tijdens / ten tijde → tijdens
   op het moment dat: wanneer / als
   op het ogenblik dat: wanneer
   op de dag van vandaag: vandaag
@@ -80,15 +78,15 @@ swap:
   met uitzondering van: behalve / tenzij
   uitgezonderd het geval dat: tenzij
   bij afwezigheid van: zonder
-  bij gebrek aan: bij gebrek aan → zonder
-  ongeacht: ongeacht → los van
-  onverminderd: onverminderd → ook als
+  bij gebrek aan: zonder
+  ongeacht: los van
+  onverminderd: ook als
 
   # --- Bureaucratische opvullers (Renkema; NTU "Overheidsschrijven") ---
   opgemerkt dient te worden dat: merk op dat
   vastgesteld kan worden dat: blijkt dat
-  gesteld kan worden dat: men kan stellen dat → blijkt
-  geconcludeerd kan worden dat: we kunnen concluderen dat → dus
+  gesteld kan worden dat: blijkt
+  geconcludeerd kan worden dat: dus
   dient te worden vermeld dat: vermeld moet worden dat
   het zij opgemerkt dat: nota bene
   het zij vermeld dat: vermeld

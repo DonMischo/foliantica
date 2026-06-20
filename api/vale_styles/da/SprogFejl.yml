@@ -65,8 +65,5 @@ tokens:
   - \bkompromittere sikkerheden\b
   - \bkompromitterer systemet\b
 
-  # --- Perspektivdækning (Hannemand; Lund: stå ved teksten) ---
-  - \bjeg er af den opfattelse at\b
-  - \bjeg er af den mening at\b
-  - \bPersonligt mener jeg\b
-  - \bEfter min mening\b
+  # NOTE: perspektivdækning ("personligt mener jeg" osv.) er fjernet herfra —
+  # allerede dækket i WeaselWords.yml; at have det i begge filer gav dobbelt advarsel.

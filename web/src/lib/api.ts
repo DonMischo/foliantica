@@ -49,12 +49,45 @@ export interface ExportChapter { id: number; title: string; order_index: number;
 export interface ExportAct     { id: number; title: string; order_index: number; chapters: ExportChapter[] }
 export interface ExportStructure { title: string; acts: ExportAct[] }
 
+// ── Co-work JWT helpers ───────────────────────────────────────────────────────
+// When a guest joins via /join, their session JWT is stored in localStorage.
+// It is injected into every API request so the FastAPI auth middleware can
+// identify external clients. The host (local app) has no JWT — it is trusted
+// by IP. This is a no-op when running as the host or when co-work is disabled.
+
+export function getCoworkJwt(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("cowork_jwt");
+}
+
+export function clearCoworkSession(): void {
+  if (typeof window === "undefined") return;
+  ["cowork_jwt", "cowork_role", "cowork_name", "cowork_session"].forEach(k =>
+    localStorage.removeItem(k)
+  );
+}
+
+export function getCoworkIdentity(): { name: string; role: string } | null {
+  if (typeof window === "undefined") return null;
+  const name = localStorage.getItem("cowork_name");
+  const role = localStorage.getItem("cowork_role");
+  return name && role ? { name, role } : null;
+}
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
+  const jwtToken = getCoworkJwt();
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...init?.headers },
+    headers: {
+      "Content-Type": "application/json",
+      ...(jwtToken ? { Authorization: `Bearer ${jwtToken}` } : {}),
+      ...init?.headers,
+    } as Record<string, string>,
     ...init,
   });
   if (!res.ok) {
+    if (res.status === 401 && getCoworkJwt()) {
+      window.dispatchEvent(new CustomEvent("cowork:session_expired"));
+    }
     const text = await res.text();
     throw new Error(`${res.status}: ${text}`);
   }
@@ -496,6 +529,7 @@ export const settingsApi = {
     ai_disabled?: boolean;
     sync_mirror_enabled?: boolean;
     sync_local_dir?: string | null;
+    codex_highlight_enabled?: boolean;
   }) => req<Settings>("/settings", { method: "POST", body: JSON.stringify(data) }),
   getModels: () => req<OpenRouterModel[]>("/settings/models"),
   serviceStatus: () => req<{ languagetool: "ok" | "error" | "offline"; pandoc: "ok" | "error" | "offline"; spacy: "ok" | "error" | "offline"; calibre: "ok" | "error" | "offline"; vale: "ok" | "error" | "offline" }>("/settings/service-status"),
@@ -689,6 +723,23 @@ export interface ValeRuleMeta {
 export type ValeCustomEntries = string[] | Record<string, string>;
 export type ValeCustomRules = Record<string, Record<string, ValeCustomEntries>>;
 
+export interface ValeRuleEntry {
+  key: string;
+  value?: string; // substitution rules only
+  enabled: boolean;
+}
+
+export interface ValeRuleEntriesResult {
+  type: "existence" | "substitution";
+  entries: ValeRuleEntry[];
+}
+
+export interface ValeSyncStatus {
+  last_synced: string | null;
+  errors: Record<string, string>;
+  total_entries: number;
+}
+
 export const valeApi = {
   check: (text: string, language?: string) =>
     req<ValeCheckResult>("/vale/check", {
@@ -704,6 +755,74 @@ export const valeApi = {
     req<{ ok: boolean }>("/vale/custom-rules", {
       method: "PUT",
       body: JSON.stringify({ rules }),
+    }),
+  getRuleEntries: (lang: string, ruleName: string) =>
+    req<ValeRuleEntriesResult>(`/vale/rule-entries/${lang}/${ruleName}`),
+  toggleEntry: (lang: string, ruleName: string, key: string, enabled: boolean) =>
+    req<{ ok: boolean }>(`/vale/rule-entries/${lang}/${ruleName}`, {
+      method: "PATCH",
+      body: JSON.stringify({ key, enabled }),
+    }),
+  toggleAllEntries: (lang: string, ruleName: string, enabled: boolean) =>
+    req<{ ok: boolean }>(`/vale/rule-entries/${lang}/${ruleName}`, {
+      method: "PUT",
+      body: JSON.stringify({ enabled }),
+    }),
+  getSyncStatus: () => req<ValeSyncStatus>("/vale/sync-status"),
+  syncRules: () =>
+    req<{ synced: number; errors: Record<string, string>; last_synced: string }>(
+      "/vale/sync-rules", { method: "POST" }
+    ),
+};
+
+// ── Prose ─────────────────────────────────────────────────────────────────────
+
+export interface ProseRepetitiveStart {
+  word: string;
+  count: number;
+  from_sentence: number;
+}
+
+export interface ProseFlaggedParagraph {
+  paragraph: number;
+  auxiliary_count: number;
+  word_count: number;
+  ratio: number;
+  level: "elevated" | "high";
+}
+
+export interface ProseCheckResult {
+  language: string;
+  word_count: number;
+  sentence_count: number;
+  paragraph_count: number;
+  sentence_variety: {
+    avg_length: number;
+    length_stddev: number;
+    variety: "good" | "moderate" | "low" | "n/a";
+    repetitive_starts: ProseRepetitiveStart[];
+  };
+  auxiliary_density: {
+    flagged_paragraphs: ProseFlaggedParagraph[];
+  };
+  adverb_density: {
+    count: number;
+    ratio: number;
+    level: "ok" | "elevated" | "high";
+  };
+  dialog: {
+    ratio: number;
+    dialog_lines: number;
+    total_lines: number;
+  };
+}
+
+export const proseApi = {
+  check: (text: string, language?: string) =>
+    req<ProseCheckResult>("/prose/check", {
+      method: "POST",
+      body: JSON.stringify({ text, language }),
+      signal: AbortSignal.timeout(30_000),
     }),
 };
 
@@ -921,4 +1040,172 @@ export interface StatsTotals {
 export const statsApi = {
   totals: () => req<StatsTotals>("/stats/totals"),
   pingView: () => req<{ ok: boolean }>("/stats/ping", { method: "POST" }),
+};
+
+// ── Co-Work ───────────────────────────────────────────────────────────────────
+
+export interface AssignedItem {
+  type:        "scene";
+  id:          number;
+  permission?: "edit" | "read_only";
+}
+
+export interface Invitation {
+  id:             string;
+  name:           string;
+  role:           "coauthor" | "student" | "editor";
+  has_pin:        boolean;
+  max_sessions:   number;
+  assigned_items: AssignedItem[];
+  access_mode:    string;
+}
+
+export interface CloudflareStatus {
+  active: boolean;
+  url:    string | null;
+}
+
+export interface CloudflareTunnelResult {
+  success: boolean;
+  url:     string;
+}
+
+export interface TeacherSession {
+  session_id:      string;
+  display_name:    string;
+  invitation_name: string;
+  role:            "coauthor" | "student" | "editor";
+  color:           string;
+  assigned_items:  AssignedItem[];
+  item_type:       string | null;
+  item_id:         number | null;
+  joined_at:       string;
+}
+
+export interface CollabInfo {
+  enabled:         boolean;
+  lan_ip:          string;
+  lan_url:         string;
+  active_sessions: number;
+  invitation?:     { name: string; role: string; has_pin: boolean } | null;
+}
+
+export const collabApi = {
+  info: (token?: string) =>
+    req<CollabInfo>(`/collab/info${token ? `?token=${encodeURIComponent(token)}` : ""}`),
+
+  toggle: (enabled: boolean) =>
+    req<{ enabled: boolean; restart_required: boolean }>("/collab/toggle", {
+      method: "POST",
+      body:   JSON.stringify({ enabled }),
+    }),
+
+  listInvitations: () =>
+    req<Invitation[]>("/collab/invitations"),
+
+  createInvitation: (body: {
+    name: string;
+    role?: string;
+    pin?: string;
+    max_sessions?: number;
+    assigned_items?: AssignedItem[];
+  }) =>
+    req<Invitation>("/collab/invitations", {
+      method: "POST",
+      body:   JSON.stringify(body),
+    }),
+
+  updateInvitation: (id: string, body: Partial<{
+    name: string; role: string; pin: string; max_sessions: number; assigned_items: AssignedItem[]; access_mode: string;
+  }>) =>
+    req<Invitation>(`/collab/invitations/${id}`, {
+      method: "PATCH",
+      body:   JSON.stringify(body),
+    }),
+
+  deleteInvitation: (id: string) =>
+    req<void>(`/collab/invitations/${id}`, { method: "DELETE" }),
+
+  getInvitationToken: (id: string) =>
+    req<{ token: string; join_url: string }>(`/collab/invitations/${id}/token`),
+
+  listSessions: () =>
+    req<object[]>("/collab/sessions"),
+
+  kickSession: (sessionId: string) =>
+    req<void>(`/collab/kick/${sessionId}`, { method: "POST" }),
+
+  teacherView: () =>
+    req<TeacherSession[]>("/collab/teacher-view"),
+
+  cloudflareStatus: () =>
+    req<CloudflareStatus>("/collab/cloudflare/status"),
+
+  cloudflareOpen: () =>
+    req<CloudflareTunnelResult>("/collab/cloudflare/open", { method: "POST" }),
+
+  cloudflareClose: () =>
+    req<{ active: false }>("/collab/cloudflare/close", { method: "POST" }),
+};
+
+// ── Scene Comments ────────────────────────────────────────────────────────────
+
+export interface SceneComment {
+  id:          number;
+  scene_id:    number;
+  from_pos:    number;
+  to_pos:      number;
+  anchor_text: string;
+  ctx_before:  string | null;
+  ctx_after:   string | null;
+  body:        string;
+  author_name: string;
+  author_role: string;
+  color:       string;
+  category:    string;
+  resolved:    boolean;
+  created_at:  string;
+}
+
+export interface CommentCreate {
+  from_pos:    number;
+  to_pos:      number;
+  anchor_text: string;
+  ctx_before?: string | null;
+  ctx_after?:  string | null;
+  body:        string;
+  color?:      string;
+  category?:   string;
+}
+
+export interface PositionSync {
+  id:       number;
+  from_pos: number;
+  to_pos:   number;
+}
+
+export const commentsApi = {
+  list: (sceneId: number) =>
+    req<SceneComment[]>(`/scenes/${sceneId}/comments`),
+
+  create: (sceneId: number, data: CommentCreate) =>
+    req<SceneComment>(`/scenes/${sceneId}/comments`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (commentId: number, data: { body?: string; resolved?: boolean; from_pos?: number; to_pos?: number }) =>
+    req<SceneComment>(`/comments/${commentId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (commentId: number) =>
+    req<void>(`/comments/${commentId}`, { method: "DELETE" }),
+
+  syncPositions: (sceneId: number, updates: PositionSync[]) =>
+    req<{ ok: true }>(`/scenes/${sceneId}/comments/sync-positions`, {
+      method: "POST",
+      body: JSON.stringify(updates),
+    }),
 };

@@ -1,0 +1,39 @@
+# Fiction filter words — POV perception verbs and distance-creating constructions.
+# Sources:
+#   - Renni Browne & Dave King: "Self-Editing for Fiction Writers" (HarperCollins, 2004)
+#   - Sol Stein: "Stein on Writing" (St. Martin's Press, 1995)
+#   - Marcy Kennedy: "Deep Point of View" (Tongue Untied Communications, 2014)
+extends: existence
+message: "Filter word '%s' — can you place the reader directly in the experience?"
+level: suggestion
+ignorecase: true
+tokens:
+  # POV perception filters (Browne/King: "filtering" chapter)
+  - \bnoticed\b
+  - \bwatched\b
+  - \bobserved\b
+  - \bperceived\b
+
+  # Cognitive distance filters (Kennedy: deep POV)
+  - \brealized\b
+  - \bwondered\b
+  - \bdecided\b
+  - \bremembered\b
+  - \brecognized\b
+
+  # Telling emotion markers (Stein: show don't tell)
+  - \bseemed\b
+  - \bappeared to\b
+
+  # Pacing disruptors (Browne/King)
+  - \bsuddenly\b
+  - \bquickly\b
+  - \binstantly\b
+  - \bimmediately\b
+  - \babruptly\b
+
+  # Weak fiction intensifiers
+  - \bjust\b
+  - \bonly just\b
+  - \bsomehow\b
+  - \bsomeway\b

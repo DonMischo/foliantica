@@ -141,13 +141,7 @@ tokens:
   - \blo expliqué\b
   - \blos expliqué\b
 
-  # --- Perspectivas-coletilla (Grijelmo) ---
-  # Hedging personal innecesario que resta autoridad al texto.
-  - \bdesde mi punto de vista\b
-  - \ben mi opinión\b
-  - \ba mi modo de ver\b
-  - \ba mi entender\b
-  - \ba mi juicio\b
-  - \bpersonalmente creo\b
+  # NOTE: el hedging personal ("desde mi punto de vista", etc.) se ha retirado de aquí —
+  # ya está cubierto en WeaselWords.yml; mantenerlo en ambos archivos generaba doble alerta.
   - \bpersonalmente pienso\b
   - \bpersonalmente considero\b

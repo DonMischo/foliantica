@@ -7,7 +7,9 @@ Tests for scenes.py extras — version management, mention stats, writing log, g
   - TestMentionsRescan   — POST /api/projects/{id}/mentions/rescan
   - TestWritingLog       — GET /api/projects/{id}/writing-log, /api/writing-log
   - TestGhostTexts       — GET /api/projects/{id}/ghost-texts
+  - TestScanMentions     — unit tests for _scan_mentions (pure function)
 """
+import json
 import pytest
 
 
@@ -436,7 +438,7 @@ class TestSceneDeleteCascade:
     """SceneVersion.scene_id has ondelete="CASCADE" — deleting a scene must
     remove all its versions."""
 
-    def test_delete_scene_removes_its_versions(self, client, chapter, db):
+    def test_delete_scene_removes_its_versions(self, client, chapter, db):  # noqa: keep
         from models import SceneVersion
 
         scene = client.post("/api/scenes", json={
@@ -464,3 +466,109 @@ class TestSceneDeleteCascade:
             .count()
         )
         assert versions_after == 0
+
+
+# ── _scan_mentions unit tests ─────────────────────────────────────────────────
+
+class TestScanMentions:
+    """Unit tests for the _scan_mentions pure function.
+
+    Tests against CodexEntry-like objects (using types.SimpleNamespace so we
+    don't need a running DB).
+    """
+
+    from types import SimpleNamespace
+
+    def _entry(self, id: int, name: str, aliases: list[str] | None = None) -> object:
+        from types import SimpleNamespace
+        return SimpleNamespace(
+            id=id,
+            name=name,
+            aliases=json.dumps(aliases) if aliases is not None else None,
+        )
+
+    def _scan(self, content: str, entries: list) -> dict:
+        from routers.scenes import _scan_mentions
+        return _scan_mentions(content, entries)
+
+    def test_no_entries_returns_empty(self):
+        assert self._scan("<p>Clara walked home.</p>", []) == {}
+
+    def test_basic_name_match(self):
+        entry = self._entry(1, "Clara")
+        r = self._scan("<p>Clara walked home.</p>", [entry])
+        assert r == {1: 1}
+
+    def test_case_insensitive_match(self):
+        entry = self._entry(1, "Clara")
+        r = self._scan("<p>clara walked home.</p>", [entry])
+        assert r == {1: 1}
+
+    def test_multiple_occurrences_counted(self):
+        entry = self._entry(1, "Sam")
+        r = self._scan("<p>Sam saw Sam. Sam laughed.</p>", [entry])
+        assert r == {1: 3}
+
+    def test_alias_matched(self):
+        entry = self._entry(1, "Samuel", ["Sam", "Sammy"])
+        r = self._scan("<p>Sam walked by.</p>", [entry])
+        assert r == {1: 1}
+
+    def test_name_and_alias_both_counted(self):
+        entry = self._entry(1, "Samuel", ["Sam"])
+        r = self._scan("<p>Samuel saw Sam later.</p>", [entry])
+        assert r == {1: 2}
+
+    def test_html_stripped_before_matching(self):
+        entry = self._entry(1, "Clara")
+        # Name split across tags would not be a valid match in the original HTML
+        r = self._scan("<p><strong>Clara</strong> walked home.</p>", [entry])
+        assert r == {1: 1}
+
+    def test_no_match_returns_zero_count_omitted(self):
+        entry = self._entry(1, "Bilbo")
+        r = self._scan("<p>Clara walked home.</p>", [entry])
+        assert 1 not in r
+
+    def test_word_boundary_prevents_substring_match(self):
+        # "Sam" should not match inside "Samuel" or "Samurai"
+        entry = self._entry(1, "Sam")
+        r = self._scan("<p>Samuel and Samurai live here.</p>", [entry])
+        assert 1 not in r
+
+    def test_special_regex_chars_in_name_handled(self):
+        # Names like "J.R.R. Tolkien" contain dots that would break an unescaped regex.
+        entry = self._entry(1, "J.R.R. Tolkien")
+        r = self._scan("<p>J.R.R. Tolkien wrote the book.</p>", [entry])
+        assert r == {1: 1}
+
+    def test_name_with_parentheses_escaped(self):
+        entry = self._entry(1, "The One (Ring)")
+        r = self._scan("<p>They feared The One (Ring) above all.</p>", [entry])
+        assert r == {1: 1}
+
+    def test_entry_with_no_aliases_json_null(self):
+        # aliases=None in DB — should not crash
+        entry = self._entry(1, "Miya", aliases=None)
+        r = self._scan("<p>Miya smiled.</p>", [entry])
+        assert r == {1: 1}
+
+    def test_entry_with_empty_aliases_list(self):
+        entry = self._entry(1, "Lena", aliases=[])
+        r = self._scan("<p>Lena arrived.</p>", [entry])
+        assert r == {1: 1}
+
+    def test_multiple_entries_independently_counted(self):
+        e1 = self._entry(1, "Clara")
+        e2 = self._entry(2, "Miya")
+        r = self._scan("<p>Clara met Miya. Clara waved.</p>", [e1, e2])
+        assert r == {1: 2, 2: 1}
+
+    def test_empty_content_returns_empty(self):
+        entry = self._entry(1, "Clara")
+        assert self._scan("", [entry]) == {}
+
+    def test_unicode_name_matched(self):
+        entry = self._entry(1, "Ärger")
+        r = self._scan("<p>Ärger war groß.</p>", [entry])
+        assert r == {1: 1}

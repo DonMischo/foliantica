@@ -1,0 +1,20 @@
+# Dialogverber udover «sagde/spurgte» — said-bookisms på dansk.
+extends: existence
+message: "Dialogtag '%s' — «sagde» eller «spurgte» er ofte mere usynligt; eller brug en handling."
+level: suggestion
+ignorecase: true
+tokens:
+  - \budbrød\b
+  - \bråbte\b
+  - \bbrølte\b
+  - \bhviskede\b
+  - \bmumlede\b
+  - \bsusede\b
+  - \bknurrede\b
+  - \bstønnede\b
+  - \bsukkede\b
+  - \bgrinede\b
+  - \bfnisede\b
+  - \bhånlo\b
+  - \bforpustede\b
+  - \bhostede\b

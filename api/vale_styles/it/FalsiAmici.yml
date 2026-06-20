@@ -88,11 +88,5 @@ tokens:
   - \bil fatto che\b
   - \bil fatto di\b
 
-  # --- Prospettive-copertina (Serianni: non indebolire la propria voce) ---
-  - \ba mio avviso\b
-  - \ba mio parere\b
-  - \bsecondo me\b
-  - \bdal mio punto di vista\b
-  - \bpersonalmente ritengo\b
-  - \bpersonalmente credo\b
-  - \bpersonalmente penso\b
+  # NOTE: il hedging personale ("a mio avviso", ecc.) è stato rimosso da qui —
+  # è già coperto in WeaselWords.yml; mantenerlo in entrambi i file generava doppio avviso.

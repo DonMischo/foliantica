@@ -67,7 +67,5 @@ tokens:
   - \bkompromitterer systemet\b
 
   # --- Perspektivdekning (Vinje: stå bak teksten din) ---
-  - \bjeg er av den oppfatning at\b
-  - \bjeg er av den mening at\b
-  - \bPersonlig mener jeg\b
-  - \bEtter min mening\b
+  # NOTE: perspektivdekning ("personlig mener jeg" osv.) er fjernet herfra —
+  # allerede dekket i WeaselWords.yml; å ha det i begge filene ga dobbel advarsel.

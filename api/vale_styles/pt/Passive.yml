@@ -9,11 +9,9 @@ level: suggestion
 ignorecase: true
 tokens:
   # --- Passiva perifrástica com "ser" (Cunha/Cintra: o passivo pesa no estilo) ---
-  # Pretérito perfeito / imperfeito (os mais frequentes)
-  - \bfoi\b
-  - \bforam\b
-  - \bera\b
-  - \beram\b
+  # NOTE: "foi/foram" (idênticos ao pretérito de "ir", ativo), "era/eram" e o presente
+  # "é/são" foram retirados — são os verbos copulativos mais comuns do português
+  # ("Ela é médica", "Ela era médica" — ambos ativos) e geram falsos positivos massivos.
 
   # Pretérito mais-que-perfeito
   - \btinha sido\b
@@ -33,10 +31,6 @@ tokens:
   - \bseria\b
   - \bseriam\b
 
-  # Presente do indicativo
-  - \bé\b
-  - \bsão\b
-
   # --- Passiva perifrástica com "estar" + gerúndio (Moreno: calco do inglês progressivo) ---
   # "O projeto está sendo analisado" — criticado por gramáticos normativos,
   # especialmente em Portugal; aceite coloquialmente no Brasil.
@@ -47,6 +41,5 @@ tokens:
   - \bestará sendo\b
   - \bestarão sendo\b
 
-  # --- Passiva com "ficar" (construção popular) ---
-  - \bficou\b
-  - \bficaram\b
+  # NOTE: a passiva com "ficar" (ficou/ficaram) foi retirada — "ficar" também significa
+  # "permanecer" ou "tornar-se" em construções totalmente ativas (ex. "ficou contente").

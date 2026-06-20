@@ -55,6 +55,7 @@ if [ -d "web/.next/standalone/web" ]; then
 else
   cp -r web/.next/standalone .next-standalone
 fi
+cp web/server-wrapper.js .next-standalone/server-wrapper.js
 ok "Next.js standalone staged → .next-standalone/"
 
 # ── Step 3 — FastAPI / PyInstaller ───────────────────────────────────────────

@@ -1,0 +1,51 @@
+# Said-bookisms — attribution verbs beyond "said" and "asked".
+# Sources:
+#   - Elmore Leonard: "10 Rules of Writing" (William Morrow, 2007), Rule 3
+#   - Stephen King: "On Writing" (Scribner, 2000), chapter on dialogue
+#   - Ursula K. Le Guin: "Steering the Craft" (Eighth Mountain Press, 1998)
+extends: existence
+message: "Dialog tag '%s' — consider 'said' or 'asked', or drop the tag and use action."
+level: suggestion
+ignorecase: true
+tokens:
+  # Voiced performance verbs (King: "said is nearly invisible")
+  - \bexclaimed\b
+  - \bdeclared\b
+  - \bannounced\b
+  - \bproclaimed\b
+  - \buttered\b
+
+  # Volume-marked verbs
+  - \bscreamed\b
+  - \bshrieked\b
+  - \byelled\b
+  - \bshouted\b
+  - \bbarked\b
+  - \bbellowed\b
+  - \bwhispered\b
+  - \bmurmured\b
+  - \bmuttered\b
+  - \bhissed\b
+
+  # Emotional-colour verbs (Le Guin: "avoid theatrics")
+  - \bsnarled\b
+  - \bgrowled\b
+  - \bsnapped\b
+  - \bspat\b
+  - \bgrumbled\b
+  - \bwailed\b
+  - \bmoaned\b
+  - \bgroaned\b
+  - \bchuckled\b
+  - \bgiggled\b
+  - \blaughed\b
+  - \bsnorted\b
+  - \bscoffed\b
+  - \bsneered\b
+
+  # Physiologically implausible tags (Leonard: rule 3)
+  - \bbreathed\b
+  - \bgasped\b
+  - \bpanted\b
+  - \bcoughed\b
+  - \bsighed\b

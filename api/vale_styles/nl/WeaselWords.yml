@@ -11,23 +11,13 @@ level: warning
 ignorecase: true
 tokens:
   # --- Verzwakkende intensiverders (Renkema; Pander Maat) ---
-  - \bzeeer\b
-  - \bveel\b
-  - \berg\b
-  - \bheel\b
+  - \bzeer\b
   - \bhelemaal\b
   - \bvolkomen\b
   - \bvolstrekt\b
   - \babsoluut\b
-  - \bbepald\b
+  - \bbepaald\b
   - \bbeslist\b
-  - \bzeker\b
-  - \bwerkelijk\b
-  - \becht\b
-  - \bgewoon\b
-  - \bgewoonweg\b
-  - \bprecies\b
-  - \bjuist\b
   - \benorm\b
   - \bongelooflijk\b
   - \bfantastisch\b
@@ -36,19 +26,16 @@ tokens:
   - \bveruit\b
 
   # --- Lege evidentieclaims (Renkema; Genootschap Onze Taal) ---
-  - \bevidently\b
   - \bevident\b
   - \bduidelijk\b
   - \bklaarblijkelijk\b
   - \bkennelijk\b
-  - \bklaarblijkelijk\b
   - \bonmiskenbaar\b
   - \bontegenzeggelijk\b
   - \bvanzelfsprekend\b
   - \bnatuurlijk\b
   - \blogischerwijs\b
   - \bogenschijnlijk\b
-  - \bkennelijk\b
   - \bwelbekend\b
   - \bhet spreekt vanzelf dat\b
   - \bhet is duidelijk dat\b
@@ -58,31 +45,16 @@ tokens:
   - \bhet is een feit dat\b
 
   # --- Containerbegrippen / loze woorden (Renkema; Pander Maat) ---
-  - \bding\b
   - \bzaak\b
   - \baspect\b
   - \bdimensie\b
   - \bproblematiek\b
   - \bthematiek\b
   - \bkwestie\b
-  - \bpunt\b
-  - \bcontext\b
-  - \bsector\b
-  - \bdomein\b
-  - \bniveau\b
-  - \bkader\b
   - \bpanorama\b
-  - \bscenario\b
-  - \bsituatie\b
-  - \bconjunctuur\b
-  - \bfeit\b
 
   # --- Vage kwantificeerders (Renkema; ANS) ---
-  - \benkele\b
-  - \bverschillende\b
   - \bdiverste\b
-  - \btalrijke\b
-  - \bmeerdere\b
   - \bvelerlei\b
   - \been aantal\b
   - \been reeks van\b
@@ -104,7 +76,6 @@ tokens:
   # --- Tijdvullers (Renkema; Pander Maat) ---
   - \bop dit moment\b
   - \bop het moment\b
-  - \btegenwoordig\b
   - \btegenwoordige tijd\b
   - \bheden ten dage\b
   - \bthans\b
@@ -116,34 +87,3 @@ tokens:
   - \bop korte termijn\b
   - \bop middellange termijn\b
   - \bop lange termijn\b
-  - \bbinnenkort\b
-
-  # --- Bureaucratische vullers (Renkema; NTU) ---
-  - \bin het kader van\b
-  - \bmet betrekking tot\b
-  - \bten aanzien van\b
-  - \bwat betreft\b
-  - \baangaande\b
-  - \bbetreffende\b
-  - \binzake\b
-  - \bter zake van\b
-  - \bopgemerkt dient te worden dat\b
-  - \bvermeld dient te worden dat\b
-  - \bgesteld kan worden dat\b
-  - \bgewezen wordt op het feit dat\b
-  - \bhet zij opgemerkt dat\b
-  - \bhet zij vermeld dat\b
-  - \bin dit verband\b
-  - \bin dit kader\b
-  - \bin dit opzicht\b
-  - \bte dien aanzien\b
-
-  # --- Perspectiefdekking (Renkema: versterk je eigen stem) ---
-  - \bnaar mijn mening\b
-  - \bnaar mijn idee\b
-  - \bnaar mijn oordeel\b
-  - \bvanuit mijn perspectief\b
-  - \bpersoonlijk vind ik\b
-  - \bpersoonlijk denk ik\b
-  - \bik ben van mening dat\b
-  - \bik ben van oordeel dat\b

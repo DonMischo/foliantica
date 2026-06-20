@@ -11,8 +11,8 @@ level: warning
 ignorecase: true
 tokens:
   # --- Abschwächer / Hedges (Schneider: "Weichmacher") ---
-  - \beigentlich\b
-  - \birgendwie\b
+  # NOTE: "eigentlich" und "irgendwie" entfernt — zu häufig in normaler Prosa,
+  # um als verlässliches Signal zu taugen (existence-Regel kann Häufung nicht erkennen).
   - \bgewissermaßen\b
   - \bsozusagen\b
   - \bquasi\b
@@ -25,14 +25,8 @@ tokens:
   - \bauf gewisse Weise\b
 
   # --- Intensifier, die paradoxerweise abschwächen (Schneider; Reiners) ---
-  - \bwirklich\b
-  - \becht\b
-  - \bsehr\b
-  - \babsolut\b
-  - \btotal\b
-  - \bvöllig\b
-  - \bgänzlich\b
-  - \bvollkommen\b
+  # NOTE: "wirklich/echt/sehr/absolut/total/völlig/gänzlich/vollkommen" entfernt —
+  # zu häufig in normaler Prosa und oft inhaltlich berechtigt (echter Gradmesser).
   - \bregelrecht\b
   - \bgeradezu\b
   - \bschier\b
@@ -45,42 +39,28 @@ tokens:
   - \bnachhaltig\b
 
   # --- Selbstverständlichkeiten (Schneider; Sick) ---
-  - \bnatürlich\b
-  - \bselbstverständlich\b
-  - \boffensichtlich\b
-  - \boffenbar\b
+  # NOTE: "natürlich/selbstverständlich/offensichtlich/offenbar/bekanntlich" entfernt —
+  # zu häufig als neutrale Konnektoren in normaler Prosa.
   - \boffenkundig\b
   - \baugenscheinlich\b
-  - \bbekanntlich\b
   - \bzweifellos\b
   - \bzweifelsohne\b
   - \bfreilich\b
   - \bunbestreitbar\b
 
   # --- Vage Mengenangaben (Schneider; Reiners) ---
-  - \beinige\b
-  - \bmehrere\b
-  - zahlreiche
-  - diverse
-  - verschiedene
-  - \bgewisse\b
-  - \bbestimmte\b
-  - \bmancherlei\b
-  - \bvielerlei\b
-  - \bnicht selten\b
-  - \bdes Öfteren\b
-  - \bhin und wieder\b
-  - \bmehr oder weniger\b
+  # NOTE: ganze Kategorie entfernt — "einige/mehrere/zahlreiche/diverse/verschiedene/
+  # gewisse/bestimmte" sind normale, oft präzise Quantifikatoren; eine existence-Regel
+  # kann nicht zwischen vager Floskel und sachlich korrekter Mengenangabe unterscheiden.
 
   # --- Epistemische Hedges / vage Wahrscheinlichkeit (Sick; Schneider) ---
+  # NOTE: "dürfte/eventuell/vielleicht/möglicherweise" entfernt — neutrale Modalwörter,
+  # die in fast jedem Text legitim vorkommen. Behalten: Wörter, die unbelegte
+  # Behauptungen kennzeichnen (enger gefasstes, selteneres Signal).
   - anscheinend
   - scheinbar
   - \bvermeintlich\b
   - \bangeblich\b
-  - \bdürfte\b
-  - \beventuell\b
-  - \bvielleicht\b
-  - \bmöglicherweise\b
   - \bunter Umständen\b
   - \bim Zweifel\b
   - \bim Großen und Ganzen\b
@@ -121,27 +101,23 @@ tokens:
   - \bim Falle\b
 
   # --- Floskeln / bedeutungsarmes Framing (Schneider; Reiners) ---
+  # NOTE: "normalerweise/gewöhnlich/übrigens" entfernt — neutrale, häufige Konnektoren.
   - \bletztendlich\b
   - \bletzten Endes\b
   - \bim Endeffekt\b
   - \bgrundsätzlich\b
   - \bim Wesentlichen\b
-  - \bnormalerweise\b
-  - \bgewöhnlich\b
   - \bin diesem Zusammenhang\b
   - \bnichtsdestotrotz\b
   - \bnichtsdestoweniger\b
   - \binfolgedessen\b
-  - \bübrigens\b
 
   # --- Vage Approximatoren (Schneider) ---
-  - \bziemlich\b
+  # NOTE: "ziemlich/relativ" entfernt — sehr häufige, neutrale Gradangaben.
   - \beinigermaßen\b
   - \bweitgehend\b
   - \bvergleichsweise\b
-  - \brelativ\b
   - \bin etwa\b
-  - \bletzten Endes\b
 
   # --- Relativierungswörter (Sick; Schneider) ---
   - \bsogenannt\b

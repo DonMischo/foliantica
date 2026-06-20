@@ -1,0 +1,34 @@
+# Verbes de dialogue au-delà de « dit/demanda » — said-bookisms en français.
+extends: existence
+message: "Verbe de dialogue '%s' — « dit » ou « demanda » est souvent plus discret ; sinon, remplacer par une action."
+level: suggestion
+ignorecase: true
+tokens:
+  # Marqueurs de volume
+  - \bs'écria\b
+  - \bcria\b
+  - \bhurla\b
+  - \bvociféra\b
+  - \bchuchota\b
+  - \bmarmonna\b
+  - \bmurmu[r]a\b
+  - \bsouffla\b
+  - \bsiffla\b
+
+  # Verbes émotionnellement chargés
+  - \bgronda\b
+  - \bgrogna\b
+  - \baboya\b
+  - \bgémit\b
+  - \bplaignit\b
+  - \bsoupira\b
+  - \bgloussa\b
+  - \brit\b
+  - \bricanit\b
+  - \bnarqua\b
+  - \brailla\b
+
+  # Verbes physiologiquement douteux
+  - \bhaleta\b
+  - \bsouffla\b
+  - \btoussa\b

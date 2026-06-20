@@ -1,0 +1,33 @@
+# Palavras-filtro — verbos de distância na ficção narrativa.
+extends: existence
+message: "Palavra-filtro '%s' — pode colocar o leitor diretamente na experiência?"
+level: suggestion
+ignorecase: true
+tokens:
+  # Filtros cognitivos de distância
+  - \bpercebeu\b
+  - \breconheceu\b
+  - \bcompreendeu\b
+  - \bdecidiu\b
+  - \bperguntou-se\b
+  - \brecordou\b
+  - \bse lembrou\b
+
+  # Filtros de aparência
+  - \bpareceu\b
+  - \bparecia\b
+  - \btinha a aparência\b
+
+  # Disruptores de ritmo
+  - \bde repente\b
+  - \bde súbito\b
+  - \bde chofre\b
+  - \bimediatamente\b
+  - \binstantaneamente\b
+  - \bbruscamente\b
+  - \bsubitamente\b
+
+  # Enfraquecedores narrativos
+  - \bde alguma forma\b
+  - \bde algum modo\b
+  - \bde certa maneira\b

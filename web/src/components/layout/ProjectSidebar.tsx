@@ -20,6 +20,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useCollabStore } from "@/store/collabStore";
+import { PresenceBar } from "@/components/collab/PresenceBar";
 import { ScenePlanPopover } from "./ScenePlanPopover";
 import { useQueryClient } from "@tanstack/react-query";
 import { scenesApi, syncApi } from "@/lib/api";
@@ -83,6 +85,13 @@ function SceneItem({
   const { t } = useLanguage();
   const style = { transform: CSS.Transform.toString(transform), transition };
 
+  // Presence dots — other sessions currently viewing this scene
+  const presence    = useCollabStore((s) => s.presence);
+  const mySessionId = useCollabStore((s) => s.mySessionId);
+  const presenceDots = presence.filter(
+    (r) => r.item_type === "scene" && r.item_id === scene.id && r.session_id !== mySessionId
+  );
+
   return (
     <div
       ref={setNodeRef}
@@ -113,6 +122,14 @@ function SceneItem({
         {scene.scene_time && Object.keys(scene.scene_time).length > 0 && (
           <Clock className="h-2.5 w-2.5 shrink-0 text-primary/60" aria-label="Has scene time" />
         )}
+        {presenceDots.map((r) => (
+          <span
+            key={r.session_id}
+            className="h-1.5 w-1.5 rounded-full shrink-0"
+            style={{ backgroundColor: r.color }}
+            title={r.display_name}
+          />
+        ))}
       </Link>
       <ScenePlanPopover sceneId={scene.id} sceneTitle={scene.title || ""} sceneType={scene.scene_type} />
       <button
@@ -460,8 +477,10 @@ export function ProjectSidebar({ projectId }: Props) {
       subplotPaletteColor(scene.subplot)
     );
   }, [barMode, codexColorById, codexColorByName, project?.main_plot_color, storedColColors]);
-  const { data: syncStatus }  = useSyncStatus();
+  const { data: syncStatus }    = useSyncStatus();
+  const collabConnected         = useCollabStore((s) => s.connected);
   const [syncing, setSyncing] = useState(false);
+
 
   const handleSyncNow = async () => {
     setSyncing(true);
@@ -499,11 +518,26 @@ export function ProjectSidebar({ projectId }: Props) {
   return (
     <aside className="flex flex-col h-full w-64 border-r border-border bg-card">
       <div className="flex items-center justify-between px-3 py-3 border-b border-border">
-        <Link href="/" className="flex items-center gap-2 font-semibold text-sm hover:text-primary transition-colors">
-          <img src="/icon.svg" alt="" className="h-4 w-4" />
-          Foliantica
-        </Link>
+        <div className="flex flex-col min-w-0">
+          <Link href="/" className="flex items-center gap-2 font-semibold text-sm hover:text-primary transition-colors">
+            <img src="/icon.svg" alt="" className="h-4 w-4" />
+            Foliantica
+          </Link>
+        </div>
+        {/* Live / Offline indicator — only shown when co-work WS is active */}
+        {collabConnected && (
+          <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-medium">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            </span>
+            Live
+          </span>
+        )}
       </div>
+
+      {/* Presence strip — avatar chips for other connected sessions */}
+      {collabConnected && <PresenceBar hostName={project?.book_meta?.author || undefined} />}
 
       <div className="flex items-center justify-between px-3 py-2 text-xs text-muted-foreground uppercase tracking-wider">
         <span>{t("nav_story")}</span>

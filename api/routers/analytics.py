@@ -4,14 +4,14 @@ All computation is done in pure Python on the stored HTML content;
 no extra dependencies beyond the stdlib.
 """
 import re
-from collections import Counter, defaultdict
+from collections import Counter
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, text
+from sqlalchemy import text
 from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
-from models import Project, Act, Chapter, Scene, CodexEntry, WritingLog
+from models import Project, Act, Chapter, Scene
 from schemas import ProjectAnalytics, SceneAnalytics, ChapterAnalytics
 
 router = APIRouter(prefix="/api", tags=["analytics"])

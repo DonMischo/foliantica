@@ -1,0 +1,39 @@
+# Dialogverben jenseits von "sagte/fragte" — Said-Bookisms im Deutschen.
+# Quellen:
+#   - Wolf Schneider: "Speak German!" (Rowohlt, 2008)
+#   - Elmore Leonard / Stephen King: Dialogregeln (dt. Rezeption)
+extends: existence
+message: "Dialogtag '%s' — 'sagte' oder 'fragte' ist meist unsichtbarer; oder Aktion statt Tag."
+level: suggestion
+ignorecase: true
+tokens:
+  # Lautstärke-Marker
+  - \brief\b
+  - \bschrie\b
+  - \bbrüllte\b
+  - \bkreischte\b
+  - \bjaulte\b
+  - \bflüsterte\b
+  - \bmurmelte\b
+  - \bbrummte\b
+  - \bzischte\b
+
+  # Emotionsgefärbte Verben
+  - \bknurrte\b
+  - \bschnappte\b
+  - \bfauchte\b
+  - \bstöhnte\b
+  - \bwimmerte\b
+  - \bklagte\b
+  - \bseufzte\b
+  - \bkicherte\b
+  - \blachte\b
+  - \bschnaubte\b
+  - \bhöhnte\b
+  - \bspottete\b
+
+  # Physiologisch fragwürdige Sprechverben
+  - \bkeuchte\b
+  - \bschnaufte\b
+  - \bröchelte\b
+  - \bhustete\b

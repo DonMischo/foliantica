@@ -106,11 +106,5 @@ tokens:
   - \bmídias sociais\b
   - \bmídia social\b
 
-  # --- Perspectivas-cobertura (Moreno: não enfraquecer a própria voz) ---
-  - \bao meu ver\b
-  - \bno meu entender\b
-  - \bdo meu ponto de vista\b
-  - \bna minha opinião\b
-  - \bpessoalmente entendo\b
-  - \bpessoalmente creio\b
-  - \bpessoalmente penso\b
+  # NOTE: o hedging pessoal ("ao meu ver", etc.) foi removido daqui —
+  # já está coberto em WeaselWords.yml; mantê-lo em ambos os ficheiros gerava alerta duplicado.

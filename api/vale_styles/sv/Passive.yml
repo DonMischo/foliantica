@@ -21,7 +21,7 @@ tokens:
   - \bsänds\b
   - \bskickas\b
   - \bkallas\b
-  - \bfinns\b
+  # NOTE: "finns" har tagits bort — det betyder "existerar/there is" och är inte passiv.
 
   # --- s-passiv, preteritum (Strömquist) ---
   - \bskrevs\b
@@ -35,19 +35,13 @@ tokens:
   - \bhölls\b
 
   # --- Bli-passiv (Myndigheternas; Hellspong/Ledin) ---
-  - \bbli\b
-  - \bblir\b
-  - \bblev\b
-  - \bblivit\b
+  # NOTE: "bli/blir/blev/blivit" har tagits bort som fristående tokens — "bli" betyder
+  # även "bli + adjektiv" (t.ex. "blir trött", aktivt) och är extremt vanligt.
+  # Endast de smalare, mindre ambivalenta frasformerna behålls.
   - \bska bli\b
   - \bkommer att bli\b
 
-  # --- Vara-passiv / tillståndspassiv (Hellspong/Ledin; Strömquist) ---
-  # "är" starts with ä (non-ASCII) — drop left \b
-  - är\b
-  - \bvar\b
-  - \bvore\b
-  - \bvarit\b
-
-  # --- Man-konstruktion (Myndigheternas: undvik "man") ---
-  - \bman\b
+  # NOTE: vara-passiv (är/var/vore/varit) och man-konstruktionen har tagits bort helt —
+  # "är"/"var" är de vanligaste kopulorna i svenskan och kan inte skiljas från
+  # "vara + adjektiv" (aktivt) utan lookahead, vilket RE2 inte stöder. "man" är
+  # dessutom inte passiv röst utan aktiv röst med opersonligt subjekt.

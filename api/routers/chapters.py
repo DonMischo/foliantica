@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
@@ -9,10 +9,27 @@ router = APIRouter(tags=["chapters"])
 
 
 @router.get("/api/acts/{act_id}/chapters", response_model=list[ChapterOut])
-def list_chapters(act_id: int, db: Session = Depends(get_db)):
+def list_chapters(act_id: int, request: Request, db: Session = Depends(get_db)):
     if not db.get(Act, act_id):
         raise HTTPException(404, "Act not found")
-    return db.query(Chapter).filter(Chapter.act_id == act_id).order_by(Chapter.order_index).all()
+    chapters = db.query(Chapter).filter(Chapter.act_id == act_id).order_by(Chapter.order_index).all()
+
+    if getattr(request.state, "collab_hide_unassigned", False):
+        allowed = set(getattr(request.state, "collab_assigned_scene_ids", []))
+        if allowed:
+            visible_chapter_ids = {
+                row[0] for row in (
+                    db.query(Chapter.id)
+                    .join(Scene, Scene.chapter_id == Chapter.id)
+                    .filter(Chapter.act_id == act_id, Scene.id.in_(allowed))
+                    .all()
+                )
+            }
+            chapters = [c for c in chapters if c.id in visible_chapter_ids]
+        else:
+            chapters = []
+
+    return chapters
 
 
 @router.post("/api/chapters", response_model=ChapterOut, status_code=201)

@@ -23,15 +23,10 @@ tokens:
   - \beut été\b
   - \beurent été\b
 
-  # Présent (est/sont + participe)
-  - \best [a-zàâäéèêëîïôùûüÿç]+é\b
-  - \best [a-zàâäéèêëîïôùûüÿç]+ie\b
-  - \bsont [a-zàâäéèêëîïôùûüÿç]+és\b
-  - \bsont [a-zàâäéèêëîïôùûüÿç]+ées\b
-
-  # Imparfait (était/étaient)
-  - \bétait\b
-  - \bétaient\b
+  # NOTE: présent (est/sont + participe) et imparfait (était/étaient) ont été retirés —
+  # ces formes sont identiques au passif statif ET à "être + adjectif" (ex. « est fatigué »,
+  # « était content »), ce qui produit trop de faux positifs sans possibilité de
+  # désambiguïsation par expression régulière (RE2 ne supporte pas le lookahead).
 
   # Futur (sera/seront)
   - \bsera\b

@@ -288,6 +288,17 @@
   transition: background-color 0.15s;
 }
 
+/* Comment highlight marks */
+.comment-highlight {
+  border-radius: 2px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.comment-highlight:hover {
+  opacity: 0.75;
+}
+
 .codex-highlight:hover {
   opacity: 0.85;
 }
