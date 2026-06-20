@@ -15,6 +15,8 @@ Foliantica is a **local-first, all-in-one writing studio** — manuscript editor
 - 📤 **Submission-ready.** One click generates manuscripts formatted for 38+ publishers and agents, downloaded as a ZIP.
 - ☁️ **Optional sync.** Point the data folder at Dropbox, Google Drive, or OneDrive — that's all it takes.
 - 💬 **A second opinion when everyone else is busy.** Chat about your plot, ask if a scene lands, brainstorm a name — the AI knows your characters and your world, but the story is still yours to write.
+- 👥 **Co-work.** Invite a writing partner, editor, or student over the local network or internet — they get their own role, their own access level, and their comments appear live in your editor.
+- 🔎 **Prose checker.** Structural feedback on your writing: sentence variety, dialogue ratio, passive voice, weasel words, and more — powered by Vale with multilingual fiction rule sets.
 
 → [See the full feature list](#features)
 
@@ -95,6 +97,36 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 - **Stack groups** — scenes sharing a stack value move as one unit
 - Cards show synopsis, word count, POV character, and beat label
 - Free-canvas mode with React Flow positions
+
+### 👥 Co-work
+
+- **Invite a guest** with a named invitation link — share it over the network or open a Cloudflare Tunnel for internet access (no port-forwarding required)
+- **QR code** in Settings → Co-work for easy mobile join
+- **Role-based access modes**: Read-only, Appearance-only, Assigned scenes, Editor, and full access
+- **Editor role** — full write access to assigned scenes; saves go directly to the author's database
+- **Student mode** — restrict a guest to specific scenes; teacher sees all sessions in a dashboard
+- **Inline comments** — guests (and the author) highlight any passage and leave a threaded note; comments appear as coloured overlays in the editor
+- **Comment categories** — tag annotations as Question, Suggestion, Correction, or Praise; filter by category with the pill bar
+- **Live presence** — avatars appear in the toolbar when a guest is viewing the same scene
+- **Scene soft-locks** — a gentle indicator when two people are editing the same scene at the same time
+- **Real-time push** — edits, presence, and comments sync via WebSocket; no polling
+- **Session management** — see all active guests, kick a session, revoke an invitation at any time
+
+### 🔎 Prose Checker
+
+- **Structural analysis** at a glance: sentence length variance, average sentence length, dialogue ratio, passive-voice rate, and weasel-word density — all shown in the Vale panel
+- **Vale-powered style rules** — a curated fiction rule set covering:
+  - *Passive voice* — flags passive constructions in prose
+  - *Weasel words* — hedging language that weakens sentences
+  - *Buzzwords* — clichéd phrases common in genre fiction
+  - *Nominal style* — verb-turned-nouns that slow pacing
+  - *Redundancy* — pleonastic phrases (e.g. "end result", "past history")
+  - *Adverbs* (German: adverbien) — overused adverbs
+- **Multilingual** — rule sets for English, German, Dutch, Italian, and Polish
+- **Per-entry configuration** — open any rule's entry list, enable/disable individual tokens, or add your own custom entries
+- **Custom rules** — write your own regex-based existence or substitution rules in the Custom section
+- **Jump-to** — click any Vale finding to jump to the exact occurrence in the editor (handles repeated phrases and inflected forms)
+- Runs entirely on your machine via the Vale Docker sidecar; your prose never leaves
 
 ### 📊 Analytics
 
@@ -230,9 +262,11 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 | Frontend | Next.js 14, TypeScript, Tailwind CSS, shadcn/ui |
 | Editor | TipTap v3 — Typography, Underline, TextAlign, TaskList, Table + custom extensions |
 | State | Zustand + TanStack Query v5 |
-| Backend | FastAPI, SQLAlchemy 2.0, SQLite (WAL mode) |
+| Backend | FastAPI, SQLAlchemy 2.0, PostgreSQL 17 / SQLite (WAL) |
 | AI | OpenRouter (any model, proxied via backend) |
 | Export | Markdown, LaTeX, PDF / EPUB / DOCX via Pandoc (Docker sidecar) |
+| Style check | Vale (Docker sidecar) — multilingual fiction rule sets |
+| Co-work | WebSocket event push, JWT guest auth, Cloudflare Tunnel |
 
 ---
 
@@ -243,9 +277,12 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 - **Themes** — Dark, Light, and themed variants
 - **Editor** — paragraph numbers, typewriter mode and offset, session timer
 - **Grammar Check** — enable, set LanguageTool service URL and active languages
+- **Prose / Vale** — enable Vale style check, set service URL, manage rule sets and custom rules
+- **Co-work** — enable guest access, create named invitations, set access modes, open a Cloudflare Tunnel for internet access
 - **PDF/EPUB/DOCX Export** — enable Pandoc service and set its URL
 - **Data folder** — point to Dropbox / Drive / OneDrive for cross-device sync; migrate existing data in one click
 - **AI Prompts** — edit, create, delete, revert built-ins to factory defaults
+- **Codex highlight** — toggle the coloured underline for codex entry names in the editor
 
 ---
 
@@ -286,6 +323,14 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 | Preview an attached image full-size | Hover the image → click ↗ |
 | Preview an attached PDF | Click the PDF button on the card |
 | Move cut prose to Fragments | Fragments tab → Snippets or Archive |
+| Invite a co-worker | Settings → Co-work → New Invitation |
+| Share via internet (no port-forwarding) | Settings → Co-work → Open Cloudflare Tunnel |
+| Leave a comment on a passage | Select text → speech-bubble icon → type comment |
+| Filter comments by category | Comment bar → pick a category pill |
+| Run prose / style check | Vale panel → Run Style Check |
+| Jump to a Vale finding in the editor | Click the finding in the Vale panel |
+| Add your own style rule entry | Vale panel → rule → Configure → Add entry |
+| Toggle codex highlight underlines | Settings → Editor → Codex highlight |
 
 ---
 
@@ -298,7 +343,9 @@ foliantica/
 ├── api/                  # FastAPI backend
 │   ├── routers/          # projects, scenes, codex, time, graph, ai,
 │   │                     #   settings, export, imports, analytics,
-│   │                     #   submissions, research, fragments, grammar
+│   │                     #   submissions, research, fragments, grammar,
+│   │                     #   prose, vale, collab, comments, sync,
+│   │                     #   scene_commands, achievements
 │   ├── services/         # Tag parsing, AI streaming, export renderers
 │   ├── models.py         # SQLAlchemy ORM models
 │   ├── schemas.py        # Pydantic request/response schemas
