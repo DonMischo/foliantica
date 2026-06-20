@@ -1,0 +1,38 @@
+# Mots-filtres — verbes de distance en écriture fictionnelle.
+# Sources:
+#   - Renni Browne & Dave King: "Self-Editing for Fiction Writers"
+#   - Romain Sardou: conseils sur le point de vue narratif
+extends: existence
+message: "Mot-filtre '%s' — peut-on plonger le lecteur directement dans l'expérience ?"
+level: suggestion
+ignorecase: true
+tokens:
+  # Filtres cognitifs de distance
+  - \bréalisa\b
+  - \bse rendit compte\b
+  - \breconnut\b
+  - \bcomprit\b
+  - \bdécida\b
+  - \bse demanda\b
+  - \bse souvint\b
+  - \bse rappela\b
+
+  # Filtres d'apparence
+  - \bsembla\b
+  - \bparut\b
+  - \bavait l'air\b
+
+  # Briseurs de rythme
+  - \bsoudain\b
+  - \bsoudainement\b
+  - \btout à coup\b
+  - \bd'un coup\b
+  - \bimmédiatement\b
+  - \binstantanément\b
+  - \bbrusquement\b
+  - \babruptement\b
+
+  # Affaiblisseurs narratifs
+  - \bd'une certaine façon\b
+  - \bd'une certaine manière\b
+  - \ben quelque sorte\b

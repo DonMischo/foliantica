@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, AlertTriangle, Info, Loader2, Copy, Check, X } from "lucide-react";
+import { AlertCircle, AlertTriangle, Info, Loader2, Copy, Check, X, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ValeAlert } from "@/lib/api";
-import { useValeCheck } from "@/store/queries";
+import { useValeCheck, useProseCheck } from "@/store/queries";
+import { ProseMetricsDialog } from "./ProseMetricsDialog";
+import { postProcessAlerts, computeValeSkipCount } from "@/lib/vale-utils";
 
 function langName(code: string): string {
   try {
@@ -15,35 +17,6 @@ function langName(code: string): string {
   }
 }
 
-// German articles / relative pronouns that legitimately double up after a comma
-// in relative clauses ("die Frauen, die die Bücher lesen").
-const DE_RELATIVE = new Set([
-  "die", "der", "das", "dem", "den", "des",
-  "welche", "welcher", "welches", "welchem", "welchen",
-  "was", "wer", "wen", "wem",
-]);
-
-// Downgrade Vale.Repetition hits that are almost certainly valid relative-clause
-// constructions rather than true typos.
-function postProcessAlerts(alerts: ValeAlert[], text: string, language: string | undefined): ValeAlert[] {
-  const lang = (language ?? "").toLowerCase().slice(0, 2);
-  if (lang !== "de") return alerts;
-
-  return alerts.map(alert => {
-    if (alert.Check !== "Vale.Repetition") return alert;
-    const word = alert.Match.toLowerCase().split(/\s+/)[0];
-    if (!DE_RELATIVE.has(word)) return alert;
-    // Span is 1-based column into `text`; look for a comma with only whitespace
-    // between it and the start of the repeated word.
-    const offset = alert.Span[0] - 1;
-    const before = text.slice(Math.max(0, offset - 12), offset);
-    const commaIdx = before.lastIndexOf(",");
-    if (commaIdx !== -1 && before.slice(commaIdx + 1).trim() === "") {
-      return { ...alert, Severity: "warning" as const };
-    }
-    return alert;
-  });
-}
 
 // ── Friendly display names for Vale built-in rules ────────────────────────────
 const RULE_LABELS: Record<string, string> = {
@@ -61,7 +34,7 @@ const SEV = {
 
 // ── Alert card ────────────────────────────────────────────────────────────────
 
-function AlertCard({ alert, onJumpTo }: { alert: ValeAlert; onJumpTo?: (matched: string, offset: number) => void }) {
+function AlertCard({ alert, text, onJumpTo }: { alert: ValeAlert; text: string; onJumpTo?: (matched: string, skipCount: number) => void }) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const cfg = SEV[alert.Severity] ?? SEV.suggestion;
@@ -80,7 +53,9 @@ function AlertCard({ alert, onJumpTo }: { alert: ValeAlert; onJumpTo?: (matched:
 
   const handleClick = () => {
     if (hasDetails) setExpanded(e => !e);
-    onJumpTo?.(alert.Match, alert.Span[0] - 1);
+    if (onJumpTo) {
+      onJumpTo(alert.Match, computeValeSkipCount(text, alert));
+    }
   };
 
   // Rule name: e.g. "write-good.Weasel" → show short name "Weasel" + package "write-good"
@@ -151,13 +126,22 @@ interface Props {
   text: string;
   language?: string;
   onClose: () => void;
-  onJumpTo?: (matched: string, offset: number) => void;
+  onJumpTo?: (matched: string, skipCount: number) => void;
 }
 
 const SEVERITIES: ValeAlert["Severity"][] = ["error", "warning", "suggestion"];
 
 export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
   const check = useValeCheck();
+  const prose = useProseCheck();
+  const [metricsOpen, setMetricsOpen] = useState(false);
+
+  const runChecks = () => {
+    check.mutate({ text, language });
+    prose.mutate({ text, language });
+  };
+
+  const isPending = check.isPending || prose.isPending;
 
   const byGroup = postProcessAlerts(check.data?.alerts ?? [], text, language).reduce<Record<string, ValeAlert[]>>(
     (acc, a) => { (acc[a.Severity] ??= []).push(a); return acc; },
@@ -181,10 +165,10 @@ export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
           <Button
             size="sm"
             className="w-full"
-            onClick={() => check.mutate({ text, language })}
-            disabled={check.isPending}
+            onClick={runChecks}
+            disabled={isPending}
           >
-            {check.isPending
+            {isPending
               ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Analysing…</>
               : "Run Style Check"}
           </Button>
@@ -196,18 +180,16 @@ export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
           </p>
         </div>
 
-        {!check.data && !check.isPending && !check.isError && (
+        {!check.data && !isPending && !check.isError && (
           <p className="text-xs text-muted-foreground leading-relaxed">
             Vale checks your prose for style issues using configured rule packages. Click <strong className="text-foreground">Run Style Check</strong> to analyse this scene.
           </p>
         )}
 
-        {check.isPending && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-              Analysing…
-            </div>
+        {isPending && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+            Analysing…
           </div>
         )}
 
@@ -232,7 +214,6 @@ export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
               if (!alerts?.length) return null;
               const cfg = SEV[sev];
 
-              // Group by Check rule so the same rule firing N times collapses into one block
               const byRule = alerts.reduce<Record<string, ValeAlert[]>>((acc, a) => {
                 (acc[a.Check] ??= []).push(a);
                 return acc;
@@ -261,7 +242,7 @@ export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
                             )}
                           </p>
                           <div className="space-y-1.5">
-                            {ruleAlerts.map((a, i) => <AlertCard key={i} alert={a} onJumpTo={onJumpTo} />)}
+                            {ruleAlerts.map((a, i) => <AlertCard key={i} alert={a} text={text} onJumpTo={onJumpTo} />)}
                           </div>
                         </div>
                       );
@@ -272,9 +253,28 @@ export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
             })}
           </>
         )}
+
+        {/* Prose metrics button — shown once prose data is available */}
+        {prose.data && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="w-full gap-1.5"
+            onClick={() => setMetricsOpen(true)}
+          >
+            <BarChart2 className="h-3.5 w-3.5" />
+            Prose Metrics
+          </Button>
+        )}
       </div>
 
-
+      {prose.data && (
+        <ProseMetricsDialog
+          open={metricsOpen}
+          onOpenChange={setMetricsOpen}
+          result={prose.data}
+        />
+      )}
     </div>
   );
 }

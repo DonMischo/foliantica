@@ -75,6 +75,7 @@ export function ValeRulesModal({ open, onClose }: Props) {
   const [customRules, setCustomRules] = useState<ValeCustomRules>({});
   const [customInputs, setCustomInputs] = useState<Record<string, string>>({});
   const [customSaving, setCustomSaving] = useState(false);
+  const [customError, setCustomError] = useState<string | null>(null);
 
   const runSync = useCallback(async () => {
     setSyncing(true);
@@ -210,7 +211,21 @@ export function ValeRulesModal({ open, onClose }: Props) {
 
   async function saveCustom(next: ValeCustomRules) {
     setCustomSaving(true);
-    try { await valeApi.updateCustomRules(next); } catch {} finally { setCustomSaving(false); }
+    setCustomError(null);
+    try {
+      await valeApi.updateCustomRules(next);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to save";
+      setCustomError(msg);
+    } finally {
+      setCustomSaving(false);
+    }
+  }
+
+  function validateToken(token: string): string | null {
+    if (!token.includes("\\")) return null;
+    try { new RegExp(token); return null; }
+    catch { return `Invalid regex: ${token}`; }
   }
 
   function addCustomEntry() {
@@ -219,11 +234,14 @@ export function ValeRulesModal({ open, onClose }: Props) {
     if (entryType === "existence") {
       const token = (customInputs[ik] ?? "").trim();
       if (!token) return;
+      const err = validateToken(token);
+      if (err) { setCustomError(err); return; }
       const prev = (customRules[selectedLang]?.[selectedRule] as string[] | undefined) ?? [];
       if (prev.includes(token)) return;
       const next = buildCustomUpdate([...prev, token]);
       setCustomRules(next);
       setCustomInputs(p => ({ ...p, [ik]: "" }));
+      setCustomError(null);
       saveCustom(next);
     } else {
       const orig = (customInputs[ik] ?? "").trim();
@@ -515,8 +533,11 @@ export function ValeRulesModal({ open, onClose }: Props) {
                           </div>
                         </div>
                       )}
+                      {customError && (
+                        <p className="px-4 pt-0.5 pb-1 text-[10px] text-destructive leading-snug">{customError}</p>
+                      )}
                       <p className="px-4 pt-0.5 pb-2 text-[10px] text-muted-foreground/40 leading-relaxed">
-                        <code className="font-mono">\b</code> = word boundary — <code className="font-mono">\bword\b</code> matches <em>whole word</em>, bare <code className="font-mono">word</code> matches anywhere in text
+                        <code className="font-mono">\b</code> = word boundary — <code className="font-mono">\bword\b</code> matches <em>whole word</em>, bare <code className="font-mono">word</code> matches anywhere in text · Words match inflected forms too (e.g. <em>perfekt</em> also flags <em>perfekte</em>, <em>perfekten</em>)
                       </p>
                     </div>
                   )}

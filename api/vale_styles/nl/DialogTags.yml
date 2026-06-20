@@ -1,0 +1,28 @@
+# Dialogwoorden voorbij «zei/vroeg» — said-bookisms in het Nederlands.
+extends: existence
+message: "Dialogtag '%s' — «zei» of «vroeg» is doorgaans onzichtbaarder; of gebruik een actie."
+level: suggestion
+ignorecase: true
+tokens:
+  # Volumemarkeringen
+  - \buitriep\b
+  - \bschreeuwde\b
+  - \bbulde\b
+  - \bfluisterde\b
+  - \bmompelde\b
+  - \bsiste\b
+
+  # Emotioneel gekleurde verbs
+  - \bgronde\b
+  - \bgrombelde\b
+  - \bsteunde\b
+  - \bzuchtte\b
+  - \blachte\b
+  - \bgiechelde\b
+  - \bhoonlachte\b
+  - \bspotte\b
+
+  # Fysiologisch twijfelachtige werkwoorden
+  - \bhijgde\b
+  - \bpufte\b
+  - \bhoeste\b

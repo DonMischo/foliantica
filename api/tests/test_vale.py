@@ -11,6 +11,7 @@ Tests for api/routers/vale.py and Vale settings integration.
 
 import json
 import subprocess
+import yaml
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -733,3 +734,116 @@ class TestValeLive:
         r = client.get("/api/settings/detect-vale")
         assert r.status_code == 200
         assert r.json()["system"] is True
+
+
+# ── _inject_custom_rules unit tests ──────────────────────────────────────────
+
+class TestInjectCustomRules:
+    """Unit tests for the _inject_custom_rules helper (no HTTP, no DB)."""
+
+    from routers.vale import _inject_custom_rules as _inject  # imported at class body
+
+    def _inject(self, styles, lang, rules):
+        from routers.vale import _inject_custom_rules
+        _inject_custom_rules(styles, lang, rules)
+
+    def _parse_style(self, styles: dict, key: str) -> dict:
+        assert key in styles, f"Expected key {key!r} in styles, got: {list(styles)}"
+        return yaml.safe_load(styles[key])
+
+    def test_no_op_when_custom_rules_none(self):
+        styles: dict = {}
+        self._inject(styles, "de", None)
+        assert styles == {}
+
+    def test_no_op_when_lang_not_in_rules(self):
+        styles: dict = {}
+        self._inject(styles, "fr", {"de": {"Buzzwords": ["perfekt"]}})
+        assert styles == {}
+
+    def test_plain_word_wrapped_with_inflection_pattern(self):
+        styles: dict = {}
+        self._inject(styles, "de", {"de": {"Buzzwords": ["perfekt"]}})
+        doc = self._parse_style(styles, "Foliantica/Custom_Buzzwords.yml")
+        assert doc["extends"] == "existence"
+        assert r"\bperfekt\w*" in doc["raw"]
+
+    def test_raw_pattern_passed_through_unchanged(self):
+        styles: dict = {}
+        self._inject(styles, "de", {"de": {"Buzzwords": [r"\bperfekt\w{0,4}"]}})
+        doc = self._parse_style(styles, "Foliantica/Custom_Buzzwords.yml")
+        assert r"\bperfekt\w{0,4}" in doc["raw"]
+        # Must NOT be double-wrapped
+        assert r"\b\bperfekt" not in doc["raw"][0]
+
+    def test_mixed_plain_and_raw_entries(self):
+        styles: dict = {}
+        self._inject(styles, "de", {"de": {"Buzzwords": ["perfekt", r"\bsuper\w*"]}})
+        doc = self._parse_style(styles, "Foliantica/Custom_Buzzwords.yml")
+        raw = doc["raw"]
+        assert r"\bperfekt\w*" in raw
+        assert r"\bsuper\w*" in raw
+
+    def test_existence_rule_has_correct_fields(self):
+        styles: dict = {}
+        self._inject(styles, "en", {"en": {"Jargon": ["synergy"]}})
+        doc = self._parse_style(styles, "Foliantica/Custom_Jargon.yml")
+        assert doc["extends"] == "existence"
+        assert doc["level"] == "suggestion"
+        assert doc["ignorecase"] is True
+        assert "raw" in doc
+
+    def test_substitution_rule_generated_from_dict(self):
+        styles: dict = {}
+        self._inject(styles, "de", {"de": {"Redundancy": {"alter Hase": "Hase"}}})
+        doc = self._parse_style(styles, "Foliantica/Custom_Redundancy.yml")
+        assert doc["extends"] == "substitution"
+        assert doc["swap"] == {"alter Hase": "Hase"}
+
+    def test_empty_entries_skipped(self):
+        styles: dict = {}
+        self._inject(styles, "de", {"de": {"Buzzwords": []}})
+        assert "Foliantica/Custom_Buzzwords.yml" not in styles
+
+    def test_multiple_rules_for_same_language(self):
+        styles: dict = {}
+        self._inject(styles, "de", {"de": {
+            "Buzzwords": ["perfekt"],
+            "Redundancy": {"alter Hase": "Hase"},
+        }})
+        assert "Foliantica/Custom_Buzzwords.yml" in styles
+        assert "Foliantica/Custom_Redundancy.yml" in styles
+
+
+# ── put_custom_rules regex validation ─────────────────────────────────────────
+
+class TestCustomRulesValidation:
+    def test_invalid_regex_returns_400(self, client):
+        rules = {"de": {"Buzzwords": [r"\bperfekt(unclosed"]}}  # unclosed group
+        r = client.put("/api/vale/custom-rules", json={"rules": rules})
+        assert r.status_code == 400
+        assert "Invalid regex" in r.json()["detail"]
+
+    def test_valid_regex_saves_successfully(self, client):
+        rules = {"de": {"Buzzwords": [r"\bperfekt\w{0,4}"]}}
+        r = client.put("/api/vale/custom-rules", json={"rules": rules})
+        assert r.status_code == 200
+
+    def test_plain_words_bypass_regex_validation(self, client):
+        # Plain words have no backslash — skipped by validator, always accepted
+        rules = {"de": {"Buzzwords": ["perfekt", "absolut"]}}
+        r = client.put("/api/vale/custom-rules", json={"rules": rules})
+        assert r.status_code == 200
+
+    def test_multiple_entries_validated_all(self, client):
+        # First entry valid, second invalid — should still 400
+        rules = {"de": {"Buzzwords": [r"\bperfekt\w*", r"\bbroken("]}}
+        r = client.put("/api/vale/custom-rules", json={"rules": rules})
+        assert r.status_code == 400
+
+    def test_invalid_regex_detail_names_the_pattern(self, client):
+        bad_pattern = r"\btest("
+        rules = {"en": {"Jargon": [bad_pattern]}}
+        r = client.put("/api/vale/custom-rules", json={"rules": rules})
+        assert r.status_code == 400
+        assert bad_pattern in r.json()["detail"]

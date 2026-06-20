@@ -119,6 +119,31 @@ class Scene(Base):
         "SceneCommand", back_populates="scene", cascade="all, delete-orphan",
         order_by="SceneCommand.order_index"
     )
+    comments: Mapped[list["SceneComment"]] = relationship(
+        "SceneComment", back_populates="scene", cascade="all, delete-orphan",
+        order_by="SceneComment.created_at"
+    )
+
+
+class SceneComment(Base):
+    __tablename__ = "scene_comments"
+
+    id:          Mapped[int]           = mapped_column(Integer, primary_key=True, index=True)
+    scene_id:    Mapped[int]           = mapped_column(Integer, ForeignKey("scenes.id", ondelete="CASCADE"), index=True)
+    from_pos:    Mapped[int]           = mapped_column(Integer, nullable=False)
+    to_pos:      Mapped[int]           = mapped_column(Integer, nullable=False)
+    anchor_text: Mapped[str]           = mapped_column(Text, nullable=False)
+    ctx_before:  Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    ctx_after:   Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    body:        Mapped[str]           = mapped_column(Text, nullable=False)
+    author_name: Mapped[str]           = mapped_column(String(255), nullable=False)
+    author_role: Mapped[str]           = mapped_column(String(50),  nullable=False, default="host")
+    color:       Mapped[str]           = mapped_column(String(7),   nullable=False, default="#6366f1")
+    category:    Mapped[str]           = mapped_column(String(100), nullable=False, default="")
+    resolved:    Mapped[int]           = mapped_column(Integer, nullable=False, default=0)
+    created_at:  Mapped[datetime]      = mapped_column(DateTime, default=_now)
+
+    scene: Mapped["Scene"] = relationship("Scene", back_populates="comments")
 
 
 class EntryType(str, enum.Enum):
@@ -315,6 +340,7 @@ class UserSettings(Base):
     typewriter_mode: Mapped[int] = mapped_column(Integer, default=0)
     typewriter_offset: Mapped[int] = mapped_column(Integer, default=50)
     session_timer_enabled: Mapped[int] = mapped_column(Integer, default=1)
+    codex_highlight_enabled: Mapped[int] = mapped_column(Integer, default=1)
     # External service settings
     grammar_check_enabled: Mapped[int] = mapped_column(Integer, default=0)
     grammar_check_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

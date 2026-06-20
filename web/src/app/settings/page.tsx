@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Fragment } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database, Users, Copy, Link2, ShieldCheck, ListChecks, Info, ChevronDown, ChevronUp, QrCode, Cloud } from "lucide-react";
+import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database, Users, Copy, Link2, ShieldCheck, ListChecks, Info, ChevronDown, ChevronUp, QrCode, Cloud, Highlighter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -93,6 +93,8 @@ export default function SettingsPage() {
   const setTypewriterOffset     = useUIStore((s) => s.setTypewriterOffset);
   const sessionTimerEnabled     = useUIStore((s) => s.sessionTimerEnabled);
   const setSessionTimerEnabled  = useUIStore((s) => s.setSessionTimerEnabled);
+  const showCodexHighlights     = useUIStore((s) => s.showCodexHighlights);
+  const setShowCodexHighlights  = useUIStore((s) => s.setShowCodexHighlights);
   const [achPopupsEnabled, setAchPopupsEnabled] = useState(() => {
     if (typeof window === "undefined") return true;
     return localStorage.getItem(ACH_POPUPS_KEY) !== "false";
@@ -299,7 +301,7 @@ export default function SettingsPage() {
   const [invitations,        setInvitations]        = useState<Invitation[]>([]);
   const [coworkLoading,      setCoworkLoading]      = useState(false);
   const [newInvName,         setNewInvName]         = useState("");
-  const [newInvRole,         setNewInvRole]         = useState<"coauthor"|"student">("coauthor");
+  const [newInvRole,         setNewInvRole]         = useState<"coauthor"|"student"|"editor">("coauthor");
   const [newInvPin,          setNewInvPin]          = useState("");
   const [newInvMaxSessions,  setNewInvMaxSessions]  = useState(1);
   const [copiedInvId,        setCopiedInvId]        = useState<string | null>(null);
@@ -1339,6 +1341,36 @@ export default function SettingsPage() {
               <span className={cn(
                 "pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
                 sessionTimerEnabled ? "translate-x-4" : "translate-x-0"
+              )} />
+            </button>
+          </div>
+
+          {/* Codex highlights */}
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-2">
+              <Highlighter className="h-3.5 w-3.5 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Codex entry highlights</p>
+                <p className="text-xs text-muted-foreground">Highlight codex entries (characters, places, …) in the editor</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showCodexHighlights}
+              onClick={() => {
+                const next = !showCodexHighlights;
+                setShowCodexHighlights(next);
+                updateSettings.mutate({ codex_highlight_enabled: next });
+              }}
+              className={cn(
+                "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                showCodexHighlights ? "bg-primary" : "bg-input"
+              )}
+            >
+              <span className={cn(
+                "pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
+                showCodexHighlights ? "translate-x-4" : "translate-x-0"
               )} />
             </button>
           </div>
@@ -2936,7 +2968,7 @@ BasedOnStyles = write-good`}</code>
             <h2 className="text-base font-semibold">Co-Work</h2>
           </div>
           <p className="text-xs text-muted-foreground">
-            Let co-authors or students join your project over your local network.
+            Let co-authors, editors, or students join your project over your local network.
             Each person gets a named invitation link. A restart is required to change the bind address.
           </p>
 
@@ -3070,9 +3102,10 @@ BasedOnStyles = write-good`}</code>
                         <span className={cn(
                           "text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0",
                           inv.role === "student" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                                                 : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                          : inv.role === "editor"  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                                   : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
                         )}>
-                          {inv.role === "student" ? "Student" : "Co-Author"}
+                          {inv.role === "student" ? "Student" : inv.role === "editor" ? "Editor" : "Co-Author"}
                         </span>
                         {inv.role === "coauthor" && (
                           <button
@@ -3094,17 +3127,19 @@ BasedOnStyles = write-good`}</code>
                         <p className="text-[11px] text-muted-foreground">
                           max {inv.max_sessions} session{inv.max_sessions !== 1 ? "s" : ""}
                         </p>
-                        {inv.role === "student" && (
+                        {(inv.role === "student" || inv.role === "editor") && (
                           <p className="text-[11px] text-muted-foreground">
                             {inv.assigned_items.length > 0
                               ? `${inv.assigned_items.length} scene${inv.assigned_items.length !== 1 ? "s" : ""} assigned`
-                              : <span className="text-amber-600 dark:text-amber-400">no scenes assigned</span>}
+                              : inv.role === "editor"
+                                ? "all scenes (default)"
+                                : <span className="text-amber-600 dark:text-amber-400">no scenes assigned</span>}
                           </p>
                         )}
                       </div>
                     </div>
-                    {/* Assign scenes button — students only */}
-                    {inv.role === "student" && (
+                    {/* Assign scenes button — students and editors */}
+                    {(inv.role === "student" || inv.role === "editor") && (
                       <button
                         onClick={() => setAssigningInv(inv)}
                         className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
@@ -3185,10 +3220,11 @@ BasedOnStyles = write-good`}</code>
                   />
                   <select
                     value={newInvRole}
-                    onChange={e => setNewInvRole(e.target.value as "coauthor" | "student")}
+                    onChange={e => setNewInvRole(e.target.value as "coauthor" | "student" | "editor")}
                     className="h-8 rounded-md border border-input bg-background px-2 text-xs"
                   >
                     <option value="coauthor">Co-Author</option>
+                    <option value="editor">Editor</option>
                     <option value="student">Student</option>
                   </select>
                 </div>
@@ -3245,11 +3281,11 @@ BasedOnStyles = write-good`}</code>
                           <span className="text-xs font-medium truncate">{sess.display_name}</span>
                           <span className={cn(
                             "text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0",
-                            sess.role === "student"
-                              ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                              : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                            sess.role === "student" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                            : sess.role === "editor"  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                                      : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
                           )}>
-                            {sess.role === "student" ? "Student" : "Co-Author"}
+                            {sess.role === "student" ? "Student" : sess.role === "editor" ? "Editor" : "Co-Author"}
                           </span>
                         </div>
                         <p className="text-[11px] text-muted-foreground mt-0.5">

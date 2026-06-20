@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useEditor, EditorContent, type Editor as TiptapEditor } from "@tiptap/react";
+import { DOMParser as PMDOMParser } from "@tiptap/pm/model";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Typography } from "@tiptap/extension-typography";
@@ -18,6 +19,7 @@ import Suggestion, { exitSuggestion } from "@tiptap/suggestion";
 import type { EditorView } from "@tiptap/pm/view";
 import type { CodexEntry } from "@/types";
 import { createCodexHighlightPlugin, patchEntryAliases, type PatchedEntry, PLUGIN_KEY } from "./CodexHighlightExtension";
+import { createCommentHighlightPlugin, setCommentHighlights, getCommentPositions, type CommentHighlight } from "./CommentHighlightExtension";
 import { TagDecorationExtension } from "./TagDecorationExtension";
 import { LineNumberExtension } from "./LineNumberExtension";
 import { GhostTextMark } from "./GhostTextExtension";
@@ -34,6 +36,7 @@ import { SearchExtension } from "./SearchExtension";
 import { SearchBar } from "./SearchBar";
 import { EditorContext } from "@/contexts/EditorContext";
 import { useUIStore } from "@/store/ui";
+import { htmlToGrammarPlainText, computeGrammarSkipCount } from "@/lib/grammarUtils";
 
 interface Props {
   content: string;
@@ -51,10 +54,40 @@ interface Props {
   applyFlagRef?: React.MutableRefObject<((type: string) => void) | null>;
   applyGrammarFixRef?: React.MutableRefObject<((matched: string, replacement: string, plainOffset: number) => void) | null>;
   jumpToGrammarMatchRef?: React.MutableRefObject<((matched: string, plainOffset: number) => void) | null>;
+  jumpToValeMatchRef?: React.MutableRefObject<((matched: string, skipCount: number) => void) | null>;
   jumpToTextRef?: React.MutableRefObject<((text: string) => void) | null>;
   onPrefillEntry?: (data: Partial<CodexEntry>) => void;
   /** When true the editor is rendered read-only (co-work lock held by another user) */
   readOnly?: boolean;
+  /** Comment highlight decorations — updated externally after load/save */
+  commentHighlights?: CommentHighlight[];
+  /** Ref filled with a function that returns the current (possibly drift-corrected) comment positions */
+  getCommentPositionsRef?: React.MutableRefObject<(() => CommentHighlight[]) | null>;
+  /** Called when user selects text and wants to add a comment — receives {from, to, text} */
+  onCommentRequest?: (from: number, to: number, text: string) => void;
+  /** Ref filled with a function that calls onCommentRequest with the current editor selection */
+  triggerCommentRef?: React.MutableRefObject<(() => void) | null>;
+  /** Ref filled with a function that returns whether there is a non-empty text selection */
+  hasSelectionRef?: React.MutableRefObject<(() => boolean) | null>;
+  /** When false, the CodexHighlight extension is omitted entirely */
+  showCodexHighlights?: boolean;
+}
+
+// Normalise typographic quotes to ASCII on paste.
+// All values are plain decimal integers — no Unicode/hex escapes anywhere,
+// so no bundler can misinterpret the source.
+const _DQ = new Set([0x201C, 0x201D, 0x201E, 0x201F, 0x275D, 0x275E]); // curly/low-9 doubles
+const _SQ = new Set([0x2018, 0x2019, 0x201A, 0x2039, 0x203A]);          // curly/low-9 singles
+const _CH_DQ = String.fromCharCode(34); // " (U+0022) — decimal avoids escape-sequence issues
+const _CH_SQ = String.fromCharCode(39); // ' (U+0027)
+// U+00AB/BB guillemets are intentional (French/Italian/Polish) — left untouched.
+function normalizeQuotes(text: string): string {
+  return Array.from(text).map(ch => {
+    const cp = ch.codePointAt(0)!;
+    if (_DQ.has(cp)) return _CH_DQ;
+    if (_SQ.has(cp)) return _CH_SQ;
+    return ch;
+  }).join('');
 }
 
 interface SlashState {
@@ -63,37 +96,16 @@ interface SlashState {
   command: (item: CommandItem) => void;
 }
 
-// ── Grammar: find Nth occurrence helper ───────────────────────────────────────
-// LanguageTool gives us `plainOffset` — a char position in the same
-// normalised plain text the scene page sent to the API.  We rebuild that same
-// string from the editor HTML, count how many occurrences of `matched` appear
-// before `plainOffset` (= which occurrence index this is), then walk the
-// ProseMirror document to land on exactly that occurrence.
-function grammarFindInDoc(
+// ── Grammar: find Nth occurrence helpers ─────────────────────────────────────
+
+// Walk the ProseMirror doc and return the range of the (skipCount+1)th occurrence.
+function walkDocForNthOccurrence(
   editor: TiptapEditor,
   matched: string,
-  plainOffset: number,
+  skipCount: number,
 ): { from: number; to: number } | null {
   if (!matched) return null;
-
-  // Rebuild the same plain text sent to LanguageTool
-  const plainText = editor.getHTML()
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  // Count occurrences of `matched` strictly before plainOffset → occurrence index
-  let skipCount = 0;
-  let pos = 0;
   const step = Math.max(matched.length, 1);
-  while (pos < plainOffset) {
-    const idx = plainText.indexOf(matched, pos);
-    if (idx === -1 || idx >= plainOffset) break;
-    skipCount++;
-    pos = idx + step;
-  }
-
-  // Walk the ProseMirror doc and find the (skipCount+1)th text occurrence
   let seen = 0;
   let result: { from: number; to: number } | null = null;
   editor.state.doc.descendants((node, pmPos) => {
@@ -111,8 +123,22 @@ function grammarFindInDoc(
       localPos = idx + step;
     }
   });
-
   return result;
+}
+
+// LanguageTool gives us `plainOffset` — a char position in the same
+// space-collapsed plain text the scene page sent to the API.  We rebuild that
+// string from the editor HTML, count how many occurrences of `matched` appear
+// before `plainOffset` (= which occurrence index this is), then walk the doc.
+function grammarFindInDoc(
+  editor: TiptapEditor,
+  matched: string,
+  plainOffset: number,
+): { from: number; to: number } | null {
+  if (!matched) return null;
+  const plainText = htmlToGrammarPlainText(editor.getHTML());
+  const skipCount = computeGrammarSkipCount(plainText, matched, plainOffset);
+  return walkDocForNthOccurrence(editor, matched, skipCount);
 }
 
 // ── Typewriter scroll helper ───────────────────────────────────────────────────
@@ -134,7 +160,7 @@ function applyTypewriterScroll(
   } catch { /* view not mounted */ }
 }
 
-export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onOpenLink, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, jumpToTextRef, onPrefillEntry, aiDisabled = false, readOnly = false }: Props) {
+export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onOpenLink, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, jumpToValeMatchRef, jumpToTextRef, onPrefillEntry, aiDisabled = false, readOnly = false, commentHighlights, getCommentPositionsRef, onCommentRequest, triggerCommentRef, hasSelectionRef, showCodexHighlights = true }: Props) {
   const showLineNumbers  = useUIStore((s) => s.showParagraphNumbers);
   const typewriterMode   = useUIStore((s) => s.typewriterMode);
   const typewriterOffset = useUIStore((s) => s.typewriterOffset);
@@ -142,8 +168,15 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
 
   const entriesRef = useRef<PatchedEntry[]>(patchEntryAliases(codexEntries));
   const onClickRef = useRef(onCodexEntryClick);
+  const showCodexRef = useRef(showCodexHighlights);
   entriesRef.current = patchEntryAliases(codexEntries);
   onClickRef.current = onCodexEntryClick;
+  showCodexRef.current = showCodexHighlights;
+
+  const commentHighlightsRef  = useRef<CommentHighlight[]>(commentHighlights ?? []);
+  const onCommentRequestRef   = useRef(onCommentRequest);
+  commentHighlightsRef.current  = commentHighlights ?? [];
+  onCommentRequestRef.current   = onCommentRequest;
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -183,8 +216,22 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
     addProseMirrorPlugins() {
       return [
         createCodexHighlightPlugin(
-          () => entriesRef.current,
+          () => showCodexRef.current ? entriesRef.current : [],
           (id) => onClickRef.current(id)
+        ),
+      ];
+    },
+  });
+
+  const CommentHighlight = Extension.create({
+    name: "commentHighlight",
+    addProseMirrorPlugins() {
+      return [
+        createCommentHighlightPlugin(
+          () => commentHighlightsRef.current,
+          (id) => {
+            // Scroll the comment panel to the clicked card (parent handles via onCommentRequest)
+          },
         ),
       ];
     },
@@ -272,6 +319,7 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
       TableCell,
       TableHeader,
       CodexHighlight,
+      CommentHighlight,
       TagDecorationExtension,
       NoteNode,
       CurrencyNode,
@@ -285,13 +333,18 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
       SensitivityMark,
       SearchExtension,
     ],
-    content,
+    content: normalizeQuotes(content),
     onUpdate({ editor }) {
       onChange(editor.getHTML());
       onFlagsChangeRef.current?.(getSensitivityFlags(editor));
     },
     editorProps: {
       attributes: { class: "story-prose prose-invert max-w-2xl mx-auto w-full focus:outline-none min-h-full px-8 py-6", spellcheck: "true" },
+      // Normalise smart/curly quotes to ASCII equivalents on paste so that
+      // prose detection and Vale rules see consistent characters regardless of
+      // where the text was authored (Word, Google Docs, macOS, etc.).
+      transformPastedText: (text) => normalizeQuotes(text),
+      transformPastedHTML: (html) => normalizeQuotes(html),
       // Intercept ProseMirror's own "scroll cursor into view" so we own the
       // scroll entirely — no race condition with the browser/PM auto-scroll.
       handleScrollToSelection: (view) => {
@@ -317,17 +370,65 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
     if (content !== prevSceneContent.current && content !== editor.getHTML()) {
       prevSceneContent.current = content;
       queueMicrotask(() => {
-        editor.commands.setContent(content || "", { emitUpdate: false });
+        // Parse HTML → ProseMirror doc using the editor's full schema (including
+        // custom nodes). Dispatch with addToHistory:false so Ctrl+Z can't undo
+        // the content load, and preventUpdate so onUpdate doesn't fire.
+        const el = document.createElement("div");
+        el.innerHTML = normalizeQuotes(content || "");
+        const newDoc = PMDOMParser.fromSchema(editor.schema).parse(el);
+        const tr = editor.state.tr
+          .replaceWith(0, editor.state.doc.content.size, newDoc.content)
+          .setMeta("addToHistory", false)
+          .setMeta("preventUpdate", true);
+        editor.view.dispatch(tr);
+        // Re-push comment highlights: the replaceWith above triggers the
+        // drift-map branch in the comment plugin, which corrupts pre-loaded
+        // positions. Re-pushing from the ref fixes them.
+        if (commentHighlightsRef.current.length > 0) {
+          setCommentHighlights(editor.view, commentHighlightsRef.current);
+        }
       });
     }
   }, [content, editor]);
 
-  // Re-trigger codex decorations when entries change
+  // Re-trigger codex decorations when entries change or the toggle flips
   useEffect(() => {
     if (!editor) return;
     const { tr } = editor.state;
     editor.view.dispatch(tr.setMeta(PLUGIN_KEY, true));
-  }, [codexEntries, editor]);
+  }, [codexEntries, showCodexHighlights, editor]);
+
+  // Push comment highlights into the plugin whenever the prop changes
+  useEffect(() => {
+    if (!editor || !commentHighlights) return;
+    setCommentHighlights(editor.view, commentHighlights);
+  }, [editor, commentHighlights]);
+
+  // Wire getCommentPositionsRef so parent can read drift-corrected positions on save
+  useEffect(() => {
+    if (!getCommentPositionsRef) return;
+    getCommentPositionsRef.current = () => editor ? getCommentPositions(editor.view) : [];
+  }, [editor, getCommentPositionsRef]);
+
+  // Wire comment trigger refs
+  useEffect(() => {
+    if (!triggerCommentRef) return;
+    triggerCommentRef.current = () => {
+      if (!editor || !onCommentRequestRef.current) return;
+      const { from, to, empty } = editor.state.selection;
+      if (empty) return;
+      const text = editor.state.doc.textBetween(from, to, " ").trim();
+      if (text) onCommentRequestRef.current(from, to, text);
+    };
+  }, [editor, triggerCommentRef]);
+
+  useEffect(() => {
+    if (!hasSelectionRef) return;
+    hasSelectionRef.current = () => {
+      if (!editor) return false;
+      return !editor.state.selection.empty;
+    };
+  }, [editor, hasSelectionRef]);
 
   // Toggle focus-dim plugin when focusMode changes
   useEffect(() => {
@@ -437,6 +538,32 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
       });
     };
   }, [editor, jumpToGrammarMatchRef]);
+
+  // Vale: jump to Nth occurrence by pre-computed skip count (Vale Span is column-based, not global)
+  useEffect(() => {
+    if (!jumpToValeMatchRef) return;
+    jumpToValeMatchRef.current = (matched: string, skipCount: number) => {
+      if (!editor) return;
+      const range = walkDocForNthOccurrence(editor, matched, skipCount);
+      if (!range) return;
+      editor.chain().focus(undefined, { scrollIntoView: false }).setTextSelection(range).run();
+      requestAnimationFrame(() => {
+        const container = scrollRef.current;
+        if (!container) return;
+        try {
+          const coords = editor.view.coordsAtPos(range.from);
+          const cRect  = container.getBoundingClientRect();
+          const relTop = coords.top - cRect.top;
+          const MARGIN = 80;
+          if (relTop < MARGIN) {
+            container.scrollTop += relTop - MARGIN;
+          } else if (relTop > cRect.height - MARGIN) {
+            container.scrollTop += relTop - cRect.height + MARGIN;
+          }
+        } catch { /* view not mounted */ }
+      });
+    };
+  }, [editor, jumpToValeMatchRef]);
 
   // Jump to first occurrence of a plain-text string (used by codex suggestion clicks)
   useEffect(() => {

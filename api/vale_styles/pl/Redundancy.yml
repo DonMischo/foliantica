@@ -1,0 +1,41 @@
+# Pleonazmy i redundancje w języku polskim.
+# Źródła:
+#   - Jan Miodek: "Słowo jest w człowieku" (Wydawnictwo Dolnośląskie, 2007)
+#   - Andrzej Markowski: "Polszczyzna znana i nieznana" (Gdańskie Wydawnictwo Oświatowe, 1999)
+#   - Poradnia językowa PWN (sjp.pwn.pl)
+extends: substitution
+message: "Pleonazm: '%s' — rozważ '%s'"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Klasyczne pleonazmy (Miodek, Markowski) ---
+  cofnąć się z powrotem: cofnąć się
+  powrócić z powrotem: powrócić
+  wrócić z powrotem: wrócić
+  wzajemna współpraca: współpraca
+  wzajemne porozumienie: porozumienie
+  akwen wodny: akwen
+  okres czasu: okres
+  majdan placu: plac
+  fakt faktu: fakt
+  plan na przyszłość: plan
+  przyszłe plany: plany
+  ubiegły rok temu: rok temu
+  nadal kontynuować: kontynuować
+  kontynuować dalej: kontynuować
+  podnieść w górę: podnieść
+  obniżyć w dół: obniżyć
+  wejść do środka: wejść
+  wyjść na zewnątrz: wyjść
+  połączyć razem: połączyć
+  zejść się razem: zejść się
+  spotkać się razem: spotkać się
+  podzielić na dwie połowy: podzielić na pół
+  każdy z osobna: każdy
+  wzajemnie sobie: sobie nawzajem
+  bardzo ogromny: ogromny
+  absolutnie pewny: pewny
+  całkowicie doskonały: doskonały
+  całkowicie kompletny: kompletny
+  zupełnie pusty: pusty
+  zupełnie nowy: nowy

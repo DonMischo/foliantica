@@ -1,0 +1,23 @@
+# Dialogverb bortom «sa/frågade» — said-bookisms på svenska.
+extends: existence
+message: "Dialogtag '%s' — «sa» eller «frågade» är oftast mer osynligt; eller använd en handling."
+level: suggestion
+ignorecase: true
+tokens:
+  - \butropade\b
+  - \bskrek\b
+  - \bvrålade\b
+  - \bhviskade\b
+  - \bviskade\b
+  - \bviskade\b
+  - \bmumlande\b
+  - \bfräste\b
+  - \bgrowlade\b
+  - \bbröt ut\b
+  - \bstönade\b
+  - \bsuckade\b
+  - \bskrattade\b
+  - \bflinarade\b
+  - \bhånskrattade\b
+  - \bflämtade\b
+  - \bhostade\b

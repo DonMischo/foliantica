@@ -50,11 +50,7 @@ def _sibling_project_ids(project: Project, db: Session) -> list[int]:
 
 @router.get("/api/projects/{project_id}/timeline")
 def get_timeline(project_id: int, db: Session = Depends(get_db)):
-    project = (
-        db.query(Project)
-        .filter(Project.id == project_id)
-        .first()
-    )
+    project = db.get(Project, project_id)
     if not project:
         raise HTTPException(404, "Project not found")
 
@@ -79,7 +75,7 @@ def get_timeline(project_id: int, db: Session = Depends(get_db)):
                     if not scene.scene_time:
                         continue
                     try:
-                        time_data = json.loads(scene.scene_time)
+                        time_data = _json.loads(scene.scene_time)
                     except Exception:
                         continue
 

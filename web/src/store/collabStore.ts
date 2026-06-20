@@ -28,9 +28,12 @@ interface CollabState {
   mySessionId: string | null;
   /** Internal: reference to the open WebSocket (not reactive) */
   _ws: WebSocket | null;
+  /** Set to true when the guest JWT was rejected — shows the expired overlay */
+  sessionExpired: boolean;
 
   // ── Actions ────────────────────────────────────────────────────────────────
-  setConnected:   (v: boolean) => void;
+  setConnected:      (v: boolean) => void;
+  setSessionExpired: (v: boolean) => void;
   setLocks:       (locks: LockRecord[]) => void;
   setPresence:    (records: PresenceRecord[]) => void;
   setMySessionId: (id: string | null) => void;
@@ -48,13 +51,15 @@ interface CollabState {
 // ── Store ─────────────────────────────────────────────────────────────────────
 
 export const useCollabStore = create<CollabState>((set, get) => ({
-  connected:   false,
-  locks:       {},
-  presence:    [],
-  mySessionId: null,
-  _ws:         null,
+  connected:      false,
+  locks:          {},
+  presence:       [],
+  mySessionId:    null,
+  _ws:            null,
+  sessionExpired: false,
 
-  setConnected:   (v) => set({ connected: v }),
+  setConnected:      (v) => set({ connected: v }),
+  setSessionExpired: (v) => set({ sessionExpired: v }),
   setPresence:    (records) => set({ presence: records }),
   setMySessionId: (id) => set({ mySessionId: id }),
   setWs:          (ws) => set({ _ws: ws }),

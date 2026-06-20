@@ -85,6 +85,9 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   });
   if (!res.ok) {
+    if (res.status === 401 && getCoworkJwt()) {
+      window.dispatchEvent(new CustomEvent("cowork:session_expired"));
+    }
     const text = await res.text();
     throw new Error(`${res.status}: ${text}`);
   }
@@ -526,6 +529,7 @@ export const settingsApi = {
     ai_disabled?: boolean;
     sync_mirror_enabled?: boolean;
     sync_local_dir?: string | null;
+    codex_highlight_enabled?: boolean;
   }) => req<Settings>("/settings", { method: "POST", body: JSON.stringify(data) }),
   getModels: () => req<OpenRouterModel[]>("/settings/models"),
   serviceStatus: () => req<{ languagetool: "ok" | "error" | "offline"; pandoc: "ok" | "error" | "offline"; spacy: "ok" | "error" | "offline"; calibre: "ok" | "error" | "offline"; vale: "ok" | "error" | "offline" }>("/settings/service-status"),
@@ -771,6 +775,57 @@ export const valeApi = {
     ),
 };
 
+// ── Prose ─────────────────────────────────────────────────────────────────────
+
+export interface ProseRepetitiveStart {
+  word: string;
+  count: number;
+  from_sentence: number;
+}
+
+export interface ProseFlaggedParagraph {
+  paragraph: number;
+  auxiliary_count: number;
+  word_count: number;
+  ratio: number;
+  level: "elevated" | "high";
+}
+
+export interface ProseCheckResult {
+  language: string;
+  word_count: number;
+  sentence_count: number;
+  paragraph_count: number;
+  sentence_variety: {
+    avg_length: number;
+    length_stddev: number;
+    variety: "good" | "moderate" | "low" | "n/a";
+    repetitive_starts: ProseRepetitiveStart[];
+  };
+  auxiliary_density: {
+    flagged_paragraphs: ProseFlaggedParagraph[];
+  };
+  adverb_density: {
+    count: number;
+    ratio: number;
+    level: "ok" | "elevated" | "high";
+  };
+  dialog: {
+    ratio: number;
+    dialog_lines: number;
+    total_lines: number;
+  };
+}
+
+export const proseApi = {
+  check: (text: string, language?: string) =>
+    req<ProseCheckResult>("/prose/check", {
+      method: "POST",
+      body: JSON.stringify({ text, language }),
+      signal: AbortSignal.timeout(30_000),
+    }),
+};
+
 export const grammarApi = {
   check: (text: string, language = "auto") =>
     req<GrammarCheckResult>("/grammar/check", {
@@ -998,7 +1053,7 @@ export interface AssignedItem {
 export interface Invitation {
   id:             string;
   name:           string;
-  role:           "coauthor" | "student";
+  role:           "coauthor" | "student" | "editor";
   has_pin:        boolean;
   max_sessions:   number;
   assigned_items: AssignedItem[];
@@ -1019,7 +1074,7 @@ export interface TeacherSession {
   session_id:      string;
   display_name:    string;
   invitation_name: string;
-  role:            "coauthor" | "student";
+  role:            "coauthor" | "student" | "editor";
   color:           string;
   assigned_items:  AssignedItem[];
   item_type:       string | null;
@@ -1091,4 +1146,66 @@ export const collabApi = {
 
   cloudflareClose: () =>
     req<{ active: false }>("/collab/cloudflare/close", { method: "POST" }),
+};
+
+// ── Scene Comments ────────────────────────────────────────────────────────────
+
+export interface SceneComment {
+  id:          number;
+  scene_id:    number;
+  from_pos:    number;
+  to_pos:      number;
+  anchor_text: string;
+  ctx_before:  string | null;
+  ctx_after:   string | null;
+  body:        string;
+  author_name: string;
+  author_role: string;
+  color:       string;
+  category:    string;
+  resolved:    boolean;
+  created_at:  string;
+}
+
+export interface CommentCreate {
+  from_pos:    number;
+  to_pos:      number;
+  anchor_text: string;
+  ctx_before?: string | null;
+  ctx_after?:  string | null;
+  body:        string;
+  color?:      string;
+  category?:   string;
+}
+
+export interface PositionSync {
+  id:       number;
+  from_pos: number;
+  to_pos:   number;
+}
+
+export const commentsApi = {
+  list: (sceneId: number) =>
+    req<SceneComment[]>(`/scenes/${sceneId}/comments`),
+
+  create: (sceneId: number, data: CommentCreate) =>
+    req<SceneComment>(`/scenes/${sceneId}/comments`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (commentId: number, data: { body?: string; resolved?: boolean; from_pos?: number; to_pos?: number }) =>
+    req<SceneComment>(`/comments/${commentId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (commentId: number) =>
+    req<void>(`/comments/${commentId}`, { method: "DELETE" }),
+
+  syncPositions: (sceneId: number, updates: PositionSync[]) =>
+    req<{ ok: true }>(`/scenes/${sceneId}/comments/sync-positions`, {
+      method: "POST",
+      body: JSON.stringify(updates),
+    }),
 };

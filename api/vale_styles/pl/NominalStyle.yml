@@ -1,0 +1,42 @@
+# Styl nominalny — rzeczownikowe peryfrazy zamiast czasowników.
+# Źródła:
+#   - Andrzej Markowski: "Kultura języka polskiego" (PWN, 2005)
+#   - Poradnia językowa PWN (sjp.pwn.pl)
+extends: substitution
+message: "Styl nominalny: '%s' — rozważ formę czasownikową '%s'"
+level: suggestion
+ignorecase: true
+swap:
+  # --- Typowe peryfrazy z rzeczownikiem odczasownikowym ---
+  dokonać wyboru: wybrać
+  dokonać oceny: ocenić
+  dokonać analizy: przeanalizować
+  dokonać zmiany: zmienić
+  dokonać naprawy: naprawić
+  dokonać zakupu: kupić
+  dokonać płatności: zapłacić
+  dokonać rezerwacji: zarezerwować
+  przeprowadzić analizę: przeanalizować
+  przeprowadzić badanie: zbadać
+  przeprowadzić rozmowę: porozmawiać
+  przeprowadzić kontrolę: skontrolować
+  przeprowadzić reformę: zreformować
+  przeprowadzić negocjacje: negocjować
+  przeprowadzić szkolenie: przeszkolić
+  podjąć decyzję: zdecydować
+  podjąć działanie: działać
+  podjąć próbę: spróbować
+  podjąć wysiłek: starać się
+  podjąć walkę: walczyć
+  udzielić wsparcia: wesprzeć
+  udzielić pomocy: pomóc
+  udzielić odpowiedzi: odpowiedzieć
+  udzielić wyjaśnienia: wyjaśnić
+  złożyć obietnicę: obiecać
+  złożyć skargę: poskarżyć się
+  złożyć propozycję: zaproponować
+  złożyć wniosek: wnioskować
+  mieć wpływ na: wpływać na
+  mieć znaczenie: znaczyć
+  mieć możliwość: móc
+  znajdować się w posiadaniu: posiadać

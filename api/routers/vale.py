@@ -13,6 +13,7 @@ PUT  /api/vale/custom-rules           — replace custom rule entries
 """
 
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -32,7 +33,7 @@ from models import UserSettings, ValeRuleEntry
 router = APIRouter(prefix="/api/vale", tags=["vale"])
 
 _STYLES_DIR = Path(__file__).parent.parent / "vale_styles"
-_SUPPORTED_LANG_STYLES = {"en", "de", "es", "fr", "it", "nl", "pt", "sv", "da", "no"}
+_SUPPORTED_LANG_STYLES = {"en", "de", "es", "fr", "it", "nl", "pt", "sv", "da", "no", "pl"}
 _UNSUPPORTED_LANGS = {"zh", "ja", "ko", "ar"}
 
 
@@ -228,12 +229,15 @@ def _inject_custom_rules(styles: dict[str, str], lang: str, custom_rules: dict |
         if not entries:
             continue
         if isinstance(entries, list):
+            # Plain words get wrapped to match inflected forms (\bword\w*).
+            # Entries containing a backslash are treated as raw regex patterns and used as-is.
+            raw = [t if "\\" in t else r"\b" + t + r"\w*" for t in entries]
             doc = {
                 "extends": "existence",
                 "message": "'%s' — custom rule",
                 "level": "suggestion",
                 "ignorecase": True,
-                "tokens": entries,
+                "raw": raw,
             }
         elif isinstance(entries, dict):
             doc = {
@@ -402,6 +406,16 @@ async def get_custom_rules(db: Session = Depends(get_db)):
 
 @router.put("/custom-rules")
 async def put_custom_rules(body: CustomRulesBody, db: Session = Depends(get_db)):
+    # Validate all patterns before saving so we never write broken rules to DB.
+    for lang, rules in body.rules.items():
+        for rule_name, entries in rules.items():
+            tokens: list[str] = list(entries.keys()) if isinstance(entries, dict) else (entries if isinstance(entries, list) else [])
+            for token in tokens:
+                if "\\" in token:
+                    try:
+                        re.compile(token)
+                    except re.error as exc:
+                        raise HTTPException(400, f"Invalid regex pattern '{token}': {exc}")
     s = db.query(UserSettings).first()
     if not s:
         s = UserSettings()
