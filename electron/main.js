@@ -390,6 +390,91 @@ const PG_USER = "foliantica";
 const PG_PASS = "foliantica";
 const PG_DB   = "foliantica";
 
+// ── Docker availability check ─────────────────────────────────────────────────
+
+/**
+ * On Windows, checks the Docker named pipe to see if the daemon is running.
+ * Returns true if Docker appears to be up.
+ */
+function isDockerRunning() {
+  if (process.platform !== "win32") {
+    // On macOS/Linux just try `docker info` synchronously — cheap enough.
+    try {
+      require("child_process").execSync("docker info --format '{{.ID}}'", {
+        timeout: 3000, stdio: "ignore",
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  // Windows: Docker Desktop exposes a named pipe when running.
+  const pipes = [
+    "\\\\.\\pipe\\dockerDesktopLinuxEngine",
+    "\\\\.\\pipe\\docker_engine",
+  ];
+  return pipes.some((p) => { try { return fs.existsSync(p); } catch { return false; } });
+}
+
+/**
+ * Tries to start Docker Desktop on Windows if it isn't running, then waits
+ * up to 60 s for the daemon to become available.
+ * Throws a user-friendly error if Docker can't be reached.
+ */
+async function ensureDockerRunning() {
+  if (isDockerRunning()) return;
+
+  log("[docker] Docker daemon not running — attempting to start Docker Desktop…");
+  if (splashWin) {
+    splashWin.webContents
+      .executeJavaScript('document.querySelector(".status").textContent = "Starting Docker Desktop…";')
+      .catch(() => {});
+  }
+
+  // Try to launch Docker Desktop on Windows.
+  if (process.platform === "win32") {
+    const candidates = [
+      "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe",
+      path.join(process.env.LOCALAPPDATA || "", "Programs", "Docker", "Docker", "Docker Desktop.exe"),
+    ];
+    const exe = candidates.find((p) => fs.existsSync(p));
+    if (exe) {
+      log(`[docker] Launching ${exe}`);
+      spawn(exe, [], { detached: true, stdio: "ignore" }).unref();
+    } else {
+      log("[docker] Docker Desktop executable not found in standard locations");
+    }
+  }
+
+  // Poll until Docker is responsive (up to 60 s).
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 2000));
+    if (isDockerRunning()) {
+      log("[docker] Docker daemon is now running");
+      return;
+    }
+    log("[docker] Still waiting for Docker daemon…");
+  }
+
+  // Docker didn't come up — show a clear dialog before throwing.
+  const msg = process.platform === "win32"
+    ? "Docker Desktop is not running and could not be started automatically.\n\n"
+      + "Please start Docker Desktop from the Start menu, wait for it to finish loading "
+      + "(whale icon in the system tray turns steady), then relaunch Foliantica."
+    : "Docker is not running.\n\nPlease start the Docker daemon and relaunch Foliantica.";
+
+  await dialog.showMessageBox({
+    type: "error",
+    title: "Docker required",
+    message: "Docker Desktop is not running",
+    detail: msg,
+    buttons: ["Quit"],
+  });
+
+  throw new Error("Docker Desktop is not running — user notified");
+}
+
 /**
  * Start the embedded PostgreSQL sidecar.
  * Returns the pg_dump binary path so it can be forwarded to the API process.
@@ -416,6 +501,9 @@ async function startPostgres() {
         .executeJavaScript('document.querySelector(".status").textContent = "Starting database…";')
         .catch(() => {});
     }
+
+    // ── Ensure Docker is running ──────────────────────────────────────────────
+    await ensureDockerRunning();
 
     // docker-compose.yml is in resources/ in prod, project root in dev.
     const composePath = isProd
