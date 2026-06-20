@@ -24,6 +24,18 @@ function formatElapsed(secs: number): string {
   return `${m}:${s}`;
 }
 
+export function SaveIndicator() {
+  const saveStatus = useUIStore((s) => s.saveStatus);
+  const { icon: Icon, label, className } = STATUS_CONFIG[saveStatus];
+  if (!label) return null;
+  return (
+    <div className={`absolute top-2 left-3 z-10 flex items-center gap-1.5 text-xs pointer-events-none ${className}`}>
+      <Icon className={`h-3 w-3 ${saveStatus === "saving" ? "animate-spin" : ""}`} />
+      <span>{label}</span>
+    </div>
+  );
+}
+
 export function StatusBar({ sceneWordCount }: Props) {
   const saveStatus        = useUIStore((s) => s.saveStatus);
   const sessionTimerEnabled = useUIStore((s) => s.sessionTimerEnabled);
@@ -70,10 +82,6 @@ export function StatusBar({ sceneWordCount }: Props) {
         </div>
       )}
 
-      <div className="flex items-center gap-1.5">
-        <Icon className={`h-3 w-3 ${className}`} />
-        {label && <span className={className}>{label}</span>}
-      </div>
     </div>
   );
 }

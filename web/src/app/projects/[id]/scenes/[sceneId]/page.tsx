@@ -6,7 +6,7 @@ import { BookOpen, Sparkles, Clock, Moon, Sun, Archive, History, MessageSquare, 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TipTapEditor } from "@/components/editor/TipTapEditor";
-import { StatusBar } from "@/components/editor/StatusBar";
+import { StatusBar, SaveIndicator } from "@/components/editor/StatusBar";
 import { ThesaurusPanel } from "@/components/editor/ThesaurusPanel";
 import { GrammarPanel } from "@/components/grammar/GrammarPanel";
 import { ValePanel } from "@/components/vale/ValePanel";
@@ -828,7 +828,8 @@ export default function ScenePage() {
       {/* Main area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Editor */}
-        <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="relative flex-1 overflow-hidden flex flex-col">
+          <SaveIndicator />
           {/* Co-work lock / editor banner */}
           {isEditor ? (
             <div className="flex items-center gap-2 px-4 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 border-b border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-700 dark:text-emerald-400 shrink-0">
