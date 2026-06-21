@@ -9,8 +9,8 @@ import { PLOT_TEMPLATES, TEMPLATE_COMPENDIUM_SECTION, type PlotTemplate } from "
 import { WritersCompendium } from "@/components/WritersCompendium";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { scenesApi } from "@/lib/api";
-import { useProjectScenes, useCorkboard } from "@/store/queries";
+import { projectsApi, scenesApi } from "@/lib/api";
+import { useProjectScenes, useCorkboard, useProject } from "@/store/queries";
 
 // ── Local-storage helpers ─────────────────────────────────────────────────────
 
@@ -110,7 +110,9 @@ export default function PlotPage() {
   const projectId = Number(id);
   const qc = useQueryClient();
 
+  const { data: project } = useProject(projectId);
   const [activeTemplate, setActiveTemplate] = useState<PlotTemplate>(PLOT_TEMPLATES[0]);
+  const [templateInitialised, setTemplateInitialised] = useState(false);
   const [states, setStates] = useState<TemplateState>({});
   const [view, setView] = useState<"checklist" | "skeleton" | "scenes">("checklist");
   const [copied, setCopied] = useState(false);
@@ -150,6 +152,16 @@ export default function PlotPage() {
     setLocalBeat(prev => ({ ...prev, [sceneId]: beat }));  // optimistic
     updateBeatMutation.mutate({ sceneId, beat });
   };
+
+  // Restore saved template from DB on first load
+  useEffect(() => {
+    if (templateInitialised || !project) return;
+    const saved = project.plot_template
+      ? PLOT_TEMPLATES.find((t) => t.id === project.plot_template)
+      : null;
+    if (saved) setActiveTemplate(saved);
+    setTemplateInitialised(true);
+  }, [project, templateInitialised]);
 
   // Load from localStorage when template changes
   useEffect(() => {
@@ -206,7 +218,10 @@ export default function PlotPage() {
             value={activeTemplate.id}
             onChange={(e) => {
               const tpl = PLOT_TEMPLATES.find((t) => t.id === e.target.value);
-              if (tpl) setActiveTemplate(tpl);
+              if (tpl) {
+                setActiveTemplate(tpl);
+                projectsApi.update(projectId, { plot_template: tpl.id });
+              }
             }}
             className="flex-1 text-sm bg-secondary border border-border rounded-lg px-3 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
           >

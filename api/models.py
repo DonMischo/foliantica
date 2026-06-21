@@ -34,6 +34,7 @@ class Project(Base):
     main_plot_color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     subplot_names: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: ["name", ...]
     corkboard_prefs: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: layout, toggles, colors, stack names
+    plot_template: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # selected plot template id
 
     acts: Mapped[list["Act"]] = relationship(
         "Act", back_populates="project", cascade="all, delete-orphan",

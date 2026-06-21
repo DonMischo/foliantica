@@ -51,6 +51,7 @@ export interface Project {
   shared_codex_project_title: string | null;
   cover_image: string | null;
   main_plot_color: string | null;
+  plot_template: string | null;
   created_at: string;
   updated_at: string;
 }

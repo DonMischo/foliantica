@@ -114,7 +114,7 @@ export const projectsApi = {
   get: (id: number) => req<Project>(`/projects/${id}`),
   create: (data: { title: string; description?: string; copy_codex_from?: number; share_codex_from?: number }) =>
     req<Project>("/projects", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: number, data: Partial<Pick<Project, "title" | "description">> & { book_meta?: BookMeta | null; main_plot_color?: string | null }) =>
+  update: (id: number, data: Partial<Pick<Project, "title" | "description">> & { book_meta?: BookMeta | null; main_plot_color?: string | null; plot_template?: string | null }) =>
     req<Project>(`/projects/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id: number) => req<void>(`/projects/${id}`, { method: "DELETE" }),
   exportStructure: (id: number) =>
