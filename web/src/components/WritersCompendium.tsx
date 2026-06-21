@@ -23,6 +23,21 @@ const CHAPTER_SVG: Record<number, string> = {
   10: "09_beat_structures.svg",
 };
 
+// Maps section IDs to craft_examples topic keys
+const SECTION_EXAMPLES: Record<string, string> = {
+  "5.1": "show_dont_tell",
+  "5.2": "purple_prose",
+  "5.3": "active_passive_voice",
+  "5.4": "adverb_dependency",
+  "5.5": "cliches",
+  "5.6": "pov_head_hopping",
+  "5.7": "sentence_variety",
+  "6.1": "dialogue",
+  "3.3": "info_dumping",
+  "4.2": "pacing",
+  "2.4": "character_depth",
+};
+
 // ── German SVG text substitutions ────────────────────────────────────────────
 
 const SVG_DE: Record<string, string> = {
@@ -190,7 +205,100 @@ function SnowflakeSteps({ steps }: { steps: any[] }) {
   );
 }
 
-function SectionContent({ section, chapter, t, locale }: { section: any; chapter: any; t: (k: string) => string; locale: string }) {
+function CraftExamples({ examples, locale }: { examples: any; locale: string }) {
+  if (!examples?.entries?.length) return null;
+  const filtered = examples.entries.filter((e: any) => e.language === locale);
+  const items = filtered.length > 0 ? filtered : examples.entries.filter((e: any) => e.language === "en");
+  if (!items.length) return null;
+  return (
+    <div className="mt-6 border-t border-border pt-4">
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Dos &amp; Don&apos;ts</p>
+      <div className="space-y-3">
+        {items.map((e: any) => (
+          <div key={e.id} className="border border-border rounded-lg p-3 space-y-2">
+            {e.principle && <p className="text-xs font-medium text-foreground/80">{e.principle}</p>}
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="bg-red-500/5 border border-red-500/20 rounded p-2">
+                <p className="text-[10px] font-bold text-red-400 mb-1">✗ Don&apos;t</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">{e.bad}</p>
+              </div>
+              <div className="bg-green-500/5 border border-green-500/20 rounded p-2">
+                <p className="text-[10px] font-bold text-green-500 mb-1">✓ Do</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">{e.good}</p>
+              </div>
+            </div>
+            {e.note && <p className="text-[11px] text-muted-foreground/70 italic border-l-2 border-border pl-2">{e.note}</p>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AccountsList({ accounts }: { accounts: any[] }) {
+  return (
+    <div className="space-y-3">
+      {accounts.map((a: any, i: number) => (
+        <div key={i} className="border border-border rounded-lg p-3">
+          <div className="flex items-baseline gap-2 mb-1">
+            <span className="text-xs font-bold text-primary">{a.handle}</span>
+            <span className="text-[10px] text-muted-foreground/60">{a.platform}</span>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">{a.description}</p>
+          {a.url && (
+            <a href={a.url} target="_blank" rel="noopener noreferrer"
+              className="text-[11px] text-primary/70 hover:text-primary mt-1 block truncate">
+              {a.url}
+            </a>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ClassicalResources({ resources }: { resources: any[] }) {
+  return (
+    <div className="space-y-3">
+      {resources.map((r: any, i: number) => (
+        <div key={i} className="border border-border rounded-lg p-3">
+          <div className="flex items-baseline gap-2 mb-0.5">
+            <span className="text-xs font-bold text-foreground">{r.title}</span>
+            <span className="text-[10px] text-muted-foreground/60">— {r.author}, {r.year}</span>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed mt-1">{r.description}</p>
+          {r.pdf_url && (
+            <a href={r.pdf_url} target="_blank" rel="noopener noreferrer"
+              className="text-[11px] text-primary/70 hover:text-primary mt-1.5 inline-block">
+              PDF ↗
+            </a>
+          )}
+          {r.gutenberg_url && (
+            <a href={r.gutenberg_url} target="_blank" rel="noopener noreferrer"
+              className="text-[11px] text-primary/70 hover:text-primary mt-1.5 inline-block">
+              Project Gutenberg ↗
+            </a>
+          )}
+          {r.free_url && (
+            <a href={r.free_url} target="_blank" rel="noopener noreferrer"
+              className="text-[11px] text-primary/70 hover:text-primary mt-1.5 inline-block">
+              Full text ↗
+            </a>
+          )}
+          {r.archive_url && (
+            <a href={r.archive_url} target="_blank" rel="noopener noreferrer"
+              className="text-[11px] text-primary/70 hover:text-primary mt-1.5 inline-block">
+              Internet Archive ↗
+            </a>
+          )}
+          {r.note && <p className="text-[11px] text-muted-foreground/60 italic mt-1">{r.note}</p>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SectionContent({ section, chapter, t, locale, craftExamples }: { section: any; chapter: any; t: (k: string) => string; locale: string; craftExamples?: any }) {
   const svgFile = SECTION_SVG[section.id];
 
   return (
@@ -352,6 +460,12 @@ function SectionContent({ section, chapter, t, locale }: { section: any; chapter
       {/* Snowflake steps */}
       {section.steps && <SnowflakeSteps steps={section.steps} />}
 
+      {/* Social accounts (9.1) */}
+      {section.accounts && <AccountsList accounts={section.accounts} />}
+
+      {/* Classical resources (9.2) */}
+      {section.classical_resources && <ClassicalResources resources={section.classical_resources} />}
+
       {/* Critical notes */}
       {section.critical_notes && (
         <div className="mt-4 border-t border-border pt-3">
@@ -365,6 +479,9 @@ function SectionContent({ section, chapter, t, locale }: { section: any; chapter
           </ul>
         </div>
       )}
+
+      {/* Craft examples (dos & don'ts) */}
+      {craftExamples && <CraftExamples examples={craftExamples} locale={locale} />}
     </div>
   );
 }
@@ -445,7 +562,7 @@ export function WritersCompendium({ open, onClose, initialSection }: Props) {
 
   if (!open) return null;
 
-  const chapters: any[] = data?.chapters ?? [];
+  const chapters: any[] = (data?.chapters ?? []).filter((c: any) => c.number !== 8);
 
   // Resolve active content
   let activeChapter: any = null;
@@ -567,7 +684,7 @@ export function WritersCompendium({ open, onClose, initialSection }: Props) {
 
                 {/* Content */}
                 {activeSection
-                  ? <SectionContent section={activeSection} chapter={activeChapter} t={t} locale={locale} />
+                  ? <SectionContent section={activeSection} chapter={activeChapter} t={t} locale={locale} craftExamples={SECTION_EXAMPLES[activeSection.id] ? data?.craft_examples?.[SECTION_EXAMPLES[activeSection.id]] : undefined} />
                   : <ChapterOverview chapter={activeChapter} t={t} locale={locale} />
                 }
               </div>
