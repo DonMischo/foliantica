@@ -25,6 +25,12 @@ const CHAPTER_SVG: Record<number, string> = {
 
 // Maps section IDs to craft_examples topic keys
 const SECTION_EXAMPLES: Record<string, string> = {
+  "1.1": "rules_and_mindset",
+  "1.2": "reading_habit",
+  "1.3": "writing_habit",
+  "2.4": "character_depth",
+  "3.3": "info_dumping",
+  "4.2": "pacing",
   "5.1": "show_dont_tell",
   "5.2": "purple_prose",
   "5.3": "active_passive_voice",
@@ -33,9 +39,6 @@ const SECTION_EXAMPLES: Record<string, string> = {
   "5.6": "pov_head_hopping",
   "5.7": "sentence_variety",
   "6.1": "dialogue",
-  "3.3": "info_dumping",
-  "4.2": "pacing",
-  "2.4": "character_depth",
 };
 
 // ── German SVG text substitutions ────────────────────────────────────────────

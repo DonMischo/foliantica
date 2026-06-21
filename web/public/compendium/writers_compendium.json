@@ -193,6 +193,164 @@
           "attribution_ids": [
             "attr_007"
           ]
+        },
+        {
+          "id": "2.5",
+          "title": "Hero Archetypes — Types of Protagonists",
+          "summary": "Protagonists are not interchangeable. The type of hero you choose determines the story's emotional register, the nature of the conflict, and what the reader is rooting for. Understanding archetypes helps you write a hero with a clear function — not just a character who does things.",
+          "arc_types": [
+            {
+              "type": "The Everyman Hero",
+              "description": "Ordinary person thrust into extraordinary circumstances. Readers identify because the hero is recognisably themselves. Works by proximity: we ask 'what would I do?' The everyman's weakness is ordinariness — they must compensate with extraordinary resourcefulness, loyalty, or moral clarity.",
+              "example": "Bilbo Baggins (The Hobbit), Katniss Everdeen (The Hunger Games)"
+            },
+            {
+              "type": "The Chosen One",
+              "description": "Destined for greatness by prophecy, birth, or cosmic selection. Creates high stakes from page one. Risk: passive protagonists who are dragged through plot. The best Chosen Ones resist, doubt, or reinterpret their destiny — they choose to fulfil it.",
+              "example": "Harry Potter, Frodo Baggins, Paul Atreides (Dune)"
+            },
+            {
+              "type": "The Anti-Hero",
+              "description": "Morally compromised, selfish, or outright criminal protagonist who nonetheless commands our sympathy. Works through honesty: we recognise their faults because we share them. The arc often moves toward redemption — or deliberately away from it (tragedy).",
+              "example": "Walter White (Breaking Bad), Raskolnikov (Crime and Punishment), Jay Gatsby"
+            },
+            {
+              "type": "The Competence Hero",
+              "description": "Defined by extraordinary skill rather than virtue. Reader pleasure is watching mastery in action. Needs human vulnerability to avoid coldness — the best competence heroes are undone by their blind spots, not their incompetence.",
+              "example": "James Bond, Sherlock Holmes, Lisbeth Salander (The Girl with the Dragon Tattoo)"
+            },
+            {
+              "type": "The Tragic Hero",
+              "description": "A fundamentally great person destroyed by a fatal flaw (hamartia). The reader knows from early on that disaster is coming — the tragic pleasure is watching the flaw operate despite good intentions. Requires the flaw to feel both inevitable and avoidable.",
+              "example": "Macbeth, Jay Gatsby, Michael Corleone (The Godfather)"
+            },
+            {
+              "type": "The Reluctant Hero",
+              "description": "Does not want the role. Must be pushed, dragged, or cornered into action. The reluctance is the characterisation — it reveals what they value more than heroism. The moment of decision (when they finally choose to act) is the emotional core of the story.",
+              "example": "Rick Blaine (Casablanca), Atticus Finch, Samwise Gamgee"
+            }
+          ],
+          "key_points": [
+            "Mix archetypes — most compelling protagonists blend two or more (the Everyman who is also Reluctant; the Anti-Hero who is also Competent).",
+            "The archetype should match the genre: thrillers favour the Competence Hero; literary fiction favours the Tragic or Anti-Hero; YA often uses the Chosen One or Everyman.",
+            "A hero's archetype implies their internal arc. The Reluctant Hero must choose. The Tragic Hero must fall. The Anti-Hero must decide whether to change.",
+            "Avoid the 'Mary Sue' trap in any archetype: the hero must have a cost, a limit, or a genuine flaw that the story takes seriously."
+          ],
+          "attribution_ids": []
+        },
+        {
+          "id": "2.6",
+          "title": "Villain Archetypes — Designing Antagonists",
+          "summary": "A story is only as strong as its villain. The antagonist defines the protagonist — they are the force that tests whether the hero's values are real. Great villains are not evil for evil's sake: they have coherent worldviews, genuine grievances, or compelling motivations. The reader should be able to articulate why the villain believes they are right.",
+          "key_points": [
+            "The villain should be the hero of their own story. Give them a motivation you can argue for even if you disagree with it.",
+            "Menace requires competence: a villain who keeps failing stops being threatening. Let them win — at least for a while.",
+            "Mirror the protagonist: the best villains share the hero's desires but pursue them through opposite means, or share the hero's flaws taken to an extreme.",
+            "Avoid 'evil because evil' — even pure-evil figures (Hannibal Lecter, the Joker) work because they embody something real: meaninglessness, chaos, the thrill of transgression.",
+            "The villain's defeat should feel earned. If the hero wins through luck, the thematic promise of the conflict is broken."
+          ],
+          "arc_types": [
+            {
+              "type": "The Mirror Villain",
+              "description": "The dark reflection of the hero — same desires, same gifts, different choices. Forces the protagonist to confront what they could have become. Creates thematic resonance because the conflict is really about the hero's values.",
+              "example": "Magneto vs. Professor X, Javert vs. Valjean (Les Misérables), Commodus vs. Maximus (Gladiator)"
+            },
+            {
+              "type": "The True Believer",
+              "description": "A villain driven by ideology — often convinced they are saving the world. Dangerous because their logic is internally consistent. Most challenging to write: the author must understand the ideology well enough to make it genuinely persuasive before dismantling it.",
+              "example": "Thanos (Avengers), Dolores Umbridge (Harry Potter), Judge Holden (Blood Meridian)"
+            },
+            {
+              "type": "The Wounded Villain",
+              "description": "Created by damage — trauma, betrayal, or injustice turned outward. Sympathy is possible; the reader understands how they got here. The risk: sympathy becomes excuse. The wound explains without justifying.",
+              "example": "Jaime Lannister (Game of Thrones), Gollum (The Lord of the Rings), Heathcliff (Wuthering Heights)"
+            },
+            {
+              "type": "The Systemic Antagonist",
+              "description": "Not a person but an institution, ideology, or social structure. No single villain to defeat — the conflict is with something larger than any individual. Requires the protagonist to change the system or be changed by it.",
+              "example": "The Capitol (The Hunger Games), the Party (Nineteen Eighty-Four), society itself (Crime and Punishment)"
+            },
+            {
+              "type": "The Charming Predator",
+              "description": "Disarming, likeable, socially adept — the danger is hidden under warmth or charisma. Works through dramatic irony: the reader sees what other characters do not. Forces the protagonist (and reader) to question their own judgment.",
+              "example": "Amy Dunne (Gone Girl), Patrick Bateman (American Psycho), Iago (Othello)"
+            }
+          ],
+          "common_mistakes": [
+            {
+              "name": "The Incompetent Villain",
+              "description": "The antagonist keeps failing, losing henchmen, monologuing — they pose no real threat. The hero's victory feels unearned.",
+              "fix": "Let the villain succeed at something important before the climax. Give them at least one moment where they are genuinely more capable than the hero."
+            },
+            {
+              "name": "The Moustache-Twirler",
+              "description": "Evil for no reason, no coherent worldview, no human dimension. A placeholder, not a character.",
+              "fix": "Write a one-page internal monologue in the villain's voice justifying everything they do. If you can't make the argument convincingly, the character isn't ready."
+            },
+            {
+              "name": "The Villain as Plot Device",
+              "description": "The antagonist only appears when the plot needs them, with no consistent presence or goal of their own.",
+              "fix": "Give the villain a separate story running in parallel. What are they doing when they're not bothering the protagonist?"
+            }
+          ],
+          "attribution_ids": []
+        },
+        {
+          "id": "2.7",
+          "title": "Supporting Characters — The Ensemble",
+          "summary": "Supporting characters are not furniture. They exist to reflect, challenge, and complicate the protagonist — and to carry their own weight as human beings. A cast of flat supporting characters makes even a strong protagonist feel isolated and unconvincing. The goal is a world that feels inhabited, not staged.",
+          "arc_types": [
+            {
+              "type": "The Mentor",
+              "description": "Provides wisdom, tools, or moral clarity to the protagonist. Must be limited — either in knowledge, power, or lifespan — or the hero has no reason to grow. The mentor's limitation creates the protagonist's necessity.",
+              "example": "Gandalf, Dumbledore, Yoda, Atticus Finch (as mentor to Scout)"
+            },
+            {
+              "type": "The Ally / Loyal Friend",
+              "description": "Committed to the hero's cause, often before the hero is. Tests the protagonist's capacity to receive love and trust. The best allies have independent motivation — they're not just helping the hero; they have their own stakes.",
+              "example": "Samwise Gamgee, Horatio (Hamlet), Dr Watson"
+            },
+            {
+              "type": "The Foil",
+              "description": "Contrasts with the protagonist to highlight specific qualities. Not an antagonist — may be friendly. The contrast should illuminate both characters, not just one.",
+              "example": "Laertes and Fortinbras (vs. Hamlet), Ron and Hermione (vs. Harry), Jane Bennet (vs. Elizabeth Bennet)"
+            },
+            {
+              "type": "The Trickster",
+              "description": "Chaos agent — may help or hinder the protagonist unpredictably. Introduces irony, humour, and unexpected solutions. Serves the story by refusing to let it take itself too seriously.",
+              "example": "Puck (A Midsummer Night's Dream), Loki, the Cheshire Cat"
+            },
+            {
+              "type": "The Love Interest",
+              "description": "Not a prize or a reward — a person with independent goals that complicate and enrich the protagonist's world. The best love interests challenge the hero's assumptions and are changed by the relationship as much as the hero is.",
+              "example": "Elizabeth Bennet (from Darcy's perspective), Ilsa Lund (Casablanca)"
+            },
+            {
+              "type": "The Threshold Guardian",
+              "description": "Tests the hero before they can advance — gatekeepers, bureaucrats, sceptics, rivals. Temporarily an obstacle, often later an ally or a neutral force. Represents the social cost of change.",
+              "example": "The doorman, the rival, the examiner, the unbelieving parent"
+            }
+          ],
+          "key_points": [
+            "Every named character needs a want that exists independently of the protagonist. Ask: what does this character do when the hero isn't around?",
+            "Supporting characters should disagree with the protagonist occasionally — a cast that always agrees is just the hero talking to themselves.",
+            "Give minor characters one vivid, specific detail — a habit, a contradiction, a specific way of speaking — that makes them feel real rather than functional.",
+            "Avoid the 'Smurfette principle': token diversity of any kind (one woman, one person of colour, one comic relief) flattens your world. Build an ensemble with genuine variety of perspective.",
+            "The rule of 'every character is the hero of their own story' applies especially to supporting roles. If you can't summarise their internal life in two sentences, they need more development."
+          ],
+          "common_mistakes": [
+            {
+              "name": "The Exposition Bot",
+              "description": "A character who exists only to deliver information to the protagonist (and the reader). No personality, no want, appears and disappears as needed.",
+              "fix": "Give every exposition-delivering character a conflicting motivation. What do they want from the protagonist in return for this information?"
+            },
+            {
+              "name": "The Disposable Friend",
+              "description": "A character introduced so they can die and make the protagonist sad. The reader sees the function before the funeral.",
+              "fix": "Make the character so vivid and interesting that their death is a genuine loss, not a narrative beat. If readers don't grieve, the sacrifice means nothing."
+            }
+          ],
+          "attribution_ids": []
         }
       ]
     },
@@ -2894,6 +3052,48 @@
           "note_pl": "Polskie poradniki pisania (born-to-create.pl, spisekpisarzy.pl) wymieniają spójność chronologiczną jako obowiązkowy element samoedycji.",
           "note_en": "Polish craft guides list chronological consistency as a mandatory self-editing element.",
           "source": "born-to-create.pl: 'streszczenie rozdziałów' as a tracking tool"
+        }
+      ]
+    },
+    "rules_and_mindset": {
+      "topic": "Rules, Mindset & Craft Fundamentals",
+      "description": "Understanding when to follow craft principles and when to break them with intention.",
+      "entries": [
+        {
+          "id": "ram_en_001",
+          "language": "en",
+          "principle": "Breaking rules consciously is craft; breaking them accidentally is error",
+          "bad": "He was excited. She was nervous. They were both scared.",
+          "good": "He knew the rules of show-don't-tell, so when he chose to tell — 'She had been waiting her whole life for this moment' — the economy served the scene perfectly.",
+          "note": "Flat telling with no craft intention reads as error. The same gesture made deliberately becomes style."
+        }
+      ]
+    },
+    "reading_habit": {
+      "topic": "The Reading Imperative",
+      "description": "Why serious writers must read voraciously — in genre and out.",
+      "entries": [
+        {
+          "id": "rh_en_001",
+          "language": "en",
+          "principle": "Know your genre before you write in it",
+          "bad": "Writing a fantasy novel without reading fantasy. Readers will feel the ignorance — recycled tropes, wrong pacing, missed genre beats.",
+          "good": "Read 50–100 books in your genre before writing your first novel. Know what's been done, what readers expect, and where you can surprise them.",
+          "note": "Read the classics of your genre, recent bestsellers, literary fiction for prose style, and nonfiction in your theme area for authentic detail."
+        }
+      ]
+    },
+    "writing_habit": {
+      "topic": "Consistency & The Writing Habit",
+      "description": "Building the daily practice that separates finished novels from perpetual first drafts.",
+      "entries": [
+        {
+          "id": "wh_en_001",
+          "language": "en",
+          "principle": "The draft must exist before it can be good",
+          "bad": "Waiting for inspiration. Writing only when you 'feel like it' produces 3 pages a year and a lot of guilt.",
+          "good": "Write 500 words every morning before checking email. After 120 days, you have a novel draft.",
+          "note": "Put the work away for a while before editing. When you return with fresh eyes, you'll see clearly what needs to change. — Mary Simses"
         }
       ]
     }

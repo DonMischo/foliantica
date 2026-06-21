@@ -21,6 +21,7 @@ export const TEMPLATE_COMPENDIUM_SECTION: Record<string, string> = {
   "heros-journey":   "10.3",
   "seven-point":     "10.4",
   "eight-point-arc": "10.5",
+  "snowflake":       "10.6",
   "freytag":         "10.7",
 };
 
@@ -103,6 +104,23 @@ export const PLOT_TEMPLATES: PlotTemplate[] = [
       { id: "epa-06", name: "Climax",          description: "Point of maximum tension. The result of all previous surprises and choices. In literary fiction this is often an internal confrontation.", position: 75 },
       { id: "epa-07", name: "Reversal",        description: "The situation changes fundamentally as a result of the climax. The protagonist's world — internal and external — is permanently altered.", position: 88 },
       { id: "epa-08", name: "Resolution",      description: "The new stasis. Should mirror and contrast with the opening. The natural consequence of everything that came before — happy or not.", position: 99 },
+    ],
+  },
+  {
+    id: "snowflake",
+    name: "Snowflake Method",
+    description: "Randy Ingermanson's design-first method — build complexity from a single sentence outward, step by step.",
+    beats: [
+      { id: "sf-01", name: "One-Sentence Summary",      description: "Write a single sentence (~15 words) summarising your novel — the logline. This is the seed everything grows from.",              position: 5 },
+      { id: "sf-02", name: "One-Paragraph Summary",     description: "Expand to five sentences: setup, first disaster, second disaster, third disaster, ending. Each disaster ends an act.",            position: 15 },
+      { id: "sf-03", name: "Character Summaries",       description: "For each major character: name, one-sentence story role, motivation, goal, conflict, epiphany, and one-paragraph arc summary.",   position: 25 },
+      { id: "sf-04", name: "Expanded Story Summary",    description: "Expand the one-paragraph summary to a full page. Resolve any story problems found in step 2.",                                    position: 35 },
+      { id: "sf-05", name: "Character Charts",          description: "Full character profiles for each major character: backstory, values, appearance, relationships. Go deep.",                         position: 45 },
+      { id: "sf-06", name: "Four-Page Synopsis",        description: "Expand the one-page summary to four pages. Each paragraph from step 4 becomes a full page here.",                                 position: 55 },
+      { id: "sf-07", name: "Full Character Narratives", description: "Write the story from each major character's POV. What do they experience? This is not in the book — it's your research.",         position: 65 },
+      { id: "sf-08", name: "Scene List",                description: "List every scene in a spreadsheet. For each: POV character, what happens, and how it changes the story's value (+ or −).",        position: 75 },
+      { id: "sf-09", name: "Scene Expansions",          description: "Expand each scene entry into a multi-paragraph prose description. This is your detailed outline.",                                 position: 85 },
+      { id: "sf-10", name: "First Draft",               description: "Write the novel. The outline is a guide, not a cage. If the story demands a change, trust it.",                                   position: 99 },
     ],
   },
   {
