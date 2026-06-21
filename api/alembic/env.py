@@ -1,3 +1,4 @@
+import os
 from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 from alembic import context
@@ -8,6 +9,15 @@ if config.config_file_name is not None:
 
 from models import Base  # noqa: E402
 target_metadata = Base.metadata
+
+# Use the same Postgres connection as the app, overriding the ini default.
+_pg_host = os.getenv("LW_PG_HOST", "127.0.0.1")
+_pg_port = os.getenv("LW_PG_PORT", "5433")
+_pg_user = os.getenv("LW_PG_USER", "foliantica")
+_pg_pass = os.getenv("LW_PG_PASS", "foliantica")
+_pg_db   = os.getenv("LW_PG_DB",   "foliantica")
+_db_url = f"postgresql+psycopg2://{_pg_user}:{_pg_pass}@{_pg_host}:{_pg_port}/{_pg_db}"
+config.set_main_option("sqlalchemy.url", _db_url)
 
 
 def run_migrations_offline() -> None:
