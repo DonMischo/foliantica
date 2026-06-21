@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" font-family="Arial, sans-serif">
+  <rect width="800" height="480" fill="#0F1E2E" rx="12"/>
+
+  <text x="400" y="38" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="bold" letter-spacing="1">DIALOGUE — DOS &amp; DON'TS</text>
+  <line x1="40" y1="50" x2="760" y2="50" stroke="#B8860B" stroke-width="2"/>
+
+  <!-- Headers -->
+  <rect x="40" y="62" width="340" height="30" fill="#C0392B" rx="6"/>
+  <text x="210" y="82" text-anchor="middle" fill="#FFFFFF" font-size="14" font-weight="bold">❌  DON'T</text>
+  <rect x="420" y="62" width="340" height="30" fill="#1E6B4A" rx="6"/>
+  <text x="590" y="82" text-anchor="middle" fill="#FFFFFF" font-size="14" font-weight="bold">✅  DO</text>
+
+  <!-- Rule 1: On-the-nose dialogue -->
+  <rect x="40" y="100" width="340" height="82" fill="#3A0D0D" rx="6"/>
+  <text x="55" y="118" fill="#FF8080" font-size="10" font-weight="bold">ON-THE-NOSE DIALOGUE</text>
+  <text x="55" y="135" fill="#FFAAAA" font-size="11" font-style="italic">"I have not forgiven you for</text>
+  <text x="55" y="151" fill="#FFAAAA" font-size="11" font-style="italic">leaving me," Marcus said.</text>
+  <text x="55" y="167" fill="#FFAAAA" font-size="11" font-style="italic">"I love you too," Elena confessed.</text>
+
+  <rect x="420" y="100" width="340" height="82" fill="#0D2E1A" rx="6"/>
+  <text x="435" y="118" fill="#80FFAA" font-size="10" font-weight="bold">SUBTEXT + TENSION</text>
+  <text x="435" y="135" fill="#CCFFDD" font-size="11" font-style="italic">"You look tired," Paul said.</text>
+  <text x="435" y="151" fill="#CCFFDD" font-size="11" font-style="italic">"I'm fine."</text>
+  <text x="435" y="167" fill="#CCFFDD" font-size="11" font-style="italic">"You've been saying that for three weeks."</text>
+
+  <!-- Arrow -->
+  <text x="393" y="145" text-anchor="middle" fill="#B8860B" font-size="22">⇒</text>
+
+  <!-- Rule 2: Tags + adverbs -->
+  <rect x="40" y="192" width="340" height="82" fill="#3A0D0D" rx="6"/>
+  <text x="55" y="210" fill="#FF8080" font-size="10" font-weight="bold">TAG + ADVERB STACKING</text>
+  <text x="55" y="227" fill="#FFAAAA" font-size="11" font-style="italic">"Get out," she exclaimed angrily.</text>
+  <text x="55" y="243" fill="#FFAAAA" font-size="11" font-style="italic">"You don't mean that," he</text>
+  <text x="55" y="259" fill="#FFAAAA" font-size="11" font-style="italic">   pleaded desperately.</text>
+
+  <rect x="420" y="192" width="340" height="82" fill="#0D2E1A" rx="6"/>
+  <text x="435" y="210" fill="#80FFAA" font-size="10" font-weight="bold">ACTION BEAT REPLACES TAG</text>
+  <text x="435" y="227" fill="#CCFFDD" font-size="11" font-style="italic">"Get out." She pointed at the door.</text>
+  <text x="435" y="243" fill="#CCFFDD" font-size="11" font-style="italic">"You don't mean that."</text>
+  <text x="435" y="259" fill="#CCFFDD" font-size="11" font-style="italic">"Get. Out."</text>
+
+  <text x="393" y="237" text-anchor="middle" fill="#B8860B" font-size="22">⇒</text>
+
+  <!-- Rule 3: As-you-know-Bob -->
+  <rect x="40" y="284" width="340" height="82" fill="#3A0D0D" rx="6"/>
+  <text x="55" y="302" fill="#FF8080" font-size="10" font-weight="bold">AS-YOU-KNOW-BOB EXPOSITION</text>
+  <text x="55" y="319" fill="#FFAAAA" font-size="11" font-style="italic">"As you know, Mira, this is the</text>
+  <text x="55" y="335" fill="#FFAAAA" font-size="11" font-style="italic">panel you've operated for ten years.</text>
+  <text x="55" y="351" fill="#FFAAAA" font-size="11" font-style="italic">The amber light means reactor failure."</text>
+
+  <rect x="420" y="284" width="340" height="82" fill="#0D2E1A" rx="6"/>
+  <text x="435" y="302" fill="#80FFAA" font-size="10" font-weight="bold">CHARACTER-FILTERED DISCOVERY</text>
+  <text x="435" y="319" fill="#CCFFDD" font-size="11" font-style="italic">Mira's hands moved across the panel</text>
+  <text x="435" y="335" fill="#CCFFDD" font-size="11" font-style="italic">without thinking. The amber light</text>
+  <text x="435" y="351" fill="#CCFFDD" font-size="11" font-style="italic">was new. She'd never seen amber before.</text>
+
+  <text x="393" y="329" text-anchor="middle" fill="#B8860B" font-size="22">⇒</text>
+
+  <!-- Rule 4: Same voice -->
+  <rect x="40" y="376" width="340" height="82" fill="#3A0D0D" rx="6"/>
+  <text x="55" y="394" fill="#FF8080" font-size="10" font-weight="bold">ALL CHARACTERS SOUND ALIKE</text>
+  <text x="55" y="411" fill="#FFAAAA" font-size="11" font-style="italic">"We need to address the situation,"</text>
+  <text x="55" y="427" fill="#FFAAAA" font-size="11" font-style="italic">said Marcus.</text>
+  <text x="55" y="443" fill="#FFAAAA" font-size="11" font-style="italic">"Yes, we should," said Elena.</text>
+
+  <rect x="420" y="376" width="340" height="82" fill="#0D2E1A" rx="6"/>
+  <text x="435" y="394" fill="#80FFAA" font-size="10" font-weight="bold">DISTINCT VOICE PER CHARACTER</text>
+  <text x="435" y="411" fill="#CCFFDD" font-size="11" font-style="italic">Marcus: "Eighteen hours. Then we move."</text>
+  <text x="435" y="427" fill="#CCFFDD" font-size="11" font-style="italic">Elena: "Eighteen hours and then we</text>
+  <text x="435" y="443" fill="#CCFFDD" font-size="11" font-style="italic">move into what, exactly?"</text>
+
+  <text x="393" y="421" text-anchor="middle" fill="#B8860B" font-size="22">⇒</text>
+</svg>

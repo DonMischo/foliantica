@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" font-family="Arial, sans-serif">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1A3A5C;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0d2240;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-color="#00000033"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="520" fill="url(#bgGrad)" rx="12"/>
+
+  <!-- Title -->
+  <text x="400" y="46" text-anchor="middle" fill="#FFFFFF" font-size="22" font-weight="bold" letter-spacing="1">SHOW, DON'T TELL</text>
+  <line x1="80" y1="58" x2="720" y2="58" stroke="#C0392B" stroke-width="2"/>
+  <text x="400" y="78" text-anchor="middle" fill="#8AADCC" font-size="13">How to replace flat statements with experience</text>
+
+  <!-- TELL column -->
+  <rect x="40" y="96" width="330" height="390" fill="#3A0D0D" rx="10" filter="url(#shadow)"/>
+  <rect x="40" y="96" width="330" height="42" fill="#C0392B" rx="10"/>
+  <rect x="40" y="120" width="330" height="18" fill="#C0392B"/>
+  <text x="205" y="124" text-anchor="middle" fill="#FFFFFF" font-size="16" font-weight="bold">❌  TELL</text>
+
+  <!-- SHOW column -->
+  <rect x="430" y="96" width="330" height="390" fill="#0D2E1A" rx="10" filter="url(#shadow)"/>
+  <rect x="430" y="96" width="330" height="42" fill="#1E6B4A" rx="10"/>
+  <rect x="430" y="120" width="330" height="18" fill="#1E6B4A"/>
+  <text x="595" y="124" text-anchor="middle" fill="#FFFFFF" font-size="16" font-weight="bold">✅  SHOW</text>
+
+  <!-- Pair 1: Anger -->
+  <rect x="52" y="150" width="306" height="80" fill="#5C1A1A" rx="6"/>
+  <text x="66" y="170" fill="#FFA0A0" font-size="11" font-weight="bold">ANGER</text>
+  <text x="66" y="189" fill="#FFCCCC" font-size="13" font-style="italic">"She was angry."</text>
+
+  <rect x="442" y="150" width="306" height="80" fill="#1A3D2B" rx="6"/>
+  <text x="456" y="170" fill="#7DFFB8" font-size="11" font-weight="bold">ANGER</text>
+  <text x="456" y="189" fill="#CCFFDD" font-size="12" font-style="italic">"She slammed the door so hard</text>
+  <text x="456" y="207" fill="#CCFFDD" font-size="12" font-style="italic">the frame shuddered."</text>
+
+  <!-- Arrow between -->
+  <text x="395" y="197" text-anchor="middle" fill="#F0C040" font-size="20">→</text>
+
+  <!-- Pair 2: Grief -->
+  <rect x="52" y="244" width="306" height="80" fill="#5C1A1A" rx="6"/>
+  <text x="66" y="264" fill="#FFA0A0" font-size="11" font-weight="bold">GRIEF</text>
+  <text x="66" y="283" fill="#FFCCCC" font-size="13" font-style="italic">"Tom was devastated by the news."</text>
+
+  <rect x="442" y="244" width="306" height="80" fill="#1A3D2B" rx="6"/>
+  <text x="456" y="264" fill="#7DFFB8" font-size="11" font-weight="bold">GRIEF</text>
+  <text x="456" y="283" fill="#CCFFDD" font-size="12" font-style="italic">"Tom sat down. Not on the chair —</text>
+  <text x="456" y="301" fill="#CCFFDD" font-size="12" font-style="italic">just on the floor, in his coat."</text>
+
+  <text x="395" y="292" text-anchor="middle" fill="#F0C040" font-size="20">→</text>
+
+  <!-- Pair 3: Character trait -->
+  <rect x="52" y="338" width="306" height="80" fill="#5C1A1A" rx="6"/>
+  <text x="66" y="358" fill="#FFA0A0" font-size="11" font-weight="bold">CHARACTER TRAIT</text>
+  <text x="66" y="377" fill="#FFCCCC" font-size="13" font-style="italic">"He was a stingy man."</text>
+
+  <rect x="442" y="338" width="306" height="80" fill="#1A3D2B" rx="6"/>
+  <text x="456" y="358" fill="#7DFFB8" font-size="11" font-weight="bold">CHARACTER TRAIT</text>
+  <text x="456" y="377" fill="#CCFFDD" font-size="12" font-style="italic">"He counted his change three times</text>
+  <text x="456" y="395" fill="#CCFFDD" font-size="12" font-style="italic">and left the smallest possible tip."</text>
+
+  <text x="395" y="386" text-anchor="middle" fill="#F0C040" font-size="20">→</text>
+
+  <!-- Rule box at bottom -->
+  <rect x="40" y="496" width="720" height="0" fill="none"/>
+  <text x="400" y="494" text-anchor="middle" fill="#8AADCC" font-size="12" font-style="italic">Replace the label with the behaviour. Let the reader feel, not be told.</text>
+</svg>

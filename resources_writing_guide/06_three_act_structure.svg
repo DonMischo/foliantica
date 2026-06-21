@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" font-family="Arial, sans-serif">
+  <defs>
+    <linearGradient id="act1g" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1E6B4A"/>
+      <stop offset="100%" style="stop-color:#145034"/>
+    </linearGradient>
+    <linearGradient id="act2ag" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1A3A5C"/>
+      <stop offset="100%" style="stop-color:#0d2240"/>
+    </linearGradient>
+    <linearGradient id="act2bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#5C1A1A"/>
+      <stop offset="100%" style="stop-color:#3A0D0D"/>
+    </linearGradient>
+    <linearGradient id="act3g" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#B8860B"/>
+      <stop offset="100%" style="stop-color:#8B6508"/>
+    </linearGradient>
+  </defs>
+
+  <!-- BG -->
+  <rect width="800" height="400" fill="#0F1E2E" rx="12"/>
+
+  <!-- Title -->
+  <text x="400" y="36" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="bold" letter-spacing="1">THREE-ACT STRUCTURE</text>
+  <line x1="40" y1="48" x2="760" y2="48" stroke="#B8860B" stroke-width="2"/>
+
+  <!-- Tension curve -->
+  <path d="M 40 330 C 80 328 120 320 190 300 C 210 293 230 295 250 290 C 280 283 310 270 360 240 C 390 224 400 215 420 218 C 440 222 455 235 480 250 C 510 270 530 285 540 295 C 560 305 575 290 600 250 C 620 220 640 180 680 140 C 700 120 730 100 760 90"
+        stroke="#5A7A9C" stroke-width="1.5" fill="none" stroke-dasharray="5,3"/>
+
+  <!-- Act blocks -->
+  <!-- Act I: 25% = 180px wide -->
+  <rect x="40" y="60" width="175" height="260" fill="url(#act1g)" rx="8" opacity="0.85"/>
+  <text x="127" y="88" text-anchor="middle" fill="#FFFFFF" font-size="15" font-weight="bold">ACT I</text>
+  <text x="127" y="106" text-anchor="middle" fill="#CCFFDD" font-size="11">25% of story</text>
+  <line x1="55" y1="116" x2="200" y2="116" stroke="#80FFAA" stroke-width="0.8" opacity="0.5"/>
+  <text x="55" y="132" fill="#FFFFFF" font-size="10.5" font-weight="bold">• Introduce protagonist</text>
+  <text x="55" y="148" fill="#CCFFDD" font-size="10">  world &amp; status quo</text>
+  <text x="55" y="168" fill="#FFFFFF" font-size="10.5" font-weight="bold">• Inciting Incident</text>
+  <text x="55" y="184" fill="#CCFFDD" font-size="10">  disrupts status quo</text>
+  <text x="55" y="204" fill="#FFFFFF" font-size="10.5" font-weight="bold">• End: Commitment</text>
+  <text x="55" y="220" fill="#CCFFDD" font-size="10">  protagonist commits</text>
+  <text x="55" y="236" fill="#CCFFDD" font-size="10">  to the journey</text>
+  <rect x="55" y="292" width="145" height="22" fill="#145034" rx="4"/>
+  <text x="127" y="307" text-anchor="middle" fill="#80FFAA" font-size="10" font-weight="bold">GOAL: Establish stakes</text>
+
+  <!-- Act IIA: 25% -->
+  <rect x="223" y="60" width="175" height="260" fill="url(#act2ag)" rx="8" opacity="0.9"/>
+  <text x="310" y="88" text-anchor="middle" fill="#FFFFFF" font-size="15" font-weight="bold">ACT II-A</text>
+  <text x="310" y="106" text-anchor="middle" fill="#AACCEE" font-size="11">25% of story</text>
+  <line x1="238" y1="116" x2="388" y2="116" stroke="#80AADD" stroke-width="0.8" opacity="0.5"/>
+  <text x="238" y="132" fill="#FFFFFF" font-size="10.5" font-weight="bold">• Pursuit of goal</text>
+  <text x="238" y="148" fill="#AACCEE" font-size="10">  things go badly but</text>
+  <text x="238" y="164" fill="#AACCEE" font-size="10">  not catastrophically</text>
+  <text x="238" y="184" fill="#FFFFFF" font-size="10.5" font-weight="bold">• MIDPOINT</text>
+  <text x="238" y="200" fill="#AACCEE" font-size="10">  major shift in approach</text>
+  <text x="238" y="216" fill="#AACCEE" font-size="10">  reactive → proactive</text>
+  <rect x="238" y="292" width="145" height="22" fill="#0d2240" rx="4"/>
+  <text x="310" y="307" text-anchor="middle" fill="#80AADD" font-size="10" font-weight="bold">GOAL: Raise the stakes</text>
+
+  <!-- Act IIB: 25% -->
+  <rect x="406" y="60" width="175" height="260" fill="url(#act2bg)" rx="8" opacity="0.9"/>
+  <text x="493" y="88" text-anchor="middle" fill="#FFFFFF" font-size="15" font-weight="bold">ACT II-B</text>
+  <text x="493" y="106" text-anchor="middle" fill="#FFAAAA" font-size="11">25% of story</text>
+  <line x1="421" y1="116" x2="571" y2="116" stroke="#FF8080" stroke-width="0.8" opacity="0.5"/>
+  <text x="421" y="132" fill="#FFFFFF" font-size="10.5" font-weight="bold">• Everything worsens</text>
+  <text x="421" y="148" fill="#FFAAAA" font-size="10">  protagonist's flaw fully</text>
+  <text x="421" y="164" fill="#FFAAAA" font-size="10">  exposed</text>
+  <text x="421" y="184" fill="#FFFFFF" font-size="10.5" font-weight="bold">• Dark Night of the Soul</text>
+  <text x="421" y="200" fill="#FFAAAA" font-size="10">  all seems lost</text>
+  <text x="421" y="216" fill="#FFAAAA" font-size="10">  internal lowest point</text>
+  <rect x="421" y="292" width="145" height="22" fill="#3A0D0D" rx="4"/>
+  <text x="493" y="307" text-anchor="middle" fill="#FF8080" font-size="10" font-weight="bold">GOAL: Maximum pressure</text>
+
+  <!-- Act III: 25% -->
+  <rect x="589" y="60" width="171" height="260" fill="url(#act3g)" rx="8" opacity="0.85"/>
+  <text x="674" y="88" text-anchor="middle" fill="#FFFFFF" font-size="15" font-weight="bold">ACT III</text>
+  <text x="674" y="106" text-anchor="middle" fill="#FFEEAA" font-size="11">25% of story</text>
+  <line x1="604" y1="116" x2="750" y2="116" stroke="#FFCC40" stroke-width="0.8" opacity="0.5"/>
+  <text x="604" y="132" fill="#FFFFFF" font-size="10.5" font-weight="bold">• Climax</text>
+  <text x="604" y="148" fill="#FFEEAA" font-size="10">  protagonist confronts</text>
+  <text x="604" y="164" fill="#FFEEAA" font-size="10">  central conflict using</text>
+  <text x="604" y="180" fill="#FFEEAA" font-size="10">  what they've learned</text>
+  <text x="604" y="200" fill="#FFFFFF" font-size="10.5" font-weight="bold">• Resolution</text>
+  <text x="604" y="216" fill="#FFEEAA" font-size="10">  new status quo</text>
+  <text x="604" y="232" fill="#FFEEAA" font-size="10">  character transformed</text>
+  <rect x="604" y="292" width="146" height="22" fill="#8B6508" rx="4"/>
+  <text x="674" y="307" text-anchor="middle" fill="#FFEEAA" font-size="10" font-weight="bold">GOAL: Earned resolution</text>
+
+  <!-- Bottom axis -->
+  <line x1="40" y1="336" x2="760" y2="336" stroke="#1A3A5C" stroke-width="1"/>
+  <text x="127" y="354" text-anchor="middle" fill="#5A7A9C" font-size="10">pp. 1–100 (novel)</text>
+  <text x="310" y="354" text-anchor="middle" fill="#5A7A9C" font-size="10">pp. 100–200</text>
+  <text x="493" y="354" text-anchor="middle" fill="#5A7A9C" font-size="10">pp. 200–300</text>
+  <text x="674" y="354" text-anchor="middle" fill="#5A7A9C" font-size="10">pp. 300–400</text>
+  <text x="400" y="380" text-anchor="middle" fill="#8AADCC" font-size="11" font-style="italic">Based on 400-page novel. Scale proportionally for shorter/longer works.</text>
+</svg>
