@@ -28,9 +28,15 @@ const SECTION_EXAMPLES: Record<string, string> = {
   "1.1": "rules_and_mindset",
   "1.2": "reading_habit",
   "1.3": "writing_habit",
+  "2.2": "character_voice",
+  "2.3": "character_arc",
   "2.4": "character_depth",
-  "3.3": "info_dumping",
+  "3.1": "iceberg_principle",
+  "3.3": "lore_writing",
+  "3.4": "setting_as_character",
+  "4.1": "story_structure",
   "4.2": "pacing",
+  "4.3": "flashback",
   "5.1": "show_dont_tell",
   "5.2": "purple_prose",
   "5.3": "active_passive_voice",
@@ -39,6 +45,10 @@ const SECTION_EXAMPLES: Record<string, string> = {
   "5.6": "pov_head_hopping",
   "5.7": "sentence_variety",
   "6.1": "dialogue",
+  "6.2": "dialogue_tags",
+  "6.3": "subtext",
+  "7.2": "opening_lines",
+  "7.3": "working_with_editors",
 };
 
 // ── German SVG text substitutions ────────────────────────────────────────────

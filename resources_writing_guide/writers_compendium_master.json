@@ -3096,6 +3096,170 @@
           "note": "Put the work away for a while before editing. When you return with fresh eyes, you'll see clearly what needs to change. — Mary Simses"
         }
       ]
+    },
+    "story_structure": {
+      "topic": "Story Structure & The Inciting Incident",
+      "description": "How clear structural beats serve the reader's need for forward momentum and emotional investment.",
+      "entries": [
+        {
+          "id": "ss_en_001",
+          "language": "en",
+          "principle": "Structural clarity serves story momentum — the inciting incident must arrive",
+          "bad": "100 pages of fascinating world-building before anything happens that the protagonist must respond to. (Missing an inciting incident; readers abandon the book by chapter 3.)",
+          "good": "Chapter 1: Frodo lives peacefully in the Shire. Chapter 2: Gandalf reveals the ring's danger — the Inciting Incident. Chapter 3: Frodo commits to leaving — End of Act I.",
+          "note": "The reader's contract is set in Act I. Delay the inciting incident and you're spending goodwill you haven't earned yet."
+        }
+      ]
+    },
+    "flashback": {
+      "topic": "Flashbacks & Temporal Structure",
+      "description": "Flashbacks earn their place only when they change how the reader understands the present moment.",
+      "entries": [
+        {
+          "id": "fb_en_001",
+          "language": "en",
+          "principle": "A flashback must earn the reader's permission to time-travel",
+          "bad": "Chapter 1: The battle begins! Chapter 2: Flashback to protagonist's childhood (15 pages). Chapter 3: Flashback to protagonist's training (12 pages). Chapter 4: Back to the battle... which readers no longer care about.",
+          "good": "She stared at the man across the courtroom. The last time she'd seen that face, she'd been seven years old and running.",
+          "note": "Rule: a flashback should create a mystery or urgency in the present, then the flashback resolves it. The present scene must earn the permission first."
+        }
+      ]
+    },
+    "character_voice": {
+      "topic": "Character Voice — Making Everyone Sound Different",
+      "description": "Each character should be immediately recognisable by how they speak, not just what they say.",
+      "entries": [
+        {
+          "id": "cv_en_001",
+          "language": "en",
+          "principle": "Show interiority through filtering — what a character notices reveals who they are",
+          "bad": "\"You're late,\" she said. She was annoyed. She looked at him carefully.",
+          "good": "\"You're late,\" she said. Not an accusation — just a fact she filed away alongside his crooked tie and the coffee stain on his left cuff.",
+          "note": "The same line of dialogue reads completely differently depending on what the character notices and how they process it."
+        },
+        {
+          "id": "cv_en_002",
+          "language": "en",
+          "principle": "Two characters discussing the same event should reveal entirely different worldviews",
+          "bad": "\"We lost people,\" said Marcus. \"Yes, we did,\" said Elena. (Both characters sound like the same narrator wearing different names.)",
+          "good": "Character A (soldier): \"Casualty count's low. Sector secure. We move at dawn.\" Character B (poet): \"Seventeen men. I keep counting them. Do they have names in your reports?\"",
+          "note": "Pro tip: Give each major character 5 FORBIDDEN WORDS — things they would never say. This instantly differentiates voice."
+        }
+      ]
+    },
+    "character_arc": {
+      "topic": "Character Arc — Transformation or Revelation",
+      "description": "A character arc is not decoration. It is the story's proof that the events mattered.",
+      "entries": [
+        {
+          "id": "ca_en_001",
+          "language": "en",
+          "principle": "The character must be meaningfully different at the end — or knowingly refuse to change",
+          "bad": "Character is kind at the start. Character is kind at the end. Nothing has changed. The plot happened to them; they didn't grow through it.",
+          "good": "At the start: Ebenezer Scrooge refuses to acknowledge others' humanity. At the end: He becomes the embodiment of generosity. Every story event forces the confrontation with his wound.",
+          "note": "The lie your character believes at the start of the story is the engine of their entire arc. Identify it in chapter one; resolve it — or not — at the climax."
+        }
+      ]
+    },
+    "iceberg_principle": {
+      "topic": "The Iceberg Principle — World-Building Through Detail",
+      "description": "The reader infers the depth of a world from a single visible detail. The author knows ten things; the reader sees one and believes in all ten.",
+      "entries": [
+        {
+          "id": "ip_en_001",
+          "language": "en",
+          "principle": "Let the reader infer the system from a single concrete detail",
+          "bad": "\"In this world, the currency system works as follows: three copper rings equal one silver arc, which equals one-tenth of a gold circle, established by the Treaty of Veth in year 1204 of the Third Age...\"",
+          "good": "She paid for her bread with three copper rings, checked that the stamping on the reverse matched the current regent, and moved on.",
+          "note": "Build outward from your protagonist's experience. What do they see, touch, and bump against? Start there."
+        }
+      ]
+    },
+    "setting_as_character": {
+      "topic": "Setting as Character",
+      "description": "Setting is not backdrop. It carries theme, mood, and history. A scene's environment should tell us something that couldn't be said any other way.",
+      "entries": [
+        {
+          "id": "sac_en_001",
+          "language": "en",
+          "principle": "Setting should carry history, theme, and emotion simultaneously",
+          "bad": "The hospital corridor was white and smelled like hospitals. She walked down it.",
+          "good": "The hospital corridor smelled of floor wax and old coffee and something medicinal that never quite cleared. It had the permanent atmosphere of waiting — as if the building itself had learned to hold its breath.",
+          "note": "The best setting descriptions are never neutral. They are experienced through a character's state of mind and shaped by the story's themes."
+        },
+        {
+          "id": "sac_en_002",
+          "language": "en",
+          "principle": "Setting can carry backstory that dialogue or narration would over-explain",
+          "bad": "\"As you know, the old religion was outlawed two hundred years ago when King Aldric the Third defeated the temple priests and converted the holy sites.\"",
+          "good": "The temple had been repurposed as a grain storehouse. Someone had plastered over the fresco of the old gods, but the plaster had cracked, and through the gap a golden hand still reached toward the ceiling.",
+          "note": "The reader understands the suppressed religion instantly — without a word of exposition."
+        }
+      ]
+    },
+    "dialogue_tags": {
+      "topic": "Dialogue Tags — Said Is Not Dead",
+      "description": "'Said' is invisible to the reader. Adverb-loaded tags and exotic synonyms are not. Use action beats to replace tags wherever possible.",
+      "entries": [
+        {
+          "id": "dt_en_001",
+          "language": "en",
+          "principle": "Action beats replace tags and add character simultaneously",
+          "bad": "\"Get out,\" she exclaimed angrily. \"You don't mean that,\" he pleaded desperately. \"Get out,\" she reiterated forcefully.",
+          "good": "\"Get out.\" She pointed at the door. \"You don't mean that.\" \"Get. Out.\"",
+          "note": "The action beat (pointing) does what 'angrily' tried to do, and the repeated word with a period does what 'forcefully' tried to do — at a fraction of the word count."
+        },
+        {
+          "id": "dt_en_002",
+          "language": "en",
+          "principle": "If you must convey tone through a tag, use a stronger verb — but sparingly",
+          "bad": "\"I suppose,\" he said noncommittally. \"Fine,\" she said dismissively. \"Really?\" he said questioningly.",
+          "good": "\"I suppose,\" he said. \"Fine,\" she said. \"Really?\" (No tag needed — the punctuation carries it.)",
+          "note": "Pro tip: 'she snapped,' 'he said quietly,' 'she laughed' are fine occasionally. But the default is said/asked. The moment tags become visible, they interrupt the scene."
+        }
+      ]
+    },
+    "subtext": {
+      "topic": "Subtext — What Characters Don't Say",
+      "description": "The most powerful emotional content in dialogue is what goes unsaid. Characters who speak their feelings directly flatten the scene; characters who avoid them create tension.",
+      "entries": [
+        {
+          "id": "sub_en_001",
+          "language": "en",
+          "principle": "Subtext lives in what characters refuse to say directly",
+          "bad": "\"I have not forgiven you for leaving me,\" Marcus said. \"I know. I feel terrible about it,\" Elena replied. \"I still think about it every day,\" Marcus continued.",
+          "good": "\"How long has it been?\" he asked. She shrugged. \"A while.\" \"Right.\" They both looked at their coffee.",
+          "note": "The conversation about coffee is the conversation about everything. The reader fills in the wound; you don't need to name it."
+        }
+      ]
+    },
+    "working_with_editors": {
+      "topic": "Working With Editors — The Two Rules",
+      "description": "Receiving editorial feedback is a skill. The goal is to understand what the editor is responding to, not just whether to accept or reject the specific fix.",
+      "entries": [
+        {
+          "id": "wwe_en_001",
+          "language": "en",
+          "principle": "Understand the problem before evaluating the solution",
+          "bad": "Taking 100% of editor suggestions means you've surrendered your voice. Taking 0% means you've wasted the editor's time and your own money.",
+          "good": "When you receive an edit, first ask: WHY did the editor make this suggestion? What are they responding to? Even if you reject the specific fix, the problem they identified is almost certainly real.",
+          "note": "Rule 1: Take the edit seriously — the editor is responding to a real problem. Rule 2: You don't have to take the editor's specific solution. It's your story."
+        }
+      ]
+    },
+    "lore_writing": {
+      "topic": "Writing Lore Without Info-Dumping",
+      "description": "Lore earns its place when it invites questions rather than answering them. The reader should lean forward, not sit back.",
+      "entries": [
+        {
+          "id": "lw_en_001",
+          "language": "en",
+          "principle": "Lore delivered through character voice invites curiosity; exposition shuts it down",
+          "bad": "\"The mermaids of the Vethrian Sea were first documented in 1203 by the explorer Aldric of Casmoor, who recorded seventeen incidents of sailors disappearing under calm-water conditions...\"",
+          "good": "\"Old Mira used to say the mermaids took people who sang after sundown,\" the captain muttered, not looking at the water. \"We don't sing after sundown.\"",
+          "note": "Lore as character knowledge and superstition creates world depth without stopping the scene. The reader asks the questions; you don't need to answer them all."
+        }
+      ]
     }
   },
   "language_notes": {
