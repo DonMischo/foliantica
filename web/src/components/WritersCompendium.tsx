@@ -95,10 +95,188 @@ const SVG_DE: Record<string, string> = {
   "II → III": "II → III",
 };
 
-function applyDeTranslation(svg: string): string {
+const SVG_ES: Record<string, string> = {
+  "BEAT STRUCTURE FRAMEWORKS — AT A GLANCE": "MARCOS DE ESTRUCTURA — DE UN VISTAZO",
+  "All six major frameworks mapped to story position · choose the one that fits your genre and working style":
+    "Los seis marcos principales mapeados a la posición de la historia · elige el que se adapte a tu género",
+  "THREE-ACT": "TRES ACTOS",
+  "ACT I — Setup": "ACTO I — Planteamiento",
+  "ACT II — Confrontation": "ACTO II — Confrontación",
+  "HERO'S JOURNEY (12 STAGES)": "EL VIAJE DEL HÉROE (12 ETAPAS)",
+  "Ordinary World": "Mundo ord.",
+  "Call to Adventure": "Llamada",
+  "Refusal": "Rechazo",
+  "Meeting Mentor": "Mentor",
+  "Threshold": "Umbral",
+  "Approach Cave": "Aproximación",
+  "Ordeal": "Prueba",
+  "Reward": "Recompensa",
+  "Road Back": "Regreso",
+  "Resurrection": "Resurrección",
+  "7-POINT STRUCTURE (Wells)": "ESTRUCTURA 7 PUNTOS (Wells)",
+  "8-POINT ARC (Watts)": "ARCO 8 PUNTOS (Watts)",
+  "FREYTAG'S PYRAMID": "PIRÁMIDE DE FREYTAG",
+  "QUICK COMPARISON": "COMPARACIÓN RÁPIDA",
+  "FRAMEWORK": "MARCO",
+  "COMPLEXITY": "COMPLEJIDAD",
+  "BEST GENRE": "GÉNERO",
+  "KEY STRENGTH": "FORTALEZA",
+  "KEY WEAKNESS": "DEBILIDAD",
+  "Universal": "Universal",
+  "Genre fiction": "Ficción de género",
+  "Works with everything": "Funciona con todo",
+  "Too broad alone": "Demasiado amplio solo",
+  "Precise pacing targets": "Objetivos de ritmo precisos",
+  "Can feel formulaic": "Puede parecer formulaico",
+  "Archetypal depth": "Profundidad arquetípica",
+  "Return stage awkward": "Regreso difícil",
+  "Classical foundation": "Base clásica",
+  "Modern pacing mismatch": "Ritmo moderno no encaja",
+  "MIDPOINT": "PUNTO MEDIO",
+  "ACT I → II": "ACTO I → II",
+  "II → III": "II → III",
+};
+
+const SVG_FR: Record<string, string> = {
+  "BEAT STRUCTURE FRAMEWORKS — AT A GLANCE": "STRUCTURES NARRATIVES — EN UN COUP D'ŒIL",
+  "All six major frameworks mapped to story position · choose the one that fits your genre and working style":
+    "Les six grandes structures cartographiées · choisissez celle qui convient à votre genre",
+  "THREE-ACT": "TROIS ACTES",
+  "ACT I — Setup": "ACTE I — Exposition",
+  "ACT II — Confrontation": "ACTE II — Confrontation",
+  "HERO'S JOURNEY (12 STAGES)": "LE VOYAGE DU HÉROS (12 ÉTAPES)",
+  "Ordinary World": "Monde ord.",
+  "Call to Adventure": "Appel",
+  "Refusal": "Refus",
+  "Meeting Mentor": "Mentor",
+  "Threshold": "Seuil",
+  "Approach Cave": "Approche",
+  "Ordeal": "Épreuve",
+  "Reward": "Récompense",
+  "Road Back": "Retour",
+  "Resurrection": "Résurrection",
+  "7-POINT STRUCTURE (Wells)": "STRUCTURE 7 POINTS (Wells)",
+  "8-POINT ARC (Watts)": "ARC 8 POINTS (Watts)",
+  "FREYTAG'S PYRAMID": "PYRAMIDE DE FREYTAG",
+  "QUICK COMPARISON": "COMPARAISON RAPIDE",
+  "FRAMEWORK": "STRUCTURE",
+  "COMPLEXITY": "COMPLEXITÉ",
+  "BEST GENRE": "GENRE",
+  "KEY STRENGTH": "FORCE",
+  "KEY WEAKNESS": "FAIBLESSE",
+  "Universal": "Universel",
+  "Genre fiction": "Fiction de genre",
+  "Works with everything": "Fonctionne partout",
+  "Too broad alone": "Trop vague seul",
+  "Precise pacing targets": "Rythme précis",
+  "Can feel formulaic": "Peut sembler formulaique",
+  "Archetypal depth": "Profondeur archétypale",
+  "Return stage awkward": "Retour difficile",
+  "Classical foundation": "Base classique",
+  "Modern pacing mismatch": "Rythme moderne inadapté",
+  "MIDPOINT": "POINT MÉDIAN",
+  "ACT I → II": "ACTE I → II",
+  "II → III": "II → III",
+};
+
+const SVG_PT: Record<string, string> = {
+  "BEAT STRUCTURE FRAMEWORKS — AT A GLANCE": "ESTRUTURAS NARRATIVAS — EM RESUMO",
+  "All six major frameworks mapped to story position · choose the one that fits your genre and working style":
+    "As seis grandes estruturas mapeadas · escolha a que se adapta ao seu género e estilo",
+  "THREE-ACT": "TRÊS ATOS",
+  "ACT I — Setup": "ATO I — Apresentação",
+  "ACT II — Confrontation": "ATO II — Confronto",
+  "HERO'S JOURNEY (12 STAGES)": "A JORNADA DO HERÓI (12 ETAPAS)",
+  "Ordinary World": "Mundo ord.",
+  "Call to Adventure": "Chamado",
+  "Refusal": "Recusa",
+  "Meeting Mentor": "Mentor",
+  "Threshold": "Limiar",
+  "Approach Cave": "Aproximação",
+  "Ordeal": "Provação",
+  "Reward": "Recompensa",
+  "Road Back": "Regresso",
+  "Resurrection": "Ressurreição",
+  "7-POINT STRUCTURE (Wells)": "ESTRUTURA 7 PONTOS (Wells)",
+  "8-POINT ARC (Watts)": "ARCO 8 PONTOS (Watts)",
+  "FREYTAG'S PYRAMID": "PIRÂMIDE DE FREYTAG",
+  "QUICK COMPARISON": "COMPARAÇÃO RÁPIDA",
+  "FRAMEWORK": "ESTRUTURA",
+  "COMPLEXITY": "COMPLEXIDADE",
+  "BEST GENRE": "GÉNERO",
+  "KEY STRENGTH": "PONTO FORTE",
+  "KEY WEAKNESS": "PONTO FRACO",
+  "Universal": "Universal",
+  "Genre fiction": "Ficção de género",
+  "Works with everything": "Funciona com tudo",
+  "Too broad alone": "Muito amplo sozinho",
+  "Precise pacing targets": "Ritmo preciso",
+  "Can feel formulaic": "Pode parecer formulaico",
+  "Archetypal depth": "Profundidade arquetípica",
+  "Return stage awkward": "Regresso difícil",
+  "Classical foundation": "Base clássica",
+  "Modern pacing mismatch": "Ritmo moderno desajustado",
+  "MIDPOINT": "PONTO MÉDIO",
+  "ACT I → II": "ATO I → II",
+  "II → III": "II → III",
+};
+
+const SVG_IT: Record<string, string> = {
+  "BEAT STRUCTURE FRAMEWORKS — AT A GLANCE": "STRUTTURE NARRATIVE — A COLPO D'OCCHIO",
+  "All six major frameworks mapped to story position · choose the one that fits your genre and working style":
+    "Le sei strutture principali mappate · scegli quella che si adatta al tuo genere e stile",
+  "THREE-ACT": "TRE ATTI",
+  "ACT I — Setup": "ATTO I — Esposizione",
+  "ACT II — Confrontation": "ATTO II — Confronto",
+  "HERO'S JOURNEY (12 STAGES)": "IL VIAGGIO DELL'EROE (12 TAPPE)",
+  "Ordinary World": "Mondo ord.",
+  "Call to Adventure": "Chiamata",
+  "Refusal": "Rifiuto",
+  "Meeting Mentor": "Mentore",
+  "Threshold": "Soglia",
+  "Approach Cave": "Avvicinamento",
+  "Ordeal": "Prova",
+  "Reward": "Ricompensa",
+  "Road Back": "Ritorno",
+  "Resurrection": "Resurrezione",
+  "7-POINT STRUCTURE (Wells)": "STRUTTURA 7 PUNTI (Wells)",
+  "8-POINT ARC (Watts)": "ARCO 8 PUNTI (Watts)",
+  "FREYTAG'S PYRAMID": "PIRAMIDE DI FREYTAG",
+  "QUICK COMPARISON": "CONFRONTO RAPIDO",
+  "FRAMEWORK": "STRUTTURA",
+  "COMPLEXITY": "COMPLESSITÀ",
+  "BEST GENRE": "GENERE",
+  "KEY STRENGTH": "PUNTO DI FORZA",
+  "KEY WEAKNESS": "PUNTO DEBOLE",
+  "Universal": "Universale",
+  "Genre fiction": "Narrativa di genere",
+  "Works with everything": "Funziona con tutto",
+  "Too broad alone": "Troppo ampio da solo",
+  "Precise pacing targets": "Ritmo preciso",
+  "Can feel formulaic": "Può sembrare formulaico",
+  "Archetypal depth": "Profondità archetipica",
+  "Return stage awkward": "Ritorno difficile",
+  "Classical foundation": "Base classica",
+  "Modern pacing mismatch": "Ritmo moderno inadeguato",
+  "MIDPOINT": "PUNTO DI MEZZO",
+  "ACT I → II": "ATTO I → II",
+  "II → III": "II → III",
+};
+
+const SVG_MAPS: Record<string, Record<string, string>> = {
+  de: SVG_DE,
+  es: SVG_ES,
+  fr: SVG_FR,
+  pt: SVG_PT,
+  it: SVG_IT,
+};
+
+function applySvgTranslation(svg: string, locale: string): string {
+  const map = SVG_MAPS[locale];
+  if (!map) return svg;
   let out = svg;
-  for (const [en, de] of Object.entries(SVG_DE)) {
-    out = out.replaceAll(en, de);
+  for (const [en, tr] of Object.entries(map)) {
+    out = out.replaceAll(en, tr);
   }
   return out;
 }
@@ -141,7 +319,7 @@ function SvgPanel({ file, locale }: { file: string; locale: string }) {
 
   if (!svg) return <div className="h-24 flex items-center justify-center text-xs text-muted-foreground">Loading diagram…</div>;
 
-  const content = locale === "de" ? applyDeTranslation(svg) : svg;
+  const content = applySvgTranslation(svg, locale);
   return (
     <div
       className="w-full rounded-lg overflow-hidden border border-border/50 mb-6"

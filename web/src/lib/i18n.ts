@@ -469,6 +469,30 @@ const es: Record<string, string> = {
   img_remove: "Quitar imagen",
   img_formats: "JPG, PNG, WebP",
   img_new_entry_hint: "Guarda la entrada primero para subir una imagen.",
+
+  // Writer's Compendium
+  compendium_title: "Compendio del Escritor",
+  compendium_open: "Guía de Escritura",
+  compendium_ch1: "Fundamentos del Oficio",
+  compendium_ch2: "Diseño de Personajes",
+  compendium_ch3: "Construcción del Mundo",
+  compendium_ch4: "Trama y Estructura",
+  compendium_ch5: "Estilo en Prosa",
+  compendium_ch6: "Diálogo",
+  compendium_ch7: "Revisión",
+  compendium_ch8: "Consejos en Alemán",
+  compendium_ch9: "Recursos",
+  compendium_ch10: "Estructuras de Beats",
+  compendium_best_for: "Ideal para",
+  compendium_weaknesses: "Debilidades",
+  compendium_complexity: "Complejidad",
+  compendium_beats_count: "Número de beats",
+  compendium_origin: "Origen",
+  compendium_open_guide: "Abrir en la Guía",
+  compendium_key_insight: "Idea clave",
+  compendium_notes: "Notas",
+  compendium_loading: "Cargando…",
+  compendium_overview: "Resumen",
 };
 
 const fr: Record<string, string> = {
@@ -599,6 +623,30 @@ const fr: Record<string, string> = {
   img_remove: "Supprimer l'image",
   img_formats: "JPG, PNG, WebP",
   img_new_entry_hint: "Enregistrez d'abord l'entrée pour télécharger une image.",
+
+  // Writer's Compendium
+  compendium_title: "Compendium de l'Écrivain",
+  compendium_open: "Guide d'Écriture",
+  compendium_ch1: "Fondamentaux du Métier",
+  compendium_ch2: "Conception des Personnages",
+  compendium_ch3: "Construction du Monde",
+  compendium_ch4: "Intrigue et Structure",
+  compendium_ch5: "Style en Prose",
+  compendium_ch6: "Dialogue",
+  compendium_ch7: "Révision",
+  compendium_ch8: "Conseils en Allemand",
+  compendium_ch9: "Ressources",
+  compendium_ch10: "Structures de Beats",
+  compendium_best_for: "Idéal pour",
+  compendium_weaknesses: "Faiblesses",
+  compendium_complexity: "Complexité",
+  compendium_beats_count: "Nombre de beats",
+  compendium_origin: "Origine",
+  compendium_open_guide: "Ouvrir dans le Guide",
+  compendium_key_insight: "Idée clé",
+  compendium_notes: "Notes",
+  compendium_loading: "Chargement…",
+  compendium_overview: "Aperçu",
 };
 
 const pt: Record<string, string> = {
@@ -729,6 +777,30 @@ const pt: Record<string, string> = {
   img_remove: "Remover imagem",
   img_formats: "JPG, PNG, WebP",
   img_new_entry_hint: "Guarda a entrada primeiro para carregar uma imagem.",
+
+  // Writer's Compendium
+  compendium_title: "Compêndio do Escritor",
+  compendium_open: "Guia de Escrita",
+  compendium_ch1: "Fundamentos do Ofício",
+  compendium_ch2: "Design de Personagens",
+  compendium_ch3: "Construção do Mundo",
+  compendium_ch4: "Enredo e Estrutura",
+  compendium_ch5: "Estilo em Prosa",
+  compendium_ch6: "Diálogo",
+  compendium_ch7: "Revisão",
+  compendium_ch8: "Dicas em Alemão",
+  compendium_ch9: "Recursos",
+  compendium_ch10: "Estruturas de Beats",
+  compendium_best_for: "Ideal para",
+  compendium_weaknesses: "Fraquezas",
+  compendium_complexity: "Complexidade",
+  compendium_beats_count: "Número de beats",
+  compendium_origin: "Origem",
+  compendium_open_guide: "Abrir no Guia",
+  compendium_key_insight: "Ideia central",
+  compendium_notes: "Notas",
+  compendium_loading: "A carregar…",
+  compendium_overview: "Visão geral",
 };
 
 const sv: Record<string, string> = {
@@ -1639,6 +1711,30 @@ const it: Record<string, string> = {
   img_remove: "Rimuovi immagine",
   img_formats: "JPG, PNG, WebP",
   img_new_entry_hint: "Salva prima la voce per caricare un'immagine.",
+
+  // Writer's Compendium
+  compendium_title: "Compendio dello Scrittore",
+  compendium_open: "Guida alla Scrittura",
+  compendium_ch1: "Fondamenti del Mestiere",
+  compendium_ch2: "Progettazione dei Personaggi",
+  compendium_ch3: "Costruzione del Mondo",
+  compendium_ch4: "Trama e Struttura",
+  compendium_ch5: "Stile in Prosa",
+  compendium_ch6: "Dialogo",
+  compendium_ch7: "Revisione",
+  compendium_ch8: "Consigli in Tedesco",
+  compendium_ch9: "Risorse",
+  compendium_ch10: "Strutture di Beat",
+  compendium_best_for: "Ideale per",
+  compendium_weaknesses: "Punti deboli",
+  compendium_complexity: "Complessità",
+  compendium_beats_count: "Numero di beat",
+  compendium_origin: "Origine",
+  compendium_open_guide: "Apri nella Guida",
+  compendium_key_insight: "Intuizione chiave",
+  compendium_notes: "Note",
+  compendium_loading: "Caricamento…",
+  compendium_overview: "Panoramica",
 };
 
 const pl: Record<string, string> = {
