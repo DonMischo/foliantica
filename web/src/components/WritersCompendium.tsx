@@ -96,6 +96,7 @@ function applyDeTranslation(svg: string): string {
 // ── Module-level cache ────────────────────────────────────────────────────────
 
 let _data: any = null;
+let _attrMap: Record<string, any> | null = null;
 const _svgCache: Record<string, string> = {};
 
 // ── Chapter label map (matches i18n keys) ─────────────────────────────────────
@@ -301,6 +302,44 @@ function ClassicalResources({ resources }: { resources: any[] }) {
   );
 }
 
+function Sources({ ids }: { ids: string[] }) {
+  if (!ids?.length || !_attrMap) return null;
+  const entries = ids.map((id) => _attrMap![id]).filter(Boolean);
+  if (!entries.length) return null;
+  return (
+    <div className="mt-6 border-t border-border pt-4">
+      <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mb-2">Sources</p>
+      <ul className="space-y-2">
+        {entries.map((e: any) => (
+          <li key={e.id} className="text-[11px] text-muted-foreground leading-relaxed">
+            {e.type === "quote" ? (
+              <>
+                <span className="italic">&ldquo;{e.text}&rdquo;</span>
+                {" — "}
+                <span className="font-medium">{e.attributed_to}</span>
+                {e.source_work && <span className="text-muted-foreground/60">, {e.source_work}</span>}
+                {e.url && (
+                  <a href={e.url} target="_blank" rel="noopener noreferrer"
+                    className="ml-1 text-primary/60 hover:text-primary">↗</a>
+                )}
+              </>
+            ) : (
+              <>
+                <span className="font-medium">{e.attributed_to}</span>
+                {e.source_work && <span className="text-muted-foreground/60"> — {e.source_work}</span>}
+                {e.url && (
+                  <a href={e.url} target="_blank" rel="noopener noreferrer"
+                    className="ml-1 text-primary/60 hover:text-primary">↗</a>
+                )}
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function SectionContent({ section, chapter, t, locale, craftExamples }: { section: any; chapter: any; t: (k: string) => string; locale: string; craftExamples?: any }) {
   const svgFile = SECTION_SVG[section.id];
 
@@ -485,6 +524,9 @@ function SectionContent({ section, chapter, t, locale, craftExamples }: { sectio
 
       {/* Craft examples (dos & don'ts) */}
       {craftExamples && <CraftExamples examples={craftExamples} locale={locale} />}
+
+      {/* Attributions / sources */}
+      <Sources ids={section.attribution_ids ?? []} />
     </div>
   );
 }
@@ -525,14 +567,25 @@ export function WritersCompendium({ open, onClose, initialSection }: Props) {
   const [active, setActive] = useState<string | null>(initialSection ?? null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set([1]));
 
-  // Fetch JSON once
+  // Fetch JSON + attributions once
   useEffect(() => {
     if (!open) return;
     if (_data) { setData(_data); return; }
     setLoading(true);
-    fetch("/compendium/writers_compendium.json")
-      .then((r) => r.json())
-      .then((d) => { _data = d; setData(d); setLoading(false); })
+    Promise.all([
+      fetch("/compendium/writers_compendium.json").then((r) => r.json()),
+      _attrMap
+        ? Promise.resolve(_attrMap)
+        : fetch("/compendium/attributions.json")
+            .then((r) => r.json())
+            .then((a) => {
+              const map: Record<string, any> = {};
+              for (const entry of a.attributions ?? []) map[entry.id] = entry;
+              _attrMap = map;
+              return map;
+            }),
+    ])
+      .then(([d]) => { _data = d; setData(d); setLoading(false); })
       .catch(() => setLoading(false));
   }, [open]);
 
