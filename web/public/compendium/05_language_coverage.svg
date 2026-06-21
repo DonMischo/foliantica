@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 560" font-family="Arial, sans-serif">
+  <rect width="820" height="560" fill="#0F1E2E" rx="12"/>
+
+  <!-- Title -->
+  <text x="410" y="38" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="bold" letter-spacing="1">LANGUAGE COVERAGE — QUICK REFERENCE</text>
+  <line x1="40" y1="50" x2="780" y2="50" stroke="#B8860B" stroke-width="2"/>
+  <text x="410" y="68" text-anchor="middle" fill="#8AADCC" font-size="12">Key craft challenges and primary market insight per language</text>
+
+  <!-- Helper macro: each language block is 180×170 -->
+  <!-- Row 1: EN, DE, FR, IT -->
+  <!-- EN -->
+  <rect x="28" y="82" width="178" height="172" fill="#1A2A3A" rx="8" stroke="#2E5C8A" stroke-width="1.5"/>
+  <rect x="28" y="82" width="178" height="32" fill="#1A3A5C" rx="8"/>
+  <rect x="28" y="100" width="178" height="14" fill="#1A3A5C"/>
+  <text x="117" y="104" text-anchor="middle" fill="#FFFFFF" font-size="14" font-weight="bold">🇬🇧  English</text>
+  <text x="40" y="126" fill="#8AADCC" font-size="10" font-weight="bold">Top craft issue:</text>
+  <text x="40" y="141" fill="#D0E0F0" font-size="10.5">Filter words (felt/saw/noticed)</text>
+  <text x="40" y="157" fill="#8AADCC" font-size="10" font-weight="bold">Common error:</text>
+  <text x="40" y="172" fill="#D0E0F0" font-size="10.5">Adverb dependency (-ly)</text>
+  <text x="40" y="188" fill="#8AADCC" font-size="10" font-weight="bold">Dialogue mark:</text>
+  <text x="40" y="203" fill="#D0E0F0" font-size="10.5">"Quotation marks"</text>
+  <text x="40" y="219" fill="#8AADCC" font-size="10" font-weight="bold">Key principle:</text>
+  <text x="40" y="234" fill="#D0E0F0" font-size="10.5">Show, don't tell</text>
+  <text x="40" y="248" fill="#B8860B" font-size="9">✦ Foundation reference language</text>
+
+  <!-- DE -->
+  <rect x="216" y="82" width="178" height="172" fill="#1A2A3A" rx="8" stroke="#2E5C8A" stroke-width="1.5"/>
+  <rect x="216" y="82" width="178" height="32" fill="#1A3A5C" rx="8"/>
+  <rect x="216" y="100" width="178" height="14" fill="#1A3A5C"/>
+  <text x="305" y="104" text-anchor="middle" fill="#FFFFFF" font-size="14" font-weight="bold">🇩🇪  Deutsch</text>
+  <text x="228" y="126" fill="#8AADCC" font-size="10" font-weight="bold">Top craft issue:</text>
+  <text x="228" y="141" fill="#D0E0F0" font-size="10.5">Nominalstil (noun-heaviness)</text>
+  <text x="228" y="157" fill="#8AADCC" font-size="10" font-weight="bold">Common error:</text>
+  <text x="228" y="172" fill="#D0E0F0" font-size="10.5">Schachtelsätze (nested sentences)</text>
+  <text x="228" y="188" fill="#8AADCC" font-size="10" font-weight="bold">Dialogue mark:</text>
+  <text x="228" y="203" fill="#D0E0F0" font-size="10.5">»Guillemets« or „Anführungszeichen"</text>
+  <text x="228" y="219" fill="#8AADCC" font-size="10" font-weight="bold">Tense default:</text>
+  <text x="228" y="234" fill="#D0E0F0" font-size="10.5">Präteritum for literary fiction</text>
+  <text x="228" y="248" fill="#B8860B" font-size="9">✦ Genieästhetik myth — craft IS learnable</text>
+
+  <!-- FR -->
+  <rect x="404" y="82" width="178" height="172" fill="#1A2A3A" rx="8" stroke="#2E5C8A" stroke-width="1.5"/>
+  <rect x="404" y="82" width="178" height="32" fill="#1A3A5C" rx="8"/>
+  <rect x="404" y="100" width="178" height="14" fill="#1A3A5C"/>
+  <text x="493" y="104" text-anchor="middle" fill="#FFFFFF" font-size="14" font-weight="bold">🇫🇷  Français</text>
+  <text x="416" y="126" fill="#8AADCC" font-size="10" font-weight="bold">Top craft issue:</text>
+  <text x="416" y="141" fill="#D0E0F0" font-size="10.5">Adverbes en -ment overuse</text>
+  <text x="416" y="157" fill="#8AADCC" font-size="10" font-weight="bold">Common error:</text>
+  <text x="416" y="172" fill="#D0E0F0" font-size="10.5">Passé composé / passé simple mix</text>
+  <text x="416" y="188" fill="#8AADCC" font-size="10" font-weight="bold">Dialogue mark:</text>
+  <text x="416" y="203" fill="#D0E0F0" font-size="10.5">« Guillemets » + em-dash</text>
+  <text x="416" y="219" fill="#8AADCC" font-size="10" font-weight="bold">Tense pair:</text>
+  <text x="416" y="234" fill="#D0E0F0" font-size="10.5">Passé simple + imparfait</text>
+  <text x="416" y="248" fill="#B8860B" font-size="9">✦ Literary tense system is unique</text>
+
+  <!-- IT -->
+  <rect x="592" y="82" width="178" height="172" fill="#1A2A3A" rx="8" stroke="#2E5C8A" stroke-width="1.5"/>
+  <rect x="592" y="82" width="178" height="32" fill="#1A3A5C" rx="8"/>
+  <rect x="592" y="100" width="178" height="14" fill="#1A3A5C"/>
+  <text x="681" y="104" text-anchor="middle" fill="#FFFFFF" font-size="14" font-weight="bold">🇮🇹  Italiano</text>
+  <text x="604" y="126" fill="#8AADCC" font-size="10" font-weight="bold">Top craft issue:</text>
+  <text x="604" y="141" fill="#D0E0F0" font-size="10.5">Coerenza narrativa (continuity)</text>
+  <text x="604" y="157" fill="#8AADCC" font-size="10" font-weight="bold">Common error:</text>
+  <text x="604" y="172" fill="#D0E0F0" font-size="10.5">! overuse (adolescent tone)</text>
+  <text x="604" y="188" fill="#8AADCC" font-size="10" font-weight="bold">Dialogue mark:</text>
+  <text x="604" y="203" fill="#D0E0F0" font-size="10.5">Em-dash (—)</text>
+  <text x="604" y="219" fill="#8AADCC" font-size="10" font-weight="bold">Foreign words:</text>
+  <text x="604" y="234" fill="#D0E0F0" font-size="10.5">Italicise if not in dictionary</text>
+  <text x="604" y="248" fill="#B8860B" font-size="9">✦ Numbers always spelled out</text>
+
+  <!-- Row 2: ES, PT-BR, SV/NO/DA, NL -->
+  <!-- ES -->
+  <rect x="28" y="266" width="178" height="172" fill="#1A2A3A" rx="8" stroke="#2E5C8A" stroke-width="1.5"/>
+  <rect x="28" y="266" width="178" height="32" fill="#1A3A5C" rx="8"/>
+  <rect x="28" y="284" width="178" height="14" fill="#1A3A5C"/>
+  <text x="117" y="288" text-anchor="middle" fill="#FFFFFF" font-size="14" font-weight="bold">🇪🇸  Español</text>
+  <text x="40" y="310" fill="#8AADCC" font-size="10" font-weight="bold">Top craft issue:</text>
+  <text x="40" y="325" fill="#D0E0F0" font-size="10.5">Adverbios en -mente overuse</text>
+  <text x="40" y="341" fill="#8AADCC" font-size="10" font-weight="bold">Common error:</text>
+  <text x="40" y="356" fill="#D0E0F0" font-size="10.5">Indefinido/imperfecto confusion</text>
+  <text x="40" y="372" fill="#8AADCC" font-size="10" font-weight="bold">Dialogue mark:</text>
+  <text x="40" y="387" fill="#D0E0F0" font-size="10.5">Em-dash (—) always</text>
+  <text x="40" y="403" fill="#8AADCC" font-size="10" font-weight="bold">Key principle:</text>
+  <text x="40" y="418" fill="#D0E0F0" font-size="10.5">Ley causa-efecto (motivation)</text>
+  <text x="40" y="432" fill="#B8860B" font-size="9">✦ Avoid grandiose 19th-c style</text>
+
+  <!-- PT-BR -->
+  <rect x="216" y="266" width="178" height="172" fill="#1A2A3A" rx="8" stroke="#2E5C8A" stroke-width="1.5"/>
+  <rect x="216" y="266" width="178" height="32" fill="#1A3A5C" rx="8"/>
+  <rect x="216" y="284" width="178" height="14" fill="#1A3A5C"/>
+  <text x="305" y="288" text-anchor="middle" fill="#FFFFFF" font-size="14" font-weight="bold">🇧🇷  Português (BR)</text>
+  <text x="228" y="310" fill="#8AADCC" font-size="10" font-weight="bold">Top craft issue:</text>
+  <text x="228" y="325" fill="#D0E0F0" font-size="10.5">Gerúndio overuse in prose</text>
+  <text x="228" y="341" fill="#8AADCC" font-size="10" font-weight="bold">Common error:</text>
+  <text x="228" y="356" fill="#D0E0F0" font-size="10.5">Dialogue punctuation (travessão)</text>
+  <text x="228" y="372" fill="#8AADCC" font-size="10" font-weight="bold">Dialogue mark:</text>
+  <text x="228" y="387" fill="#D0E0F0" font-size="10.5">Em-dash (—), no period after speech</text>
+  <text x="228" y="403" fill="#8AADCC" font-size="10" font-weight="bold">Filler issue:</text>
+  <text x="228" y="418" fill="#D0E0F0" font-size="10.5">Queísmo (overuse of 'que')</text>
+  <text x="228" y="432" fill="#B8860B" font-size="9">✦ Most active Latin American market</text>
+
+  <!-- Nordic -->
+  <rect x="404" y="266" width="178" height="172" fill="#1A2A3A" rx="8" stroke="#2E5C8A" stroke-width="1.5"/>
+  <rect x="404" y="266" width="178" height="32" fill="#1A3A5C" rx="8"/>
+  <rect x="404" y="284" width="178" height="14" fill="#1A3A5C"/>
+  <text x="493" y="288" text-anchor="middle" fill="#FFFFFF" font-size="14" font-weight="bold">🇸🇪🇳🇴🇩🇰  Nordic</text>
+  <text x="416" y="310" fill="#8AADCC" font-size="10" font-weight="bold">Top craft issue:</text>
+  <text x="416" y="325" fill="#D0E0F0" font-size="10.5">Tense mixing (presens/preteritum)</text>
+  <text x="416" y="341" fill="#8AADCC" font-size="10" font-weight="bold">Common error:</text>
+  <text x="416" y="356" fill="#D0E0F0" font-size="10.5">Övertydlighet (over-explaining)</text>
+  <text x="416" y="372" fill="#8AADCC" font-size="10" font-weight="bold">Dialogue mark:</text>
+  <text x="416" y="387" fill="#D0E0F0" font-size="10.5">Em-dash (—) in SV/NO/DA</text>
+  <text x="416" y="403" fill="#8AADCC" font-size="10" font-weight="bold">Craft term (SV):</text>
+  <text x="416" y="418" fill="#D0E0F0" font-size="10.5">Gestaltning vs. berättande</text>
+  <text x="416" y="432" fill="#B8860B" font-size="9">✦ Adjektivsjukan = adjective sickness</text>
+
+  <!-- NL -->
+  <rect x="592" y="266" width="178" height="172" fill="#1A2A3A" rx="8" stroke="#2E5C8A" stroke-width="1.5"/>
+  <rect x="592" y="266" width="178" height="32" fill="#1A3A5C" rx="8"/>
+  <rect x="592" y="284" width="178" height="14" fill="#1A3A5C"/>
+  <text x="681" y="288" text-anchor="middle" fill="#FFFFFF" font-size="14" font-weight="bold">🇳🇱  Nederlands</text>
+  <text x="604" y="310" fill="#8AADCC" font-size="10" font-weight="bold">Top craft issue:</text>
+  <text x="604" y="325" fill="#D0E0F0" font-size="10.5">Verteltijd (tense consistency)</text>
+  <text x="604" y="341" fill="#8AADCC" font-size="10" font-weight="bold">Common error:</text>
+  <text x="604" y="356" fill="#D0E0F0" font-size="10.5">Samenstellingen (compound words)</text>
+  <text x="604" y="372" fill="#8AADCC" font-size="10" font-weight="bold">Dialogue mark:</text>
+  <text x="604" y="387" fill="#D0E0F0" font-size="10.5">"Aanhalingstekens"</text>
+  <text x="604" y="403" fill="#8AADCC" font-size="10" font-weight="bold">Key principle:</text>
+  <text x="604" y="418" fill="#D0E0F0" font-size="10.5">Nooit dubbelop (never repeat)</text>
+  <text x="604" y="432" fill="#B8860B" font-size="9">✦ Multiple POVs = beginner trap</text>
+
+  <!-- Row 3: PL wide -->
+  <rect x="28" y="450" width="362" height="82" fill="#1A2A3A" rx="8" stroke="#2E5C8A" stroke-width="1.5"/>
+  <rect x="28" y="450" width="362" height="30" fill="#1A3A5C" rx="8"/>
+  <rect x="28" y="466" width="362" height="14" fill="#1A3A5C"/>
+  <text x="209" y="470" text-anchor="middle" fill="#FFFFFF" font-size="14" font-weight="bold">🇵🇱  Polski</text>
+  <text x="40" y="494" fill="#8AADCC" font-size="10" font-weight="bold">Top issue: </text><text x="103" y="494" fill="#D0E0F0" font-size="10.5">Dialogue dash (—) punctuation</text>
+  <text x="40" y="510" fill="#8AADCC" font-size="10" font-weight="bold">Common error: </text><text x="117" y="510" fill="#D0E0F0" font-size="10.5">Waiting for inspiration (czekanie na wenę)</text>
+  <text x="40" y="526" fill="#B8860B" font-size="9">✦ Fabuła jako sceny — structure through scenes, not summary</text>
+
+  <!-- FI wide -->
+  <rect x="398" y="450" width="372" height="82" fill="#1A2A3A" rx="8" stroke="#2E5C8A" stroke-width="1.5"/>
+  <rect x="398" y="450" width="372" height="30" fill="#1A3A5C" rx="8"/>
+  <rect x="398" y="466" width="372" height="14" fill="#1A3A5C"/>
+  <text x="584" y="470" text-anchor="middle" fill="#FFFFFF" font-size="14" font-weight="bold">🇫🇮  Suomi (Finnish)</text>
+  <text x="410" y="494" fill="#8AADCC" font-size="10" font-weight="bold">Top issue: </text><text x="473" y="494" fill="#D0E0F0" font-size="10.5">Agglutinative suffix-stacking in prose</text>
+  <text x="410" y="510" fill="#8AADCC" font-size="10" font-weight="bold">Dialogue mark: </text><text x="495" y="510" fill="#D0E0F0" font-size="10.5">"Quotation marks" (not em-dash)</text>
+  <text x="410" y="526" fill="#B8860B" font-size="9">✦ No grammatical gender — hän = he/she/they</text>
+</svg>

@@ -161,6 +161,30 @@ const en: Record<string, string> = {
   img_remove: "Remove image",
   img_formats: "JPG, PNG, WebP",
   img_new_entry_hint: "Save the entry first to upload an image.",
+
+  // Writer's Compendium
+  compendium_title: "Writer's Compendium",
+  compendium_open: "Writer's Guide",
+  compendium_ch1: "Craft Fundamentals",
+  compendium_ch2: "Character Design",
+  compendium_ch3: "World-Building",
+  compendium_ch4: "Plot & Structure",
+  compendium_ch5: "Prose Style",
+  compendium_ch6: "Dialogue",
+  compendium_ch7: "Revision",
+  compendium_ch8: "German Writing Tips",
+  compendium_ch9: "Resources",
+  compendium_ch10: "Beat Structures",
+  compendium_best_for: "Best for",
+  compendium_weaknesses: "Weaknesses",
+  compendium_complexity: "Complexity",
+  compendium_beats_count: "Number of beats",
+  compendium_origin: "Origin",
+  compendium_open_guide: "Open in Writer's Guide",
+  compendium_key_insight: "Key insight",
+  compendium_notes: "Notes",
+  compendium_loading: "Loading…",
+  compendium_overview: "Overview",
 };
 
 const de: Record<string, string> = {
@@ -291,6 +315,30 @@ const de: Record<string, string> = {
   img_remove: "Bild entfernen",
   img_formats: "JPG, PNG, WebP",
   img_new_entry_hint: "Eintrag zuerst speichern, um ein Bild hochzuladen.",
+
+  // Writer's Compendium
+  compendium_title: "Schreibkompendium",
+  compendium_open: "Schreibratgeber",
+  compendium_ch1: "Handwerkliche Grundlagen",
+  compendium_ch2: "Figurengestaltung",
+  compendium_ch3: "Weltenbau",
+  compendium_ch4: "Plot & Struktur",
+  compendium_ch5: "Prosastil",
+  compendium_ch6: "Dialog",
+  compendium_ch7: "Überarbeitung",
+  compendium_ch8: "Deutschsprachige Tipps",
+  compendium_ch9: "Ressourcen",
+  compendium_ch10: "Beatstrukturen",
+  compendium_best_for: "Geeignet für",
+  compendium_weaknesses: "Schwächen",
+  compendium_complexity: "Komplexität",
+  compendium_beats_count: "Anzahl der Beats",
+  compendium_origin: "Ursprung",
+  compendium_open_guide: "Im Schreibratgeber öffnen",
+  compendium_key_insight: "Kerngedanke",
+  compendium_notes: "Hinweise",
+  compendium_loading: "Wird geladen…",
+  compendium_overview: "Übersicht",
 };
 
 const es: Record<string, string> = {

@@ -1,0 +1,181 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 780" font-family="Arial, sans-serif">
+  <defs>
+    <linearGradient id="hdrGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1A3A5C"/>
+      <stop offset="100%" style="stop-color:#2E5C8A"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="820" height="780" fill="#0F1E2E" rx="12"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="820" height="64" fill="url(#hdrGrad)" rx="12"/>
+  <rect x="0" y="50" width="820" height="14" fill="url(#hdrGrad)"/>
+  <text x="410" y="30" text-anchor="middle" fill="#FFFFFF" font-size="20" font-weight="bold" letter-spacing="1">EDITOR'S MOST COMMON MANUSCRIPT NOTES</text>
+  <text x="410" y="52" text-anchor="middle" fill="#8AADCC" font-size="12">What editors mark — and how to fix it before submission</text>
+
+  <!-- Column headers -->
+  <rect x="20" y="72" width="240" height="26" fill="#C0392B" rx="4"/>
+  <text x="140" y="89" text-anchor="middle" fill="#FFFFFF" font-size="12" font-weight="bold">NOTE</text>
+  <rect x="268" y="72" width="270" height="26" fill="#1A3A5C" rx="4"/>
+  <text x="403" y="89" text-anchor="middle" fill="#FFFFFF" font-size="12" font-weight="bold">WHAT IT MEANS</text>
+  <rect x="546" y="72" width="254" height="26" fill="#1E6B4A" rx="4"/>
+  <text x="673" y="89" text-anchor="middle" fill="#FFFFFF" font-size="12" font-weight="bold">THE FIX</text>
+
+  <!-- Data rows -->
+  <!-- Row height: 42px, starting y: 104 -->
+  <!-- alt row fill: #1A2A3A vs #162030 -->
+
+  <g font-size="11.5">
+  <!-- 1 -->
+  <rect x="20" y="102" width="776" height="42" fill="#1A2A3A" rx="3"/>
+  <rect x="20" y="102" width="5" height="42" fill="#C0392B" rx="2"/>
+  <text x="32" y="119" fill="#FF8080" font-weight="bold">Show, don't tell</text>
+  <text x="32" y="136" fill="#FF8080" font-size="10">— telling flat emotion</text>
+  <text x="272" y="119" fill="#B0C8E0">Stated emotion instead of</text>
+  <text x="272" y="135" fill="#B0C8E0">experienced emotion</text>
+  <text x="550" y="119" fill="#80E0A8">Replace with action,</text>
+  <text x="550" y="135" fill="#80E0A8">body language, sensory detail</text>
+
+  <!-- 2 -->
+  <rect x="20" y="146" width="776" height="42" fill="#162030" rx="3"/>
+  <rect x="20" y="146" width="5" height="42" fill="#C0392B" rx="2"/>
+  <text x="32" y="163" fill="#FF8080" font-weight="bold">Head-hopping</text>
+  <text x="32" y="180" fill="#FF8080" font-size="10">— POV shift mid-scene</text>
+  <text x="272" y="163" fill="#B0C8E0">Multiple characters' thoughts</text>
+  <text x="272" y="179" fill="#B0C8E0">in one scene without break</text>
+  <text x="550" y="163" fill="#80E0A8">One POV per scene;</text>
+  <text x="550" y="179" fill="#80E0A8">use breaks to switch</text>
+
+  <!-- 3 -->
+  <rect x="20" y="190" width="776" height="42" fill="#1A2A3A" rx="3"/>
+  <rect x="20" y="190" width="5" height="42" fill="#E67E22" rx="2"/>
+  <text x="32" y="207" fill="#FFAA60" font-weight="bold">Pacing issues</text>
+  <text x="32" y="224" fill="#FFAA60" font-size="10">— too fast or too slow</text>
+  <text x="272" y="207" fill="#B0C8E0">Story drags (over-description)</text>
+  <text x="272" y="223" fill="#B0C8E0">or rushes (no grounding)</text>
+  <text x="550" y="207" fill="#80E0A8">Map scene-by-scene;</text>
+  <text x="550" y="223" fill="#80E0A8">each needs a mini-arc</text>
+
+  <!-- 4 -->
+  <rect x="20" y="234" width="776" height="42" fill="#162030" rx="3"/>
+  <rect x="20" y="234" width="5" height="42" fill="#E67E22" rx="2"/>
+  <text x="32" y="251" fill="#FFAA60" font-weight="bold">Weak opening</text>
+  <text x="32" y="268" fill="#FFAA60" font-size="10">— throat-clearing start</text>
+  <text x="272" y="251" fill="#B0C8E0">Page 1 doesn't hook reader</text>
+  <text x="272" y="267" fill="#B0C8E0">into a character + problem</text>
+  <text x="550" y="251" fill="#80E0A8">Start in media res;</text>
+  <text x="550" y="267" fill="#80E0A8">stakes by page 3</text>
+
+  <!-- 5 -->
+  <rect x="20" y="278" width="776" height="42" fill="#1A2A3A" rx="3"/>
+  <rect x="20" y="278" width="5" height="42" fill="#C0392B" rx="2"/>
+  <text x="32" y="295" fill="#FF8080" font-weight="bold">Info-dumping</text>
+  <text x="32" y="312" fill="#FF8080" font-size="10">— blocks of exposition</text>
+  <text x="272" y="295" fill="#B0C8E0">Background interrupts</text>
+  <text x="272" y="311" fill="#B0C8E0">story momentum</text>
+  <text x="550" y="295" fill="#80E0A8">Distribute via action,</text>
+  <text x="550" y="311" fill="#80E0A8">dialogue, sensory detail</text>
+
+  <!-- 6 -->
+  <rect x="20" y="322" width="776" height="42" fill="#162030" rx="3"/>
+  <rect x="20" y="322" width="5" height="42" fill="#8E44AD" rx="2"/>
+  <text x="32" y="339" fill="#CC88FF" font-weight="bold">Passive constructions</text>
+  <text x="32" y="356" fill="#CC88FF" font-size="10">— buried actors</text>
+  <text x="272" y="339" fill="#B0C8E0">Sentences weak because</text>
+  <text x="272" y="355" fill="#B0C8E0">actor is absent/buried</text>
+  <text x="550" y="339" fill="#80E0A8">Audit was/were + -ing;</text>
+  <text x="550" y="355" fill="#80E0A8">make actor the subject</text>
+
+  <!-- 7 -->
+  <rect x="20" y="366" width="776" height="42" fill="#1A2A3A" rx="3"/>
+  <rect x="20" y="366" width="5" height="42" fill="#8E44AD" rx="2"/>
+  <text x="32" y="383" fill="#CC88FF" font-weight="bold">Purple prose</text>
+  <text x="32" y="400" fill="#CC88FF" font-size="10">— ornate overwriting</text>
+  <text x="272" y="383" fill="#B0C8E0">Description more ornate</text>
+  <text x="272" y="399" fill="#B0C8E0">than the story warrants</text>
+  <text x="550" y="383" fill="#80E0A8">Cut to one precise detail;</text>
+  <text x="550" y="399" fill="#80E0A8">remove the rest</text>
+
+  <!-- 8 -->
+  <rect x="20" y="410" width="776" height="42" fill="#162030" rx="3"/>
+  <rect x="20" y="410" width="5" height="42" fill="#1E6B4A" rx="2"/>
+  <text x="32" y="427" fill="#60E8A0" font-weight="bold">Dialogue on rails</text>
+  <text x="32" y="444" fill="#60E8A0" font-size="10">— no subtext</text>
+  <text x="272" y="427" fill="#B0C8E0">Characters say exactly</text>
+  <text x="272" y="443" fill="#B0C8E0">what they mean; no tension</text>
+  <text x="550" y="427" fill="#80E0A8">Find what is NOT said;</text>
+  <text x="550" y="443" fill="#80E0A8">build around the absence</text>
+
+  <!-- 9 -->
+  <rect x="20" y="454" width="776" height="42" fill="#1A2A3A" rx="3"/>
+  <rect x="20" y="454" width="5" height="42" fill="#1E6B4A" rx="2"/>
+  <text x="32" y="471" fill="#60E8A0" font-weight="bold">Unearned emotion</text>
+  <text x="32" y="488" fill="#60E8A0" font-size="10">— reader told to feel</text>
+  <text x="272" y="471" fill="#B0C8E0">Told to feel something before</text>
+  <text x="272" y="487" fill="#B0C8E0">story made us care</text>
+  <text x="550" y="471" fill="#80E0A8">Establish attachment before</text>
+  <text x="550" y="487" fill="#80E0A8">the emotional climax</text>
+
+  <!-- 10 -->
+  <rect x="20" y="498" width="776" height="42" fill="#162030" rx="3"/>
+  <rect x="20" y="498" width="5" height="42" fill="#C0392B" rx="2"/>
+  <text x="32" y="515" fill="#FF8080" font-weight="bold">Flat antagonist</text>
+  <text x="32" y="532" fill="#FF8080" font-size="10">— evil for evil's sake</text>
+  <text x="272" y="515" fill="#B0C8E0">Villain exists only to be</text>
+  <text x="272" y="531" fill="#B0C8E0">defeated; no interiority</text>
+  <text x="550" y="515" fill="#80E0A8">Give coherent worldview</text>
+  <text x="550" y="531" fill="#80E0A8">and intelligible motivation</text>
+
+  <!-- 11 -->
+  <rect x="20" y="542" width="776" height="42" fill="#1A2A3A" rx="3"/>
+  <rect x="20" y="542" width="5" height="42" fill="#E67E22" rx="2"/>
+  <text x="32" y="559" fill="#FFAA60" font-weight="bold">Coincidence resolves plot</text>
+  <text x="32" y="576" fill="#FFAA60" font-size="10">— deus ex machina</text>
+  <text x="272" y="559" fill="#B0C8E0">Protagonist saved by luck,</text>
+  <text x="272" y="575" fill="#B0C8E0">not their own decision</text>
+  <text x="550" y="559" fill="#80E0A8">Protagonist's choice/skill</text>
+  <text x="550" y="575" fill="#80E0A8">must cause the resolution</text>
+
+  <!-- 12 -->
+  <rect x="20" y="586" width="776" height="42" fill="#162030" rx="3"/>
+  <rect x="20" y="586" width="5" height="42" fill="#8E44AD" rx="2"/>
+  <text x="32" y="603" fill="#CC88FF" font-weight="bold">Inconsistent voice</text>
+  <text x="32" y="620" fill="#CC88FF" font-size="10">— same character, different sound</text>
+  <text x="272" y="603" fill="#B0C8E0">Same character sounds</text>
+  <text x="272" y="619" fill="#B0C8E0">different scene to scene</text>
+  <text x="550" y="603" fill="#80E0A8">Write a character bible;</text>
+  <text x="550" y="619" fill="#80E0A8">5 forbidden words per char</text>
+
+  <!-- 13 -->
+  <rect x="20" y="630" width="776" height="42" fill="#1A2A3A" rx="3"/>
+  <rect x="20" y="630" width="5" height="42" fill="#1E6B4A" rx="2"/>
+  <text x="32" y="647" fill="#60E8A0" font-weight="bold">Overwriting action</text>
+  <text x="32" y="664" fill="#60E8A0" font-size="10">— slowing the chase</text>
+  <text x="272" y="647" fill="#B0C8E0">Action scenes so detailed</text>
+  <text x="272" y="663" fill="#B0C8E0">momentum dissolves</text>
+  <text x="550" y="647" fill="#80E0A8">Shorter sentences; cut to</text>
+  <text x="550" y="663" fill="#80E0A8">essential beats; trust reader</text>
+
+  <!-- 14 -->
+  <rect x="20" y="674" width="776" height="42" fill="#162030" rx="3"/>
+  <rect x="20" y="674" width="5" height="42" fill="#C0392B" rx="2"/>
+  <text x="32" y="691" fill="#FF8080" font-weight="bold">Missing scene goals</text>
+  <text x="32" y="708" fill="#FF8080" font-size="10">— nothing changes</text>
+  <text x="272" y="691" fill="#B0C8E0">Scene ends in same state</text>
+  <text x="272" y="707" fill="#B0C8E0">it began; nothing changed</text>
+  <text x="550" y="691" fill="#80E0A8">End with something won,</text>
+  <text x="550" y="707" fill="#80E0A8">lost, or revealed</text>
+
+  <!-- 15 -->
+  <rect x="20" y="718" width="776" height="42" fill="#1A2A3A" rx="3"/>
+  <rect x="20" y="718" width="5" height="42" fill="#E67E22" rx="2"/>
+  <text x="32" y="735" fill="#FFAA60" font-weight="bold">Throat-clearing opening</text>
+  <text x="32" y="752" fill="#FFAA60" font-size="10">— weather, alarm clocks</text>
+  <text x="272" y="735" fill="#B0C8E0">Begins with weather, waking</text>
+  <text x="272" y="751" fill="#B0C8E0">up, backstory — before story</text>
+  <text x="550" y="735" fill="#80E0A8">Open with character in</text>
+  <text x="550" y="751" fill="#80E0A8">motion, conflict, or decision</text>
+  </g>
+</svg>

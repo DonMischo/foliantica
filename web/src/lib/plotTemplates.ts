@@ -10,8 +10,19 @@ export interface PlotTemplate {
   id: string;
   name: string;
   description: string;
+  compendiumSection?: string; // links into Writer's Compendium section id
   beats: PlotBeat[];
 }
+
+/** Maps template id → compendium section id */
+export const TEMPLATE_COMPENDIUM_SECTION: Record<string, string> = {
+  "three-act":       "10.1",
+  "save-the-cat":    "10.2",
+  "heros-journey":   "10.3",
+  "seven-point":     "10.4",
+  "eight-point-arc": "10.5",
+  "freytag":         "10.7",
+};
 
 export const PLOT_TEMPLATES: PlotTemplate[] = [
   {
@@ -67,6 +78,43 @@ export const PLOT_TEMPLATES: PlotTemplate[] = [
       { id: "sp-05", name: "Pinch Point 2",  description: "Apply more pressure — things look worst here; the hero seems certain to fail.",                   position: 62 },
       { id: "sp-06", name: "Plot Turn 2",    description: "The hero gets the final tool, knowledge, or resolve needed to reach the resolution.",             position: 80 },
       { id: "sp-07", name: "Resolution",     description: "The end state — the mirror of the Hook, showing how far the character has come.",                 position: 99 },
+    ],
+  },
+  {
+    id: "three-act",
+    name: "Three-Act Structure",
+    description: "The classical foundation — Setup, Confrontation, Resolution. Universal and genre-agnostic.",
+    beats: [
+      { id: "ta-01", name: "Act I — Setup",         description: "Establish protagonist, world, and status quo. Ends when the hero commits to the central journey — no going back.", position: 25 },
+      { id: "ta-02", name: "Act II — Confrontation", description: "Protagonist pursues the goal across escalating obstacles. Midpoint shifts direction. Ends at the darkest moment.", position: 75 },
+      { id: "ta-03", name: "Act III — Resolution",   description: "Protagonist uses what they have learned to confront the central conflict. Climax. New equilibrium.",              position: 100 },
+    ],
+  },
+  {
+    id: "eight-point-arc",
+    name: "Eight-Point Arc",
+    description: "Nigel Watts' gentle framework — great for literary fiction and short stories. Emphasises how the quest evolves.",
+    beats: [
+      { id: "epa-01", name: "Stasis",          description: "The ordinary world before disruption. Shows what the character has to gain or lose. Best stasis already contains the seed of change.", position: 0 },
+      { id: "epa-02", name: "Trigger",         description: "An event beyond the protagonist's control that disturbs the stasis and starts the chain of events. Can be dramatic or quiet.", position: 10 },
+      { id: "epa-03", name: "Quest",           description: "The protagonist pursues a goal. The quest should EVOLVE — what begins as a quest for money may become a quest for meaning.", position: 25 },
+      { id: "epa-04", name: "Surprise",        description: "An unexpected event that complicates the quest. Must arise naturally — not feel random. Forces the protagonist to adapt.", position: 45 },
+      { id: "epa-05", name: "Critical Choice", description: "The protagonist must decide under maximum pressure. No easy option. What they choose reveals who they really are.", position: 62 },
+      { id: "epa-06", name: "Climax",          description: "Point of maximum tension. The result of all previous surprises and choices. In literary fiction this is often an internal confrontation.", position: 75 },
+      { id: "epa-07", name: "Reversal",        description: "The situation changes fundamentally as a result of the climax. The protagonist's world — internal and external — is permanently altered.", position: 88 },
+      { id: "epa-08", name: "Resolution",      description: "The new stasis. Should mirror and contrast with the opening. The natural consequence of everything that came before — happy or not.", position: 99 },
+    ],
+  },
+  {
+    id: "freytag",
+    name: "Freytag's Pyramid",
+    description: "Gustav Freytag's classical five-stage arc (1863). Foundation of European dramatic theory — especially suited to tragedy.",
+    beats: [
+      { id: "fr-01", name: "Exposition",     description: "Introduction of characters, setting, and background. Establish the world before the conflict begins.", position: 12 },
+      { id: "fr-02", name: "Rising Action",  description: "A series of complications and obstacles that build tension toward the climax. The protagonist struggles and grows.", position: 45 },
+      { id: "fr-03", name: "Climax",         description: "The turning point — the moment of highest tension and decision. Everything before has led here; everything after flows from it.", position: 75 },
+      { id: "fr-04", name: "Falling Action", description: "Consequences of the climax unfold. Tension decreases but the outcome remains uncertain. Loose threads are gathered.", position: 88 },
+      { id: "fr-05", name: "Dénouement",     description: "Resolution and new equilibrium. The final state of the world — characters and conflicts are resolved, one way or another.", position: 99 },
     ],
   },
 ];

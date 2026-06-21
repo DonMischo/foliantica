@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { ArrowLeft, ChevronDown, ChevronRight, RotateCcw, Copy, BookOpen } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, RotateCcw, Copy, BookOpen, GraduationCap } from "lucide-react";
 import Link from "next/link";
-import { PLOT_TEMPLATES, type PlotTemplate } from "@/lib/plotTemplates";
+import { PLOT_TEMPLATES, TEMPLATE_COMPENDIUM_SECTION, type PlotTemplate } from "@/lib/plotTemplates";
+import { WritersCompendium } from "@/components/WritersCompendium";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { scenesApi } from "@/lib/api";
@@ -114,6 +115,8 @@ export default function PlotPage() {
   const [view, setView] = useState<"checklist" | "skeleton" | "scenes">("checklist");
   const [copied, setCopied] = useState(false);
   const [localBeat, setLocalBeat] = useState<Record<number, string | null>>({});
+  const [compendiumOpen, setCompendiumOpen] = useState(false);
+  const [compendiumSection, setCompendiumSection] = useState<string | undefined>();
 
   const { data: projectScenes = [] } = useProjectScenes(projectId);
   const { data: corkboard } = useCorkboard(projectId);
@@ -198,24 +201,42 @@ export default function PlotPage() {
       <div className="max-w-2xl mx-auto px-6 py-8 space-y-6">
 
         {/* Template picker */}
-        <div className="flex flex-wrap gap-2">
-          {PLOT_TEMPLATES.map((t) => (
+        <div className="flex items-center gap-2">
+          <select
+            value={activeTemplate.id}
+            onChange={(e) => {
+              const tpl = PLOT_TEMPLATES.find((t) => t.id === e.target.value);
+              if (tpl) setActiveTemplate(tpl);
+            }}
+            className="flex-1 text-sm bg-secondary border border-border rounded-lg px-3 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          >
+            {PLOT_TEMPLATES.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+          {TEMPLATE_COMPENDIUM_SECTION[activeTemplate.id] && (
             <button
-              key={t.id}
-              onClick={() => setActiveTemplate(t)}
-              className={cn(
-                "text-sm px-4 py-1.5 rounded-full border transition-colors",
-                activeTemplate.id === t.id
-                  ? "border-primary bg-primary/10 text-primary font-medium"
-                  : "border-border text-muted-foreground hover:text-foreground hover:border-border/70"
-              )}
+              onClick={() => {
+                setCompendiumSection(TEMPLATE_COMPENDIUM_SECTION[activeTemplate.id]);
+                setCompendiumOpen(true);
+              }}
+              className="shrink-0 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1.5 rounded border border-border hover:border-primary/40"
+              title="Open in Writer's Guide"
             >
-              {t.name}
+              <GraduationCap className="h-3.5 w-3.5" />
+              Guide
             </button>
-          ))}
+          )}
         </div>
 
         <p className="text-xs text-muted-foreground">{activeTemplate.description}</p>
+
+        {/* Writer's Compendium modal */}
+        <WritersCompendium
+          open={compendiumOpen}
+          onClose={() => setCompendiumOpen(false)}
+          initialSection={compendiumSection}
+        />
 
         {/* View toggle + actions */}
         <div className="flex items-center gap-2">

@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { BookOpen, Sparkles, Clock, Moon, Sun, Archive, History, MessageSquare, Focus, Braces, ChevronDown, AlignCenter, Timer, Flag, BookMarked, MoreHorizontal, Check, SpellCheck, User, ListChecks, Save, MessageCircle } from "lucide-react";
+import { BookOpen, Sparkles, Clock, Moon, Sun, Archive, History, MessageSquare, Focus, Braces, ChevronDown, AlignCenter, Timer, Flag, BookMarked, MoreHorizontal, Check, SpellCheck, User, ListChecks, Save, MessageCircle, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TipTapEditor } from "@/components/editor/TipTapEditor";
@@ -16,6 +16,7 @@ import { CodexEntryDialog } from "@/components/codex/CodexEntryDialog";
 import { CommentsPanel } from "@/components/collab/CommentsPanel";
 import { VersionHistoryPanel } from "@/components/editor/VersionHistoryPanel";
 import { ChatPanel } from "@/components/editor/ChatPanel";
+import { WritersCompendium } from "@/components/WritersCompendium";
 import { LinkPanel } from "@/components/editor/LinkPanel";
 import { SceneTimePanel } from "@/components/time/SceneTimePanel";
 import { TimeConfigDialog } from "@/components/time/TimeConfigDialog";
@@ -101,6 +102,7 @@ export default function ScenePage() {
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
   const [linkPanelOpen, setLinkPanelOpen] = useState(false);
+  const [compendiumOpen, setCompendiumOpen] = useState(false);
 
   // ── Identity (read once; getCoworkIdentity reads localStorage — no hook needed) ──
   const identity   = useMemo(() => getCoworkIdentity(), []);
@@ -702,6 +704,13 @@ export default function ScenePage() {
                 {thesaurusOpen && <Check className="ml-auto h-3 w-3 text-primary" />}
               </button>
               <button
+                onClick={() => { setCompendiumOpen(true); setMenuOpen(false); }}
+                className="w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2 text-muted-foreground hover:text-foreground"
+              >
+                <GraduationCap className="h-3.5 w-3.5" />
+                Writer&apos;s Guide
+              </button>
+              <button
                 onClick={() => { setCommentsPanelOpen((v) => !v); setMenuOpen(false); }}
                 className={cn("w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2", commentsPanelOpen && "text-primary")}
               >
@@ -944,6 +953,9 @@ export default function ScenePage() {
             language={project?.book_meta?.language ?? "en"}
           />
         )}
+
+        {/* Writer's Compendium modal */}
+        <WritersCompendium open={compendiumOpen} onClose={() => setCompendiumOpen(false)} />
 
         {/* Grammar check panel */}
         {grammarPanelOpen && (
