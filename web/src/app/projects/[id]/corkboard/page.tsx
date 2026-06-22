@@ -938,7 +938,7 @@ export default function CorkboardPage() {
       setLayout(prefs.layout ?? "custom");
       setCompact(prefs.compact ?? false);
       setShowFrames(prefs.show_frames ?? true);
-      setBeatTemplateId(prefs.beat_template ?? getLegacyBeatTemplateId(projectId));
+      setBeatTemplateId(prefs.beat_template ?? getLegacyBeatTemplateId(projectId) ?? project?.plot_template ?? null);
       setStackNames(
         prefs.stack_names && Object.keys(prefs.stack_names).length > 0
           ? prefs.stack_names
@@ -1993,7 +1993,11 @@ export default function CorkboardPage() {
             <>
               <select
                 value={beatTemplateId ?? ""}
-                onChange={(e) => setBeatTemplateId(e.target.value || null)}
+                onChange={(e) => {
+                  const val = e.target.value || null;
+                  setBeatTemplateId(val);
+                  projectsApi.update(projectId, { plot_template: val });
+                }}
                 className="text-xs bg-background border border-border rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-primary text-foreground"
               >
                 <option value="">Auto-detect beats</option>

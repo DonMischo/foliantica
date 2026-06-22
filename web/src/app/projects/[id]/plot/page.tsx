@@ -220,7 +220,8 @@ export default function PlotPage() {
               const tpl = PLOT_TEMPLATES.find((t) => t.id === e.target.value);
               if (tpl) {
                 setActiveTemplate(tpl);
-                projectsApi.update(projectId, { plot_template: tpl.id });
+                projectsApi.update(projectId, { plot_template: tpl.id })
+                  .then(() => qc.invalidateQueries({ queryKey: ["project", projectId] }));
               }
             }}
             className="flex-1 text-sm bg-secondary border border-border rounded-lg px-3 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
