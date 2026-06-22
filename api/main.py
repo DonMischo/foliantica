@@ -66,6 +66,12 @@ async def lifespan(app: FastAPI):
     for _attempt in range(60):
         try:
             Base.metadata.create_all(bind=engine)
+            # Run pending migrations (adds columns to existing tables)
+            from alembic.config import Config as _AlembicConfig
+            from alembic import command as _alembic_cmd
+            _alembic_cfg = _AlembicConfig(os.path.join(os.path.dirname(__file__), "alembic.ini"))
+            _alembic_cfg.set_main_option("script_location", os.path.join(os.path.dirname(__file__), "alembic"))
+            _alembic_cmd.upgrade(_alembic_cfg, "head")
             _pg_ready = True
             break
         except Exception as _e:
