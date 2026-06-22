@@ -221,7 +221,7 @@ export default function PlotPage() {
               if (tpl) {
                 setActiveTemplate(tpl);
                 projectsApi.update(projectId, { plot_template: tpl.id })
-                  .then(() => qc.invalidateQueries({ queryKey: ["project", projectId] }));
+                  .then(() => qc.invalidateQueries({ queryKey: ["projects", projectId] }));
               }
             }}
             className="flex-1 text-sm bg-secondary border border-border rounded-lg px-3 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
