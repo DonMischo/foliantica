@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 620" font-family="Arial, sans-serif">
-  <rect width="860" height="620" fill="#0F1E2E" rx="12"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 650" font-family="Arial, sans-serif">
+  <rect width="860" height="650" fill="#0F1E2E" rx="12"/>
   <text x="430" y="34" text-anchor="middle" fill="#FFFFFF" font-size="18" font-weight="bold" letter-spacing="1">SAVE THE CAT — 15 BEATS IN DETAIL</text>
   <text x="430" y="52" text-anchor="middle" fill="#8AADCC" font-size="11">Blake Snyder / Jessica Brody · for each beat: external event + internal pivot + consequence</text>
   <line x1="30" y1="60" x2="830" y2="60" stroke="#C0392B" stroke-width="2"/>
@@ -12,104 +12,117 @@
   <rect x="631" y="66" width="199" height="16" fill="#B8860B" rx="3"/>
   <text x="730" y="78" text-anchor="middle" fill="#FFFFFF" font-size="9" font-weight="bold">ACT III  (75–100%)</text>
 
-  <!-- Beat boxes: 15 beats, 2 rows of roughly 8/7 or grouped -->
-  <!-- Row 1: beats 1-8 -->
-  <!-- Each box ~97px wide, 10px gap, 5 per row, then continue -->
-  <!-- Using a 2-column layout: beat list on left, details on right -->
-
-  <!-- Left: beat list column -->
+  <!-- Left: beat list column (x=30..390, each row h=34, gap=3) -->
   <g font-size="10">
+
   <!-- Beat 1 -->
   <rect x="30" y="90" width="360" height="34" fill="#1A2A3A" rx="4"/>
   <rect x="30" y="90" width="5" height="34" fill="#C0392B" rx="2"/>
-  <text x="44" y="107" fill="#FF8080" font-weight="bold">① Opening Image</text><text x="200" y="107" fill="#8AADCC" font-size="9">@ 1%</text>
+  <text x="44" y="107" fill="#FF8080" font-weight="bold">① Opening Image</text>
+  <text x="385" y="107" text-anchor="end" fill="#8AADCC" font-size="9">@ 1%</text>
   <text x="44" y="120" fill="#AACCEE" font-size="9">The 'before' photograph. Sets tone &amp; the protagonist's starting state.</text>
 
   <!-- Beat 2 -->
   <rect x="30" y="127" width="360" height="34" fill="#162030" rx="4"/>
   <rect x="30" y="127" width="5" height="34" fill="#E05555" rx="2"/>
-  <text x="44" y="144" fill="#FF8080" font-weight="bold">② Theme Stated</text><text x="200" y="144" fill="#8AADCC" font-size="9">@ 5%</text>
+  <text x="44" y="144" fill="#FF8080" font-weight="bold">② Theme Stated</text>
+  <text x="385" y="144" text-anchor="end" fill="#8AADCC" font-size="9">@ 5%</text>
   <text x="44" y="157" fill="#AACCEE" font-size="9">A character states the story's core truth — protagonist doesn't understand it yet.</text>
 
   <!-- Beat 3 -->
   <rect x="30" y="164" width="360" height="34" fill="#1A2A3A" rx="4"/>
   <rect x="30" y="164" width="5" height="34" fill="#9B2020" rx="2"/>
-  <text x="44" y="181" fill="#FF8080" font-weight="bold">③ Set-Up</text><text x="200" y="181" fill="#8AADCC" font-size="9">1–10%</text>
+  <text x="44" y="181" fill="#FF8080" font-weight="bold">③ Set-Up</text>
+  <text x="385" y="181" text-anchor="end" fill="#8AADCC" font-size="9">1–10%</text>
   <text x="44" y="194" fill="#AACCEE" font-size="9">Establish world, flaws, relationships. Plant everything to be paid off later.</text>
 
   <!-- Beat 4 -->
   <rect x="30" y="201" width="360" height="34" fill="#162030" rx="4"/>
   <rect x="30" y="201" width="5" height="34" fill="#C0392B" rx="2"/>
-  <text x="44" y="218" fill="#FF8080" font-weight="bold">④ Catalyst</text><text x="200" y="218" fill="#8AADCC" font-size="9">@ 10%</text>
+  <text x="44" y="218" fill="#FF8080" font-weight="bold">④ Catalyst</text>
+  <text x="385" y="218" text-anchor="end" fill="#8AADCC" font-size="9">@ 10%</text>
   <text x="44" y="231" fill="#AACCEE" font-size="9">The inciting incident. Disrupts the world. Must be unmistakable.</text>
 
   <!-- Beat 5 -->
   <rect x="30" y="238" width="360" height="34" fill="#1A2A3A" rx="4"/>
   <rect x="30" y="238" width="5" height="34" fill="#E05555" rx="2"/>
-  <text x="44" y="255" fill="#FF8080" font-weight="bold">⑤ Debate</text><text x="200" y="255" fill="#8AADCC" font-size="9">10–20%</text>
+  <text x="44" y="255" fill="#FF8080" font-weight="bold">⑤ Debate</text>
+  <text x="385" y="255" text-anchor="end" fill="#8AADCC" font-size="9">10–20%</text>
   <text x="44" y="268" fill="#AACCEE" font-size="9">Protagonist resists or hesitates. Shows cost of commitment.</text>
 
   <!-- Beat 6 -->
   <rect x="30" y="275" width="360" height="34" fill="#162030" rx="4"/>
   <rect x="30" y="275" width="5" height="34" fill="#C0392B" rx="2"/>
-  <text x="44" y="292" fill="#FF8080" font-weight="bold">⑥ Break into Two</text><text x="220" y="292" fill="#8AADCC" font-size="9">@ 20%</text>
+  <text x="44" y="292" fill="#FF8080" font-weight="bold">⑥ Break into Two</text>
+  <text x="385" y="292" text-anchor="end" fill="#8AADCC" font-size="9">@ 20%</text>
   <text x="44" y="305" fill="#AACCEE" font-size="9">Protagonist crosses the threshold. Irreversible choice. Old world left behind.</text>
 
   <!-- Beat 7 -->
   <rect x="30" y="312" width="360" height="34" fill="#1A2A3A" rx="4"/>
   <rect x="30" y="312" width="5" height="34" fill="#9B2020" rx="2"/>
-  <text x="44" y="329" fill="#FF8080" font-weight="bold">⑦ B Story</text><text x="200" y="329" fill="#8AADCC" font-size="9">@ 22%</text>
+  <text x="44" y="329" fill="#FF8080" font-weight="bold">⑦ B Story</text>
+  <text x="385" y="329" text-anchor="end" fill="#8AADCC" font-size="9">@ 22%</text>
   <text x="44" y="342" fill="#AACCEE" font-size="9">Secondary relationship carrying the theme. Not just the romance — the soul of the story.</text>
 
   <!-- Beat 8 -->
   <rect x="30" y="349" width="360" height="34" fill="#162030" rx="4"/>
   <rect x="30" y="349" width="5" height="34" fill="#7A1515" rx="2"/>
-  <text x="44" y="366" fill="#FF8080" font-weight="bold">⑧ Fun and Games</text><text x="220" y="366" fill="#8AADCC" font-size="9">20–50%</text>
+  <text x="44" y="366" fill="#FF8080" font-weight="bold">⑧ Fun and Games</text>
+  <text x="385" y="366" text-anchor="end" fill="#8AADCC" font-size="9">20–50%</text>
   <text x="44" y="379" fill="#AACCEE" font-size="9">The 'promise of the premise.' Why the reader bought the book. Deliver it here.</text>
 
   <!-- Beat 9 -->
   <rect x="30" y="386" width="360" height="34" fill="#1A2A3A" rx="4"/>
   <rect x="30" y="386" width="5" height="34" fill="#C0392B" rx="2"/>
-  <text x="44" y="403" fill="#FF8080" font-weight="bold">⑨ Midpoint</text><text x="200" y="403" fill="#8AADCC" font-size="9">@ 50%</text>
+  <text x="44" y="403" fill="#FF8080" font-weight="bold">⑨ Midpoint</text>
+  <text x="385" y="403" text-anchor="end" fill="#8AADCC" font-size="9">@ 50%</text>
   <text x="44" y="416" fill="#AACCEE" font-size="9">False victory or false defeat. Stakes rise permanently. Story shifts direction.</text>
 
   <!-- Beat 10 -->
   <rect x="30" y="423" width="360" height="34" fill="#162030" rx="4"/>
   <rect x="30" y="423" width="5" height="34" fill="#9B2020" rx="2"/>
-  <text x="44" y="440" fill="#FF8080" font-weight="bold">⑩ Bad Guys Close In</text><text x="240" y="440" fill="#8AADCC" font-size="9">50–75%</text>
+  <text x="44" y="440" fill="#FF8080" font-weight="bold">⑩ Bad Guys Close In</text>
+  <text x="385" y="440" text-anchor="end" fill="#8AADCC" font-size="9">50–75%</text>
   <text x="44" y="453" fill="#AACCEE" font-size="9">External pressure tightens. Internal flaw compounds the problem. Every choice costs more.</text>
 
   <!-- Beat 11 -->
   <rect x="30" y="460" width="360" height="34" fill="#1A2A3A" rx="4"/>
   <rect x="30" y="460" width="5" height="34" fill="#C0392B" rx="2"/>
-  <text x="44" y="477" fill="#FF8080" font-weight="bold">⑪ All Is Lost</text><text x="200" y="477" fill="#8AADCC" font-size="9">@ 75%</text>
+  <text x="44" y="477" fill="#FF8080" font-weight="bold">⑪ All Is Lost</text>
+  <text x="385" y="477" text-anchor="end" fill="#8AADCC" font-size="9">@ 75%</text>
   <text x="44" y="490" fill="#AACCEE" font-size="9">Lowest point. Something is permanently lost. 'Whiff of death.' Flaw fully costs.</text>
 
   <!-- Beat 12 -->
   <rect x="30" y="497" width="360" height="34" fill="#162030" rx="4"/>
   <rect x="30" y="497" width="5" height="34" fill="#7A1515" rx="2"/>
-  <text x="44" y="514" fill="#FF8080" font-weight="bold">⑫ Dark Night of the Soul</text><text x="260" y="514" fill="#8AADCC" font-size="9">75–80%</text>
+  <text x="44" y="514" fill="#FF8080" font-weight="bold">⑫ Dark Night of the Soul</text>
+  <text x="385" y="514" text-anchor="end" fill="#8AADCC" font-size="9">75–80%</text>
   <text x="44" y="527" fill="#AACCEE" font-size="9">Emotional trough. Protagonist confronts failure before finding the will to continue.</text>
 
   <!-- Beat 13 -->
   <rect x="30" y="534" width="360" height="34" fill="#1A2A3A" rx="4"/>
   <rect x="30" y="534" width="5" height="34" fill="#C0392B" rx="2"/>
-  <text x="44" y="551" fill="#FF8080" font-weight="bold">⑬ Break into Three</text><text x="230" y="551" fill="#8AADCC" font-size="9">@ 80%</text>
+  <text x="44" y="551" fill="#FF8080" font-weight="bold">⑬ Break into Three</text>
+  <text x="385" y="551" text-anchor="end" fill="#8AADCC" font-size="9">@ 80%</text>
   <text x="44" y="564" fill="#AACCEE" font-size="9">Protagonist finds the answer via B Story. Internal shift enables the external climax.</text>
 
   <!-- Beat 14 -->
-  <rect x="30" y="571" width="360" height="24" fill="#162030" rx="4"/>
-  <rect x="30" y="571" width="5" height="24" fill="#9B2020" rx="2"/>
-  <text x="44" y="587" fill="#FF8080" font-weight="bold">⑭ Finale</text><text x="200" y="587" fill="#AACCEE" font-size="9">  80–99%  ·  Execute the plan. A + B Stories synthesise. World permanently changed.</text>
+  <rect x="30" y="571" width="360" height="34" fill="#162030" rx="4"/>
+  <rect x="30" y="571" width="5" height="34" fill="#9B2020" rx="2"/>
+  <text x="44" y="588" fill="#FF8080" font-weight="bold">⑭ Finale</text>
+  <text x="385" y="588" text-anchor="end" fill="#8AADCC" font-size="9">80–99%</text>
+  <text x="44" y="601" fill="#AACCEE" font-size="9">Execute the plan. A + B Stories synthesise. World permanently changed.</text>
 
   <!-- Beat 15 -->
-  <rect x="30" y="598" width="360" height="16" fill="#1A2A3A" rx="4"/>
-  <rect x="30" y="598" width="5" height="16" fill="#C0392B" rx="2"/>
-  <text x="44" y="611" fill="#FF8080" font-weight="bold">⑮ Final Image</text><text x="200" y="611" fill="#AACCEE" font-size="9">  @ 99%  ·  The 'after' photograph. Mirrors Opening Image. Shows the distance.</text>
+  <rect x="30" y="608" width="360" height="34" fill="#1A2A3A" rx="4"/>
+  <rect x="30" y="608" width="5" height="34" fill="#C0392B" rx="2"/>
+  <text x="44" y="625" fill="#FF8080" font-weight="bold">⑮ Final Image</text>
+  <text x="385" y="625" text-anchor="end" fill="#8AADCC" font-size="9">@ 99%</text>
+  <text x="44" y="638" fill="#AACCEE" font-size="9">The 'after' photograph. Mirrors Opening Image. Shows the distance travelled.</text>
   </g>
 
   <!-- Right: Hunger Games example + rules -->
-  <rect x="400" y="90" width="430" height="526" fill="#0d1a2a" rx="8" stroke="#C0392B" stroke-width="1"/>
+  <rect x="400" y="90" width="430" height="556" fill="#0d1a2a" rx="8" stroke="#C0392B" stroke-width="1"/>
   <text x="615" y="108" text-anchor="middle" fill="#C0392B" font-size="12" font-weight="bold">EXAMPLE: The Hunger Games</text>
   <line x1="410" y1="114" x2="820" y2="114" stroke="#C0392B" stroke-width="0.8" opacity="0.5"/>
 
@@ -132,7 +145,7 @@
   </g>
 
   <!-- Rules box -->
-  <rect x="408" y="382" width="414" height="220" fill="#1A2A3A" rx="6"/>
+  <rect x="408" y="382" width="414" height="250" fill="#1A2A3A" rx="6"/>
   <text x="615" y="400" text-anchor="middle" fill="#B8860B" font-size="11" font-weight="bold">BEAT DESIGN RULES</text>
   <g font-size="10" fill="#D0E0F0">
   <text x="416" y="418">For each beat, define:</text>

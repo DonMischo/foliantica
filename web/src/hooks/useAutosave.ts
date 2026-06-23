@@ -10,9 +10,10 @@ interface Options {
   sceneId: number;
   content: string;
   enabled: boolean;
+  serverContent?: string;
 }
 
-export function useAutosave({ sceneId, content, enabled }: Options) {
+export function useAutosave({ sceneId, content, enabled, serverContent }: Options) {
   const setSaveStatus = useUIStore((s) => s.setSaveStatus);
   const qc = useQueryClient();
   const contentRef = useRef(content);
@@ -38,6 +39,15 @@ export function useAutosave({ sceneId, content, enabled }: Options) {
       setSaveStatus("error");
     }
   }, [enabled, setSaveStatus, qc]);
+
+  // When the server delivers a new scene's content, treat it as the saved baseline
+  useEffect(() => {
+    if (serverContent !== undefined) {
+      lastSavedRef.current = serverContent;
+      pendingSaveRef.current = null;
+      setSaveStatus("saved");
+    }
+  }, [serverContent, setSaveStatus]);
 
   // Mark unsaved when content diverges from what was last saved
   useEffect(() => {

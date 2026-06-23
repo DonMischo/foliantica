@@ -122,10 +122,8 @@ Write-Host "  $(gray 'Waiting for API to be ready...')"
 $apiReady = $false
 for ($i = 0; $i -lt 60; $i++) {
     Start-Sleep 1
-    try {
-        $r = Invoke-WebRequest -Uri "http://127.0.0.1:8765/api/health" -TimeoutSec 1 -ErrorAction Stop
-        if ($r.StatusCode -eq 200) { $apiReady = $true; break }
-    } catch {}
+    $out = curl.exe -s -o /dev/null -w "%{http_code}" --max-time 1 "http://127.0.0.1:8765/api/health" 2>$null
+    if ($out -eq "200") { $apiReady = $true; break }
 }
 if ($apiReady) {
     Write-Host "  $(green 'API ready.')"

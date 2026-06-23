@@ -375,7 +375,7 @@ export default function ScenePage() {
     }
   };
 
-  const { saveNow: _saveNow } = useAutosave({ sceneId: sceneIdNum, content, enabled: !!scene });
+  const { saveNow: _saveNow } = useAutosave({ sceneId: sceneIdNum, content, enabled: !!scene, serverContent: scene?.content ?? undefined });
 
   const saveNow = useCallback(() => {
     _saveNow();
