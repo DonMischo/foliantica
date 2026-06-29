@@ -79,33 +79,131 @@ step "Checking prerequisites"
 
 _missing=0
 
-if command -v uv &>/dev/null; then
-  ok "uv $(uv --version 2>&1 | head -1)"
+# Detect apt-based distro (Debian, Ubuntu, etc.)
+_HAS_APT=0
+command -v apt-get &>/dev/null && _HAS_APT=1
+
+# ── curl ─────────────────────────────────────────────────────────────────────
+# Needed to install uv and for the health-check in the launcher.
+if ! command -v curl &>/dev/null; then
+  if [[ "$_HAS_APT" -eq 1 ]]; then
+    info "curl not found — installing via apt..."
+    sudo apt-get install -y curl
+    ok "curl installed."
+  else
+    err "curl not found — required to install uv."
+    info "Install curl (e.g. brew install curl) and re-run."
+    exit 1
+  fi
 else
-  warn "uv not found."
-  info "Install:  curl -LsSf https://astral.sh/uv/install.sh | sh"
-  info "Then add  \$HOME/.cargo/bin  (or  \$HOME/.local/bin)  to your PATH and re-run."
-  _missing=1
+  ok "curl $(curl --version 2>/dev/null | awk 'NR==1{print $1,$2}')"
 fi
 
-if command -v node &>/dev/null; then
-  ok "Node.js $(node --version)"
+# ── uv ───────────────────────────────────────────────────────────────────────
+# Check common non-PATH install locations before trying to install.
+for _uv_dir in "$HOME/.local/bin" "$HOME/.cargo/bin"; do
+  if [[ -x "$_uv_dir/uv" ]] && ! command -v uv &>/dev/null; then
+    export PATH="$_uv_dir:$PATH"
+  fi
+done
+
+if ! command -v uv &>/dev/null; then
+  info "uv not found — installing..."
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  # Source the env file the installer may have written
+  for _uv_env in "$HOME/.local/bin/env" "$HOME/.cargo/env"; do
+    # shellcheck disable=SC1090
+    [[ -f "$_uv_env" ]] && source "$_uv_env" 2>/dev/null || true
+  done
+  for _uv_dir in "$HOME/.local/bin" "$HOME/.cargo/bin"; do
+    [[ -x "$_uv_dir/uv" ]] && export PATH="$_uv_dir:$PATH" && break
+  done
+  if command -v uv &>/dev/null; then
+    ok "uv installed: $(uv --version 2>&1)"
+  else
+    err "uv was installed but is not in PATH."
+    info "Add \$HOME/.local/bin to your PATH and re-run:"
+    info "  export PATH=\"\$HOME/.local/bin:\$PATH\""
+    exit 1
+  fi
 else
-  warn "Node.js not found."
-  info "Install from  https://nodejs.org/  or via your package manager."
-  _missing=1
+  ok "uv $(uv --version 2>&1)"
 fi
 
+# ── Python 3.11+ ─────────────────────────────────────────────────────────────
 if command -v python3 &>/dev/null; then
-  ok "Python $(python3 --version 2>&1)"
+  _py_ver=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
+  _py_major="${_py_ver%%.*}"
+  _py_minor="${_py_ver#*.}"
+  if [[ "$_py_major" -ge 3 && "$_py_minor" -ge 11 ]]; then
+    ok "Python ${_py_ver}"
+  else
+    warn "Python ${_py_ver} is too old — 3.11 or newer is required."
+    if [[ "$_HAS_APT" -eq 1 ]]; then
+      info "Install:  sudo apt-get install -y python3.11 python3.11-venv"
+    fi
+    _missing=1
+  fi
 else
   warn "python3 not found — needed by the backend."
+  if [[ "$_HAS_APT" -eq 1 ]]; then
+    info "Install:  sudo apt-get install -y python3 python3-venv"
+  fi
   _missing=1
+fi
+
+# ── Node.js 18+ ───────────────────────────────────────────────────────────────
+_MIN_NODE=18
+_node_ok=0
+if command -v node &>/dev/null; then
+  _node_raw=$(node --version 2>/dev/null | sed 's/^v//')
+  _node_major="${_node_raw%%.*}"
+  if [[ "${_node_major:-0}" -ge "$_MIN_NODE" ]]; then
+    ok "Node.js v${_node_raw}"
+    _node_ok=1
+  else
+    warn "Node.js v${_node_raw} is too old (>= ${_MIN_NODE} required)."
+  fi
+fi
+
+if [[ "$_node_ok" -eq 0 ]]; then
+  if [[ "$_HAS_APT" -eq 1 ]]; then
+    info "Installing Node.js ${_MIN_NODE}.x via NodeSource..."
+    curl -fsSL "https://deb.nodesource.com/setup_${_MIN_NODE}.x" | sudo -E bash -
+    sudo apt-get install -y nodejs
+    if command -v node &>/dev/null; then
+      ok "Node.js $(node --version) installed."
+      _node_ok=1
+    else
+      err "Node.js installation failed."
+      _missing=1
+    fi
+  else
+    warn "Node.js >= ${_MIN_NODE} not found."
+    info "Install from https://nodejs.org/ or via nvm: https://github.com/nvm-sh/nvm"
+    _missing=1
+  fi
+fi
+
+# ── npm ───────────────────────────────────────────────────────────────────────
+# On Debian/Ubuntu, npm is a separate package from nodejs.
+if command -v npm &>/dev/null; then
+  ok "npm $(npm --version)"
+else
+  if [[ "$_HAS_APT" -eq 1 ]]; then
+    info "npm not found — installing..."
+    sudo apt-get install -y npm
+    ok "npm $(npm --version)"
+  else
+    warn "npm not found."
+    info "Install npm:  https://www.npmjs.com/get-npm"
+    _missing=1
+  fi
 fi
 
 if [[ "$_missing" -eq 1 ]]; then
   echo
-  warn "Install the missing prerequisites above, then re-run ./install.sh"
+  warn "Fix the missing prerequisites above, then re-run ./install.sh"
   exit 1
 fi
 echo
@@ -331,16 +429,29 @@ fi
 
 info "Installing/updating Python dependencies..."
 uv pip install --quiet --python "$ROOT/api/.venv/bin/python" -e "$ROOT/api"
-ok "Python dependencies installed."
+
+# Verify uvicorn is reachable — if the binary wheel was unavailable uv may
+# have skipped it silently (e.g. missing libpq-dev on some Debian builds).
+if ! "$ROOT/api/.venv/bin/python" -c "import uvicorn" 2>/dev/null; then
+  warn "uvicorn not importable after install — retrying explicitly..."
+  uv pip install --python "$ROOT/api/.venv/bin/python" "uvicorn[standard]"
+  if ! "$ROOT/api/.venv/bin/python" -c "import uvicorn" 2>/dev/null; then
+    err "uvicorn could not be installed."
+    if [[ "$_HAS_APT" -eq 1 ]]; then
+      info "You may need build tools:  sudo apt-get install -y build-essential python3-dev"
+    fi
+    exit 1
+  fi
+fi
+_uv_ver=$("$ROOT/api/.venv/bin/python" -c 'import uvicorn; print(uvicorn.__version__)' 2>/dev/null || echo "unknown")
+ok "Python dependencies installed (uvicorn ${_uv_ver})."
 echo
 
 # ── npm packages ──────────────────────────────────────────────────────────────
 step "Frontend packages"
 
-if [[ ! -f "$ROOT/web/node_modules/.bin/next" ]]; then
-  info "Installing npm packages (this takes a moment on first run)..."
-  (cd "$ROOT/web" && npm install)
-fi
+info "Installing npm packages..."
+(cd "$ROOT/web" && npm install)
 if [[ ! -f "$ROOT/web/node_modules/.bin/next" ]]; then
   err "npm install finished but 'next' was not found in node_modules."
   info "Run manually:  cd web && npm install"
