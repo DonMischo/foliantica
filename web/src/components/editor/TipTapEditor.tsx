@@ -303,6 +303,12 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
     },
   });
 
+  // True while we're programmatically loading content into the editor.
+  // ProseMirror dispatch is synchronous, so setting this before dispatch and
+  // clearing it after is enough to block the onUpdate callback below from
+  // treating the load as a user edit (preventUpdate meta alone is unreliable).
+  const isSettingContentRef = useRef(false);
+
   const editor = useEditor({
     immediatelyRender: false,
     editable: !readOnly,
@@ -335,6 +341,7 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
     ],
     content: normalizeQuotes(content),
     onUpdate({ editor }) {
+      if (isSettingContentRef.current) return;
       onChange(editor.getHTML());
       onFlagsChangeRef.current?.(getSensitivityFlags(editor));
     },
@@ -370,9 +377,6 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
     if (content !== prevSceneContent.current && content !== editor.getHTML()) {
       prevSceneContent.current = content;
       queueMicrotask(() => {
-        // Parse HTML → ProseMirror doc using the editor's full schema (including
-        // custom nodes). Dispatch with addToHistory:false so Ctrl+Z can't undo
-        // the content load, and preventUpdate so onUpdate doesn't fire.
         const el = document.createElement("div");
         el.innerHTML = normalizeQuotes(content || "");
         const newDoc = PMDOMParser.fromSchema(editor.schema).parse(el);
@@ -380,7 +384,9 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
           .replaceWith(0, editor.state.doc.content.size, newDoc.content)
           .setMeta("addToHistory", false)
           .setMeta("preventUpdate", true);
+        isSettingContentRef.current = true;
         editor.view.dispatch(tr);
+        isSettingContentRef.current = false;
         // Re-push comment highlights: the replaceWith above triggers the
         // drift-map branch in the comment plugin, which corrupts pre-loaded
         // positions. Re-pushing from the ref fixes them.

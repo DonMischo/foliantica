@@ -348,17 +348,20 @@ export default function ScenePage() {
     syncMutateRef.current({ sceneId: pending.sceneId, commands: extractCommands(pending.html) });
   }, [extractCommands]);
 
+  const { saveNow: _saveNow, markDirty } = useAutosave({ sceneId: sceneIdNum, enabled: !!scene });
+
   const handleContentChange = useCallback((html: string) => {
     setContent(html);
     contentRef.current = html;
     const text = html.replace(/<[^>]+>/g, "");
     setWordCount(text.trim().split(/\s+/).filter(Boolean).length);
+    markDirty(html);
     // Debounce command sync, tagging the scene so a late fire targets the scene
     // the commands came from — not whatever scene is mounted when it fires.
     pendingCmdRef.current = { sceneId: sceneIdNum, html };
     if (syncRef.current) clearTimeout(syncRef.current);
     syncRef.current = setTimeout(flushCommands, 2000);
-  }, [sceneIdNum, flushCommands]);
+  }, [sceneIdNum, flushCommands, markDirty]);
 
   // Flush any pending command sync when leaving the scene / unmounting, so the
   // last edits' inventory commands aren't dropped; also clears the stale timer.
@@ -375,10 +378,8 @@ export default function ScenePage() {
     }
   };
 
-  const { saveNow: _saveNow } = useAutosave({ sceneId: sceneIdNum, content, enabled: !!scene, serverContent: scene?.content ?? undefined });
-
   const saveNow = useCallback(() => {
-    _saveNow();
+    _saveNow(contentRef.current);
     // Sync drift-corrected comment positions (host and coauthors only)
     if (isHost || identity?.role === "coauthor") {
       const positions = getCommentPositionsRef.current?.() ?? [];
