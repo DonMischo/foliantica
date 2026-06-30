@@ -131,25 +131,52 @@ else
 fi
 
 # ── Python 3.11+ ─────────────────────────────────────────────────────────────
+_py_ok=0
 if command -v python3 &>/dev/null; then
   _py_ver=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
   _py_major="${_py_ver%%.*}"
   _py_minor="${_py_ver#*.}"
   if [[ "$_py_major" -ge 3 && "$_py_minor" -ge 11 ]]; then
     ok "Python ${_py_ver}"
+    _py_ok=1
   else
     warn "Python ${_py_ver} is too old — 3.11 or newer is required."
-    if [[ "$_HAS_APT" -eq 1 ]]; then
-      info "Install:  sudo apt-get install -y python3.11 python3.11-venv"
+  fi
+fi
+
+if [[ "$_py_ok" -eq 0 ]]; then
+  if [[ "$_HAS_APT" -eq 1 ]]; then
+    info "Installing Python 3.11 via apt..."
+    sudo apt-get install -y python3.11 python3.11-venv python3.11-dev
+    # Make python3 resolve to 3.11 if it doesn't already
+    if python3 -c "import sys; exit(0 if sys.version_info >= (3,11) else 1)" 2>/dev/null; then
+      ok "Python 3.11 installed."
+      _py_ok=1
+    elif command -v python3.11 &>/dev/null; then
+      ok "Python 3.11 installed (invoked as python3.11)."
+      _py_ok=1
+    else
+      err "Python 3.11 installation failed."
+      _missing=1
     fi
+  else
+    err "Python 3.11+ not found."
+    info "Install from https://www.python.org/ or via your package manager."
     _missing=1
   fi
-else
-  warn "python3 not found — needed by the backend."
-  if [[ "$_HAS_APT" -eq 1 ]]; then
-    info "Install:  sudo apt-get install -y python3 python3-venv"
+fi
+
+# ── Build tools (needed for C-extension wheels: psycopg2, uvicorn, etc.) ─────
+if [[ "$_HAS_APT" -eq 1 ]]; then
+  _need_build=0
+  for _pkg in gcc make libpq-dev libssl-dev; do
+    dpkg -s "$_pkg" &>/dev/null 2>&1 || { _need_build=1; break; }
+  done
+  if [[ "$_need_build" -eq 1 ]]; then
+    info "Installing build tools (needed for Python C-extension packages)..."
+    sudo apt-get install -y build-essential python3-dev libpq-dev libssl-dev
+    ok "Build tools installed."
   fi
-  _missing=1
 fi
 
 # ── Node.js 18+ ───────────────────────────────────────────────────────────────
@@ -174,6 +201,10 @@ if [[ "$_node_ok" -eq 0 ]]; then
     if command -v node &>/dev/null; then
       ok "Node.js $(node --version) installed."
       _node_ok=1
+      # NodeSource nodejs ships with a bundled npm that may be outdated on Debian
+      info "Upgrading npm to latest..."
+      sudo npm install -g npm@latest
+      ok "npm $(npm --version)"
     else
       err "Node.js installation failed."
       _missing=1
@@ -451,10 +482,10 @@ echo
 step "Frontend packages"
 
 info "Installing npm packages..."
-(cd "$ROOT/web" && npm install)
+(cd "$ROOT/web" && npm install --legacy-peer-deps)
 if [[ ! -f "$ROOT/web/node_modules/.bin/next" ]]; then
   err "npm install finished but 'next' was not found in node_modules."
-  info "Run manually:  cd web && npm install"
+  info "Run manually:  cd web && npm install --legacy-peer-deps"
   exit 1
 fi
 ok "npm packages installed."

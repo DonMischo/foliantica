@@ -71,15 +71,32 @@ fi
 
 echo -e "  ${WHITE}Checking Python dependencies...${RESET}"
 uv pip install --quiet --python "$ROOT/api/.venv/bin/python" -e "$ROOT/api"
+# Verify uvicorn is importable — the wheel may have been skipped on Debian
+# without build tools, in which case we retry with an explicit install.
+if ! "$ROOT/api/.venv/bin/python" -c "import uvicorn" 2>/dev/null; then
+  echo -e "  ${YELLOW}[WARN]${RESET}  uvicorn not importable — retrying explicit install..."
+  uv pip install --python "$ROOT/api/.venv/bin/python" "uvicorn[standard]"
+  if ! "$ROOT/api/.venv/bin/python" -c "import uvicorn" 2>/dev/null; then
+    err "uvicorn could not be installed. Run ./install.sh to set up build tools."
+    exit 1
+  fi
+fi
 echo
 
 # ── npm packages ──────────────────────────────────────────────────────────────
+_need_npm=0
 if [[ ! -f "$ROOT/web/node_modules/.bin/next" ]]; then
+  _need_npm=1
+elif [[ "$ROOT/web/package.json" -nt "$ROOT/web/node_modules/.bin/next" ]]; then
+  echo -e "  ${WHITE}package.json updated — reinstalling npm packages...${RESET}"
+  _need_npm=1
+fi
+if [[ "$_need_npm" -eq 1 ]]; then
   echo -e "  ${WHITE}Installing npm packages (first run — takes a minute)...${RESET}"
-  (cd "$ROOT/web" && npm install)
+  (cd "$ROOT/web" && npm install --legacy-peer-deps)
   if [[ ! -f "$ROOT/web/node_modules/.bin/next" ]]; then
     err "npm install finished but 'next' was not installed."
-    echo -e "         Run manually:  ${GRAY}cd web && npm install${RESET}" >&2
+    echo -e "         Run manually:  ${GRAY}cd web && npm install --legacy-peer-deps${RESET}" >&2
     exit 1
   fi
   echo
