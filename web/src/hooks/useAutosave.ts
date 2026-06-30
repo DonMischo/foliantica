@@ -50,16 +50,22 @@ export function useAutosave({ sceneId, content, enabled, serverContent }: Option
     pendingSaveRef.current = null;
   }, [sceneId]);
 
-  // Once serverContent arrives for the current scene, lock it in as the baseline.
-  // Only runs once per scene (guarded by baselineSceneRef).
+  // Establish the baseline only once the editor has actually rendered the
+  // server content (content === serverContent). This prevents the window
+  // between serverContent arriving and TipTap loading from producing a false
+  // unsaved state with empty content.
   useEffect(() => {
-    if (serverContent !== undefined && baselineSceneRef.current !== sceneId) {
+    if (
+      serverContent !== undefined &&
+      content === serverContent &&
+      baselineSceneRef.current !== sceneId
+    ) {
       lastSavedRef.current = serverContent;
       baselineSceneRef.current = sceneId;
       pendingSaveRef.current = null;
       setSaveStatus("saved");
     }
-  }, [serverContent, sceneId, setSaveStatus]);
+  }, [serverContent, content, sceneId, setSaveStatus]);
 
   // Mark unsaved when content diverges — but only after the baseline is set.
   useEffect(() => {
