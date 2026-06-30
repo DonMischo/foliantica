@@ -20,6 +20,9 @@ export function useAutosave({ sceneId, content, enabled, serverContent }: Option
   contentRef.current = content;
   const lastSavedRef = useRef(content);
   const pendingSaveRef = useRef<{ value: string; sceneId: number } | null>(null);
+  // Tracks which sceneId has had its server baseline established.
+  // Unsaved detection is suppressed until this matches the current sceneId.
+  const baselineSceneRef = useRef<number | null>(null);
 
   // save() takes the target sceneId explicitly so a late-firing save can never
   // write content to a scene the user has since navigated away from.
@@ -40,18 +43,28 @@ export function useAutosave({ sceneId, content, enabled, serverContent }: Option
     }
   }, [enabled, setSaveStatus, qc]);
 
-  // When the server delivers a new scene's content, treat it as the saved baseline
+  // When sceneId changes, clear the baseline so unsaved detection waits for
+  // the new scene's server content before it can fire.
   useEffect(() => {
-    if (serverContent !== undefined) {
+    baselineSceneRef.current = null;
+    pendingSaveRef.current = null;
+  }, [sceneId]);
+
+  // Once serverContent arrives for the current scene, lock it in as the baseline.
+  // Only runs once per scene (guarded by baselineSceneRef).
+  useEffect(() => {
+    if (serverContent !== undefined && baselineSceneRef.current !== sceneId) {
       lastSavedRef.current = serverContent;
+      baselineSceneRef.current = sceneId;
       pendingSaveRef.current = null;
       setSaveStatus("saved");
     }
-  }, [serverContent, setSaveStatus]);
+  }, [serverContent, sceneId, setSaveStatus]);
 
-  // Mark unsaved when content diverges from what was last saved
+  // Mark unsaved when content diverges — but only after the baseline is set.
   useEffect(() => {
     if (!enabled) return;
+    if (baselineSceneRef.current !== sceneId) return;
     if (content !== lastSavedRef.current) {
       pendingSaveRef.current = { value: content, sceneId };
       setSaveStatus("unsaved");
