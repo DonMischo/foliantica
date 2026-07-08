@@ -25,6 +25,8 @@ jobs:
     steps:
       # ── Checkout ────────────────────────────────────────────────────────────
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       # ── Node.js ─────────────────────────────────────────────────────────────
       - uses: actions/setup-node@v4
@@ -38,7 +40,7 @@ jobs:
           python-version: "3.11"
 
       # ── uv (fast Python package installer) ──────────────────────────────────
-      - uses: astral-sh/setup-uv@v4
+      - uses: astral-sh/setup-uv@38f3f104447c67c051c4a08e39b64a148898af3a # v4
 
       # ── Install Python dependencies into api/.venv ───────────────────────────
       - name: Install Python dependencies
@@ -89,7 +91,7 @@ jobs:
           path: artifacts/
           merge-multiple: true
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: artifacts/**/*
           generate_release_notes: true

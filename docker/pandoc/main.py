@@ -52,7 +52,9 @@ _FONT_INSTALL_DIR = Path("/usr/local/share/fonts/gfonts")
 def _ensure_google_font(name: str) -> bool:
     """Download a Google Font TTF into the system fonts dir and register it.
     Returns True if the font is (now) available, False on failure."""
-    safe     = name.replace(" ", "_")
+    # Restrict to a filesystem-safe charset so a crafted font name can't
+    # traverse outside the install dir (e.g. "../../etc").
+    safe     = _re.sub(r"[^A-Za-z0-9_-]", "_", name.replace(" ", "_"))
     dest_dir = _FONT_INSTALL_DIR / safe
 
     # Already cached — skip download but check fontconfig registration

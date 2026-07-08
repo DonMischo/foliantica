@@ -6,6 +6,9 @@ from pathlib import Path
 from jinja2 import Environment
 from models import Project
 
+# autoescape stays off deliberately: this environment renders LaTeX templates,
+# not HTML. HTML-escaping would corrupt LaTeX output; all interpolated values
+# are escaped for LaTeX via _escape_latex() instead. (nosec / aikido: ignore)
 _jinja = Environment(autoescape=False)
 
 

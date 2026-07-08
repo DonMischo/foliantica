@@ -17,8 +17,20 @@ Usage:
       [--pg-pass foliantica] [--pg-db foliantica]
 """
 import argparse
+import re
 import sys
 from pathlib import Path
+
+# Table names are interpolated into SQL below. They come from database
+# introspection (not user input), but validate them anyway so a hostile
+# SQLite file can't smuggle SQL through a crafted table name.
+_IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _safe_ident(name: str) -> str:
+    if not _IDENT_RE.match(name):
+        raise ValueError(f"Unsafe SQL identifier: {name!r}")
+    return name
 
 
 def migrate(sqlite_path: str, pg_port: str, pg_user: str, pg_pass: str, pg_db: str, keep_original: bool = False) -> None:
@@ -37,7 +49,7 @@ def migrate(sqlite_path: str, pg_port: str, pg_user: str, pg_pass: str, pg_db: s
     pg_tables     = set(pg_insp.get_table_names())
 
     # Tables that exist in the PostgreSQL schema (created by Base.metadata.create_all)
-    target_tables = sorted(sqlite_tables & pg_tables - {"sqlite_sequence"})
+    target_tables = sorted(_safe_ident(t) for t in (sqlite_tables & pg_tables - {"sqlite_sequence"}))
 
     migrated: list[str] = []
 
@@ -60,7 +72,7 @@ def migrate(sqlite_path: str, pg_port: str, pg_user: str, pg_pass: str, pg_db: s
                 continue
 
             col_info  = sqlite_insp.get_columns(table)
-            col_names = [c["name"] for c in col_info]
+            col_names = [_safe_ident(c["name"]) for c in col_info]
 
             placeholders = ", ".join(f":{c}" for c in col_names)
             cols_sql     = ", ".join(col_names)

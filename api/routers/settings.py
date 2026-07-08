@@ -1,6 +1,7 @@
 import json
 import os
 import platform
+import re
 import shutil
 import sys
 import subprocess
@@ -718,9 +719,18 @@ def transfer_pg(body: dict):
         # Ensure target schema exists
         Base.metadata.create_all(bind=dst_engine)
 
-        # Get table list from the live source
+        # Get table list from the live source. Names are interpolated into SQL
+        # below — validate them as plain identifiers even though they come from
+        # our own information_schema, so a compromised source DB can't inject.
+        _ident_re = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+        def _safe_ident(name: str) -> str:
+            if not _ident_re.match(name):
+                raise HTTPException(500, f"Unsafe SQL identifier in source DB: {name!r}")
+            return name
+
         with _live_engine.connect() as src_conn:
-            tables = [r[0] for r in src_conn.execute(_text(
+            tables = [_safe_ident(r[0]) for r in src_conn.execute(_text(
                 "SELECT table_name FROM information_schema.tables "
                 "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "
                 "ORDER BY table_name"
@@ -733,7 +743,7 @@ def transfer_pg(body: dict):
             dst_conn.execute(_text("SET session_replication_role = replica"))
 
             for table in tables:
-                cols = [r[0] for r in src_conn.execute(_text(
+                cols = [_safe_ident(r[0]) for r in src_conn.execute(_text(
                     "SELECT column_name FROM information_schema.columns "
                     "WHERE table_schema = 'public' AND table_name = :t "
                     "ORDER BY ordinal_position"

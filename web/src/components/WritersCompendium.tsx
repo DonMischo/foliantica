@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { X, ChevronRight, ChevronDown, GraduationCap } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
+import DOMPurify from "dompurify";
 
 // ── SVG section mapping ───────────────────────────────────────────────────────
 
@@ -495,7 +496,10 @@ function SvgPanel({ file, locale }: { file: string; locale: string }) {
   return (
     <div
       className="w-full rounded-lg overflow-hidden border border-border/50 mb-6"
-      dangerouslySetInnerHTML={{ __html: content.replace("<svg", '<svg style="width:100%;height:auto;display:block;"') }}
+      dangerouslySetInnerHTML={{
+        __html: DOMPurify.sanitize(content, { USE_PROFILES: { svg: true, svgFilters: true } })
+          .replace("<svg", '<svg style="width:100%;height:auto;display:block;"'),
+      }}
     />
   );
 }

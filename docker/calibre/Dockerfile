@@ -20,5 +20,9 @@ RUN pip install --no-cache-dir fastapi uvicorn
 WORKDIR /app
 COPY main.py .
 
+# Run as non-root; calibre needs a writable home and XDG runtime dir
+RUN useradd -m app && chown -R app /tmp/xdg
+USER app
+
 EXPOSE 8084
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8084"]

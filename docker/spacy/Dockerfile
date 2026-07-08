@@ -13,5 +13,8 @@ RUN python -m spacy download pt_core_news_sm
 WORKDIR /app
 COPY server.py .
 
+RUN useradd -m app
+USER app
+
 EXPOSE 8083
 CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8083"]

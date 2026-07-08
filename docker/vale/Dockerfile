@@ -1,4 +1,4 @@
-FROM jdkato/vale:latest AS vale
+FROM jdkato/vale:v3.15.1 AS vale
 
 FROM python:3.12-alpine
 
@@ -16,6 +16,9 @@ RUN mkdir -p styles && vale sync && rm .vale.ini
 
 COPY main.py .
 COPY default.ini .
+
+RUN adduser -D app
+USER app
 
 EXPOSE 8085
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8085"]

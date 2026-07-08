@@ -1,4 +1,4 @@
-FROM pandoc/latex:latest-ubuntu
+FROM pandoc/latex:3.10-ubuntu
 
 # Install Python, font packages, and curl (for Google Font downloads)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -21,6 +21,12 @@ RUN pip install --no-cache-dir fastapi uvicorn python-docx
 
 WORKDIR /app
 COPY main.py .
+
+# Run as non-root; the app needs write access to the Google-Fonts install dir
+RUN useradd -m app \
+    && mkdir -p /usr/local/share/fonts/gfonts \
+    && chown -R app /usr/local/share/fonts/gfonts
+USER app
 
 EXPOSE 8082
 

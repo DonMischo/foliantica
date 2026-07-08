@@ -37,6 +37,7 @@ import { SearchBar } from "./SearchBar";
 import { EditorContext } from "@/contexts/EditorContext";
 import { useUIStore } from "@/store/ui";
 import { htmlToGrammarPlainText, computeGrammarSkipCount } from "@/lib/grammarUtils";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 interface Props {
   content: string;
@@ -378,7 +379,9 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
       prevSceneContent.current = content;
       queueMicrotask(() => {
         const el = document.createElement("div");
-        el.innerHTML = normalizeQuotes(content || "");
+        // Sanitize before innerHTML: scene HTML can come from imports or a
+        // shared data dir, and even a detached element executes img/onerror.
+        el.innerHTML = sanitizeHtml(normalizeQuotes(content || ""));
         const newDoc = PMDOMParser.fromSchema(editor.schema).parse(el);
         const tr = editor.state.tr
           .replaceWith(0, editor.state.doc.content.size, newDoc.content)
