@@ -286,6 +286,12 @@ export default function ScenePage() {
   const lastSnapshotContentRef = useRef<string>("");
   const prevSceneIdRef = useRef<number>(0);
 
+  // Keep contentRef mirroring `content` at all times so the Save button and
+  // Ctrl+S always persist the actual current content — including after
+  // programmatic updates (scene load, History restore) that set `content` but
+  // would otherwise leave the ref stale, causing Save to write the wrong data.
+  useEffect(() => { contentRef.current = content; }, [content]);
+
   useEffect(() => {
     if (scene) {
       setContent(scene.content || "");
@@ -449,7 +455,11 @@ export default function ScenePage() {
 
   const handleVersionRestored = (restoredContent: string) => {
     setContent(restoredContent);
+    contentRef.current = restoredContent;
     lastSnapshotContentRef.current = restoredContent;
+    // A restore is a real content change the user wants kept — flag it dirty so
+    // it persists via autosave / navigation flush even without pressing Save.
+    markDirty(restoredContent);
   };
 
   const handleCodexEntryClick = (id: number) => {
