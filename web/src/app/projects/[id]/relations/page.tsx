@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { CodexEntryDialog } from "@/components/codex/CodexEntryDialog";
 import { useCodexEntries, useUpdateCodexEntry } from "@/store/queries";
 import type { CodexEntry } from "@/types";
+import { sphereGradientId, bezierPath, CANVAS_MOTION_CSS } from "@/lib/canvasStyle";
+import { CanvasGradientDefs } from "@/components/canvas/GradientDefs";
 
 interface GraphNode {
   id: string;
@@ -60,9 +62,6 @@ function radialPos(index: number, total: number, radius: number, offset = 0) {
   return { x: CX + radius * Math.cos(angle), y: CY + radius * Math.sin(angle) };
 }
 
-function gradId(color: string) {
-  return "sphere-" + color.replace("#", "");
-}
 
 // ── Context Menu ──────────────────────────────────────────────────────────────
 
@@ -186,18 +185,22 @@ function NodeCircle({
   return (
     <g
       data-node="true"
-      transform={`translate(${x},${y})`}
       onClick={onClick}
       onContextMenu={e => { e.preventDefault(); onRightClick?.(e); }}
       className="cursor-pointer"
-      style={{ userSelect: "none" }}
+      style={{
+        userSelect: "none",
+        // CSS transform (not the SVG attribute) so position changes animate
+        transform: `translate(${x}px, ${y}px)`,
+        transition: "transform 400ms cubic-bezier(0.25, 1, 0.35, 1)",
+      }}
     >
       {selected && (
         <circle r={NODE_R + 5} fill="none" stroke={node.color} strokeWidth={2} strokeOpacity={0.35} />
       )}
       <circle
         r={NODE_R}
-        fill={`url(#${gradId(node.color)})`}
+        fill={`url(#${sphereGradientId(node.color)})`}
         stroke={node.color}
         strokeWidth={selected ? 2.5 : 1.5}
         className="transition-all"
@@ -220,23 +223,33 @@ function NodeCircle({
   );
 }
 
+// Curvature used for all relation edges — the label midpoint below must
+// match the curve's actual midpoint offset.
+const EDGE_CURVE = 0.12;
+
 function EdgePath({
-  x1, y1, x2, y2, label, color, dashed,
-}: { x1: number; y1: number; x2: number; y2: number; label: string; color: string; dashed: boolean }) {
-  const mx = (x1 + x2) / 2;
-  const my = (y1 + y2) / 2;
+  x1, y1, x2, y2, label, color, dashed, highlighted,
+}: { x1: number; y1: number; x2: number; y2: number; label: string; color: string; dashed: boolean; highlighted?: boolean }) {
+  // Cubic bezier midpoint sits 3/4 of the control-point offset from the chord
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const mx = (x1 + x2) / 2 - dy * EDGE_CURVE * 0.75;
+  const my = (y1 + y2) / 2 + dx * EDGE_CURVE * 0.75;
   return (
     <g>
-      <line
-        x1={x1} y1={y1} x2={x2} y2={y2}
+      <path
+        d={bezierPath(x1, y1, x2, y2, EDGE_CURVE)}
+        fill="none"
         stroke={color}
-        strokeWidth={1.5}
+        strokeWidth={highlighted ? 2.5 : 1.5}
         strokeDasharray={dashed ? "4 3" : undefined}
-        strokeOpacity={0.6}
-        markerEnd="url(#arrow)"
+        strokeOpacity={highlighted ? 0.95 : 0.6}
+        markerEnd="url(#canvas-arrow)"
+        className={dashed ? "canvas-dash-flow" : undefined}
+        style={{ transition: "stroke-opacity 150ms ease, stroke-width 150ms ease" }}
       />
       {label && (
-        <text x={mx} y={my - 5} textAnchor="middle" fontSize={12} fill={color} fillOpacity={0.85}>
+        <text x={mx} y={my - 5} textAnchor="middle" fontSize={12} fill={color} fillOpacity={highlighted ? 1 : 0.85}>
           {label}
         </text>
       )}
@@ -394,6 +407,7 @@ export default function RelationsPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      <style>{CANVAS_MOTION_CSS}</style>
       <header className="flex items-center justify-between px-6 py-3 border-b border-border">
         <div>
           <h1 className="text-base font-semibold">Relations</h1>
@@ -469,23 +483,15 @@ export default function RelationsPage() {
             onDoubleClick={onSvgDoubleClick}
           >
             <defs>
-              <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-                <path d="M0,0 L0,6 L6,3 z" fill="#6b7280" fillOpacity={0.6} />
-              </marker>
-              {[...new Set(data.nodes.map(n => n.color))].map(color => (
-                <radialGradient key={color} id={gradId(color)} cx="35%" cy="28%" r="70%">
-                  <stop offset="0%" stopColor="#ffffff" stopOpacity={0.55} />
-                  <stop offset="50%" stopColor={color} stopOpacity={1} />
-                  <stop offset="100%" stopColor={color} stopOpacity={1} />
-                </radialGradient>
-              ))}
+              <CanvasGradientDefs colors={data.nodes.map(n => n.color)} />
             </defs>
 
             {/* Transparent background — catches drags on empty space */}
             <rect x={0} y={0} width={W} height={H} fill="transparent" />
 
             <g transform={`translate(${pan.x},${pan.y})`}>
-              {/* Edges */}
+              {/* Edges — keyed by layout so they fade in after nodes glide */}
+              <g key={`${centerNode?.id}-${depth}-${stretch}`} className="canvas-fade-in">
               {layout.visibleEdges.map((edge, i) => {
                 const src = edge.source ?? centerNode?.id ?? "";
                 const sp = layout.positions[src];
@@ -500,15 +506,20 @@ export default function RelationsPage() {
                     onContextMenu={e => { e.preventDefault(); openEdgeMenu(edge, e); }}
                     className="cursor-context-menu"
                   >
-                    {/* Wider invisible hit area */}
-                    <line x1={sp.x} y1={sp.y} x2={tp.x} y2={tp.y} stroke="transparent" strokeWidth={12} />
+                    {/* Wider invisible hit area — follows the same curve */}
+                    <path
+                      d={bezierPath(sp.x, sp.y, tp.x, tp.y, 0.12)}
+                      fill="none" stroke="transparent" strokeWidth={12}
+                    />
                     <EdgePath
                       x1={sp.x} y1={sp.y} x2={tp.x} y2={tp.y}
                       label={edge.type} color={nodeColor} dashed={edge.via === "inline"}
+                      highlighted={hoveredEdge === edge}
                     />
                   </g>
                 );
               })}
+              </g>
 
               {/* Nodes */}
               {Object.entries(layout.positions).map(([name, pos]) => {

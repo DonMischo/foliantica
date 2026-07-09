@@ -7,6 +7,7 @@ import { ChevronDown, ChevronUp, Pencil, Waypoints } from "lucide-react";
 import { SingleCard } from "./SceneCard";
 import { hexToRgba } from "./ColorPicker";
 import { CONNECTION_TYPES } from "./connectionTypes";
+import { CARD_LIFT } from "@/lib/canvasStyle";
 import type { CorkboardScene } from "@/types";
 
 // ── Node data contract ────────────────────────────────────────────────────────
@@ -311,7 +312,7 @@ export function SceneNode({ data }: NodeProps<SceneNodeType>) {
 
   return (
     <div
-      className="nowheel flex flex-col gap-0.5 rounded-lg relative"
+      className={`nowheel flex flex-col gap-0.5 rounded-lg relative ${CARD_LIFT}`}
       style={{
         borderLeft: `3px solid ${hexToRgba(colColor, 0.7)}`,
         background: "hsl(var(--card))",

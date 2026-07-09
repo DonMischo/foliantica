@@ -21,6 +21,7 @@ import {
   useSetGlobalOrder, useRelationsGraph, useSceneMentionStats, useRescanSceneMentions,
 } from "@/store/queries";
 import { projectsApi, scenesApi } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { SceneNode } from "@/components/corkboard/SceneNode";
 import type { SceneNodeType, SceneNodeData } from "@/components/corkboard/SceneNode";
 import { ActNode, ChapterNode, GroupFrameNode } from "@/components/corkboard/HierarchyNodes";
@@ -328,7 +329,7 @@ function buildRFEdges(groups: NodeGroup[], reconnectable: boolean): Edge[] {
         id: `e-${src.id}-${tgt.id}`,
         source: src.id,
         target: tgt.id,
-        type: "smoothstep",
+        type: "default",
         animated: false,
         deletable: false,
         reconnectable,
@@ -500,7 +501,7 @@ function buildHierarchyNodes(
             id: `e-ch-${scene.id}-${chScenes[i + 1].id}`,
             source: `scene-${scene.id}`,
             target: `scene-${chScenes[i + 1].id}`,
-            type: "smoothstep",
+            type: "default",
             deletable: false,
             data: { kind: "seq-tree" },
             markerEnd: { type: MarkerType.ArrowClosed, width: 12, height: 12 },
@@ -881,6 +882,7 @@ export default function CorkboardPage() {
   const [showLegend, setShowLegend]         = useState(false);
   const [webSceneId, setWebSceneId]         = useState<number | null>(null);
   const [drawerEntryId, setDrawerEntryId]   = useState<number | null>(null);
+  const [nodeDragging, setNodeDragging]     = useState(false);
   const [undoToast, setUndoToast]           = useState<{ message: string; undo: () => void } | null>(null);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [confirmDialog, setConfirmDialog]   = useState<{
@@ -1484,6 +1486,7 @@ export default function CorkboardPage() {
   } | null>(null);
 
   const onNodeDragStart: OnNodeDrag = useCallback((_, node) => {
+    setNodeDragging(true);
     const nodeId = node.id;
 
     // Frame drag: identify all scene nodes that belong to this chapter
@@ -1558,6 +1561,7 @@ export default function CorkboardPage() {
   }, [setNodes]); // setNodes is stable
 
   const onNodeDragStop: OnNodeDrag = useCallback((_, node) => {
+    setNodeDragging(false);
     const drag = dragStartRef.current;
 
     // ── Case 1: frame drag — save follower positions by delta ────────────────
@@ -1819,8 +1823,20 @@ export default function CorkboardPage() {
   const inFreeForm = !showHierarchy && !showBeatView;
   const activeStyle = BOARD_STYLES.find((s) => s.id === boardStyle) ?? BOARD_STYLES[0];
 
+  // Animate node repositioning only in computed views (custom mode keeps
+  // dragging snappy — a transform transition there would lag the pointer).
+  const animateLayout = (!inFreeForm || layout !== "custom") && !nodeDragging;
+
   return (
     <div className="h-full flex flex-col overflow-hidden relative bg-background" style={activeStyle.vars as CSSProperties}>
+      <style>{`
+        .rf-animate-layout .react-flow__node {
+          transition: transform 450ms cubic-bezier(0.25, 1, 0.35, 1);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .rf-animate-layout .react-flow__node { transition: none; }
+        }
+      `}</style>
       <ReactFlow
         colorMode={activeStyle.isDark ? "dark" : "light"}
         nodes={nodes}
@@ -1841,7 +1857,7 @@ export default function CorkboardPage() {
         minZoom={0.2}
         maxZoom={2}
         deleteKeyCode={["Delete", "Backspace"]}
-        className="bg-background"
+        className={cn("bg-background", animateLayout && "rf-animate-layout")}
       >
         <Background color="hsl(var(--border))" gap={24} size={1} />
         <Controls

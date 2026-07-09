@@ -13,6 +13,8 @@ import { DEFAULT_TIME_CONFIG, type TimelineTrack, type TimelineEventItem, type S
 import { timelineTracksApi, timelineEventsApi, type TimelineNode } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { sphereGradientId, verticalConnectorPath, CARD_LIFT, CANVAS_MOTION_CSS } from "@/lib/canvasStyle";
+import { CanvasGradientDefs } from "@/components/canvas/GradientDefs";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -392,13 +394,26 @@ function TrackVisualization({
   const totalWidth = Math.max(300, trackW + LEFT_MARGIN + RIGHT_MARGIN);
 
   // Per-node data used by both the SVG layer and the card layer
+  const DOT_R = 5; // dot radius — connectors stop this far short of the axis
   const nodeData = nodes.map((node, i) => {
     const x = nodeXs[i];
     const lane = lanes.get(node.id) ?? 0;
     const yOffset = laneToY(lane, LANE_HEIGHT);
     const cardTop = axisY + yOffset;
-    const connTop = yOffset < 0 ? cardTop + 32 : axisY;
-    const connHeight = Math.abs(yOffset) - AXIS_OFFSET;
+    const isAbove = yOffset < 0;
+    // Card's actual rendered top (above cards are lifted by 32px — see card layer).
+    const cardRenderTop = cardTop - (isAbove ? 32 : 0);
+    // Connector runs between the card edge nearest the axis and just short of the
+    // dot, so it never crosses the axis line or passes through the dot.
+    let connTop: number, connHeight: number;
+    if (isAbove) {
+      const cardBottom = cardRenderTop + CARD_H;
+      connTop = cardBottom;
+      connHeight = Math.max(0, (axisY - DOT_R) - cardBottom);
+    } else {
+      connTop = axisY + DOT_R;
+      connHeight = Math.max(0, cardRenderTop - connTop);
+    }
     const isScene = node.type === "scene";
     const dotColor = isScene
       ? `hsl(${((node.scene_id ?? 0) * 53 + 180) % 360} 55% 60%)`
@@ -426,11 +441,24 @@ function TrackVisualization({
           style={{ position: "absolute", inset: 0, width: totalWidth, height: vizH, pointerEvents: "none", overflow: "visible" }}
           aria-hidden
         >
-          {/* Axis line */}
+          <defs>
+            <CanvasGradientDefs colors={nodeData.map(nd => nd.dotColor)} />
+            {/* userSpaceOnUse: a horizontal line has a zero-height bounding box,
+                so an objectBoundingBox gradient degenerates and paints nothing. */}
+            <linearGradient id="tl-axis" gradientUnits="userSpaceOnUse"
+              x1={LEFT_MARGIN} y1={0} x2={LEFT_MARGIN + trackW} y2={0}>
+              <stop offset="0%" stopColor="hsl(var(--border))" stopOpacity={0.25} />
+              <stop offset="8%" stopColor="hsl(var(--border))" stopOpacity={1} />
+              <stop offset="92%" stopColor="hsl(var(--border))" stopOpacity={1} />
+              <stop offset="100%" stopColor="hsl(var(--border))" stopOpacity={0.25} />
+            </linearGradient>
+          </defs>
+
+          {/* Axis line — soft-fades at both ends */}
           <line
             x1={LEFT_MARGIN} y1={axisY}
             x2={LEFT_MARGIN + trackW} y2={axisY}
-            stroke="hsl(var(--border))"
+            stroke="url(#tl-axis)"
             strokeWidth={2}
           />
 
@@ -457,15 +485,21 @@ function TrackVisualization({
 
           {/* Per-node: connector + dot */}
           {nodeData.map((nd, i) => (
-            <g key={nodes[i].id}>
-              <line
-                x1={nd.x} y1={nd.connTop}
-                x2={nd.x} y2={nd.connTop + nd.connHeight}
-                stroke="hsl(var(--border))"
-                strokeWidth={1}
-                opacity={0.6}
+            <g key={nodes[i].id} style={{ transition: "transform 300ms ease" }}>
+              <path
+                d={verticalConnectorPath(nd.x, nd.connTop, nd.x, nd.connTop + nd.connHeight)}
+                fill="none"
+                stroke={nd.dotColor}
+                strokeWidth={1.2}
+                opacity={0.4}
               />
-              <circle cx={nd.x} cy={axisY} r={4} fill={nd.dotColor} />
+              <circle
+                cx={nd.x} cy={axisY} r={5}
+                fill={`url(#${sphereGradientId(nd.dotColor)})`}
+                stroke={nd.dotColor}
+                strokeWidth={1}
+                strokeOpacity={0.5}
+              />
             </g>
           ))}
         </svg>
@@ -532,9 +566,13 @@ function TrackVisualization({
                 width: NODE_W,
                 textAlign: "left",
                 cursor: "pointer",
+                // Inline transition overrides CARD_LIFT's transition-all, so
+                // list every animated property here explicitly.
+                transition: "left 300ms ease, top 300ms ease, box-shadow 200ms ease, background-color 150ms ease",
               }}
               className={cn(
-                "rounded-md border border-border/60 bg-card px-2 py-1.5 hover:bg-secondary/60 transition-colors shadow-sm",
+                "rounded-md border border-border/60 bg-card px-2 py-1.5 hover:bg-secondary/60",
+                CARD_LIFT,
               )}
               title={node.title}
             >
@@ -683,9 +721,10 @@ interface EventDialogProps {
   defaultTrackId?: number | null;
   onClose: () => void;
   onSave: (data: Partial<TimelineEventItem>) => void;
+  onDelete?: () => void;
 }
 
-function EventDialog({ open, initial, tracks, units, defaultTrackId, onClose, onSave }: EventDialogProps) {
+function EventDialog({ open, initial, tracks, units, defaultTrackId, onClose, onSave, onDelete }: EventDialogProps) {
   const [title, setTitle] = useState("Untitled Event");
   const [description, setDescription] = useState("");
   const [color, setColor] = useState("#6b7280");
@@ -798,7 +837,20 @@ function EventDialog({ open, initial, tracks, units, defaultTrackId, onClose, on
             </div>
           )}
         </div>
-        <div className="flex justify-end gap-2 pt-1">
+        <div className="flex items-center gap-2 pt-1">
+          {initial?.id && onDelete && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mr-auto text-muted-foreground hover:text-destructive gap-1.5"
+              onClick={() => {
+                if (confirm("Delete this event?")) { onDelete(); onClose(); }
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
           <Button
             size="sm"
@@ -908,7 +960,7 @@ export default function TimelinePage() {
   };
 
   const handleDeleteEvent = async (eventId: number) => {
-    if (!confirm("Delete this event?")) return;
+    // Confirmation is handled by the caller (the dialog's Delete button).
     await timelineEventsApi.delete(projectId, eventId);
     invalidate();
   };
@@ -947,6 +999,7 @@ export default function TimelinePage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      <style>{CANVAS_MOTION_CSS}</style>
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-3 border-b border-border shrink-0 gap-4 flex-wrap">
         <div>
@@ -1107,25 +1160,8 @@ export default function TimelinePage() {
         defaultTrackId={newEventTrackId}
         onClose={() => { setEventDialogOpen(false); setEditingEvent(null); setNewEventTrackId(null); }}
         onSave={handleSaveEvent}
+        onDelete={editingEvent?.id ? () => handleDeleteEvent(editingEvent.id) : undefined}
       />
-
-      {eventDialogOpen && editingEvent?.id && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
-          <Button
-            variant="destructive"
-            size="sm"
-            className="gap-1.5"
-            onClick={() => {
-              handleDeleteEvent(editingEvent.id);
-              setEventDialogOpen(false);
-              setEditingEvent(null);
-            }}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Delete event
-          </Button>
-        </div>
-      )}
 
       <TimeConfigDialog
         open={configOpen}
