@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { StatusBar } from "../StatusBar";
+import { StatusBar, SaveIndicator } from "../StatusBar";
 import { useUIStore } from "@/store/ui";
 import type { SaveStatus } from "@/types";
 
@@ -40,7 +40,7 @@ describe("StatusBar — word count display", () => {
   });
 });
 
-describe("StatusBar — save status", () => {
+describe("SaveIndicator — save status", () => {
   const cases: Array<{ status: SaveStatus; expectedText: string }> = [
     { status: "saved",  expectedText: "Saved" },
     { status: "saving", expectedText: "Saving…" },
@@ -50,14 +50,14 @@ describe("StatusBar — save status", () => {
   for (const { status, expectedText } of cases) {
     it(`shows "${expectedText}" when status is "${status}"`, () => {
       useUIStore.setState({ saveStatus: status });
-      renderStatusBar(10);
+      render(<SaveIndicator />);
       expect(screen.getByText(expectedText)).toBeInTheDocument();
     });
   }
 
   it("shows no label text when status is 'idle'", () => {
     useUIStore.setState({ saveStatus: "idle" });
-    renderStatusBar(10);
+    render(<SaveIndicator />);
     expect(screen.queryByText("Saved")).not.toBeInTheDocument();
     expect(screen.queryByText("Saving…")).not.toBeInTheDocument();
     expect(screen.queryByText("Unsaved changes")).not.toBeInTheDocument();
