@@ -826,6 +826,69 @@ function SectionContent({ section, chapter, t, locale, craftExamples }: { sectio
         </div>
       )}
 
+      {/* Sub-genre list (Genre Wiki) */}
+      {section.subgenres && (
+        <div className="space-y-2 mb-4">
+          {section.subgenres.map((sg: any, i: number) => (
+            <div key={i} className="border border-border rounded-lg p-3">
+              <div className="flex items-baseline gap-2 flex-wrap mb-0.5">
+                <span className="text-xs font-bold text-foreground">{sg.name}</span>
+                {sg.also_known && <span className="text-[10px] text-muted-foreground/60">aka {sg.also_known}</span>}
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">{sg.description}</p>
+              {sg.examples && <p className="text-[11px] text-muted-foreground/70 italic mt-1">e.g. {sg.examples}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Genre world profiles (deep-dive facets per genre) */}
+      {section.world_profiles && (
+        <div className="space-y-3 mb-4">
+          {section.world_profiles.map((g: any, i: number) => (
+            <div key={i} className="border border-border rounded-lg p-3">
+              <div className="flex items-baseline gap-2 mb-1.5 flex-wrap">
+                <span className="text-sm font-bold text-foreground">{g.name}</span>
+                {g.also_known && <span className="text-[10px] text-muted-foreground/60">aka {g.also_known}</span>}
+              </div>
+              <div className="space-y-1">
+                {g.core_themes && <MetaRow label="Themes">{g.core_themes}</MetaRow>}
+                {g.world && <MetaRow label="World">{g.world}</MetaRow>}
+                {g.inhabitants && <MetaRow label="Inhabitants">{g.inhabitants}</MetaRow>}
+                {g.society && <MetaRow label="Society">{g.society}</MetaRow>}
+                {g.technology && <MetaRow label="Technology">{g.technology}</MetaRow>}
+                {g.mood && <MetaRow label="Mood">{g.mood}</MetaRow>}
+              </div>
+              {g.examples && <p className="text-[11px] text-muted-foreground/70 italic mt-1.5">e.g. {g.examples}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Question sets (world-building prompts) */}
+      {section.question_sets && (
+        <div className="space-y-4 mb-4">
+          {section.question_sets.map((qs: any, i: number) => (
+            <div key={i}>
+              {qs.name && <p className="text-xs font-semibold text-foreground mb-2">{qs.name}</p>}
+              <ol className="space-y-1.5">
+                {qs.questions.map((q: any, j: number) => (
+                  <li key={j} className="flex gap-2 text-sm text-foreground/80">
+                    <span className="text-primary/60 shrink-0 tabular-nums">{q.number ?? j + 1}.</span>
+                    <span className="leading-relaxed">
+                      {q.question}
+                      {q.explanation && (
+                        <span className="block text-[11px] text-muted-foreground/70 italic mt-0.5">{q.explanation}</span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Editing levels */}
       {section.editing_levels && (
         <div className="space-y-2 mb-4">
@@ -1028,7 +1091,10 @@ export function WritersCompendium({ open, onClose, initialSection }: Props) {
               <p className="text-xs text-muted-foreground px-4 py-3">{t("compendium_loading")}</p>
             )}
             {chapters.map((ch: any) => {
-              const chLabel = t(CHAPTER_I18N[ch.number] ?? `compendium_ch${ch.number}`);
+              const chKey = CHAPTER_I18N[ch.number] ?? `compendium_ch${ch.number}`;
+              const chT = t(chKey);
+              // Fall back to the JSON title when no i18n string exists for the key
+              const chLabel = chT === chKey ? (ch.title ?? chKey) : chT;
               const isExpanded = expanded.has(ch.number);
               const isChActive = active === `chapter:${ch.number}`;
               return (
@@ -1095,7 +1161,7 @@ export function WritersCompendium({ open, onClose, initialSection }: Props) {
                 </h3>
                 {activeSection && (
                   <p className="text-xs text-muted-foreground/60 mb-4">
-                    {t(CHAPTER_I18N[activeChapter.number])} › {activeSection.id}
+                    {(() => { const k = CHAPTER_I18N[activeChapter.number] ?? `compendium_ch${activeChapter.number}`; const v = t(k); return v === k ? (activeChapter.title ?? k) : v; })()} › {activeSection.id}
                   </p>
                 )}
                 {!activeSection && activeChapter.subtitle && (

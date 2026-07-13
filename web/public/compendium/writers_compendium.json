@@ -94,6 +94,34 @@
             "attr_001",
             "attr_046"
           ]
+        },
+        {
+          "id": "1.4",
+          "title": "Setting the Frame — Defining Your Story's Terms",
+          "summary": "The one who defines the terms of conflict, responsibility, and meaning controls the story. Framing isn't about legal blame — it's about narrative clarity: deciding what your characters control, what the world imposes, and what readers should hold them accountable for.",
+          "key_points": [
+            "Stop automatic blame: separate what a character is truly responsible for from what circumstance, upbringing, or society forced on them. This creates nuanced protagonists.",
+            "Signal self-respect through action: let characters set boundaries without over-explaining. A character who calmly defines their limits becomes active rather than reactive.",
+            "Force precision in conflict: vague accusations fuel melodrama. Make characters demand specificity — 'What exactly did I do?' — to raise stakes and deepen tension.",
+            "Keep it fair, not manipulative: when characters set the frame honestly — neither defensive nor aggressive — their choices feel earned.",
+            "Define systemic responsibility in the world: who is accountable — the ruler, the system, the gods? Clarify where blame and credit lie so readers understand the rules.",
+            "Precision in stakes: a bounded, specific crisis is more compelling than a vague world-ending threat. Frame exactly what is at risk, for whom, and why."
+          ],
+          "key_insight": "Not the loudest wins — the one who sets the frame. Frame clearly, and your characters and world will follow.",
+          "attribution_ids": [
+            "attr_059"
+          ]
+        },
+        {
+          "id": "1.5",
+          "title": "Uncommon Story Ideas",
+          "summary": "A prompt bank of premises that subvert reader expectation.",
+          "key_points": [
+            "A series told from the villain's point of view — but at first you don't realise they are the villain. The reveal lands as a twist near the end, and the reader discovers they've been rooting for the wrong side all along."
+          ],
+          "attribution_ids": [
+            "attr_060"
+          ]
         }
       ]
     },
@@ -351,6 +379,134 @@
             }
           ],
           "attribution_ids": []
+        },
+        {
+          "id": "2.8",
+          "title": "Anti-Hero Archetypes",
+          "summary": "The anti-hero lacks conventional heroism yet carries the story. Each type pressures the reader's sympathies in a different way.",
+          "arc_types": [
+            {
+              "type": "Classic Anti-Hero",
+              "description": "Lacks the conventional qualities of heroism — cowardly, selfish, or reluctant. Readers relate to their familiar fears and failings."
+            },
+            {
+              "type": "The Byronic Hero",
+              "description": "Arrogant and self-destructive, haunted by guilt or a secret past. Magnetic darkness: readers know not to trust them yet cannot look away."
+            },
+            {
+              "type": "Knight in Sour Armor",
+              "description": "Knows what's right but approaches everything through a thick coating of cynicism. They'll do the right thing — and complain the entire way."
+            },
+            {
+              "type": "Pragmatic Anti-Hero",
+              "description": "Operates by a different moral code, doing whatever needs to be done. Every choice pressures the reader's own ethics."
+            },
+            {
+              "type": "The Sympathetic Villain",
+              "description": "The villain given the protagonist's seat, forcing readers to empathise with terrible acts. Perspective becomes a weapon for rationalisation."
+            },
+            {
+              "type": "Cynical Loner",
+              "description": "Has rejected the world's values entirely — no causes, no people, no systems. Every circumstance tests whether the cynicism is as total as they claim."
+            }
+          ],
+          "attribution_ids": [
+            "attr_052"
+          ]
+        },
+        {
+          "id": "2.9",
+          "title": "Morally-Gray Archetypes",
+          "summary": "Characters who resist the hero/villain binary. Their moral ambiguity is the engine of tension.",
+          "arc_types": [
+            {
+              "type": "Well-Intentioned Extremist",
+              "description": "Genuinely wants to save the world — and has decided the cost is acceptable, even when it isn't. Their logic is airtight, which is exactly what makes them terrifying."
+            },
+            {
+              "type": "The Fallen Idealist",
+              "description": "Once believed completely; the world broke that belief. Now operates by colder, harder rules built from the wreckage of who they used to be."
+            },
+            {
+              "type": "The Protector",
+              "description": "Every terrible thing was done for someone they love. The line between devotion and destruction blurred so gradually they never noticed crossing it."
+            },
+            {
+              "type": "The Opportunist",
+              "description": "Fights for survival and advantage, not good or evil. Loyalty lasts exactly as long as it's useful, keeping every alliance dangerously uncertain."
+            },
+            {
+              "type": "The Vigilante",
+              "description": "The system failed, so they replaced it with themselves. Hero or villain depends entirely on which side of their justice you stand."
+            },
+            {
+              "type": "The Redeemed",
+              "description": "Trying to become better while responsible for things that cannot be undone. Every step toward redemption is shadowed by what it can never erase."
+            },
+            {
+              "type": "The Loyal Soldier",
+              "description": "Follows orders without question — not from cruelty but devotion to something larger. The story asks whether blind loyalty is a virtue or the most dangerous flaw of all."
+            }
+          ],
+          "attribution_ids": [
+            "attr_064"
+          ]
+        },
+        {
+          "id": "2.10",
+          "title": "Villain Motivation",
+          "summary": "A villain's motive should be simple and universal, grounding an epic conflict in human psychology. Simple motivation, complex execution.",
+          "arc_types": [
+            {
+              "type": "They Were Thrown Away",
+              "description": "Useful once, then forgotten. Now mercy feels insulting — they remember what kindness costs."
+            },
+            {
+              "type": "They Need a Perfect World",
+              "description": "Flaws offend them; chaos feels unbearable, so they reshape life itself. People become the price."
+            },
+            {
+              "type": "They Fear Being Weak",
+              "description": "Once powerless, and that memory never left. Now control feels holy and cruelty feels safe."
+            },
+            {
+              "type": "They Cannot Accept Change",
+              "description": "They miss a world that died. Instead of grieving it, they punish the future. Nostalgia becomes violence."
+            }
+          ],
+          "attribution_ids": [
+            "attr_052"
+          ]
+        },
+        {
+          "id": "2.11",
+          "title": "Redeeming a Villain — Five Methods",
+          "summary": "Redemption that costs nothing is performance. These five moves make a turn feel earned rather than handed over.",
+          "arc_types": [
+            {
+              "type": "Let Them Save the Wrong Person",
+              "description": "Not the hero, not the kingdom — someone small, someone nobody else would have bothered with. Redemption that costs them their reputation is real."
+            },
+            {
+              "type": "Show the Child They Used to Be",
+              "description": "A toy never thrown away, a song hummed without realising, the promises made at seven. They're redeemed not by backstory but by the moment the reader sees who that kid wanted to be."
+            },
+            {
+              "type": "Let Them Fail at Being Good",
+              "description": "A smooth redemption arc is a costume change. Let them try, get it wrong, be cruel out of habit and hate themselves after. Readers trust villains who become trying, not saints."
+            },
+            {
+              "type": "Make Them Refuse Their Own Redemption",
+              "description": "The hero forgives them; the reader forgives them; they refuse to forgive themselves and walk away from the arc the author handed them. That refusal is the most redeeming thing they'll ever do."
+            },
+            {
+              "type": "Kill Them Before the Reward",
+              "description": "They turn at the last second, save the day, and don't get to live in the world they helped fix. The reader closes the book furious — and remembers them longer than the hero."
+            }
+          ],
+          "attribution_ids": [
+            "attr_054"
+          ]
         }
       ]
     },
@@ -430,6 +586,335 @@
           "attribution_ids": [
             "attr_015"
           ]
+        },
+        {
+          "id": "3.5",
+          "title": "World-Building Question Sets",
+          "summary": "Prompt banks for interrogating a world at three scales — world, country, city — plus the obscure details that make a place feel lived-in. Answer only what serves the story; the rest is iceberg.",
+          "question_sets": [
+            {
+              "name": "Building a World (10 questions)",
+              "questions": [
+                {
+                  "number": 1,
+                  "question": "One country or an entire world? If a whole world, ask these questions for each country you create.",
+                  "explanation": null
+                },
+                {
+                  "number": 2,
+                  "question": "Do you need a map? Name every country and location — it builds ideas and aids visualization."
+                },
+                {
+                  "number": 3,
+                  "question": "Who populates your world? How do the species differ, and do they have different climate needs?"
+                },
+                {
+                  "number": 4,
+                  "question": "What are the major climates and landscapes? Research how mountains affect climate and how rivers run — take liberties, but keep it sensible."
+                },
+                {
+                  "number": 5,
+                  "question": "What kinds of governments exist across the world and its countries? This drives international politics later."
+                },
+                {
+                  "number": 6,
+                  "question": "What kind of economy? This ties into government and politics; consider imports and exports."
+                },
+                {
+                  "number": 7,
+                  "question": "What religions do people follow? Does it differ by culture, country, species? It feeds politics, holidays, customs."
+                },
+                {
+                  "number": 8,
+                  "question": "What is the military structure, and how does it shape domestic and international politics?"
+                },
+                {
+                  "number": 9,
+                  "question": "Does your world have magic? Who has it, where does it come from, what is the system?"
+                },
+                {
+                  "number": 10,
+                  "question": "How technologically advanced is it, and how do magic and technology interact?"
+                }
+              ]
+            },
+            {
+              "name": "Building a Country (20 questions)",
+              "questions": [
+                {
+                  "number": 1,
+                  "question": "Topography — major landforms and their lore, bodies of water, where are the major cities?"
+                },
+                {
+                  "number": 2,
+                  "question": "What is the capital, and why was it chosen — religion, military strategy, history?"
+                },
+                {
+                  "number": 3,
+                  "question": "What are the other major cities, and why?"
+                },
+                {
+                  "number": 4,
+                  "question": "What type of government — democracy, monarchy, oligarchy, dictatorship?"
+                },
+                {
+                  "number": 5,
+                  "question": "Who rules, and how do they come to power? Do they rule alone or with a court/cabinet?"
+                },
+                {
+                  "number": 6,
+                  "question": "What is the economy — command, traditional, market, mixed? What does it import and export?"
+                },
+                {
+                  "number": 7,
+                  "question": "Socioeconomic makeup — even across classes or sharp disparity, and why?"
+                },
+                {
+                  "number": 8,
+                  "question": "Religious makeup — one god or a pantheon, and how does it shape politics and daily life?"
+                },
+                {
+                  "number": 9,
+                  "question": "What customs and traditions is the country known for?"
+                },
+                {
+                  "number": 10,
+                  "question": "What are the major holidays?"
+                },
+                {
+                  "number": 11,
+                  "question": "Does magic exist, what type, and is it feared or revered?"
+                },
+                {
+                  "number": 12,
+                  "question": "How technologically advanced, and what are the views on science?"
+                },
+                {
+                  "number": 13,
+                  "question": "What else is it known for — landmarks, delicacies, a signature plant?"
+                },
+                {
+                  "number": 14,
+                  "question": "What does daily life look like — common jobs, ordinary routines? A world feels real when life exists beyond the protagonist."
+                },
+                {
+                  "number": 15,
+                  "question": "Who are its allies internationally, and why?"
+                },
+                {
+                  "number": 16,
+                  "question": "Who are its historical enemies, and why?"
+                },
+                {
+                  "number": 17,
+                  "question": "What animals are found here?"
+                },
+                {
+                  "number": 18,
+                  "question": "What plants are found here?"
+                },
+                {
+                  "number": 19,
+                  "question": "What are the positives of living here?"
+                },
+                {
+                  "number": 20,
+                  "question": "What are the negatives? These can seed conflict in your plot."
+                }
+              ]
+            },
+            {
+              "name": "Building a City (15 questions)",
+              "questions": [
+                {
+                  "number": 1,
+                  "question": "Topography — major landforms and their lore, water, and why was this location chosen?"
+                },
+                {
+                  "number": 2,
+                  "question": "What is the weather like?"
+                },
+                {
+                  "number": 3,
+                  "question": "Who runs the city?"
+                },
+                {
+                  "number": 4,
+                  "question": "Where does the ruler live, and what are the political buildings?"
+                },
+                {
+                  "number": 5,
+                  "question": "When was the city founded?"
+                },
+                {
+                  "number": 6,
+                  "question": "Who founded it?"
+                },
+                {
+                  "number": 7,
+                  "question": "What is the population?"
+                },
+                {
+                  "number": 8,
+                  "question": "Who inhabits it?"
+                },
+                {
+                  "number": 9,
+                  "question": "What is the main street, why is it the main street, and what's on it?"
+                },
+                {
+                  "number": 10,
+                  "question": "What is the socioeconomic makeup?"
+                },
+                {
+                  "number": 11,
+                  "question": "What is the religious makeup, and where are the religious buildings?"
+                },
+                {
+                  "number": 12,
+                  "question": "What is the culture — customs and traditions?"
+                },
+                {
+                  "number": 13,
+                  "question": "What is the city known for?"
+                },
+                {
+                  "number": 14,
+                  "question": "What are the districts and what is each known for (merchant, university, industrial…)?"
+                },
+                {
+                  "number": 15,
+                  "question": "What is this city's role in your story, and why do these details matter?"
+                }
+              ]
+            },
+            {
+              "name": "Obscure Details (10 questions)",
+              "questions": [
+                {
+                  "number": 1,
+                  "question": "Is there indoor plumbing and a sewer system? If not, what do they do with excrement?"
+                },
+                {
+                  "number": 2,
+                  "question": "How do they dispose of trash?"
+                },
+                {
+                  "number": 3,
+                  "question": "What does your country/city sound like?"
+                },
+                {
+                  "number": 4,
+                  "question": "What does it smell like?"
+                },
+                {
+                  "number": 5,
+                  "question": "Are there healers or doctors, and what is the level of medical advancement?"
+                },
+                {
+                  "number": 6,
+                  "question": "What language(s) do people speak? Is there a common tongue?"
+                },
+                {
+                  "number": 7,
+                  "question": "Where do the dead go — buried, cremated, a pyre? What are the death rites?"
+                },
+                {
+                  "number": 8,
+                  "question": "Where does food come from?"
+                },
+                {
+                  "number": 9,
+                  "question": "How do they clean water — do they?"
+                },
+                {
+                  "number": 10,
+                  "question": "What are the popular books in your world?"
+                }
+              ]
+            }
+          ],
+          "attribution_ids": [
+            "attr_053"
+          ]
+        },
+        {
+          "id": "3.6",
+          "title": "Tiny Details That Sell a World",
+          "summary": "The fastest way to get a reader emotionally invested in a fictional place is rarely the grand map — it's the small, specific texture that implies a world older than page one.",
+          "arc_types": [
+            {
+              "type": "Local superstitions nobody can prove",
+              "description": "An innkeeper who turns every coin face-up before bed; a road no one will take; a fisherman who won't sail on the seventh of the month. Tiny, specific, and they make a world feel ancient."
+            },
+            {
+              "type": "Regional accents, sayings, and curses",
+              "description": "Language carries culture and history. The second people swear differently, the reader is more invested than any info-dump could manage."
+            },
+            {
+              "type": "Multiple versions of the same historical event",
+              "description": "History is propaganda, always told by people desperate to keep control. Conflicting accounts make readers reflect on their own perception of truth."
+            },
+            {
+              "type": "Smells, fauna, or visuals that mark a region",
+              "description": "A scent or animal that becomes associated with a place; its absence or abundance as characters travel builds a world of distinct cultures."
+            },
+            {
+              "type": "Knowledge inversions",
+              "description": "A common truth no one questions — until new information flips it, sending you back to the beginning to re-read the clues. (Not the same as a hidden identity or a faked event.)"
+            }
+          ],
+          "attribution_ids": [
+            "attr_058"
+          ]
+        },
+        {
+          "id": "3.7",
+          "title": "Empire, Government & Power",
+          "summary": "Who holds power, how they got it, and how they keep it — the machinery a world runs on. Pick a form of government, then pressure-test it with the questions that make it feel real rather than a label on a map.",
+          "pillars": [
+            {
+              "name": "Forms of Government",
+              "questions": "Monarchy (hereditary rule), theocracy (rule by religious authority), oligarchy (rule by a few — nobles, merchants, elders), democracy/republic (rule by citizens or their representatives), dictatorship/autocracy (rule by one, often by force), feudalism (layered oaths of loyalty and land), tribal/clan confederation (kinship-based), technocracy (rule by experts), and corporatocracy (rule by corporations). Most real polities are hybrids.",
+              "common_mistake": "Naming the system ('a kingdom') without showing how it actually decides anything."
+            },
+            {
+              "name": "Legitimacy — Why People Obey",
+              "questions": "What gives the rulers the right to rule in the eyes of the ruled — divine mandate, bloodline, conquest, election, wealth, competence, fear? When legitimacy cracks, you have the seed of rebellion or civil war.",
+              "common_mistake": "Rulers whose authority is never questioned by anyone, anywhere."
+            },
+            {
+              "name": "Succession & Transfer of Power",
+              "questions": "How does power pass on — primogeniture, election, appointment, coup, trial by combat, a council's vote? Contested succession is one of the most reliable engines of political plot.",
+              "common_mistake": "A stable throne with no rivals, heirs, or ambitious second sons."
+            },
+            {
+              "name": "Enforcement & the Monopoly on Violence",
+              "questions": "Who enforces the ruler's will — a standing army, a city watch, secret police, mercenaries, feudal levies, a religious order? Who do they answer to, and what happens when they stop obeying?",
+              "common_mistake": "Laws with no visible means of enforcement."
+            },
+            {
+              "name": "Money & Administration",
+              "questions": "How is the state funded — taxes, tribute, tariffs, plunder, state monopolies? Who collects it, and who skims it? Bureaucracy, corruption, and record-keeping are where power meets daily life.",
+              "common_mistake": "An empire with armies and palaces but no visible economy paying for them."
+            },
+            {
+              "name": "Factions & Counter-Power",
+              "questions": "Who checks the ruler — nobles, guilds, temples, the mob, a rival court, neighbouring states? Every stable power has rivals it must manage; map them and you map your intrigue.",
+              "common_mistake": "A monolithic government with no internal disagreement."
+            },
+            {
+              "name": "Empire — Ruling the Conquered",
+              "questions": "How does a power administer peoples it absorbed — direct rule, client kings, colonies, forced assimilation, tolerated autonomy? How does it move goods, troops, and messages across distance? Empires are held together by roads, coin, and fear as much as by armies — and they fall when any of the three fails.",
+              "common_mistake": "A vast empire that behaves like a single small kingdom."
+            }
+          ],
+          "critical_notes": [
+            "You don't need every answer on the page — but you should know them. Government is iceberg like everything else: readers feel the nine-tenths you never show."
+          ],
+          "attribution_ids": [
+            "attr_070"
+          ]
         }
       ]
     },
@@ -463,6 +948,204 @@
             "Never open a story with a flashback — earn it first"
           ],
           "attribution_ids": []
+        },
+        {
+          "id": "4.4",
+          "title": "Plot, Story & Premise — Telling Them Apart",
+          "summary": "Three words writers use interchangeably, to their cost. Premise is the concept; plot is the sequence of events; story is what those events mean.",
+          "key_points": [
+            "Premise — the central 'what if', usually one sentence. The Hunger Games: 'A teenage girl must compete in a televised fight to the death to save her sister and survive an oppressive government.'",
+            "Plot — the sequence of events. The Hunger Games: 'After volunteering, Katniss travels to the Capitol, trains, and fights to survive the games before becoming a symbol of rebellion.'",
+            "Story — what the events mean, the emotional and thematic journey. The Hunger Games: 'A young woman learns that protecting the people she loves is worth risking everything, and that small acts of defiance can change the world.'"
+          ],
+          "key_insight": "Most stuck manuscripts have plot without story, or premise without plot.",
+          "attribution_ids": [
+            "attr_051",
+            "attr_063"
+          ]
+        },
+        {
+          "id": "4.5",
+          "title": "Diagnosing a Scene That Feels 'Off'",
+          "summary": "When a scene isn't landing, run it through five questions. The fault is usually one of them.",
+          "question_sets": [
+            {
+              "name": null,
+              "questions": [
+                {
+                  "number": 1,
+                  "question": "What changes? If the character, relationship, situation, or information is identical at the end, the scene may not be pulling its weight."
+                },
+                {
+                  "number": 2,
+                  "question": "What does the character want right now? A character who wants something creates movement; one who wants nothing creates drift."
+                },
+                {
+                  "number": 3,
+                  "question": "What's creating resistance? Something should push back and make the goal harder to reach."
+                },
+                {
+                  "number": 4,
+                  "question": "What is the scene really about? A scene about dinner might be about forgiveness; a job interview might be about self-worth."
+                },
+                {
+                  "number": 5,
+                  "question": "What emotion should the reader be left with? Besides information, what emotional residue does the scene leave?"
+                }
+              ]
+            }
+          ],
+          "critical_notes": [
+            "If it feels off, the answer is usually: no change, no goal, no resistance, no deeper meaning, or no emotional residue."
+          ],
+          "attribution_ids": [
+            "attr_056"
+          ]
+        },
+        {
+          "id": "4.6",
+          "title": "Seven Ways to Open a Chapter",
+          "summary": "Openings that aren't waking up or looking in a mirror. Each creates a different pull.",
+          "arc_types": [
+            {
+              "type": "Mid-action",
+              "description": "Drop readers into something already happening — a chase, an argument, a scramble to fix a mistake. Action creates immediate momentum."
+            },
+            {
+              "type": "Mid-dialogue",
+              "description": "Start with a conversation already underway. Readers have to catch up, which pulls them in."
+            },
+            {
+              "type": "Sensory detail tied to emotion",
+              "description": "'The smell of burnt coffee made her stomach twist.' Reveals setting and emotional state at once."
+            },
+            {
+              "type": "A question or contradiction",
+              "description": "Open on internal conflict — a character wanting two opposing things. Internal tension becomes narrative tension."
+            },
+            {
+              "type": "A time or place shift in one clean line",
+              "description": "'Three days later, the city was burning.' Readers wonder what happened in the gap."
+            },
+            {
+              "type": "The aftermath of an off-page event",
+              "description": "Show the shattered room, the broken friendship, the fresh scar — not the event. Readers become curious about the cause."
+            },
+            {
+              "type": "A decision being made",
+              "description": "A character decides to leave, confess, lie, or fight. Decisions force the story in a new direction."
+            }
+          ],
+          "attribution_ids": [
+            "attr_051"
+          ]
+        },
+        {
+          "id": "4.7",
+          "title": "Overused Action Scenes (and What to Use Instead)",
+          "summary": "Five action beats readers have seen a thousand times — and fresher alternatives that keep the tension.",
+          "arc_types": [
+            {
+              "type": "The Rooftop Chase",
+              "description": "The antagonist sprints across rooftops and only the hero can keep up. Instead: set the chase somewhere unexpected — a workplace or a museum."
+            },
+            {
+              "type": "The Duel That Solves All",
+              "description": "A single fight resolves the entire conflict. Instead: have the protagonist attempt a desperate rescue while the villain fights to stop them, so the fight isn't the point."
+            },
+            {
+              "type": "The Massive Final Battle",
+              "description": "Both armies throw everything they have. Instead: give the heroes a crisis to solve, such as repairing a bridge before refugees fleeing an army arrive."
+            },
+            {
+              "type": "The Dark Alley Ambush",
+              "description": "Effective but overused, especially to open a story with a setback. Instead: use a public confrontation (a debate, a wedding) where violence isn't an option, no matter how much everyone wants it."
+            },
+            {
+              "type": "The Building-Collapse Escape",
+              "description": "Tense but very familiar. Instead: use a slow-changing environment — crossing a frozen lake as the ice cracks, or a desert as heat rises. Spread the tension over time."
+            }
+          ],
+          "attribution_ids": [
+            "attr_051"
+          ]
+        },
+        {
+          "id": "4.8",
+          "title": "Raising Lethal Stakes",
+          "summary": "Shattering narrative safety creates visceral engagement — but apply it deliberately, not chaotically. Six principles for making mortal danger land.",
+          "arc_types": [
+            {
+              "type": "No Character Immunity",
+              "description": "Establish early that even beloved central characters can die unexpectedly. Remove plot armour for everyone; let consequences be final and unpredictable."
+            },
+            {
+              "type": "The Cost of Power",
+              "description": "Ambition and influence carry brutal trade-offs. Balance any gain in status, strength, or control with proportional loss or sacrifice. No victory is clean."
+            },
+            {
+              "type": "Unpredictable Chance",
+              "description": "Life is chaotic and unfair. Allow random, senseless, anti-climactic events — not every death serves the arc; sometimes fate is simply cruel."
+            },
+            {
+              "type": "Deep Emotional Investment",
+              "description": "Build strong attachment before introducing danger. Invest in relationships and vulnerability; the deeper the connection, the more devastating the threat."
+            },
+            {
+              "type": "Realistic Consequences",
+              "description": "Treat every choice as having weight. Show ripple effects — intended and unintended — across characters, factions, and time."
+            },
+            {
+              "type": "The Long Memory of the World",
+              "description": "The past is never past. Weave old grudges, prophecies, and unresolved trauma into current events; let history constrain the present."
+            }
+          ],
+          "critical_notes": [
+            "Caveat: full brutal unpredictability during a first draft can cause paralysis and break coherence. These principles are for shaping a story you understand — use them with intent, not as chaos."
+          ],
+          "attribution_ids": [
+            "attr_051",
+            "attr_062",
+            "attr_061"
+          ]
+        },
+        {
+          "id": "4.9",
+          "title": "Plotting Hints for Long-Form & Series",
+          "summary": "Structural habits that keep a multi-book saga coherent and propulsive.",
+          "arc_types": [
+            {
+              "type": "Rule of Three",
+              "description": "Structure each installment around three main mysteries or conflicts to keep pacing tight and discovery constant."
+            },
+            {
+              "type": "Character Flaw as Plot Engine",
+              "description": "A protagonist's greatest strength should also be their greatest flaw, so mistakes flow from character and the plot feels organic."
+            },
+            {
+              "type": "Slow-Burn Foreshadowing",
+              "description": "Plant seeds in early installments that don't pay off until much later. Rewards re-reading and signals meticulous planning."
+            },
+            {
+              "type": "Worldbuilding Is the Plot",
+              "description": "The setting is a character and a device: use the rules of the world to create and resolve conflicts, not just as backdrop."
+            },
+            {
+              "type": "The Power of the B-Story",
+              "description": "A secondary thread — a friendship or romance — provides emotional grounding, relief, and often the solution to the main conflict."
+            },
+            {
+              "type": "Thematic Core",
+              "description": "The whole saga should orbit one powerful central theme; every major beat and arc reinforces it."
+            },
+            {
+              "type": "Draft First, Plan the Sequel",
+              "description": "Draft the first book with momentum while leaving threads open to expand. Over-planning a saga before writing book one is the fastest route to writer's block."
+            }
+          ],
+          "attribution_ids": [
+            "attr_064"
+          ]
         }
       ]
     },
@@ -519,6 +1202,37 @@
           "id": "5.7",
           "title": "Sentence Variety & Rhythm",
           "attribution_ids": []
+        },
+        {
+          "id": "5.8",
+          "title": "Cutting Description — The Vivid Line Rule",
+          "summary": "Description drags when we try to show everything, so the reader remembers nothing. Cut roughly 30% by choosing the one image that carries weight.",
+          "arc_types": [
+            {
+              "type": "One image, not five",
+              "description": "Readers need the single detail that matters, not the whole room. ✗ 'The kitchen was small, cramped, cluttered with mismatched dishes, overflowing trash, and yesterday's coffee.' → ✓ 'Yesterday's coffee sat cold in the pot.'"
+            },
+            {
+              "type": "Cut the leading words",
+              "description": "Delete 'saw', 'noticed', 'there was', 'it felt like'. ✗ 'She noticed the clouds gathering.' → ✓ 'The clouds gathered.'"
+            },
+            {
+              "type": "Choose the detail with emotion",
+              "description": "Descriptions are strongest when they pull emotional weight. ✗ 'The hallway was quiet and dim.' → ✓ 'The empty hallway swallowed all sound.'"
+            },
+            {
+              "type": "Remove anything that could apply anywhere",
+              "description": "If the line could fit another story, sharpen it. ✗ 'The sun was bright.' → ✓ 'The sun glinted against the cracked tile.'"
+            },
+            {
+              "type": "Make every line earn its place",
+              "description": "Ask: does this image reveal tone, emotion, or character? If not, revisit or delete it."
+            }
+          ],
+          "key_insight": "Better description isn't about writing less — it's about writing what matters.",
+          "attribution_ids": [
+            "attr_056"
+          ]
         }
       ]
     },
@@ -540,6 +1254,23 @@
           "id": "6.3",
           "title": "Subtext — What Characters Don't Say",
           "attribution_ids": []
+        },
+        {
+          "id": "6.4",
+          "title": "Subtext in Depth — Displacement & Deflection",
+          "summary": "Subtext is the gap between what a character feels and what they say — the truth hiding beneath the surface. Humans are terrified of emotional nakedness, so they displace a massive emotion (fear of abandonment) into a tiny, safe container (a seasoning problem).",
+          "key_points": [
+            "Let dialogue be polite, not honest. 'Of course I'm fine. Why wouldn't I be?' is flat alone — but said while cutting chicken a little too aggressively, the contradiction does the work.",
+            "Make the body contradict the words. Subtext lives in what the body leaks: shaky hands, gritted teeth, a character controlling the scene while their body betrays them.",
+            "Use objects and actions as emotional proxies. A character aligning every object on the table before speaking isn't 'tidy' — they're trying not to explode. Objects let emotion become physical without being explained."
+          ],
+          "critical_notes": [
+            "Worked example — Sarah cooked for three hours; Mark arrived forty minutes late, no apology. On-the-nose: 'I'm pretty sure you're sleeping with your assistant.' Subtext: she grits her teeth — 'It needs salt.' He lifts his gaze — 'I like it this way.' The text is about dinner; the subtext is a relationship crumbling.",
+            "When you hide the truth, the reader becomes a detective and connects the dots themselves — and an emotional conversation is never just in the conversation. It always needs salt."
+          ],
+          "attribution_ids": [
+            "attr_057"
+          ]
         }
       ]
     },
@@ -608,6 +1339,83 @@
           "attribution_ids": [
             "attr_028",
             "attr_029"
+          ]
+        },
+        {
+          "id": "7.4",
+          "title": "The Four Drafts Most Authors Actually Write",
+          "summary": "Revision isn't one pass — most finished books move through four distinct drafts, each with a single job.",
+          "arc_types": [
+            {
+              "type": "Discovery Draft",
+              "description": "Figure out what the book actually is. Plot holes, inconsistent characters, and messy scenes are all normal. Goal: not perfection — discover your story."
+            },
+            {
+              "type": "Structural Draft",
+              "description": "Rebuild the bones. Scenes get added, deleted, combined, or moved. Goal: pacing, plot progression, stakes — make the whole thing work."
+            },
+            {
+              "type": "Character & Voice Draft",
+              "description": "Focus on the people. Does every character sound distinct? Are motivations consistent and reactions believable? Goal: strengthen arcs and make each voice unique."
+            },
+            {
+              "type": "Line & Polish Draft",
+              "description": "Sentence-level work — tighten prose, sharpen dialogue, cut repetition, fix grammar. Goal: the story already works; now make it shine."
+            }
+          ],
+          "attribution_ids": [
+            "attr_051"
+          ]
+        },
+        {
+          "id": "7.5",
+          "title": "Writer Warning Labels — Your Bad Habits Are Strengths",
+          "summary": "Every 'bad habit' is a strength expressed too loud. Diagnose yours, then learn to adjust the volume.",
+          "arc_types": [
+            {
+              "type": "Chapter 1 Info-Dump Artist",
+              "description": "Symptom: your first chapter is 40% world-building, 60% story. Strength: the freshest takes on complicated worlds — readers will obsess once you cut the fluff."
+            },
+            {
+              "type": "Em-Dash Enthusiast",
+              "description": "Symptom: you use em dashes — constantly — for everything. Strength: naturally dynamic pacing and rhythm; learn when a dash adds something vs. punctuation anxiety."
+            },
+            {
+              "type": "'Had' Addict",
+              "description": "Symptom: 847 uses of 'had' in 80k words. Strength: solid grasp of timeline and backstory — express it without leaning on past perfect."
+            },
+            {
+              "type": "Purple Prose Practitioner",
+              "description": "Symptom: five sentences to describe one room. Strength: real voice and lyricism — learn when to pull back and let readers breathe."
+            },
+            {
+              "type": "Dialogue-Tag Hoarder",
+              "description": "Symptom: every line has a tag ('said angrily', 'whispered softly'). Strength: distinct character voices — you're just over-explaining what readers already get."
+            },
+            {
+              "type": "Filter-Word Collector",
+              "description": "Symptom: 'she saw', 'he felt', 'I realized' everywhere. Strength: naturally introspective — show interiority directly instead of narrating the noticing."
+            },
+            {
+              "type": "Starts Scenes Too Early",
+              "description": "Symptom: scenes begin three pages before anything happens. Strength: you build atmosphere and stakes — cut to the moment that matters."
+            },
+            {
+              "type": "Same-Sentence-Structure Syndrome",
+              "description": "Symptom: 'She did X. He said Y. They felt Z.' Strength: clear, easy-to-follow pacing — vary length and structure for dynamism."
+            },
+            {
+              "type": "Backstory Dumper",
+              "description": "Symptom: the character's whole childhood by page 50. Strength: deep grasp of motivation — layer that information instead of front-loading it."
+            },
+            {
+              "type": "Low-Stakes Middle",
+              "description": "Symptom: the second act sags; nothing escalates. Strength: solid character work and emotional beats — keep adding complications so stakes rise."
+            }
+          ],
+          "key_insight": "The goal isn't to stop being yourself — it's to be yourself more effectively. Your flaws are your strengths turned up too loud; learn to adjust the volume.",
+          "attribution_ids": [
+            "attr_055"
           ]
         }
       ]
@@ -1713,6 +2521,866 @@
           "urls": [
             "https://www.authorflows.com/blogs/story%E2%80%91structure%E2%80%91guide",
             "https://www.masterclass.com/articles/how-to-write-a-better-novel"
+          ]
+        }
+      ]
+    },
+    {
+      "number": 11,
+      "title": "Genre & Subgenre Wiki",
+      "subtitle": "A field guide to the major fiction genres, their subgenres, and the worlds they build — a toolkit, not a set of cages.",
+      "sections": [
+        {
+          "id": "11.1",
+          "title": "How to Use Genres",
+          "summary": "Genres are labels for a cluster of features — useful for readers, marketing, and shelving, but their borders are porous and shift over time and place. The most memorable works blend, subvert, and transcend them. Treat this wiki as a toolkit, not a set of cages.",
+          "key_points": [
+            "Six very broad families of fiction are commonly named: literary, action/adventure, speculative (SF/fantasy/horror), crime, romance, and historical — with thousands of subgenres nested inside.",
+            "Most books are hybrids. 'Historical romantic suspense' or 'cosy paranormal mystery' are normal; a book usually lands in several categories at once.",
+            "Subgenre is a promise to the reader about the experience — cosy vs. hardboiled, epic vs. sword-and-sorcery — so choosing one sets expectations you must then honour or deliberately subvert."
+          ],
+          "critical_notes": [
+            "Speculative Fiction — the umbrella for all fiction that departs from realism: SF, fantasy, horror, magical realism, superhero, alternate history, utopia/dystopia, fairy tale, and the various '-punks'.",
+            "Fantastique (French tradition) — stories where characters, like the reader, cannot accept the supernatural as real, producing doubt and fear; distinct from fantasy, where the supernatural is accepted as normal within the world."
+          ],
+          "attribution_ids": [
+            "attr_071",
+            "attr_065",
+            "attr_070"
+          ]
+        },
+        {
+          "id": "11.2",
+          "title": "Fantasy",
+          "summary": "Fiction set in worlds where magic or the supernatural is real. It ranges from fully invented secondary worlds to magic hidden in our own, and spans the mythic grandeur of epic fantasy to the personal grit of sword-and-sorcery.",
+          "subgenres": [
+            {
+              "name": "High / Epic Fantasy",
+              "description": "Grand-scale, world-ending stakes in a fully secondary world with its own physical and magical laws; a hero or band of heroes; often spans many volumes.",
+              "examples": "The Lord of the Rings, A Song of Ice and Fire, The Wheel of Time, Malazan Book of the Fallen",
+              "also_known": "Epic Fantasy"
+            },
+            {
+              "name": "Low Fantasy",
+              "description": "Set in the real world, but intruded on by magical elements that shock the characters — the magic is not considered normal.",
+              "examples": "Harry Potter (hidden from Muggles), Buffy the Vampire Slayer"
+            },
+            {
+              "name": "Sword & Sorcery",
+              "description": "Personal, fast-paced conflict over world-ending stakes; violent action, often a romantic thread; a reluctant protagonist of humble origin.",
+              "examples": "Conan the Barbarian, Fritz Leiber's Fafhrd & the Gray Mouser",
+              "also_known": "Heroic Fantasy"
+            },
+            {
+              "name": "Dark Fantasy",
+              "description": "Fantasy fused with horror — a gloomy atmosphere, dread, and supernatural villains.",
+              "examples": "Stephen King's Dark Tower, Anne Bishop's Black Jewels, Clive Barker"
+            },
+            {
+              "name": "Grimdark",
+              "description": "Bleak, morally pessimistic worlds where political scheming and bloody violence take precedence over enchantment.",
+              "examples": "George R.R. Martin, Joe Abercrombie, Mark Lawrence, Glen Cook's Black Company",
+              "also_known": "Gritty Fantasy"
+            },
+            {
+              "name": "Urban Fantasy",
+              "description": "Magic and magical creatures woven into the interstices of a (usually contemporary) city.",
+              "examples": "Charles de Lint's Newford, Patricia Briggs' Mercy Thompson, The Dresden Files"
+            },
+            {
+              "name": "Historical Fantasy",
+              "description": "A real historical period seeded with magic, the supernatural, or anachronistic technology.",
+              "examples": "Guy Gavriel Kay, Naomi Novik's Temeraire, Jonathan Strange & Mr Norrell"
+            },
+            {
+              "name": "Fairy Tale / Folkloric",
+              "description": "Traditional tales — trolls, dragons, witches — retold, often for adults, drawing on world folklore.",
+              "examples": "Neil Gaiman, Mercedes Lackey, Naomi Novik's Uprooted",
+              "also_known": "Mythic Fiction"
+            },
+            {
+              "name": "Magical Realism",
+              "description": "Magical events treated as an ordinary, unremarked part of the real world; the author never explains them.",
+              "examples": "Gabriel García Márquez's One Hundred Years of Solitude, Isabel Allende"
+            },
+            {
+              "name": "Contemporary / Modern Fantasy",
+              "description": "Present-day consensus reality where magic exists in the cracks or leaks from other worlds.",
+              "examples": "Philip Pullman, Charles de Lint, J.K. Rowling"
+            },
+            {
+              "name": "Comic / Light Fantasy",
+              "description": "A light, humorous tone that parodies or gently mocks fantasy convention.",
+              "examples": "Terry Pratchett's Discworld, Terry Pratchett & Neil Gaiman's Good Omens"
+            },
+            {
+              "name": "Hard Fantasy",
+              "description": "Magic built on logical, rational, consistent internal rules — a 'magic system' you could diagram.",
+              "examples": "Brandon Sanderson's Cosmere, Mistborn"
+            },
+            {
+              "name": "Portal / Isekai / LitRPG",
+              "description": "A protagonist crosses into a secondary world, often one resembling a game with in-universe levels or ranks; isekai adds reincarnation with real-world knowledge.",
+              "examples": "The Chronicles of Narnia, Sword Art Online, Ready Player One"
+            },
+            {
+              "name": "Superhero Fantasy",
+              "description": "Heroes with powers of supernatural (rather than scientific) origin; frequently blends SF and fantasy.",
+              "examples": "DC & Marvel Universes, My Hero Academia"
+            },
+            {
+              "name": "Paranormal Romance",
+              "description": "Fantasy fused with the romance genre — a central love story with supernatural or magical elements and a guaranteed emotional payoff.",
+              "examples": "Twilight, Patricia Briggs' Mercy Thompson"
+            },
+            {
+              "name": "Bangsian Fantasy",
+              "description": "Famous historical or literary figures interacting in the afterlife; named for John Kendrick Bangs.",
+              "examples": "Riverworld (Philip José Farmer)"
+            },
+            {
+              "name": "Fables & Legends",
+              "description": "Fables teach a moral truth (often via talking animals); legends embroider a national hero or folk figure with a kernel of history.",
+              "examples": "Aesop's Fables, Arthurian legend, Robin Hood"
+            },
+            {
+              "name": "Romantasy",
+              "description": "High-fantasy world-building carrying equal weight to a central romance with a happily-ever-after; an explosively popular crossover.",
+              "examples": "Sarah J. Maas (A Court of Thorns and Roses), Rebecca Yarros (Fourth Wing)",
+              "also_known": "Fantasy Romance"
+            }
+          ],
+          "world_profiles": [
+            {
+              "name": "High Fantasy (Tolkienesque)",
+              "also_known": "Epic Fantasy",
+              "core_themes": "Good vs. evil, destiny, the hero's journey, ancient prophecy, fall and redemption.",
+              "world": "A vast, detailed secondary world at pre-industrial (medieval or earlier) technology, with distinct kingdoms, forests, mountains, and ancient ruins. Magic is woven into the fabric of the world.",
+              "inhabitants": "Humans plus elves, dwarves, orcs, goblins, dragons and other mythic races — distinct cultures with long histories, languages, and grudges.",
+              "society": "Feudal monarchies and rigid class structures; honour, lineage, and oaths are paramount; guilds and ancient orders hold power.",
+              "technology": "Pre-gunpowder — swords, bows, plate armour, siege engines. Magic rivals or replaces technology; knowledge lives in ancient texts.",
+              "mood": "Grand, mythic, sweeping — wonder and dread at forces beyond mortal understanding.",
+              "examples": "The Lord of the Rings, The Wheel of Time"
+            },
+            {
+              "name": "Fairy Tale / Folkloric",
+              "also_known": "Mythic Fiction",
+              "core_themes": "Morality, transformation, cunning over strength, bargains with dangerous powers, the wild vs. the civilised.",
+              "world": "Rooted in our world but adjacent to a hidden realm — the woods, the Otherworld. Dreamlike and symbolic: forests that move, cottages that come and go.",
+              "inhabitants": "Humans alongside fairies, witches, talking animals, tricksters, and changelings; characters are often archetypal rather than psychologically complex.",
+              "society": "Small villages, isolated cottages, fragile royal courts. Outcasts, youngest children, and the clever poor are the usual protagonists.",
+              "technology": "Pre-industrial — hearths, spinning wheels. The magic is old, natural, and always comes with a price.",
+              "mood": "Whimsical yet dark; beauty over lurking danger; morally ambiguous, with consequences for every action.",
+              "examples": "Grimm's tales, Uprooted, Pan's Labyrinth"
+            },
+            {
+              "name": "Science Fantasy",
+              "also_known": "Tech-Magic Fusion",
+              "core_themes": "The blurred line between magic and science, the nature of reality, the power of belief, the fall of empires.",
+              "world": "A universe where 'magic' is a codified science and starships may run on psychic energy; ancient ruins hold power beyond understanding.",
+              "inhabitants": "Psychic knights, technomancers, mutant creatures, and 'gods' who are really aliens.",
+              "society": "Often a mix of feudal orders and high-tech guilds atop a fallen empire in a technological dark age; power comes from knowledge and will.",
+              "technology": "Enchanted blasters, spirit-AIs, runic cyborgs — it works because the story's internal logic says so.",
+              "mood": "Psychedelic, mind-bending, philosophically provocative; the boundaries of reality are flexible.",
+              "examples": "Star Wars, Dune, Gideon the Ninth"
+            }
+          ],
+          "attribution_ids": [
+            "attr_071",
+            "attr_065"
+          ]
+        },
+        {
+          "id": "11.3",
+          "title": "Science Fiction",
+          "summary": "Fiction extrapolated from science and technology — from the rigorously plausible (hard SF) to the frankly mythic (space opera). It asks 'what if?' about the future, the cosmos, and what technology does to us.",
+          "subgenres": [
+            {
+              "name": "Hard Science Fiction",
+              "description": "Rigorously plausible science and technology; the speculation obeys known physics as far as possible.",
+              "examples": "Andy Weir's The Martian, Kim Stanley Robinson's Mars trilogy, Greg Egan"
+            },
+            {
+              "name": "Soft Science Fiction",
+              "description": "Foregrounds the social sciences — psychology, sociology, politics — over hard technical accuracy.",
+              "examples": "Ursula K. Le Guin's The Left Hand of Darkness, Octavia Butler"
+            },
+            {
+              "name": "Space Opera",
+              "description": "Grand adventure across a galaxy — empires, aliens, FTL travel, interstellar war; scale and romance over rigor.",
+              "examples": "Star Wars, Dune, The Expanse",
+              "also_known": "Galactic Saga"
+            },
+            {
+              "name": "Cyberpunk",
+              "description": "'High tech, low life': near-future dystopias of cybernetics, AI, and corporate control, in noir-soaked neon cities.",
+              "examples": "Neuromancer, Blade Runner, Cyberpunk 2077"
+            },
+            {
+              "name": "Steampunk",
+              "description": "19th-century steam technology and Victorian aesthetics in an alternate history of airships and clockwork.",
+              "examples": "The Difference Engine, Gail Carriger's Parasol Protectorate",
+              "also_known": "Victorian Futurism"
+            },
+            {
+              "name": "Dieselpunk",
+              "description": "Interwar / WW2-era Art Deco meets heavy industry — zeppelins, armoured machines, noir cities on the brink of war.",
+              "examples": "Iron Sky, The Rocketeer",
+              "also_known": "Deco Futurism"
+            },
+            {
+              "name": "Solarpunk",
+              "description": "The optimistic counter to cyberpunk: sustainable, community-first futures in harmony with nature.",
+              "examples": "Becky Chambers, A Psalm for the Wild-Built",
+              "also_known": "Hopepunk"
+            },
+            {
+              "name": "Biopunk",
+              "description": "Speculation centred on biotechnology, genetic engineering, and biotech corporations.",
+              "examples": "Paolo Bacigalupi's The Windup Girl, Margaret Atwood's Oryx and Crake"
+            },
+            {
+              "name": "Military Science Fiction",
+              "description": "War fought with future technology, told from a soldier's or command perspective; tactics and duty at the fore.",
+              "examples": "Starship Troopers, The Forever War, Old Man's War"
+            },
+            {
+              "name": "Time Travel",
+              "description": "Movement through time as the central device, exploring paradox, causality, and consequence.",
+              "examples": "The Time Machine, 11/22/63, This Is How You Lose the Time War"
+            },
+            {
+              "name": "Alternate History",
+              "description": "A past that diverged from ours, following the implications into a changed present.",
+              "examples": "The Man in the High Castle, Fatherland"
+            },
+            {
+              "name": "Apocalyptic / Post-Apocalyptic",
+              "description": "The catastrophe itself, or the struggle of survivors in its aftermath — plague, war, collapse.",
+              "examples": "The Stand, The Road, Station Eleven, Mad Max"
+            },
+            {
+              "name": "Dystopian / Utopian",
+              "description": "An oppressive (or ideal) society used to critique the present.",
+              "examples": "1984, The Handmaid's Tale, Brave New World, The Dispossessed"
+            },
+            {
+              "name": "Climate Fiction (Cli-Fi)",
+              "description": "Stories grappling with climate change and its human consequences, often near-future.",
+              "examples": "The Ministry for the Future, Flight Behavior"
+            },
+            {
+              "name": "First Contact / Alien Invasion",
+              "description": "Humanity's encounter with extraterrestrial intelligence — as wonder, threat, or both.",
+              "examples": "Arrival / Story of Your Life, The War of the Worlds, Project Hail Mary"
+            },
+            {
+              "name": "Mundane SF",
+              "description": "Deliberately plausible near-future stories that avoid FTL and other 'impossible' technologies.",
+              "examples": "Gattaca, much of Black Mirror"
+            },
+            {
+              "name": "Weird / New Weird",
+              "description": "Uncanny, boundary-dissolving fiction blending SF, fantasy, and horror.",
+              "examples": "China Miéville's Perdido Street Station, Jeff VanderMeer's Annihilation"
+            }
+          ],
+          "world_profiles": [
+            {
+              "name": "Cyberpunk",
+              "also_known": "High Tech, Low Life",
+              "core_themes": "Corporate control, alienation, transhumanism, identity in a digital age, the gap between rich and poor.",
+              "world": "A near-future dystopia of dark, neon-lit, rain-slicked mega-cities; a decaying physical world beside a sprawling, lawless cyberspace, under corporate arcologies.",
+              "inhabitants": "Hackers, mercenaries, cybernetically enhanced outcasts, corporate drones, and AI — the line between human and machine blurred.",
+              "society": "Hyper-capitalist and corrupt; nations are weak and corporations are the real governments; information is currency.",
+              "technology": "Cybernetics, neural interfaces, AI, VR, genetic engineering — cheap and pervasive, but controlled by the powerful.",
+              "mood": "Gritty, paranoid, fast — rebellion against an uncaring system, and the question of what it means to be human.",
+              "examples": "Neuromancer, Blade Runner"
+            },
+            {
+              "name": "Steampunk",
+              "also_known": "Victorian Futurism",
+              "core_themes": "Science vs. nature, obsession, empire and colonialism, the romance of discovery and invention.",
+              "world": "An alternate Victorian/Edwardian era of advanced steam technology — smog, brass, gears, and airships filling the sky.",
+              "inhabitants": "Eccentric inventors, explorers, rogue airship captains, aristocrats, and clockwork automatons.",
+              "society": "A sharp Victorian class system in tension between tradition and progress; secret societies and criminal underbellies thrive.",
+              "technology": "Steam-powered everything — difference engines, clockwork prosthetics, airships, diving suits — in brass, copper, and leather.",
+              "mood": "Gritty but optimistic; adventure and boundless possibility — the future is a machine waiting to be built.",
+              "examples": "The Difference Engine, Mortal Engines"
+            },
+            {
+              "name": "Solarpunk",
+              "also_known": "Hopepunk / Green Futurism",
+              "core_themes": "Community, sustainability, environmentalism, collective action, harmony with nature, hope amid crisis.",
+              "world": "A near or far future that has solved (or is solving) climate change: green cities of vertical gardens, solar arrays, and art-nouveau-meets-high-tech architecture.",
+              "inhabitants": "Organisers, scientists, artisans, and activists — diverse, collaborative, and community-focused.",
+              "society": "Egalitarian and decentralised; collective decision-making, open knowledge, global solidarity.",
+              "technology": "Clean renewables, bioluminescence, vertical farming, elegant efficient machines designed to enhance life without harming the environment.",
+              "mood": "Bright and hopeful — a celebration of colour, nature, and human ingenuity.",
+              "examples": "A Psalm for the Wild-Built, Becky Chambers"
+            },
+            {
+              "name": "Space Opera",
+              "also_known": "Galactic Saga",
+              "core_themes": "Good vs. evil, destiny, rebellion, grand romance, the vastness of space, contact with alien species.",
+              "world": "A galaxy-spanning civilisation of single-biome worlds, empires and federations, ancient conflicts, and FTL travel.",
+              "inhabitants": "Humans, humanoid aliens, ancient powers, AI and droids — often archetypes: the farm boy, the smuggler, the princess, the dark lord.",
+              "society": "Grand imperial or republican structures, or feudal systems at galactic scale; rivalries between species and noble houses.",
+              "technology": "Starships, blasters, energy shields, FTL drives, advanced robotics — often near-magical in effect and aesthetic.",
+              "mood": "Grand, mythic, thrilling — wonder and scale, adventure across the stars.",
+              "examples": "Star Wars, Dune, The Expanse"
+            }
+          ],
+          "attribution_ids": [
+            "attr_071",
+            "attr_065"
+          ]
+        },
+        {
+          "id": "11.4",
+          "title": "Horror",
+          "summary": "Fiction designed to evoke fear, dread, and unease. Subgenres differ mainly in the source of the fear — the supernatural, the mind, the body, the cosmos, or the community.",
+          "subgenres": [
+            {
+              "name": "Gothic Horror",
+              "description": "Brooding, atmospheric dread built on decay, old houses, family curses, and a romanticised past.",
+              "examples": "Frankenstein, Dracula, Mexican Gothic",
+              "also_known": "Gothic Fiction"
+            },
+            {
+              "name": "Supernatural / Paranormal Horror",
+              "description": "Ghosts, demons, hauntings, and forces beyond the natural order.",
+              "examples": "The Haunting of Hill House, The Exorcist"
+            },
+            {
+              "name": "Psychological Horror",
+              "description": "Fear from the mind — paranoia, unreliable perception, guilt, and dread rather than gore.",
+              "examples": "We Need to Talk About Kevin, The Turn of the Screw"
+            },
+            {
+              "name": "Cosmic Horror",
+              "description": "Existential terror before vast, indifferent, incomprehensible forces that reduce humanity to insignificance.",
+              "examples": "H.P. Lovecraft's The Call of Cthulhu, Annihilation",
+              "also_known": "Lovecraftian Horror"
+            },
+            {
+              "name": "Body Horror",
+              "description": "Fear rooted in the violation, mutation, or degeneration of the body.",
+              "examples": "The works of Clive Barker, films of David Cronenberg"
+            },
+            {
+              "name": "Slasher",
+              "description": "A stalking killer picks off a group one by one; suspense and set-piece kills.",
+              "examples": "Halloween, Scream (as fiction/film tradition)"
+            },
+            {
+              "name": "Folk Horror",
+              "description": "Dread drawn from isolated communities, old rituals, pagan belief, and the land itself.",
+              "examples": "The Wicker Man, Starve Acre, Harvest Home"
+            },
+            {
+              "name": "Splatterpunk",
+              "description": "Extreme, graphic, transgressive gore; coined 1986 by David J. Schow.",
+              "examples": "Clive Barker's Books of Blood, Richard Laymon"
+            },
+            {
+              "name": "Quiet / Literary Horror",
+              "description": "Restrained, ambiguous, slow-building dread that lingers rather than shocks.",
+              "examples": "Shirley Jackson, The Fisherman by John Langan"
+            },
+            {
+              "name": "Occult / Demonic",
+              "description": "Rituals, possession, cults, and pacts with dark powers.",
+              "examples": "Rosemary's Baby, The Exorcist"
+            },
+            {
+              "name": "Monster Horror",
+              "description": "A central creature — vampire, werewolf, kaiju, or the wholly new — as the engine of fear.",
+              "examples": "Dracula, The Terror, classic creature features"
+            },
+            {
+              "name": "Comedy Horror",
+              "description": "Fear braided with laughter; parody, satire, or gleeful excess.",
+              "examples": "Good Omens (adjacent), Shaun of the Dead, John Dies at the End"
+            }
+          ],
+          "attribution_ids": [
+            "attr_066",
+            "attr_070"
+          ]
+        },
+        {
+          "id": "11.5",
+          "title": "Mystery & Crime",
+          "summary": "Fiction built around a crime and its investigation. Mystery emphasises the puzzle and the reveal; crime fiction ranges from the cosy to the pitch-black, defined by tone, sleuth, and how much the darkness is allowed to show.",
+          "subgenres": [
+            {
+              "name": "Cosy Mystery",
+              "description": "Low on violence, high on puzzle; a small, charming community and an amateur sleuth, with a light tone.",
+              "examples": "Agatha Christie's Miss Marple, Richard Osman's Thursday Murder Club",
+              "also_known": "Cozy"
+            },
+            {
+              "name": "Whodunit / Traditional Mystery",
+              "description": "The classic fair-play puzzle: clues, suspects, and a reveal the reader could in principle have solved.",
+              "examples": "Agatha Christie's Poirot, Knives Out"
+            },
+            {
+              "name": "Detective / Private Eye",
+              "description": "A professional or amateur investigator works a case through deduction and legwork.",
+              "examples": "Sherlock Holmes, Cormoran Strike"
+            },
+            {
+              "name": "Hardboiled",
+              "description": "Gritty, realistic crime with a tough, cynical detective in a morally ambiguous urban world.",
+              "examples": "Raymond Chandler's Philip Marlowe, Dashiell Hammett"
+            },
+            {
+              "name": "Noir",
+              "description": "Hardboiled taken darker: a corrupt system and a doomed protagonist on the margins, clinging to a personal code.",
+              "examples": "James M. Cain, Jim Thompson"
+            },
+            {
+              "name": "Police Procedural",
+              "description": "The process is the point — evidence, chain of custody, and the slow, documented build of a case by law enforcement.",
+              "examples": "Ed McBain's 87th Precinct, The Wire"
+            },
+            {
+              "name": "Legal Mystery / Courtroom",
+              "description": "Lawyers prove their cases; the justice system itself is almost a character.",
+              "examples": "Scott Turow's Presumed Innocent, Erle Stanley Gardner's Perry Mason"
+            },
+            {
+              "name": "Domestic Suspense",
+              "description": "Menace inside the home and marriage; unreliable narrators and buried secrets.",
+              "examples": "Gone Girl, The Girl on the Train"
+            },
+            {
+              "name": "Caper / Heist",
+              "description": "A crime planned and pulled off from the criminals' side, often with wit and ensemble flair.",
+              "examples": "The Lies of Locke Lamora, Ocean's Eleven (tradition)"
+            },
+            {
+              "name": "Historical Mystery",
+              "description": "A crime investigated in a richly reconstructed past.",
+              "examples": "The Name of the Rose, C.J. Sansom's Shardlake"
+            },
+            {
+              "name": "Locked-Room / Impossible Crime",
+              "description": "A crime that seems physically impossible, solved by revealing the trick.",
+              "examples": "The Hollow Man (John Dickson Carr), The Decagon House Murders"
+            }
+          ],
+          "attribution_ids": [
+            "attr_069",
+            "attr_070",
+            "attr_066"
+          ]
+        },
+        {
+          "id": "11.6",
+          "title": "Thriller & Suspense",
+          "summary": "Fiction driven by danger and momentum. Where mystery asks 'who did it?', the thriller asks 'will they survive / stop it in time?' — the protagonist is usually trying to prevent a catastrophe or save their own life.",
+          "subgenres": [
+            {
+              "name": "Psychological Thriller",
+              "description": "Suspense from unstable minds, manipulation, and shifting perception.",
+              "examples": "The Silence of the Lambs, Before I Go to Sleep"
+            },
+            {
+              "name": "Spy / Espionage",
+              "description": "Intelligence work, betrayal, and geopolitics; from gritty tradecraft to glamorous action.",
+              "examples": "John le Carré's Tinker Tailor Soldier Spy, the James Bond novels"
+            },
+            {
+              "name": "Political Thriller",
+              "description": "Power, conspiracy, and intrigue at the level of governments and institutions.",
+              "examples": "The Manchurian Candidate, House of Cards"
+            },
+            {
+              "name": "Techno-Thriller",
+              "description": "Detailed, plausible technology and hardware at the centre of a high-stakes plot.",
+              "examples": "Tom Clancy's The Hunt for Red October, Michael Crichton"
+            },
+            {
+              "name": "Legal Thriller",
+              "description": "Suspense inside the machinery of justice; lawyers racing an unravelling case.",
+              "examples": "John Grisham's The Firm, A Time to Kill"
+            },
+            {
+              "name": "Action / Adventure Thriller",
+              "description": "Relentless pace, physical peril, and a capable protagonist against overwhelming odds.",
+              "examples": "Lee Child's Jack Reacher, The Bourne Identity"
+            },
+            {
+              "name": "Medical Thriller",
+              "description": "Danger from disease, medicine, or the healthcare system.",
+              "examples": "Robin Cook's Coma, Michael Crichton's The Andromeda Strain"
+            },
+            {
+              "name": "Conspiracy Thriller",
+              "description": "A hidden network or cover-up the protagonist must expose before it silences them.",
+              "examples": "The Da Vinci Code, Three Days of the Condor"
+            },
+            {
+              "name": "Military Thriller",
+              "description": "Combat and command under modern or near-future conditions; strategy and sacrifice.",
+              "examples": "Tom Clancy, Mark Greaney's Gray Man"
+            },
+            {
+              "name": "Domestic Thriller",
+              "description": "High-stakes suspense inside family and relationships; overlaps domestic suspense.",
+              "examples": "The Woman in the Window, Behind Closed Doors"
+            }
+          ],
+          "attribution_ids": [
+            "attr_070",
+            "attr_066"
+          ]
+        },
+        {
+          "id": "11.7",
+          "title": "Romance",
+          "summary": "Fiction with a central love story and an emotionally satisfying, optimistic ending (the genre's 'HEA' — happily-ever-after — or 'HFN', happy-for-now). The largest-selling fiction category, defined more by that emotional promise than by setting.",
+          "subgenres": [
+            {
+              "name": "Contemporary Romance",
+              "description": "The largest subgenre — love stories set in the present, reflecting current mores.",
+              "examples": "Emily Henry, Christina Lauren"
+            },
+            {
+              "name": "Historical Romance",
+              "description": "Romance set in the past (often pre-1945), grounded in period detail — Regency, Victorian, and beyond.",
+              "examples": "Georgette Heyer, Julia Quinn's Bridgerton"
+            },
+            {
+              "name": "Romantasy",
+              "description": "Fantasy world-building and romance carrying equal weight, with a guaranteed emotional payoff — a booming crossover.",
+              "examples": "Sarah J. Maas, Rebecca Yarros's Fourth Wing",
+              "also_known": "Fantasy Romance"
+            },
+            {
+              "name": "Romantic Suspense",
+              "description": "A central love story braided with mystery, danger, or a threat to be solved.",
+              "examples": "Nora Roberts, Sandra Brown"
+            },
+            {
+              "name": "Paranormal Romance",
+              "description": "Supernatural love interests — vampires, shifters, the fae — and magical stakes.",
+              "examples": "Twilight, J.R. Ward's Black Dagger Brotherhood"
+            },
+            {
+              "name": "Erotic Romance",
+              "description": "Explicit intimacy central to the emotional arc, not merely incidental.",
+              "examples": "Sylvia Day, much of the 'spicy' contemporary market"
+            },
+            {
+              "name": "Small-Town / Cosy Romance",
+              "description": "Low-heat, community-centred love stories in close-knit places.",
+              "examples": "Debbie Macomber, Virgin River"
+            },
+            {
+              "name": "Sports Romance",
+              "description": "Athlete protagonists and the competitive world of sport as the backdrop for love.",
+              "examples": "Elle Kennedy's Off-Campus, Ali Hazelwood (adjacent)"
+            },
+            {
+              "name": "LGBTQ+ / Queer Romance",
+              "description": "Love stories centring queer protagonists across every heat level and setting.",
+              "examples": "Red, White & Royal Blue, Alexis Hall"
+            },
+            {
+              "name": "Inspirational / Clean Romance",
+              "description": "Low- or no-heat romance, often with faith or wholesome values foregrounded.",
+              "examples": "Christian romance imprints, many 'sweet' lines"
+            },
+            {
+              "name": "Dark Romance",
+              "description": "Morally grey love interests and taboo, high-tension dynamics; comfort is not the point.",
+              "examples": "Much of the contemporary 'dark' market"
+            }
+          ],
+          "attribution_ids": [
+            "attr_068",
+            "attr_069",
+            "attr_065"
+          ]
+        },
+        {
+          "id": "11.8",
+          "title": "Historical Fiction",
+          "summary": "Fiction set in a real past, reconstructing its customs, speech, and events with enough fidelity that the period feels lived-in. It cross-pollinates freely with romance, mystery, and fantasy.",
+          "subgenres": [
+            {
+              "name": "Traditional Historical Fiction",
+              "description": "A fictional story faithfully set in a documented period, event, or milieu.",
+              "examples": "Hilary Mantel's Wolf Hall, Ken Follett's The Pillars of the Earth"
+            },
+            {
+              "name": "Family Saga",
+              "description": "Multiple generations of a family across a sweep of historical time.",
+              "examples": "Roots, Isabel Allende's The House of the Spirits"
+            },
+            {
+              "name": "Biographical Fiction",
+              "description": "A real historical figure's life dramatised as narrative.",
+              "examples": "The Paris Wife, Wolf Hall (Cromwell)"
+            },
+            {
+              "name": "Wartime Fiction",
+              "description": "Lives shaped by a specific conflict, at the front or the home front.",
+              "examples": "All Quiet on the Western Front, The Nightingale, All the Light We Cannot See"
+            },
+            {
+              "name": "Nautical / Historical Adventure",
+              "description": "Seafaring and exploration in a historical age of sail or discovery.",
+              "examples": "Patrick O'Brian's Aubrey–Maturin, Hornblower"
+            },
+            {
+              "name": "Historical Romance / Mystery",
+              "description": "Historical settings foregrounding a love story or a crime — see also those genres.",
+              "examples": "Bridgerton (romance), The Name of the Rose (mystery)"
+            },
+            {
+              "name": "Alternate History",
+              "description": "A documented past diverged; explores the consequences (overlaps SF).",
+              "examples": "The Man in the High Castle, Fatherland"
+            }
+          ],
+          "attribution_ids": [
+            "attr_065",
+            "attr_067"
+          ]
+        },
+        {
+          "id": "11.9",
+          "title": "Literary, Upmarket & Realistic",
+          "summary": "Fiction prizing language, character interiority, theme, and artistic ambition, usually set in a recognisable real world. 'Upmarket' sits between literary and commercial — book-club fiction with strong prose and a propulsive story.",
+          "subgenres": [
+            {
+              "name": "Literary Fiction",
+              "description": "Character- and theme-driven work emphasising style, ambiguity, and artistic merit over plot mechanics.",
+              "examples": "Toni Morrison, Kazuo Ishiguro, Marilynne Robinson"
+            },
+            {
+              "name": "Upmarket / Book-Club Fiction",
+              "description": "Elevated prose and depth married to an accessible, discussable story.",
+              "examples": "Celeste Ng, Ann Patchett, Tayari Jones"
+            },
+            {
+              "name": "Bildungsroman",
+              "description": "A coming-of-age story tracing a protagonist's psychological and moral growth.",
+              "examples": "Great Expectations, The Catcher in the Rye, A Portrait of the Artist as a Young Man"
+            },
+            {
+              "name": "Satire",
+              "description": "Uses irony, exaggeration, and ridicule to critique society, politics, or human folly.",
+              "examples": "Catch-22, Animal Farm, A Modest Proposal (tradition)"
+            },
+            {
+              "name": "Metafiction",
+              "description": "Fiction that foregrounds its own artifice and the act of storytelling.",
+              "examples": "If on a winter's night a traveler, Slaughterhouse-Five"
+            },
+            {
+              "name": "Autofiction",
+              "description": "Autobiography reshaped as novel, blurring author and narrator.",
+              "examples": "Karl Ove Knausgård's My Struggle, Rachel Cusk"
+            },
+            {
+              "name": "Domestic / Women's Fiction",
+              "description": "The inner and relational lives of (often women) protagonists; family, identity, and change.",
+              "examples": "Jodi Picoult, Liane Moriarty"
+            },
+            {
+              "name": "Contemporary Realism",
+              "description": "Present-day, plausible lives with no speculative element; the texture of ordinary experience.",
+              "examples": "Sally Rooney, Jonathan Franzen"
+            },
+            {
+              "name": "Absurdist / Existential",
+              "description": "Meaning, alienation, and the irrational at the centre.",
+              "examples": "The Stranger, Waiting for Godot (tradition)"
+            }
+          ],
+          "attribution_ids": [
+            "attr_065",
+            "attr_067",
+            "attr_070"
+          ]
+        },
+        {
+          "id": "11.10",
+          "title": "Western, Adventure & Action",
+          "summary": "Fiction of frontier, exploration, and physical peril. The Western is a genre of place and myth (the American frontier); adventure and action share its appetite for movement, danger, and capable protagonists tested against the world.",
+          "subgenres": [
+            {
+              "name": "Classic Western",
+              "description": "Frontier justice, cowboys, outlaws, and the myth of the American West.",
+              "examples": "Louis L'Amour, Lonesome Dove (adjacent), Zane Grey"
+            },
+            {
+              "name": "Revisionist Western",
+              "description": "Interrogates the myth — moral ambiguity, the cost of violence, the perspectives it erased.",
+              "examples": "Blood Meridian, Unforgiven (tradition), Deadwood"
+            },
+            {
+              "name": "Weird West",
+              "description": "The Western fused with horror, fantasy, or the supernatural.",
+              "examples": "The Six-Gun Tarot, Territory"
+            },
+            {
+              "name": "Space Western",
+              "description": "Frontier tropes transposed to space — see also science fiction.",
+              "examples": "Firefly, The Mandalorian, Cowboy Bebop"
+            },
+            {
+              "name": "Adventure",
+              "description": "A quest or journey through danger and the unknown, driven by momentum and discovery.",
+              "examples": "Treasure Island, King Solomon's Mines, Indiana Jones (tradition)"
+            },
+            {
+              "name": "Survival",
+              "description": "A protagonist against a hostile environment, fighting to stay alive.",
+              "examples": "Robinson Crusoe, Hatchet, The Revenant"
+            },
+            {
+              "name": "Swashbuckler",
+              "description": "Dashing heroism, sword-play, and derring-do, often historical.",
+              "examples": "The Three Musketeers, The Princess Bride"
+            },
+            {
+              "name": "Lost World / Pulp Adventure",
+              "description": "Expeditions into hidden lands, ruins, or prehistoric enclaves.",
+              "examples": "The Lost World, Journey to the Center of the Earth"
+            }
+          ],
+          "attribution_ids": [
+            "attr_071",
+            "attr_065"
+          ]
+        },
+        {
+          "id": "11.11",
+          "title": "Comedy, Satire & Humor",
+          "summary": "Fiction whose primary aim is to amuse — through wit, absurdity, exaggeration, or the puncturing of pretension. Comedy is often a mode layered onto other genres (comic fantasy, romantic comedy) as much as a category of its own.",
+          "subgenres": [
+            {
+              "name": "Satire",
+              "description": "Ridicule aimed at society, politics, or institutions to expose folly or vice.",
+              "examples": "Catch-22, Dr. Strangelove (tradition), Thank You for Smoking"
+            },
+            {
+              "name": "Parody",
+              "description": "Comic imitation that exaggerates the conventions of a work or genre.",
+              "examples": "Bored of the Rings, Galaxy Quest (tradition)"
+            },
+            {
+              "name": "Comic Fantasy",
+              "description": "Fantasy played for laughs, gently mocking the genre's own tropes.",
+              "examples": "Terry Pratchett's Discworld, Good Omens"
+            },
+            {
+              "name": "Romantic Comedy",
+              "description": "A love story foregrounding humour, banter, and comic misadventure.",
+              "examples": "Bridget Jones's Diary, Beach Read"
+            },
+            {
+              "name": "Black Comedy",
+              "description": "Humour drawn from grim, taboo, or tragic subject matter.",
+              "examples": "Catch-22, A Confederacy of Dunces"
+            },
+            {
+              "name": "Farce",
+              "description": "Improbable situations, mistaken identities, and escalating chaos.",
+              "examples": "The plays of Feydeau, Fawlty Towers (tradition)"
+            },
+            {
+              "name": "Picaresque",
+              "description": "Episodic misadventures of a roguish, low-born hero navigating a corrupt world.",
+              "examples": "Don Quixote, The Adventures of Huckleberry Finn"
+            }
+          ],
+          "attribution_ids": [
+            "attr_065",
+            "attr_070"
+          ]
+        },
+        {
+          "id": "11.12",
+          "title": "Age Categories (Cross-Genre)",
+          "summary": "Not genres but audience categories that cut across every genre, defined by the protagonist's age, content, complexity, and reader expectation. A fantasy can be middle-grade or adult; the category shapes voice, length, and theme.",
+          "subgenres": [
+            {
+              "name": "Picture Books & Early Readers",
+              "description": "For the youngest readers; illustration-led, simple language, gentle stakes.",
+              "examples": "Where the Wild Things Are, Elephant & Piggie"
+            },
+            {
+              "name": "Middle Grade (MG)",
+              "description": "Roughly ages 8–12; protagonists around 10–13, adventurous and hopeful, minimal graphic content.",
+              "examples": "Percy Jackson, Harry Potter (early), Holes"
+            },
+            {
+              "name": "Young Adult (YA)",
+              "description": "Roughly ages 12–18; teen protagonists, first experiences, identity and agency at the core.",
+              "examples": "The Hunger Games, The Fault in Our Stars, Six of Crows"
+            },
+            {
+              "name": "New Adult (NA)",
+              "description": "Late teens to twenties; college, early independence, often higher heat than YA.",
+              "examples": "Much of the contemporary romance crossover market"
+            },
+            {
+              "name": "Adult",
+              "description": "No age ceiling on content or complexity; the default for most genres above.",
+              "examples": "The bulk of the fiction market"
+            }
+          ],
+          "attribution_ids": [
+            "attr_065",
+            "attr_067"
+          ]
+        },
+        {
+          "id": "11.13",
+          "title": "Hybrid & Emerging Genres",
+          "summary": "The most memorable worlds blend and subvert categories. These crossbreeds and newer labels sit deliberately across borders.",
+          "subgenres": [
+            {
+              "name": "Science Fantasy",
+              "description": "Combines SF and fantasy tropes — mystical elements given a scientific gloss, or the reverse.",
+              "examples": "Star Wars, Dune, Gideon the Ninth"
+            },
+            {
+              "name": "Space Western",
+              "description": "Science fiction fused with the Western.",
+              "examples": "Firefly, The Mandalorian"
+            },
+            {
+              "name": "Gaslamp / Neo-Victorian Fantasy",
+              "description": "A magical, gaslit 19th century of vampires, fae, and Victorian intertextuality; cousin to steampunk.",
+              "examples": "Gail Carriger, Erin Morgenstern's The Night Circus"
+            },
+            {
+              "name": "Speculative Evolution",
+              "description": "Hypothetical future or alternative evolution of life.",
+              "examples": "After Man: A Zoology of the Future"
+            },
+            {
+              "name": "Supernatural Fiction",
+              "description": "Plot devices that contradict a materialist worldview; overlaps paranormal, contemporary fantasy, and occult detective.",
+              "examples": "Buffy the Vampire Slayer, Stranger Things, The Vampire Diaries"
+            },
+            {
+              "name": "Slipstream",
+              "description": "Fiction between the literary and the fantastic that produces cognitive dissonance and strangeness.",
+              "examples": "The work of Kelly Link, Haruki Murakami (adjacent)"
+            }
+          ],
+          "attribution_ids": [
+            "attr_071",
+            "attr_065"
           ]
         }
       ]
