@@ -17,7 +17,7 @@ RUN mkdir -p styles && vale sync && rm .vale.ini
 COPY main.py .
 COPY default.ini .
 
-RUN adduser -D app
+RUN adduser -D app && chown -R app /app
 USER app
 
 EXPOSE 8085
