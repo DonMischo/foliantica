@@ -680,7 +680,7 @@ export function CodexEntryDialog({
                   />
                   <Button type="button" variant="outline" size="sm" onClick={addGroup}>{t("common_add")}</Button>
                   {groupDropOpen && groupSuggestions.length > 0 && (
-                    <div className="absolute top-full left-0 z-50 mt-1 min-w-48 bg-popover border border-border rounded-lg shadow-lg py-1 max-h-40 overflow-y-auto">
+                    <div className="absolute top-full left-0 z-50 mt-1 min-w-48 bg-popover border border-foreground/25 rounded-lg shadow-[0_0_0_1px_hsl(var(--foreground)/0.1),0_8px_28px_hsl(var(--foreground)/0.22)] py-1 max-h-40 overflow-y-auto">
                       {groupSuggestions.map(g => (
                         <button
                           key={g}

@@ -552,7 +552,7 @@ export default function ScenePage() {
               <ChevronDown className="h-3 w-3 opacity-60" />
             </button>
             {ghostPopoverOpen && (
-              <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg p-2 min-w-[200px] max-w-[280px]">
+              <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-foreground/25 rounded-lg shadow-[0_0_0_1px_hsl(var(--foreground)/0.1),0_8px_28px_hsl(var(--foreground)/0.22)] p-2 min-w-[200px] max-w-[280px]">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 px-1">Placeholders</p>
                 <div className="space-y-0.5 max-h-48 overflow-y-auto">
                   {ghostTexts.map((text, i) => (
@@ -633,7 +633,7 @@ export default function ScenePage() {
           </Button>
 
           {menuOpen && (
-            <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[200px]" onClick={(e) => e.stopPropagation()}>
+            <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-foreground/25 rounded-lg shadow-[0_0_0_1px_hsl(var(--foreground)/0.1),0_8px_28px_hsl(var(--foreground)/0.22)] py-1 min-w-[200px]" onClick={(e) => e.stopPropagation()}>
 
               {/* Scene tools */}
               <button

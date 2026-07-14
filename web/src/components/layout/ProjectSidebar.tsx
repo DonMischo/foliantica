@@ -614,7 +614,7 @@ export function ProjectSidebar({ projectId }: Props) {
             </button>
 
             {menuOpen && (
-              <div className="absolute bottom-full right-0 mb-1 z-50 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[190px]">
+              <div className="absolute bottom-full right-0 mb-1 z-50 bg-popover border border-foreground/25 rounded-lg shadow-[0_0_0_1px_hsl(var(--foreground)/0.1),0_8px_28px_hsl(var(--foreground)/0.22)] py-1 min-w-[190px]">
 
                 {/* Pages */}
                 <Link
