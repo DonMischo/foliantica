@@ -720,9 +720,9 @@ export default function ScenePage() {
               </button>
               <button
                 onClick={() => { setCompendiumOpen(true); setMenuOpen(false); }}
-                className="w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                className="w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2"
               >
-                <GraduationCap className="h-3.5 w-3.5" />
+                <GraduationCap className="h-3.5 w-3.5 text-muted-foreground" />
                 Writer&apos;s Guide
               </button>
               <button
