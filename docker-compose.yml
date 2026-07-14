@@ -24,33 +24,17 @@ services:
       timeout: 5s
       retries: 10
 
-  # ── QEMU binfmt registration ─────────────────────────────────────────────────
-  # meyay/languagetool is x86_64-only. On ARM hosts (Windows on ARM, Apple
-  # Silicon) Docker runs it via QEMU emulation, but the binfmt handlers must be
-  # registered first. This one-shot container does that automatically so users
-  # never have to run a manual "docker run --privileged tonistiigi/binfmt" step.
-  # On native amd64 hosts the registration is a harmless no-op.
-  binfmt:
-    image: tonistiigi/binfmt:latest
-    container_name: foliantica-binfmt
-    privileged: true
-    restart: "no"
-    profiles:
-      - languagetool
-    command: --install amd64
-
   languagetool:
-    image: meyay/languagetool:latest
-    # meyay's image is x86_64-only. linux/amd64 runs natively on amd64 hosts
-    # and under QEMU emulation on arm64 (Windows on ARM, Apple Silicon).
-    platform: linux/amd64
+    # Multi-arch base (amd64 + arm64) — runs natively on Windows on ARM and
+    # Apple Silicon, no QEMU emulation or binfmt registration needed anymore.
+    # Local build adds libhunspell, which the arm64 variant lacks (German
+    # spellcheck fails without it) — see docker/languagetool/Dockerfile.
+    build: ./docker/languagetool
+    image: foliantica-languagetool
     container_name: foliantica-languagetool
     restart: unless-stopped
     profiles:
       - languagetool
-    depends_on:
-      binfmt:
-        condition: service_completed_successfully
     read_only: true
     tmpfs:
       - /tmp:exec
