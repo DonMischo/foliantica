@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, AlertTriangle, Info, Loader2, Copy, Check, X, BarChart2 } from "lucide-react";
+import { AlertCircle, AlertTriangle, Info, Loader2, Copy, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ValeAlert } from "@/lib/api";
-import { useValeCheck, useProseCheck } from "@/store/queries";
-import { ProseMetricsDialog } from "./ProseMetricsDialog";
+import { useValeCheck } from "@/store/queries";
 import { postProcessAlerts, computeValeSkipCount } from "@/lib/vale-utils";
 
 function langName(code: string): string {
@@ -133,15 +132,12 @@ const SEVERITIES: ValeAlert["Severity"][] = ["error", "warning", "suggestion"];
 
 export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
   const check = useValeCheck();
-  const prose = useProseCheck();
-  const [metricsOpen, setMetricsOpen] = useState(false);
 
   const runChecks = () => {
     check.mutate({ text, language });
-    prose.mutate({ text, language });
   };
 
-  const isPending = check.isPending || prose.isPending;
+  const isPending = check.isPending;
 
   const byGroup = postProcessAlerts(check.data?.alerts ?? [], text, language).reduce<Record<string, ValeAlert[]>>(
     (acc, a) => { (acc[a.Severity] ??= []).push(a); return acc; },
@@ -254,27 +250,7 @@ export function ValePanel({ text, language, onClose, onJumpTo }: Props) {
           </>
         )}
 
-        {/* Prose metrics button — shown once prose data is available */}
-        {prose.data && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="w-full gap-1.5"
-            onClick={() => setMetricsOpen(true)}
-          >
-            <BarChart2 className="h-3.5 w-3.5" />
-            Prose Metrics
-          </Button>
-        )}
       </div>
-
-      {prose.data && (
-        <ProseMetricsDialog
-          open={metricsOpen}
-          onOpenChange={setMetricsOpen}
-          result={prose.data}
-        />
-      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { BookOpen, Sparkles, Clock, Moon, Sun, Archive, History, MessageSquare, Focus, Braces, ChevronDown, AlignCenter, Timer, Flag, BookMarked, MoreHorizontal, Check, SpellCheck, User, ListChecks, Save, MessageCircle, GraduationCap } from "lucide-react";
+import { BookOpen, Sparkles, Clock, Moon, Sun, Archive, History, MessageSquare, Focus, Braces, ChevronDown, AlignCenter, Timer, Flag, BookMarked, MoreHorizontal, Check, SpellCheck, User, ListChecks, Save, MessageCircle, GraduationCap, BarChart2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TipTapEditor } from "@/components/editor/TipTapEditor";
@@ -10,6 +10,7 @@ import { StatusBar, SaveIndicator } from "@/components/editor/StatusBar";
 import { ThesaurusPanel } from "@/components/editor/ThesaurusPanel";
 import { GrammarPanel } from "@/components/grammar/GrammarPanel";
 import { ValePanel } from "@/components/vale/ValePanel";
+import { ProseMetricsDialog } from "@/components/vale/ProseMetricsDialog";
 import { SENSITIVITY_TYPES, type FlagItem, type SensitivityType } from "@/components/editor/SensitivityExtension";
 import { CodexSidebar } from "@/components/codex/CodexSidebar";
 import { CodexEntryDialog } from "@/components/codex/CodexEntryDialog";
@@ -35,6 +36,7 @@ import {
   useSyncSceneCommands, useCreateSceneVersion,
   useUpdateSettings, useSettings,
   useComments, useCreateComment, useSyncCommentPositions,
+  useProseCheck,
 } from "@/store/queries";
 import type { SceneTime, CodexEntry } from "@/types";
 import type { SceneCommandIn } from "@/lib/api";
@@ -232,6 +234,8 @@ export default function ScenePage() {
   const [selectedWord, setSelectedWord]           = useState<string>("");
   const [grammarPanelOpen, setGrammarPanelOpen]   = useState(false);
   const [valePanelOpen, setValePanelOpen]         = useState(false);
+  const [proseMetricsOpen, setProseMetricsOpen]   = useState(false);
+  const proseCheck = useProseCheck();
   const [commentsPanelOpen, setCommentsPanelOpen] = useState(false);
   const [addCommentOpen, setAddCommentOpen]       = useState(false);
   const [pendingComment, setPendingComment]       = useState<{ from: number; to: number; text: string } | null>(null);
@@ -754,6 +758,28 @@ export default function ScenePage() {
                   {valePanelOpen && <Check className="ml-auto h-3 w-3 text-primary" />}
                 </button>
               )}
+              {appSettings?.vale_enabled && (
+                <button
+                  onClick={() => {
+                    const plain = contentRef.current
+                      .replace(/<\/?(p|div|br|li|h[1-6]|blockquote|hr)[^>]*>/gi, "\n")
+                      .replace(/<[^>]+>/g, "")
+                      .trim();
+                    proseCheck.mutate(
+                      { text: plain, language: project?.book_meta?.language ?? undefined },
+                      { onSuccess: () => setProseMetricsOpen(true) },
+                    );
+                    setMenuOpen(false);
+                  }}
+                  disabled={proseCheck.isPending}
+                  className="w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2"
+                >
+                  {proseCheck.isPending
+                    ? <Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin" />
+                    : <BarChart2 className="h-3.5 w-3.5 text-muted-foreground" />}
+                  Prose Metrics
+                </button>
+              )}
 
               <div className="border-t border-border my-1" />
 
@@ -986,6 +1012,15 @@ export default function ScenePage() {
             language={project?.book_meta?.language ?? undefined}
             onClose={() => setValePanelOpen(false)}
             onJumpTo={(matched, skipCount) => jumpToValeMatchRef.current?.(matched, skipCount)}
+          />
+        )}
+
+        {/* Prose metrics dialog — run individually from the scene menu */}
+        {proseCheck.data && (
+          <ProseMetricsDialog
+            open={proseMetricsOpen}
+            onOpenChange={setProseMetricsOpen}
+            result={proseCheck.data}
           />
         )}
 
