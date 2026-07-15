@@ -32,12 +32,13 @@ const RESEARCH_TAB = "research";
 // ── Clipping dialog (add / edit) ──────────────────────────────────────────────
 
 function ClippingDialog({
-  open, onClose, projectId, initial,
+  open, onClose, projectId, initial, defaultTab,
 }: {
   open: boolean;
   onClose: () => void;
   projectId: number;
   initial?: ResearchItem | null;
+  defaultTab: string;
 }) {
   const [title, setTitle]       = useState(initial?.title ?? "");
   const [url, setUrl]           = useState(initial?.url ?? "");
@@ -167,6 +168,7 @@ function ClippingDialog({
         url: url.trim() || undefined,
         text_content: text.trim() || undefined,
         tags: finalTags,
+        ...(initial ? {} : { tab: defaultTab }),
       };
       let itemId: number;
       if (initial) {
@@ -446,8 +448,8 @@ function PdfPopup({ url, name, onClose }: { url: string; name: string; onClose: 
 // ── Clipping card ─────────────────────────────────────────────────────────────
 
 function ClippingCard({
-  item, projectId, onEdit, onTagClick,
-}: { item: ResearchItem; projectId: number; onEdit: (item: ResearchItem) => void; onTagClick?: (tag: string) => void }) {
+  item, projectId, allTabs, onEdit, onTagClick,
+}: { item: ResearchItem; projectId: number; allTabs: string[]; onEdit: (item: ResearchItem) => void; onTagClick?: (tag: string) => void }) {
   const [isDragOver, setIsDragOver]   = useState(false);
   const [isHovered, setIsHovered]     = useState(false);
   const [activeIdx, setActiveIdx]     = useState(0);
@@ -455,6 +457,7 @@ function ClippingCard({
   const [pdfOpen, setPdfOpen]         = useState<number | null>(null);
   const [addingTag, setAddingTag]     = useState(false);
   const [tagInput, setTagInput]       = useState("");
+  const [showMove, setShowMove]       = useState(false);
   const tagInputRef                   = useRef<HTMLInputElement>(null);
 
   const deleteItem   = useDeleteResearch(projectId);
@@ -474,6 +477,11 @@ function ClippingCard({
 
   const removeTag = (tag: string) => {
     updateItem.mutate({ id: item.id, data: { tags: item.tags.filter((t) => t !== tag) } });
+  };
+
+  const moveToTab = (tab: string) => {
+    updateItem.mutate({ id: item.id, data: { tab } });
+    setShowMove(false);
   };
 
   const displayTitle  = item.title || item.url_title || item.url || "Untitled";
@@ -722,6 +730,29 @@ function ClippingCard({
           <button className="p-1 hover:text-primary text-muted-foreground rounded" onClick={() => onEdit(item)}>
             <FileText className="h-3 w-3" />
           </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowMove((v) => !v)}
+              className="p-1 hover:text-primary text-muted-foreground rounded"
+              title="Move to tab"
+            >
+              <MoreHorizontal className="h-3 w-3" />
+            </button>
+            {showMove && (
+              <div className="absolute right-0 top-6 z-20 bg-popover border border-border rounded-md shadow-lg py-1 min-w-[130px]">
+                {allTabs.filter((t) => t !== item.tab).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => moveToTab(t)}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-secondary text-left capitalize"
+                  >
+                    <TabIcon tab={t} />
+                    {t}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             className="p-1 hover:text-destructive text-muted-foreground rounded"
             onClick={() => { if (confirm("Delete this clipping?")) deleteItem.mutate(item.id); }}
@@ -799,6 +830,8 @@ function ClippingCard({
           </span>
         )}
       </div>
+
+      {showMove && <div className="fixed inset-0 z-10" onClick={() => setShowMove(false)} />}
     </div>
   );
 }
@@ -1381,7 +1414,9 @@ export default function FragmentsPage() {
 
   // Derived research data
   const allResearchTags = [...new Set(researchItems.flatMap(i => i.tags))].sort();
-  const filteredResearch = researchItems.filter(item => {
+  // All clippings in the active tab — unfiltered (used for count badges / empty checks)
+  const rawTabResearch = researchItems.filter((i) => i.tab === activeTab);
+  const filteredResearch = rawTabResearch.filter(item => {
     if (researchTagFilter.length > 0 && !researchTagFilter.every(t => item.tags.includes(t))) return false;
     if (researchSearch) {
       const q = researchSearch.toLowerCase();
@@ -1422,9 +1457,13 @@ export default function FragmentsPage() {
   };
 
   const handleDeleteTab = (tab: string) => {
-    const count = fragments.filter((f) => f.tab === tab).length;
-    const msg = count > 0
-      ? `Delete tab "${tab}"? Its ${count} fragment(s) will become inaccessible.`
+    const fragCount = fragments.filter((f) => f.tab === tab).length;
+    const clipCount = researchItems.filter((i) => i.tab === tab).length;
+    const parts: string[] = [];
+    if (fragCount > 0) parts.push(`${fragCount} fragment(s)`);
+    if (clipCount > 0) parts.push(`${clipCount} clipping(s)`);
+    const msg = parts.length > 0
+      ? `Delete tab "${tab}"? Its ${parts.join(" and ")} will become inaccessible.`
       : `Delete tab "${tab}"?`;
     if (!confirm(msg)) return;
     updateTabs.mutate(customTabs.filter((t) => t !== tab));
@@ -1446,30 +1485,27 @@ export default function FragmentsPage() {
         <div className="flex items-center gap-1.5">
           <FragmentImportButton projectId={projectId} />
 
-          {/* View toggle — only for fragment tabs */}
-          {!isResearch && (
-            <div className="flex items-center rounded-md border border-border overflow-hidden mr-0.5">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={cn("p-1.5 transition-colors", viewMode === "grid" ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50")}
-                title="Grid view"
-              >
-                <LayoutGrid className="h-3.5 w-3.5" />
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={cn("p-1.5 transition-colors", viewMode === "list" ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50")}
-                title="List view"
-              >
-                <List className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          )}
+          {/* View toggle — fragment grid/list, applies to every tab */}
+          <div className="flex items-center rounded-md border border-border overflow-hidden mr-0.5">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={cn("p-1.5 transition-colors", viewMode === "grid" ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50")}
+              title="Grid view"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={cn("p-1.5 transition-colors", viewMode === "list" ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50")}
+              title="List view"
+            >
+              <List className="h-3.5 w-3.5" />
+            </button>
+          </div>
 
-          {/* Add Clipping — always available regardless of active tab */}
+          {/* Add Clipping — available on every tab */}
           <Button
             size="sm"
-            variant={isResearch ? "default" : "outline"}
             onClick={openAddClipping}
             className="gap-1.5 text-xs"
           >
@@ -1477,17 +1513,15 @@ export default function FragmentsPage() {
             Add Clipping
           </Button>
 
-          {/* New Fragment — only on fragment tabs */}
-          {!isResearch && (
-            <Button
-              size="sm"
-              onClick={() => createFragment.mutate({ tab: activeTab })}
-              className="gap-1.5 text-xs"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              New fragment
-            </Button>
-          )}
+          {/* New Fragment — available on every tab */}
+          <Button
+            size="sm"
+            onClick={() => createFragment.mutate({ tab: activeTab })}
+            className="gap-1.5 text-xs"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New fragment
+          </Button>
         </div>
       </header>
 
@@ -1506,20 +1540,25 @@ export default function FragmentsPage() {
         >
           <Microscope className="h-3.5 w-3.5" />
           Research
-          {researchItems.length > 0 && (
-            <span className={cn(
-              "text-[10px] rounded-full px-1.5 py-px",
-              isResearch ? "bg-primary/20 text-primary" : "bg-secondary text-muted-foreground"
-            )}>
-              {researchItems.length}
-            </span>
-          )}
+          {(() => {
+            const count = fragments.filter((f) => f.tab === RESEARCH_TAB).length
+              + researchItems.filter((i) => i.tab === RESEARCH_TAB).length;
+            return count > 0 && (
+              <span className={cn(
+                "text-[10px] rounded-full px-1.5 py-px",
+                isResearch ? "bg-primary/20 text-primary" : "bg-secondary text-muted-foreground"
+              )}>
+                {count}
+              </span>
+            );
+          })()}
         </button>
 
         {/* Fragment tabs */}
         {allTabs.map((tab) => {
           const isBuiltin = (BUILTIN_TABS as readonly string[]).includes(tab);
-          const count = fragments.filter((f) => f.tab === tab).length;
+          const count = fragments.filter((f) => f.tab === tab).length
+            + researchItems.filter((i) => i.tab === tab).length;
           const isActive = activeTab === tab;
           return (
             <div key={tab} className="flex items-center group/tab shrink-0">
@@ -1592,187 +1631,191 @@ export default function FragmentsPage() {
         )}
       </div>
 
-      {/* Content */}
+      {/* Content — every tab shows both clippings and fragments */}
       <div className="flex-1 overflow-y-auto">
-        {isResearch ? (
-          /* ── Research grid ──────────────────────────────────────────────── */
-          <div className="p-4 flex flex-col gap-4">
-            {/* Search + tag filter */}
-            {(researchItems.length > 0 || researchSearch) && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <Input
-                  className="max-w-xs h-8 text-sm"
-                  placeholder="Search clippings…"
-                  value={researchSearch}
-                  onChange={e => setResearchSearch(e.target.value)}
-                />
-                {allResearchTags.map(tag => (
-                  <button
-                    key={tag}
-                    onClick={() => setResearchTagFilter(prev =>
-                      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-                    )}
-                    className={cn(
-                      "text-xs px-2.5 py-1 rounded-full transition-colors",
-                      researchTagFilter.includes(tag)
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                    )}
-                  >
-                    {tag}
-                  </button>
-                ))}
-                {(researchSearch || researchTagFilter.length > 0) && (
-                  <button
-                    onClick={() => { setResearchSearch(""); setResearchTagFilter([]); }}
-                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5"
-                  >
-                    <X className="h-3 w-3" /> Clear
-                  </button>
-                )}
+        <div className="p-4 flex flex-col gap-6">
+          {rawTabResearch.length === 0 && rawTabFragments.length === 0 ? (
+            /* ── Empty tab ──────────────────────────────────────────────── */
+            <div className="flex flex-col items-center justify-center text-center text-muted-foreground gap-3 py-16">
+              <TabIcon tab={activeTab} className="h-8 w-8 opacity-20" />
+              <div>
+                <p className="font-medium capitalize">{activeTab} is empty</p>
+                <p className="text-xs mt-1">
+                  {activeTab === "archive"
+                    ? "Use the Archive button in the scene editor to send scenes here."
+                    : "Add a clipping or a fragment to get started."}
+                </p>
               </div>
-            )}
-
-            {/* Grid */}
-            {researchLoading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {[...Array(6)].map((_, i) => <div key={i} className="h-40 rounded-lg bg-card animate-pulse" />)}
-              </div>
-            ) : filteredResearch.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground gap-3">
-                <Microscope className="h-8 w-8 opacity-20" />
-                <div>
-                  <p className="font-medium">
-                    {researchItems.length === 0 ? "No clippings yet" : "No clippings match your filter"}
-                  </p>
-                  <p className="text-xs mt-1">
-                    {researchItems.length === 0 && "Save URLs, images, quotes, or notes alongside your manuscript."}
-                  </p>
-                </div>
-                {researchItems.length === 0 && (
-                  <Button size="sm" variant="outline" onClick={openAddClipping}>
-                    <Camera className="h-3.5 w-3.5 mr-1" />
-                    Add Clipping
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {filteredResearch.map(item => (
-                  <ClippingCard
-                    key={item.id}
-                    item={item}
-                    projectId={projectId}
-                    onEdit={openEditClipping}
-                    onTagClick={(tag) => setResearchTagFilter((prev) =>
-                      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-                    )}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          /* ── Fragment grid / list ────────────────────────────────────────── */
-          <div className="p-4">
-            {/* Category filter pills */}
-            {allTabCategories.length > 0 && (
-              <div className="flex items-center gap-2 flex-wrap mb-3">
-                {allTabCategories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setFragmentCategoryFilter((prev) => prev === cat ? null : cat)}
-                    className={cn(
-                      "text-xs px-2.5 py-1 rounded-full transition-colors",
-                      fragmentCategoryFilter === cat
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                    )}
-                  >
-                    {cat}
-                  </button>
-                ))}
-                {fragmentCategoryFilter && (
-                  <button
-                    onClick={() => setFragmentCategoryFilter(null)}
-                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5"
-                  >
-                    <X className="h-3 w-3" /> Clear
-                  </button>
-                )}
-              </div>
-            )}
-
-            {rawTabFragments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground gap-3 py-16">
-                <TabIcon tab={activeTab} className="h-8 w-8 opacity-20" />
-                <div>
-                  <p className="font-medium capitalize">{activeTab} is empty</p>
-                  <p className="text-xs mt-1">
-                    {activeTab === "archive"
-                      ? "Use the Archive button in the scene editor to send scenes here."
-                      : "Click New fragment to add one."}
-                  </p>
-                </div>
-                <Button size="sm" variant="outline" onClick={() => createFragment.mutate({ tab: activeTab })}>
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={openAddClipping}>
+                  <Camera className="h-3.5 w-3.5 mr-1" />
+                  Add Clipping
+                </Button>
+                <Button size="sm" onClick={() => createFragment.mutate({ tab: activeTab })}>
                   <Plus className="h-3.5 w-3.5 mr-1" />
                   New fragment
                 </Button>
               </div>
-            ) : tabFragments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground gap-3 py-16">
-                <TabIcon tab={activeTab} className="h-8 w-8 opacity-20" />
-                <p className="font-medium">No fragments match "{fragmentCategoryFilter}"</p>
-                <button
-                  onClick={() => setFragmentCategoryFilter(null)}
-                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5"
-                >
-                  <X className="h-3 w-3" /> Clear filter
-                </button>
-              </div>
-            ) : viewMode === "grid" ? (
-              <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))" }}>
-                {tabFragments.map((fragment) => (
-                  <FragmentCard
-                    key={fragment.id}
-                    fragment={fragment}
-                    projectId={projectId}
-                    allTabs={allTabs}
-                  />
-                ))}
-                <button
-                  onClick={() => createFragment.mutate({ tab: activeTab })}
-                  className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors min-h-[120px] text-xs"
-                >
-                  <Plus className="h-5 w-5" />
-                  New fragment
-                </button>
-              </div>
-            ) : (
-              <div className="rounded-lg border border-border bg-card overflow-hidden">
-                {tabFragments.map((fragment) => (
-                  <FragmentRow
-                    key={fragment.id}
-                    fragment={fragment}
-                    projectId={projectId}
-                    allTabs={allTabs}
-                    expanded={expandedId === fragment.id}
-                    onToggle={() => setExpandedId(expandedId === fragment.id ? null : fragment.id)}
-                  />
-                ))}
-                <div className="border-t border-border">
-                  <button
-                    onClick={() => createFragment.mutate({ tab: activeTab })}
-                    className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-muted-foreground hover:text-primary hover:bg-secondary/30 transition-colors"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    New fragment
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+            </div>
+          ) : (
+            <>
+              {/* ── Clippings ──────────────────────────────────────────────── */}
+              <section className="flex flex-col gap-3">
+                <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Clippings</h2>
+
+                {/* Search + tag filter */}
+                {(rawTabResearch.length > 0 || researchSearch) && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Input
+                      className="max-w-xs h-8 text-sm"
+                      placeholder="Search clippings…"
+                      value={researchSearch}
+                      onChange={e => setResearchSearch(e.target.value)}
+                    />
+                    {allResearchTags.map(tag => (
+                      <button
+                        key={tag}
+                        onClick={() => setResearchTagFilter(prev =>
+                          prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+                        )}
+                        className={cn(
+                          "text-xs px-2.5 py-1 rounded-full transition-colors",
+                          researchTagFilter.includes(tag)
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                        )}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                    {(researchSearch || researchTagFilter.length > 0) && (
+                      <button
+                        onClick={() => { setResearchSearch(""); setResearchTagFilter([]); }}
+                        className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5"
+                      >
+                        <X className="h-3 w-3" /> Clear
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {researchLoading ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    {[...Array(3)].map((_, i) => <div key={i} className="h-40 rounded-lg bg-card animate-pulse" />)}
+                  </div>
+                ) : rawTabResearch.length === 0 ? (
+                  <p className="text-xs text-muted-foreground/60">No clippings in this tab yet.</p>
+                ) : filteredResearch.length === 0 ? (
+                  <p className="text-xs text-muted-foreground/60">No clippings match your filter.</p>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    {filteredResearch.map(item => (
+                      <ClippingCard
+                        key={item.id}
+                        item={item}
+                        projectId={projectId}
+                        allTabs={allDisplayTabs}
+                        onEdit={openEditClipping}
+                        onTagClick={(tag) => setResearchTagFilter((prev) =>
+                          prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+                        )}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <div className="border-t border-border" />
+
+              {/* ── Fragments ──────────────────────────────────────────────── */}
+              <section className="flex flex-col gap-3">
+                <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Fragments</h2>
+
+                {/* Category filter pills */}
+                {allTabCategories.length > 0 && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {allTabCategories.map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => setFragmentCategoryFilter((prev) => prev === cat ? null : cat)}
+                        className={cn(
+                          "text-xs px-2.5 py-1 rounded-full transition-colors",
+                          fragmentCategoryFilter === cat
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                        )}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                    {fragmentCategoryFilter && (
+                      <button
+                        onClick={() => setFragmentCategoryFilter(null)}
+                        className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5"
+                      >
+                        <X className="h-3 w-3" /> Clear
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {rawTabFragments.length === 0 ? (
+                  <p className="text-xs text-muted-foreground/60">No fragments in this tab yet.</p>
+                ) : tabFragments.length === 0 ? (
+                  <div className="flex flex-col items-center gap-2 text-center text-muted-foreground py-4">
+                    <p className="text-xs">No fragments match "{fragmentCategoryFilter}"</p>
+                    <button
+                      onClick={() => setFragmentCategoryFilter(null)}
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5"
+                    >
+                      <X className="h-3 w-3" /> Clear filter
+                    </button>
+                  </div>
+                ) : viewMode === "grid" ? (
+                  <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 280px), 1fr))" }}>
+                    {tabFragments.map((fragment) => (
+                      <FragmentCard
+                        key={fragment.id}
+                        fragment={fragment}
+                        projectId={projectId}
+                        allTabs={allDisplayTabs}
+                      />
+                    ))}
+                    <button
+                      onClick={() => createFragment.mutate({ tab: activeTab })}
+                      className="flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors min-h-[120px] text-xs"
+                    >
+                      <Plus className="h-5 w-5" />
+                      New fragment
+                    </button>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-border bg-card overflow-hidden">
+                    {tabFragments.map((fragment) => (
+                      <FragmentRow
+                        key={fragment.id}
+                        fragment={fragment}
+                        projectId={projectId}
+                        allTabs={allDisplayTabs}
+                        expanded={expandedId === fragment.id}
+                        onToggle={() => setExpandedId(expandedId === fragment.id ? null : fragment.id)}
+                      />
+                    ))}
+                    <div className="border-t border-border">
+                      <button
+                        onClick={() => createFragment.mutate({ tab: activeTab })}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-muted-foreground hover:text-primary hover:bg-secondary/30 transition-colors"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        New fragment
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </section>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Clipping dialog — accessible from any tab */}
@@ -1781,6 +1824,7 @@ export default function FragmentsPage() {
         onClose={() => { setClippingOpen(false); setEditingClipping(null); }}
         projectId={projectId}
         initial={editingClipping}
+        defaultTab={activeTab}
       />
     </div>
   );

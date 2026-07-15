@@ -19,8 +19,18 @@ def _get_custom_tabs(project: Project) -> list[str]:
     return []
 
 
+RESEARCH_TAB = "research"
+
+
 def _all_tabs(project: Project) -> list[str]:
     return BUILTIN_TABS + _get_custom_tabs(project)
+
+
+def _valid_write_tabs(project: Project) -> list[str]:
+    # "research" is the always-present clippings tab — not stored in fragment_tabs
+    # (so it's excluded from _all_tabs, which backs the tab-listing endpoint),
+    # but fragments can still be filed into it alongside clippings.
+    return _all_tabs(project) + [RESEARCH_TAB]
 
 
 # ── Tab management ────────────────────────────────────────────────────────────
@@ -74,7 +84,7 @@ def create_fragment(project_id: int, body: FragmentCreate, db: Session = Depends
     if not project:
         raise HTTPException(404, "Project not found")
     # Validate tab exists
-    if body.tab not in _all_tabs(project):
+    if body.tab not in _valid_write_tabs(project):
         raise HTTPException(400, f"Unknown tab '{body.tab}'")
     fragment = Fragment(project_id=project_id, **body.model_dump())
     db.add(fragment)
@@ -90,7 +100,7 @@ def update_fragment(fragment_id: int, body: FragmentUpdate, db: Session = Depend
         raise HTTPException(404, "Fragment not found")
     if body.tab is not None:
         project = db.get(Project, fragment.project_id)
-        if body.tab not in _all_tabs(project):
+        if body.tab not in _valid_write_tabs(project):
             raise HTTPException(400, f"Unknown tab '{body.tab}'")
     for k, v in body.model_dump(exclude_none=True).items():
         setattr(fragment, k, v)

@@ -250,11 +250,11 @@ export const analyticsApi = {
 export const researchApi = {
   list: (projectId: number) => req<ResearchItem[]>(`/projects/${projectId}/research`),
   create: (projectId: number, data: {
-    title?: string; url?: string; text_content?: string;
+    tab?: string; title?: string; url?: string; text_content?: string;
     linked_scene_id?: number | null; linked_codex_id?: number | null; tags?: string[];
   }) => req<ResearchItem>(`/projects/${projectId}/research`, { method: "POST", body: JSON.stringify(data) }),
   update: (id: number, data: Partial<{
-    title: string; url: string; text_content: string;
+    tab: string; title: string; url: string; text_content: string;
     linked_scene_id: number | null; linked_codex_id: number | null; tags: string[];
   }>) => req<ResearchItem>(`/research/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id: number) => req<void>(`/research/${id}`, { method: "DELETE" }),

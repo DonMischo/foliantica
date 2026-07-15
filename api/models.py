@@ -437,6 +437,7 @@ class ResearchItem(Base):
 
     id:               Mapped[int]           = mapped_column(Integer, primary_key=True, index=True)
     project_id:       Mapped[int]           = mapped_column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    tab:              Mapped[str]           = mapped_column(String(100), default="research", server_default="research")
     title:            Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     url:              Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     url_title:        Mapped[Optional[str]] = mapped_column(Text, nullable=True)

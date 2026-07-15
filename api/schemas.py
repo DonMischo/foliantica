@@ -844,6 +844,7 @@ class ProjectAnalytics(BaseModel):
 # ── Research ──────────────────────────────────────────────────────────────────
 
 class ResearchItemCreate(BaseModel):
+    tab: str = "research"
     title: Optional[str] = None
     url: Optional[str] = None
     text_content: Optional[str] = None
@@ -853,6 +854,7 @@ class ResearchItemCreate(BaseModel):
 
 
 class ResearchItemUpdate(BaseModel):
+    tab: Optional[str] = None
     title: Optional[str] = None
     url: Optional[str] = None
     text_content: Optional[str] = None
@@ -873,6 +875,7 @@ class ResearchMediaOut(BaseModel):
 class ResearchItemOut(BaseModel):
     id: int
     project_id: int
+    tab: str
     title: Optional[str]
     url: Optional[str]
     url_title: Optional[str]

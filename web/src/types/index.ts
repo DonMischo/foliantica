@@ -140,6 +140,7 @@ export interface ResearchMedia {
 export interface ResearchItem {
   id: number;
   project_id: number;
+  tab: string;
   title: string | null;
   url: string | null;
   url_title: string | null;

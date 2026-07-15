@@ -81,6 +81,7 @@ async def create_research(project_id: int, data: ResearchItemCreate, db: Session
 
     item = ResearchItem(
         project_id=project_id,
+        tab=data.tab,
         title=data.title,
         url=data.url,
         url_title=url_meta.get("url_title"),
@@ -106,6 +107,8 @@ async def update_research(item_id: int, data: ResearchItemUpdate, db: Session = 
         raise HTTPException(status_code=404, detail="Research item not found")
 
     fs = data.model_fields_set
+    if "tab" in fs and data.tab is not None:
+        item.tab = data.tab
     if "title" in fs:
         item.title = data.title
     if "url" in fs and data.url is not None:
