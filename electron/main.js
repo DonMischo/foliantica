@@ -385,7 +385,16 @@ class LocalPgManager {
   }
 }
 
-const PG_PORT = 5433;
+// Dev (unpackaged) instances use +20000 ports so they never collide with an
+// installed app instance running on the same machine. ~/.foliantica/config.json
+// is shared between dev and prod, so the docker port is always computed as an
+// offset from the configured/default value rather than a separate default —
+// otherwise a port persisted by a prior prod run would apply to dev too.
+const PG_PORT        = isProd ? 15433 : 35433;
+const DEV_PORT_OFFSET = 20000;
+const PG_DOCKER_PORT_PROD_DEFAULT = 15434;
+const PG_CONTAINER_NAME = isProd ? "foliantica-postgres" : "foliantica-postgres-dev";
+const PG_VOLUME_NAME    = isProd ? "foliantica-pg-data"  : "foliantica-pg-data-dev";
 const PG_USER = "foliantica";
 const PG_PASS = "foliantica";
 const PG_DB   = "foliantica";
@@ -489,7 +498,8 @@ async function startPostgres() {
   if (lwCfgForPg.pg && lwCfgForPg.pg.useDocker) {
     const pgCfg  = lwCfgForPg.pg;
     const pgHost = pgCfg.host || "127.0.0.1";
-    const pgPort = pgCfg.port || 5434;
+    const configuredDockerPort = pgCfg.port || PG_DOCKER_PORT_PROD_DEFAULT;
+    const pgPort = isProd ? configuredDockerPort : configuredDockerPort + DEV_PORT_OFFSET;
     const pgUser = pgCfg.user || "foliantica";
     const pgPass = pgCfg.pass || "foliantica";
     const pgDb   = pgCfg.db   || "foliantica";
@@ -520,10 +530,18 @@ async function startPostgres() {
       // The explicit service name limits startup to postgres only.
       const proc = spawn("docker", [
         "compose", "-f", composePath,
-        "--project-name", "foliantica",
+        "--project-name", isProd ? "foliantica" : "foliantica-dev",
         "--profile", "postgres",
         "up", "-d", "postgres",
-      ], { stdio: ["ignore", "pipe", "pipe"] });
+      ], {
+        stdio: ["ignore", "pipe", "pipe"],
+        env: {
+          ...process.env,
+          LW_PG_DOCKER_PORT: String(pgPort),
+          LW_PG_CONTAINER_NAME: PG_CONTAINER_NAME,
+          LW_PG_VOLUME_NAME: PG_VOLUME_NAME,
+        },
+      });
       proc.stdout?.on("data", (d) => log(`[docker] ${d.toString().trim()}`));
       proc.stderr?.on("data", (d) => log(`[docker] ${d.toString().trim()}`));
       proc.on("exit", (code) => {

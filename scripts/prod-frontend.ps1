@@ -8,7 +8,7 @@
   TCP peer address to route.ts (see COWORKING_NETWORK_SECURITY_SUMMARY.md).
   Called by LaunchFoliantica.bat.
 #>
-param([string]$WebDir, [switch]$SkipBuild)
+param([string]$WebDir, [switch]$SkipBuild, [int]$Port = 3000)
 
 $host.UI.RawUI.WindowTitle = 'Foliantica [frontend]'
 Set-Location $WebDir
@@ -34,7 +34,7 @@ Copy-Item -Path (Join-Path $WebDir "public") -Destination $standalone -Recurse -
 Copy-Item -Path (Join-Path $WebDir ".next\static") -Destination (Join-Path $standalone ".next\static") -Recurse -Force
 Copy-Item -Path (Join-Path $WebDir "server-wrapper.js") -Destination $standalone -Force
 
-$env:PORT = '3000'
+$env:PORT = [string]$Port
 $env:HOSTNAME = '0.0.0.0'
 node (Join-Path $standalone "server-wrapper.js")
 

@@ -9,7 +9,7 @@
   not in the .bat, to avoid the .bat/PowerShell encoding pitfalls that
   bit the old polyglot launcher scripts).
 #>
-param([switch]$Help, [switch]$ForceInstall)
+param([switch]$Help, [switch]$ForceInstall, [int]$Port = 3000)
 
 $Root = Split-Path -Parent $PSScriptRoot
 
@@ -28,17 +28,20 @@ if ($Help) {
     Write-Host ""
     Write-Host "  $(bold (cyan "Foliantica"))  -  Launcher (production)"
     Write-Host ""
-    Write-Host "  $(white "Usage:")  $(yellow "LaunchFoliantica.bat") $(gray "[-ForceInstall] [-Help]")"
+    Write-Host "  $(white "Usage:")  $(yellow "LaunchFoliantica.bat") $(gray "[-ForceInstall] [-Port <n>] [-Help]")"
     Write-Host ""
     Write-Host "  $(white "What it does:")"
     Write-Host "    $(gray "- First run (or after pulling new code): installs/updates Python +")"
     Write-Host "    $(gray "  npm dependencies, builds the Next.js frontend for production")"
     Write-Host "    $(gray "- Every run after that: starts the existing build as-is - fast,")"
     Write-Host "    $(gray "  no reinstall, no rebuild")"
-    Write-Host "    $(gray "- Opens two windows: backend (8765, no reload) + frontend (3000)")"
+    Write-Host "    $(gray "- Opens two windows: backend (8765, no reload) + frontend (3000 by default)")"
     Write-Host ""
     Write-Host "  $(white "-ForceInstall")  $(gray "Re-run the install/build steps even if a build already exists")"
     Write-Host "                 $(gray "(use after pulling new code if something seems stale).")"
+    Write-Host ""
+    Write-Host "  $(white "-Port <n>")     $(gray "Frontend port (default: 3000). Use this if 3000 collides")"
+    Write-Host "                 $(gray "with another project on your machine, e.g.: LaunchFoliantica.bat -Port 3300")"
     Write-Host ""
     Write-Host "  $(white "Prerequisites:")"
     Write-Host "    uv    $(cyan "https://docs.astral.sh/uv/")"
@@ -134,7 +137,7 @@ if (Get-Command docker -ErrorAction SilentlyContinue) {
 Write-Host ""
 
 # -- Launch --------------------------------------------------------------------
-Write-Host "  $(white "App")    $(cyan "http://localhost:3000")"
+Write-Host "  $(white "App")    $(cyan "http://localhost:$Port")"
 Write-Host "  $(white "API")    $(cyan "http://localhost:8765")  $(gray "(Swagger: /docs)")"
 Write-Host "  $(gray "-------------------------------------")"
 Write-Host "  $(gray "Two windows will open. Close them to stop.")"
@@ -154,7 +157,8 @@ Start-Sleep -Seconds 1
 $frontendArgs = @(
     "-NoProfile", "-ExecutionPolicy", "Bypass",
     "-File", "$Root\scripts\prod-frontend.ps1",
-    "-WebDir", $webDir
+    "-WebDir", $webDir,
+    "-Port", $Port
 )
 if (-not $needsInstall) { $frontendArgs += "-SkipBuild" }
 

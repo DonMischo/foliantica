@@ -9,7 +9,7 @@
 # Usage:
 #   ./install.sh                   — interactive (prompts for PG mode)
 #   ./install.sh --pg=system       — system PostgreSQL (port 5432)
-#   ./install.sh --pg=docker       — Docker Compose PostgreSQL (port 5434)
+#   ./install.sh --pg=docker       — Docker Compose PostgreSQL (port 15434)
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -55,7 +55,7 @@ for arg in "$@"; do
       echo
       echo -e "  ${WHITE}PostgreSQL options:${RESET}"
       echo -e "    ${YELLOW}--pg=system${RESET}      Use installed system PostgreSQL  (default port 5432)"
-      echo -e "    ${YELLOW}--pg=docker${RESET}      Use Docker Compose PostgreSQL    (port 5434)"
+      echo -e "    ${YELLOW}--pg=docker${RESET}      Use Docker Compose PostgreSQL    (port 15434)"
       echo
       echo -e "  ${WHITE}Connection overrides:${RESET}"
       echo -e "    ${YELLOW}--pg-port=5432${RESET}   PostgreSQL port"
@@ -377,7 +377,9 @@ case "$PG_MODE" in
 
   # ── Docker Compose PostgreSQL ───────────────────────────────────────────────
   docker)
-    PG_PORT="${PG_PORT:-5434}"
+    # Same port/container as the installed app's Docker PG by default, so a
+    # source-run instance shares the real database rather than a separate copy.
+    PG_PORT="${PG_PORT:-15434}"
     step "Docker Compose PostgreSQL  (port ${PG_PORT})"
 
     if ! command -v docker &>/dev/null; then

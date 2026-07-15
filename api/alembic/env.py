@@ -12,7 +12,7 @@ target_metadata = Base.metadata
 
 # Use the same Postgres connection as the app, overriding the ini default.
 _pg_host = os.getenv("LW_PG_HOST", "127.0.0.1")
-_pg_port = os.getenv("LW_PG_PORT", "5433")
+_pg_port = os.getenv("LW_PG_PORT", "15433")
 _pg_user = os.getenv("LW_PG_USER", "foliantica")
 _pg_pass = os.getenv("LW_PG_PASS", "foliantica")
 _pg_db   = os.getenv("LW_PG_DB",   "foliantica")

@@ -175,7 +175,7 @@ export default function SettingsPage() {
   const [helpOpen, setHelpOpen]           = useState(false);
 
   // ── Docker PostgreSQL ─────────────────────────────────────────────────────
-  const defaultPgCfg: PgConfig = { useDocker: false, host: "127.0.0.1", port: 5434, user: "foliantica", pass: "foliantica", db: "foliantica" };
+  const defaultPgCfg: PgConfig = { useDocker: false, host: "127.0.0.1", port: 15434, user: "foliantica", pass: "foliantica", db: "foliantica" };
   const [pgCfg,    setPgCfg]    = useState<PgConfig>(defaultPgCfg);
   const [pgActive, setPgActive] = useState<PgActive | null>(null);
   const [pgSaving, setPgSaving] = useState(false);
@@ -190,7 +190,7 @@ export default function SettingsPage() {
   }, []);
 
   // activeIsDocker: what the API is actually running on right now
-  const activeIsDocker = pgActive?.mode === "pg" && (pgActive.port ?? 5433) !== 5433;
+  const activeIsDocker = pgActive?.mode === "pg" && (pgActive.port ?? 15433) !== 15433;
   // savedIsDocker: what lw-config says (takes effect after restart)
   const savedIsDocker  = pgCfg.useDocker;
   const restartNeeded  = activeIsDocker !== savedIsDocker;
@@ -217,12 +217,12 @@ export default function SettingsPage() {
   };
 
   // Transfer state — target is always the INACTIVE db (other than what's running now)
-  const embeddedConn = { host: "127.0.0.1", port: 5433, user: "foliantica", pass: "foliantica", db: "foliantica" };
+  const embeddedConn = { host: "127.0.0.1", port: 15433, user: "foliantica", pass: "foliantica", db: "foliantica" };
   const dockerConn   = { host: pgCfg.host, port: pgCfg.port, user: pgCfg.user, pass: pgCfg.pass, db: pgCfg.db };
   // Copy TO whichever db is NOT currently active
   const transferTarget   = activeIsDocker ? embeddedConn : dockerConn;
   const transferTargetLabel = activeIsDocker
-    ? "Embedded (port 5433)"
+    ? "Embedded (port 15433)"
     : `Docker (${pgCfg.host}:${pgCfg.port})`;
 
   const [transferState,  setTransferState]  = useState<"idle"|"busy"|"ok"|"error">("idle");
@@ -2391,7 +2391,7 @@ export default function SettingsPage() {
                 <p className="text-xs font-medium">
                   {activeIsDocker
                     ? <><span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 mr-1.5 align-middle" />Docker ({pgActive?.host}:{pgActive?.port})</>
-                    : <><span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400 mr-1.5 align-middle" />Embedded (port 5433)</>}
+                    : <><span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-400 mr-1.5 align-middle" />Embedded (port 15433)</>}
                 </p>
               </div>
               <Button
@@ -2428,7 +2428,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Port</Label>
-                  <Input value={pgCfg.port} onChange={e => setPgCfg(c => ({ ...c, port: Number(e.target.value) }))} className="h-8 text-xs font-mono" placeholder="5434" type="number" />
+                  <Input value={pgCfg.port} onChange={e => setPgCfg(c => ({ ...c, port: Number(e.target.value) }))} className="h-8 text-xs font-mono" placeholder="15434" type="number" />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">User</Label>

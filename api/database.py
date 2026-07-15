@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 # ── Engine ────────────────────────────────────────────────────────────────────
 
 _PG_HOST = os.getenv("LW_PG_HOST", "127.0.0.1")
-_PG_PORT = os.getenv("LW_PG_PORT", "5433")
+_PG_PORT = os.getenv("LW_PG_PORT", "15433")
 _PG_USER = os.getenv("LW_PG_USER", "foliantica")
 _PG_PASS = os.getenv("LW_PG_PASS", "foliantica")
 _PG_DB   = os.getenv("LW_PG_DB",   "foliantica")

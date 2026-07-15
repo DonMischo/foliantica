@@ -29,7 +29,7 @@ for arg in "$@"; do
       echo
       echo -e "  ${WHITE}PostgreSQL modes:${RESET}"
       echo -e "    ${YELLOW}--pg=system${RESET}   Use installed system PostgreSQL  (default port 5432)"
-      echo -e "    ${YELLOW}--pg=docker${RESET}   Start PostgreSQL via Docker Compose  (port 5434)"
+      echo -e "    ${YELLOW}--pg=docker${RESET}   Start PostgreSQL via Docker Compose  (port 15434, shared with the installed app)"
       echo
       echo -e "  ${WHITE}Persist a preference:${RESET}  ${GRAY}~/.foliantica/config.json${RESET}"
       echo -e "    ${GRAY}{\"pg\":{\"useSystem\":true}}   — always use system PG${RESET}"
@@ -176,7 +176,12 @@ case "$PG_MODE" in
     ;;
 
   docker)
-    PG_PORT="${PG_PORT:-5434}"
+    # "Production mode from source" is meant to use the exact same database as
+    # the packaged installed app (not an isolated copy) - `docker compose up -d`
+    # is idempotent, so if the real container is already running this is a
+    # no-op and both just share it; if it isn't running, this starts it fresh.
+    PG_PORT="${PG_PORT:-15434}"
+    PG_CONTAINER_NAME="foliantica-postgres"
     echo -e "  ${WHITE}PostgreSQL${RESET}  ${GRAY}Docker — port ${PG_PORT}${RESET}"
     if ! command -v docker &>/dev/null; then
       err "Docker not found. Install from ${CYAN}https://docs.docker.com/engine/install/${RESET}"
@@ -187,12 +192,15 @@ case "$PG_MODE" in
       echo -e "         ${GRAY}sudo systemctl start docker${RESET}" >&2
       exit 1
     fi
-    echo -e "  ${GRAY}Starting foliantica-postgres container...${RESET}"
-    docker compose --profile postgres up -d
+    echo -e "  ${GRAY}Starting ${PG_CONTAINER_NAME} container...${RESET}"
+    export LW_PG_DOCKER_PORT="$PG_PORT"
+    export LW_PG_CONTAINER_NAME="$PG_CONTAINER_NAME"
+    export LW_PG_VOLUME_NAME="foliantica-pg-data"
+    docker compose --project-name foliantica --profile postgres up -d
     # Wait up to 30 s for PG to accept connections
     _ready=0
     for _i in $(seq 1 30); do
-      if docker exec foliantica-postgres pg_isready -U "$PG_USER" &>/dev/null 2>&1; then
+      if docker exec "$PG_CONTAINER_NAME" pg_isready -U "$PG_USER" &>/dev/null 2>&1; then
         _ready=1; break
       fi
       sleep 1

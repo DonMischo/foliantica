@@ -4,7 +4,7 @@
  * cluster so Electron can reuse it on next launch.
  *
  * Usage:
- *   node scripts/start-migration-pg.mjs <pgdata-dir>
+ *   node scripts/start-migration-pg.mjs <pgdata-dir> [port]
  *
  * Writes "READY" to stdout when PG accepts connections.
  * Send SIGINT or SIGTERM to shut down cleanly.
@@ -16,6 +16,7 @@ import os from 'os';
 
 const DATA_DIR = process.argv[2]
   || path.join(os.homedir(), 'AppData', 'Roaming', 'Foliantica', 'pgdata');
+const PORT = process.argv[3] ? Number(process.argv[3]) : 15433;
 
 mkdirSync(DATA_DIR, { recursive: true });
 
@@ -23,7 +24,7 @@ const pg = new EmbeddedPostgres({
   databaseDir: DATA_DIR,
   user: 'foliantica',
   password: 'foliantica',
-  port: 5433,
+  port: PORT,
   persistent: true,   // cluster survives process exit — Electron reuses it
   initdbFlags: ['--encoding=UTF8', '--locale=C'],
   onLog:   (msg) => process.stderr.write('[pg] '     + msg + '\n'),

@@ -74,21 +74,30 @@ $pgProc = $null
 Write-Host ""
 
 if ($useDockerPg) {
-    # -- Docker PG mode --------------------------------------------------------
-    $pgPort = if ($pgCfg.port) { [string]$pgCfg.port } else { "5434" }
+    # -- Docker PG mode ---------------------------------------------------------
+    # ~/.foliantica/config.json is shared with the installed app, so the port
+    # is always +20000 from whatever's configured/default there (not a
+    # separate default) - otherwise a port persisted by a prior prod run
+    # would apply here too and collide with the real installed-app container.
+    $configuredPort = if ($pgCfg.port) { [int]$pgCfg.port } else { 15434 }
+    $pgPort = [string]($configuredPort + 20000)
     $pgHost = if ($pgCfg.host) { $pgCfg.host }          else { "127.0.0.1" }
     $pgUser = if ($pgCfg.user) { $pgCfg.user }          else { "foliantica" }
     $pgPass = if ($pgCfg.pass) { $pgCfg.pass }          else { "foliantica" }
     $pgDb   = if ($pgCfg.db)   { $pgCfg.db }            else { "foliantica" }
+    $pgContainerName = "foliantica-postgres-dev"
 
     Write-Host "  $(cyan 'PostgreSQL')  $(gray "Docker mode - ${pgHost}:${pgPort}")"
 
     # Ensure Docker is running, then bring up the postgres container
     if (EnsureDockerRunning) {
-        Write-Host "  $(gray 'Starting foliantica-postgres container...')"
-        docker compose --profile postgres up -d 2>$null | Out-Null
+        Write-Host "  $(gray "Starting ${pgContainerName} container...")"
+        $env:LW_PG_DOCKER_PORT     = $pgPort
+        $env:LW_PG_CONTAINER_NAME  = $pgContainerName
+        $env:LW_PG_VOLUME_NAME     = "foliantica-pg-data-dev"
+        docker compose --project-name foliantica-dev --profile postgres up -d 2>$null | Out-Null
 
-        $containerUp = WaitForPgContainer "foliantica-postgres" $pgUser 30
+        $containerUp = WaitForPgContainer $pgContainerName $pgUser 30
         if ($containerUp) {
             Write-Host "  $(cyan 'PostgreSQL')  $(green "ready on port ${pgPort}")"
         } else {
@@ -108,12 +117,15 @@ if ($useDockerPg) {
     # -- Embedded PG mode: start local cluster ---------------------------------
     Write-Host "  $(cyan 'PostgreSQL')  $(gray 'starting...')"
 
+    # Separate data dir and port from the installed app's embedded PG
+    # (%APPDATA%\Foliantica\pgdata on 15433) so both can run at once.
     $pgLog  = "$env:TEMP\fol-dev-pg.log"
-    $pgData = "$env:APPDATA\Foliantica\pgdata"
+    $pgData = "$env:APPDATA\Foliantica\pgdata-dev"
+    $pgPort = "35433"
     "" | Set-Content $pgLog
 
     $pgProc = Start-Process node `
-        -ArgumentList "$Root\scripts\start-migration-pg.mjs", $pgData `
+        -ArgumentList "$Root\scripts\start-migration-pg.mjs", $pgData, $pgPort `
         -RedirectStandardOutput $pgLog `
         -RedirectStandardError  "$env:TEMP\fol-dev-pg-err.log" `
         -PassThru -NoNewWindow
@@ -133,9 +145,9 @@ if ($useDockerPg) {
         exit 1
     }
 
-    Write-Host "  $(cyan 'PostgreSQL')  $(green 'ready on port 5433')"
+    Write-Host "  $(cyan 'PostgreSQL')  $(green "ready on port ${pgPort}")"
     $env:LW_PG_HOST = '127.0.0.1'
-    $env:LW_PG_PORT = '5433'
+    $env:LW_PG_PORT = $pgPort
     $env:LW_PG_USER = 'foliantica'
     $env:LW_PG_PASS = 'foliantica'
     $env:LW_PG_DB   = 'foliantica'

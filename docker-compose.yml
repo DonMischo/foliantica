@@ -2,16 +2,22 @@ services:
 
   # ── PostgreSQL database (optional — alternative to the embedded PG) ───────────
   # Enable in Settings → External Services → PostgreSQL Database.
-  # Runs on port 5434 (not 5433) so it can coexist with the embedded PG cluster.
+  # Runs on port 15434 by default — a distinctive, uncommon port chosen to
+  # avoid colliding with other projects' Postgres containers (5432/5433/5434
+  # are common defaults elsewhere).
   # Data persists in the named volume below; survives app reinstalls.
+  # Port/container/volume names are overridable so an installed app instance
+  # and a run-from-source instance can run at the same time without colliding
+  # (the source-run launchers pass LW_PG_* overrides, see dev-backend.ps1 /
+  # prod-backend.ps1 / LaunchFoliantica.sh).
   postgres:
     image: postgres:17-alpine
-    container_name: foliantica-postgres
+    container_name: ${LW_PG_CONTAINER_NAME:-foliantica-postgres}
     restart: unless-stopped
     profiles:
       - postgres          # only started when explicitly requested
     ports:
-      - "127.0.0.1:5434:5432"
+      - "127.0.0.1:${LW_PG_DOCKER_PORT:-15434}:5432"
     environment:
       POSTGRES_USER:     foliantica
       POSTGRES_PASSWORD: foliantica
@@ -121,3 +127,4 @@ volumes:
   foliantica-lt-ngrams:
   foliantica-lt-fasttext:
   foliantica-pg-data:
+    name: ${LW_PG_VOLUME_NAME:-foliantica-pg-data}

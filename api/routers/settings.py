@@ -625,7 +625,7 @@ def get_pg_active():
     return {
         "mode": "pg",
         "host": os.getenv("LW_PG_HOST", "127.0.0.1"),
-        "port": int(os.getenv("LW_PG_PORT", "5433")),
+        "port": int(os.getenv("LW_PG_PORT", "15433")),
         "user": os.getenv("LW_PG_USER", "foliantica"),
         "db":   os.getenv("LW_PG_DB",   "foliantica"),
     }
@@ -638,7 +638,7 @@ def get_pg_config():
     return cfg.get("pg", {
         "useDocker": False,
         "host":      "127.0.0.1",
-        "port":      5434,
+        "port":      15434,
         "user":      "foliantica",
         "pass":      "foliantica",
         "db":        "foliantica",
@@ -661,7 +661,7 @@ def set_pg_config(body: dict):
 
 
 # ── Default connection values for the embedded cluster ────────────────────────
-_EMBEDDED_PG = {"host": "127.0.0.1", "port": 5433,
+_EMBEDDED_PG = {"host": "127.0.0.1", "port": 15433,
                 "user": "foliantica",  "pass": "foliantica", "db": "foliantica"}
 
 
@@ -669,7 +669,7 @@ def _pg_engine_for(conn: dict):
     """Create a throw-away SQLAlchemy engine for a PG connection dict."""
     from sqlalchemy import create_engine as _ce
     host = conn.get("host", "127.0.0.1")
-    port = conn.get("port", 5433)
+    port = conn.get("port", 15433)
     user = conn.get("user", "foliantica")
     pw   = conn.get("pass", "foliantica")
     db   = conn.get("db",   "foliantica")

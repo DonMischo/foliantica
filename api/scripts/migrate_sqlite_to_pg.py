@@ -13,7 +13,7 @@ On completion, foliantica.db is renamed to foliantica.db.bak (never deleted).
 Usage:
   python migrate_sqlite_to_pg.py \\
       --sqlite-path /path/to/foliantica.db \\
-      [--pg-port 5433] [--pg-user foliantica] \\
+      [--pg-port 15433] [--pg-user foliantica] \\
       [--pg-pass foliantica] [--pg-db foliantica]
 """
 import argparse
@@ -117,7 +117,7 @@ def migrate(sqlite_path: str, pg_port: str, pg_user: str, pg_pass: str, pg_db: s
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Migrate Foliantica data from SQLite to PostgreSQL")
     parser.add_argument("--sqlite-path", required=True,  help="Absolute path to foliantica.db")
-    parser.add_argument("--pg-port",     default="5433", help="PostgreSQL port (default: 5433)")
+    parser.add_argument("--pg-port",     default="15433", help="PostgreSQL port (default: 15433)")
     parser.add_argument("--pg-user",       default="foliantica")
     parser.add_argument("--pg-pass",       default="foliantica")
     parser.add_argument("--pg-db",         default="foliantica")
