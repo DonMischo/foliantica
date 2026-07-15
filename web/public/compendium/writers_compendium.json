@@ -2577,6 +2577,12 @@
               "examples": "Stephen King's Dark Tower, Anne Bishop's Black Jewels, Clive Barker"
             },
             {
+              "name": "Eldritch Fantasy",
+              "description": "Fantasy touched by cosmic horror — strange, unsettling, and filled with beings or powers hard for humans to fully understand; magic that feels dangerous rather than wondrous.",
+              "examples": "H.P. Lovecraft (adjacent), Sarah Monette's Doctrine of Labyrinths, Susanna Clarke's Piranesi",
+              "also_known": "Cosmic Fantasy"
+            },
+            {
               "name": "Grimdark",
               "description": "Bleak, morally pessimistic worlds where political scheming and bloody violence take precedence over enchantment.",
               "examples": "George R.R. Martin, Joe Abercrombie, Mark Lawrence, Glen Cook's Black Company",
@@ -2599,9 +2605,19 @@
               "also_known": "Mythic Fiction"
             },
             {
+              "name": "Fairytale Noir",
+              "description": "Fairytale retellings told as dark, gritty hardboiled detective fiction — smoky taverns, shady deals, and twisted versions of beloved characters.",
+              "examples": "Bill Willingham's Fables, Catherynne M. Valente's Deathless"
+            },
+            {
               "name": "Magical Realism",
               "description": "Magical events treated as an ordinary, unremarked part of the real world; the author never explains them.",
               "examples": "Gabriel García Márquez's One Hundred Years of Solitude, Isabel Allende"
+            },
+            {
+              "name": "Ecofantasy",
+              "description": "Fantasy where nature itself is central — forests, rivers, animals, and ecosystems hold magic, agency, or even a voice; conflict explores humanity's relationship with the environment.",
+              "examples": "Ursula K. Le Guin's Earthsea, Robin Hobb's Farseer/Fool books"
             },
             {
               "name": "Contemporary / Modern Fantasy",
@@ -2687,7 +2703,8 @@
           ],
           "attribution_ids": [
             "attr_071",
-            "attr_065"
+            "attr_065",
+            "attr_103"
           ]
         },
         {
@@ -2721,6 +2738,11 @@
               "description": "19th-century steam technology and Victorian aesthetics in an alternate history of airships and clockwork.",
               "examples": "The Difference Engine, Gail Carriger's Parasol Protectorate",
               "also_known": "Victorian Futurism"
+            },
+            {
+              "name": "Silkpunk",
+              "description": "A mix of Asian history, legends, and culture with soft, nature-based technology — airships of bamboo and silk, giant kites, machines powered by wind rather than steam.",
+              "examples": "Ken Liu's The Grace of Kings"
             },
             {
               "name": "Dieselpunk",
@@ -2833,7 +2855,8 @@
           ],
           "attribution_ids": [
             "attr_071",
-            "attr_065"
+            "attr_065",
+            "attr_103"
           ]
         },
         {
@@ -3360,7 +3383,13 @@
             {
               "name": "Gaslamp / Neo-Victorian Fantasy",
               "description": "A magical, gaslit 19th century of vampires, fae, and Victorian intertextuality; cousin to steampunk.",
-              "examples": "Gail Carriger, Erin Morgenstern's The Night Circus"
+              "examples": "Gail Carriger, Erin Morgenstern's The Night Circus",
+              "also_known": "Gaslight Fantasy"
+            },
+            {
+              "name": "Flintlock Fantasy",
+              "description": "Stories set in the 1700s or Napoleonic era — muskets, pistols, and cannons instead of swords, but magic still runs alongside the gunpowder.",
+              "examples": "Brian McClellan's Powder Mage trilogy, Django Wexler's The Shadow Campaigns"
             },
             {
               "name": "Speculative Evolution",
@@ -3376,11 +3405,17 @@
               "name": "Slipstream",
               "description": "Fiction between the literary and the fantastic that produces cognitive dissonance and strangeness.",
               "examples": "The work of Kelly Link, Haruki Murakami (adjacent)"
+            },
+            {
+              "name": "Epistolary Fantasy",
+              "description": "A story told through documents — letters, diaries, journal entries, telegrams — rather than a narrator; the reader pieces the tale together from what characters write. A narrative form, not a setting, often layered onto Gothic, fairy tale, or historical fantasy.",
+              "examples": "Bram Stoker's Dracula, Zen Cho's Sorcerer to the Crown (letters), Susanna Clarke's Jonathan Strange & Mr Norrell (footnotes/documents)"
             }
           ],
           "attribution_ids": [
             "attr_071",
-            "attr_065"
+            "attr_065",
+            "attr_103"
           ]
         }
       ]
@@ -6641,6 +6676,19 @@
       "source_work": "Story Structure Guide: 10 Powerful Frameworks",
       "url": "https://www.authorflows.com/blogs/story%E2%80%91structure%E2%80%91guide",
       "notes": "Sanderson is cited as a high-profile contemporary author whose outlining practice parallels the Snowflake Method, giving it professional credibility beyond academic craft contexts."
+    },
+    {
+      "id": "attr_103",
+      "chapter": 10,
+      "section": "11.2",
+      "chapter_title": "Genre & Subgenre Wiki",
+      "type": "list",
+      "language": "en",
+      "text": "Fantasy Sub-Genres You've Read But Couldn't Name (Part 1)",
+      "attributed_to": "@KINDLESANONYMOUS (via img)",
+      "source_work": null,
+      "url": null,
+      "notes": "Source list covering Silkpunk, Flintlock, Epistolary, Fairytale Noir, Eldritch, Gaslamp, Ecofantasy, and Grimdark; entries merged into the relevant Fantasy, Science Fiction, and Hybrid & Emerging Genres subgenre lists."
     }
   ],
   "web_sources": [
