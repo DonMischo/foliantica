@@ -149,6 +149,13 @@ export function BookMetaDialog({ projectTitle, initial, open, onClose, onSave }:
           <div>
             <h2 className="text-base font-semibold">Project Info</h2>
             <p className="text-xs text-muted-foreground truncate">{projectTitle}</p>
+            {meta.series && (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {[meta.series, meta.series_index ? `#${meta.series_index}` : null, meta.series_role || null]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            )}
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1 rounded">
             <X className="h-4 w-4" />
@@ -270,6 +277,15 @@ export function BookMetaDialog({ projectTitle, initial, open, onClose, onSave }:
                 placeholder="1"
               />
             </Field>
+            <div className="col-span-2">
+              <Field label="Role" hint='e.g. "Prequel", "Book 1", "Short Story"'>
+                <MetaInput
+                  value={meta.series_role ?? ""}
+                  onChange={v => set("series_role", v)}
+                  placeholder="Book 1"
+                />
+              </Field>
+            </div>
           </div>
 
           {/* ── Genre & Tags ── */}

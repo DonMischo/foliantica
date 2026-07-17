@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  BookOpen, Plus, Trash2, Calendar, BookCopy, Sparkles, TriangleAlert,
+  BookOpen, Plus, Trash2, Calendar, BookCopy, Sparkles,
   Link2, ImageIcon, Settings, Upload, FileText, BookMarked, FolderOpen,
   Loader2, Download, Flame, BarChart2, BookMarked as SeriesIcon, GripVertical,
-  ChevronUp, ChevronDown, Pencil, Check, X as XIcon,
+  ChevronUp, ChevronDown, Pencil, Check, X as XIcon, ScrollText,
 } from "lucide-react";
 import { imagesApi, importApi } from "@/lib/api";
 import { AchievementToastQueue } from "@/components/AchievementToast";
@@ -20,7 +20,11 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { useProjects, useCreateProject, useDeleteProject } from "@/store/queries";
+import { TypeToConfirmDialog } from "@/components/ui/type-to-confirm-dialog";
+import {
+  useProjects, useCreateProject, useDeleteProject,
+  useCodexCollections, useDeleteCodexCollection, useAttachCodexSharing, useDetachCodexSharingAny,
+} from "@/store/queries";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
 
@@ -114,8 +118,13 @@ function SeriesBookEditDialog({
   const [newSeries, setNewSeries] = useState(false);
   const { data: projects = [] } = useProjects();
 
-  // Sync from state when it changes
-  if (state && series !== state.series && !newSeries) setSeries(state.series);
+  useEffect(() => {
+    if (!state) return;
+    setSeries(state.series);
+    setIndex(state.series_index);
+    setRole(state.series_role);
+    setNewSeries(false);
+  }, [state]);
 
   const project = projects.find(p => p.id === state?.book.id);
 
@@ -363,6 +372,161 @@ function SeriesView() {
   );
 }
 
+// ── Codex tab ────────────────────────────────────────────────────────────────
+
+function CodexCard({
+  item,
+  allProjects,
+  ownerIdsWithCodex,
+}: {
+  item: import("@/lib/api").CodexCollection;
+  allProjects: import("@/types").Project[];
+  ownerIdsWithCodex: Set<number>;
+}) {
+  const { owner, entry_count, linked_projects } = item;
+  const attach = useAttachCodexSharing();
+  const detach = useDetachCodexSharingAny();
+  const deleteCollection = useDeleteCodexCollection();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  // Projects that don't own their own codex entries and aren't already linked here
+  const linkable = allProjects.filter(
+    p => p.id !== owner.id
+      && !linked_projects.some(lp => lp.id === p.id)
+      && !p.shared_codex_project_id
+      && !ownerIdsWithCodex.has(p.id)
+  );
+
+  const link = async (projectId: number) => {
+    setLinkError(null);
+    try {
+      await attach.mutateAsync({ projectId, ownerId: owner.id });
+    } catch (err) {
+      let message = "Could not link project.";
+      if (err instanceof Error) {
+        const raw = err.message.replace(/^\d+: /, "");
+        try { message = JSON.parse(raw).detail ?? raw; } catch { message = raw; }
+      }
+      setLinkError(message);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-3 flex flex-col gap-2">
+      <div className="flex items-start gap-2">
+        <ScrollText className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">
+            <Link href={`/projects/${owner.id}`} className="hover:underline">
+              {owner.title}
+            </Link>
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {entry_count} entr{entry_count === 1 ? "y" : "ies"}
+          </p>
+        </div>
+        <button
+          onClick={() => setDeleteOpen(true)}
+          className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+          title="Delete this codex"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* Linked (sharing) projects */}
+      <div className="flex flex-wrap gap-1.5">
+        {linked_projects.length === 0 && (
+          <span className="text-[11px] text-muted-foreground/50 italic">Not shared with any other project</span>
+        )}
+        {linked_projects.map(p => (
+          <span
+            key={p.id}
+            className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-secondary/60 text-foreground/80"
+          >
+            {p.title}
+            <button
+              onClick={() => detach.mutate(p.id)}
+              title={`Unlink ${p.title} from this codex`}
+              className="hover:text-destructive"
+            >
+              <XIcon className="h-2.5 w-2.5" />
+            </button>
+          </span>
+        ))}
+      </div>
+
+      {linkError && <p className="text-[11px] text-destructive">{linkError}</p>}
+
+      {/* Link a project */}
+      {linkable.length > 0 && (
+        <select
+          value=""
+          onChange={e => {
+            const id = Number(e.target.value);
+            if (id) link(id);
+          }}
+          className="h-7 text-xs rounded border border-dashed border-border bg-background px-2 text-muted-foreground hover:text-foreground focus:outline-none cursor-pointer"
+        >
+          <option value="" disabled>+ Link a project…</option>
+          {linkable.map(p => (
+            <option key={p.id} value={p.id}>{p.title}</option>
+          ))}
+        </select>
+      )}
+
+      <TypeToConfirmDialog
+        open={deleteOpen}
+        title="Delete codex"
+        description={`This will permanently delete all ${entry_count} entr${entry_count === 1 ? "y" : "ies"} in "${owner.title}"'s codex.`}
+        confirmLabel="Delete"
+        pending={deleteCollection.isPending}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={async () => {
+          await deleteCollection.mutateAsync(owner.id);
+          setDeleteOpen(false);
+        }}
+      />
+    </div>
+  );
+}
+
+function CodexTabView() {
+  const { data: collections = [], isLoading } = useCodexCollections();
+  const { data: projects = [] } = useProjects();
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {[1, 2, 3, 4].map(i => <div key={i} className="h-24 rounded-lg bg-card animate-pulse" />)}
+      </div>
+    );
+  }
+
+  if (collections.length === 0) {
+    return (
+      <div className="text-center py-20">
+        <ScrollText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+        <h2 className="text-lg font-medium mb-2">No codexes yet</h2>
+        <p className="text-muted-foreground text-sm">
+          Codex entries you create inside a project will show up here.
+        </p>
+      </div>
+    );
+  }
+
+  const ownerIdsWithCodex = new Set(collections.filter(c => c.entry_count > 0).map(c => c.owner.id));
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {collections.map(item => (
+        <CodexCard key={item.owner.id} item={item} allProjects={projects} ownerIdsWithCodex={ownerIdsWithCodex} />
+      ))}
+    </div>
+  );
+}
+
 type CodexOption = "fresh" | "copy" | "share";
 
 function ProjectCard({
@@ -519,7 +683,7 @@ export default function Dashboard() {
   const { data: writingLog = [] } = useGlobalWritingLog();
   const streak = computeStreak(writingLog);
 
-  const [dashView, setDashView] = useState<"projects" | "series">("projects");
+  const [dashView, setDashView] = useState<"projects" | "series" | "codex">("projects");
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -529,8 +693,6 @@ export default function Dashboard() {
   const [shareFromId, setShareFromId] = useState<number | "">("");
 
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState("");
-  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Import dialog state
   type ImportMode = "existing" | "new";
@@ -707,6 +869,18 @@ export default function Dashboard() {
               <SeriesIcon className="h-4 w-4" />
               Series
             </button>
+            <button
+              onClick={() => setDashView("codex")}
+              className={cn(
+                "flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+                dashView === "codex"
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <ScrollText className="h-4 w-4" />
+              Codex
+            </button>
           </div>
         )}
 
@@ -733,7 +907,7 @@ export default function Dashboard() {
                 <ProjectCard
                   key={project.id}
                   project={project}
-                  onDelete={(id, title) => { setDeleteTarget({ id, title }); setDeleteConfirm(""); }}
+                  onDelete={(id, title) => setDeleteTarget({ id, title })}
                 />
               ))}
             </div>
@@ -741,6 +915,7 @@ export default function Dashboard() {
         )}
 
         {dashView === "series" && <SeriesView />}
+        {dashView === "codex" && <CodexTabView />}
       </main>
 
       {/* Mini heatmap strip */}
@@ -1115,75 +1290,20 @@ export default function Dashboard() {
       </Dialog>
 
       {/* ── Delete confirmation dialog ── */}
-      <Dialog
+      <TypeToConfirmDialog
         open={!!deleteTarget}
-        onOpenChange={(open) => { if (!open) { setDeleteTarget(null); setDeleteConfirm(""); setDeleteError(null); } }}
-      >
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <TriangleAlert className="h-5 w-5 shrink-0" />
-              {t("dash_delete_project")}
-            </DialogTitle>
-            <DialogDescription>
-              {t("dash_delete_warning", { title: deleteTarget?.title ?? "" })}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 pt-1">
-            {deleteError && (
-              <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                {deleteError}
-              </div>
-            )}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("dash_type_delete")}
-              </Label>
-              <Input
-                value={deleteConfirm}
-                onChange={(e) => { setDeleteConfirm(e.target.value); setDeleteError(null); }}
-                onKeyDown={async (e) => {
-                  if (e.key === "Enter" && deleteConfirm === "DELETE" && deleteTarget) {
-                    try {
-                      await deleteProject.mutateAsync(deleteTarget.id);
-                      setDeleteTarget(null);
-                      setDeleteConfirm("");
-                      setDeleteError(null);
-                    } catch (err) {
-                      setDeleteError(err instanceof Error ? err.message.replace(/^\d+: /, "") : t("dash_delete_failed"));
-                    }
-                  }
-                }}
-                placeholder="DELETE"
-                autoFocus
-                className="font-mono"
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => { setDeleteTarget(null); setDeleteConfirm(""); setDeleteError(null); }}>
-                {t("common_cancel")}
-              </Button>
-              <Button
-                variant="destructive"
-                disabled={deleteConfirm !== "DELETE" || deleteProject.isPending}
-                onClick={async () => {
-                  if (!deleteTarget) return;
-                  try {
-                    await deleteProject.mutateAsync(deleteTarget.id);
-                    setDeleteTarget(null);
-                    setDeleteConfirm("");
-                    setDeleteError(null);
-                  } catch (err) {
-                    setDeleteError(err instanceof Error ? err.message.replace(/^\d+: /, "") : t("dash_delete_failed"));
-                  }
-                }}
-              >
-                {t("dash_delete_project")}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+        title={t("dash_delete_project")}
+        description={t("dash_delete_warning", { title: deleteTarget?.title ?? "" })}
+        confirmLabel={t("dash_delete_project")}
+        cancelLabel={t("common_cancel")}
+        pending={deleteProject.isPending}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          await deleteProject.mutateAsync(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+      />
 
       <AchievementToastQueue />
     </div>

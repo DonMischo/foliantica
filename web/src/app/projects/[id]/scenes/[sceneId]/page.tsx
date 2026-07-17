@@ -43,6 +43,7 @@ import type { SceneCommandIn } from "@/lib/api";
 import { versionsApi } from "@/lib/api";
 import { DEFAULT_TIME_CONFIG } from "@/types";
 import { cn } from "@/lib/utils";
+import { htmlToGrammarPlainText } from "@/lib/grammarUtils";
 import { PLOT_TEMPLATES } from "@/lib/plotTemplates";
 
 const COMMENT_CATEGORIES = ["Plot", "Character", "Style", "Language", "Continuity", "Research"];
@@ -997,7 +998,7 @@ export default function ScenePage() {
         {/* Grammar check panel */}
         {grammarPanelOpen && (
           <GrammarPanel
-            text={content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()}
+            text={htmlToGrammarPlainText(content)}
             language={project?.book_meta?.language ?? "auto"}
             onClose={() => setGrammarPanelOpen(false)}
             onJumpTo={(matched, offset) => jumpToGrammarMatchRef.current?.(matched, offset)}

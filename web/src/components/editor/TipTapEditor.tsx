@@ -36,7 +36,7 @@ import { SearchExtension } from "./SearchExtension";
 import { SearchBar } from "./SearchBar";
 import { EditorContext } from "@/contexts/EditorContext";
 import { useUIStore } from "@/store/ui";
-import { htmlToGrammarPlainText, computeGrammarSkipCount } from "@/lib/grammarUtils";
+import { buildGrammarDocText, findGrammarRange } from "@/lib/grammarUtils";
 import { sanitizeHtml } from "@/lib/sanitize";
 
 interface Props {
@@ -128,18 +128,16 @@ function walkDocForNthOccurrence(
 }
 
 // LanguageTool gives us `plainOffset` — a char position in the same
-// space-collapsed plain text the scene page sent to the API.  We rebuild that
-// string from the editor HTML, count how many occurrences of `matched` appear
-// before `plainOffset` (= which occurrence index this is), then walk the doc.
+// space-collapsed plain text the scene page sent to the API. We rebuild that
+// string directly from the doc with a per-character position map, so the
+// offset translates into an editor range even when the matched text spans
+// marks (italic ↔ plain) or paragraph boundaries.
 function grammarFindInDoc(
   editor: TiptapEditor,
   matched: string,
   plainOffset: number,
 ): { from: number; to: number } | null {
-  if (!matched) return null;
-  const plainText = htmlToGrammarPlainText(editor.getHTML());
-  const skipCount = computeGrammarSkipCount(plainText, matched, plainOffset);
-  return walkDocForNthOccurrence(editor, matched, skipCount);
+  return findGrammarRange(buildGrammarDocText(editor.state.doc), matched, plainOffset);
 }
 
 // ── Typewriter scroll helper ───────────────────────────────────────────────────

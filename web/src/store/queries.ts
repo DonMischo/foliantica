@@ -297,6 +297,43 @@ export const useDeleteRelation = (entryId: number) => {
   });
 };
 
+export const useCodexCollections = () =>
+  useQuery({
+    queryKey: ["codex-collections"],
+    queryFn: () => codexApi.listCollections(),
+  });
+
+export const useDeleteCodexCollection = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (projectId: number) => projectsApi.deleteCodexCollection(projectId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["codex-collections"] }),
+  });
+};
+
+export const useAttachCodexSharing = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ projectId, ownerId }: { projectId: number; ownerId: number }) =>
+      projectsApi.attachCodexSharing(projectId, ownerId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["codex-collections"] });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+};
+
+export const useDetachCodexSharingAny = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (projectId: number) => projectsApi.detachCodexSharing(projectId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["codex-collections"] });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+    },
+  });
+};
+
 export const useEntryAccess = (entryId: number) =>
   useQuery({
     queryKey: ["codex-access", entryId],

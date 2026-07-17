@@ -142,6 +142,12 @@ export const projectsApi = {
     req<string[]>(`/projects/${id}/subplot-names`, { method: "PATCH", body: JSON.stringify({ names }) }),
   detachCodexSharing: (id: number) =>
     req<Project>(`/projects/${id}/codex-sharing/detach`, { method: "POST" }),
+  attachCodexSharing: (id: number, ownerId: number) =>
+    req<{ shared_codex_project_id: number }>(`/projects/${id}/codex-sharing/attach`, {
+      method: "POST", body: JSON.stringify({ owner_id: ownerId }),
+    }),
+  deleteCodexCollection: (id: number) =>
+    req<void>(`/projects/${id}/codex`, { method: "DELETE" }),
   getPovStats: (id: number) => req<PovStats>(`/projects/${id}/pov-stats`),
 };
 
@@ -206,8 +212,15 @@ export const scenesApi = {
 
 // ── Codex ─────────────────────────────────────────────────────────────────────
 
+export interface CodexCollection {
+  owner: { id: number; title: string };
+  entry_count: number;
+  linked_projects: { id: number; title: string }[];
+}
+
 export const codexApi = {
   list: (projectId: number) => req<CodexEntry[]>(`/projects/${projectId}/codex`),
+  listCollections: () => req<CodexCollection[]>("/codex"),
   get: (id: number) => req<CodexEntry>(`/codex/${id}`),
   create: (data: Omit<CodexEntry, "id" | "created_at" | "updated_at">) =>
     req<CodexEntry>("/codex", { method: "POST", body: JSON.stringify(data) }),

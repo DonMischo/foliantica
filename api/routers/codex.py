@@ -1,7 +1,7 @@
 import json
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, selectinload
-from sqlalchemy import text
+from sqlalchemy import text, func
 
 from database import get_db
 from models import CodexEntry, CodexEntryAccess, CodexRelation, Project
@@ -47,6 +47,84 @@ def list_codex(project_id: int, db: Session = Depends(get_db)):
             result.append(e)
         # mode == "none" → skip
     return [CodexEntryOut.from_orm_entry(e) for e in result]
+
+
+@router.get("/api/codex")
+def list_codex_collections(db: Session = Depends(get_db)):
+    """Return every codex in the DB (one row per canonical owner project),
+    with its entry count and the other projects currently linked to it."""
+    projects = db.query(Project).all()
+
+    # Group projects by canonical codex owner (self, unless live-sharing another project's codex)
+    members_by_owner: dict[int, list[Project]] = {}
+    for p in projects:
+        owner_id = p.shared_codex_project_id or p.id
+        members_by_owner.setdefault(owner_id, []).append(p)
+
+    entry_counts: dict[int, int] = {}
+    for owner_id, count in db.query(CodexEntry.project_id, func.count(CodexEntry.id)).group_by(CodexEntry.project_id).all():
+        entry_counts[owner_id] = count
+
+    by_id = {p.id: p for p in projects}
+    result = []
+    for owner_id, members in members_by_owner.items():
+        owner = by_id.get(owner_id)
+        if not owner:
+            continue
+        count = entry_counts.get(owner_id, 0)
+        linked = [{"id": m.id, "title": m.title} for m in members if m.id != owner_id]
+        if count == 0 and not linked:
+            continue  # nothing to show: standalone project with an empty codex
+        result.append({
+            "owner": {"id": owner.id, "title": owner.title},
+            "entry_count": count,
+            "linked_projects": linked,
+        })
+    return result
+
+
+@router.post("/api/projects/{project_id}/codex-sharing/attach")
+def attach_codex_sharing(project_id: int, body: dict, db: Session = Depends(get_db)):
+    """Link a project to another project's codex (live-share). Rejects if the
+    project already owns codex entries of its own — detach/delete those first."""
+    project = db.get(Project, project_id)
+    if not project:
+        raise HTTPException(404, "Project not found")
+    owner_id = int(body.get("owner_id"))
+    owner = db.get(Project, owner_id)
+    if not owner:
+        raise HTTPException(404, "Target codex owner not found")
+    own_entries = db.query(CodexEntry).filter(CodexEntry.project_id == project_id).count()
+    if own_entries > 0:
+        raise HTTPException(409, "This project already has its own codex entries. Delete or move them first.")
+
+    canonical_owner_id = owner.shared_codex_project_id or owner.id
+    project.shared_codex_project_id = canonical_owner_id
+
+    # Auto-add this project to entries that have share_future=1 and share_mode='specific'
+    future_entries = (
+        db.query(CodexEntry)
+        .filter(
+            CodexEntry.project_id == canonical_owner_id,
+            CodexEntry.share_mode == "specific",
+            CodexEntry.share_future == 1,
+        )
+        .all()
+    )
+    for entry in future_entries:
+        existing = db.query(CodexEntryAccess).filter_by(entry_id=entry.id, project_id=project_id).first()
+        if not existing:
+            db.add(CodexEntryAccess(entry_id=entry.id, project_id=project_id))
+
+    db.commit()
+    return {"shared_codex_project_id": canonical_owner_id}
+
+
+@router.delete("/api/projects/{project_id}/codex", status_code=204)
+def delete_codex_collection(project_id: int, db: Session = Depends(get_db)):
+    """Delete every codex entry owned by this project (the whole codex)."""
+    db.query(CodexEntry).filter(CodexEntry.project_id == project_id).delete()
+    db.commit()
 
 
 @router.post("/api/codex", response_model=CodexEntryOut, status_code=201)

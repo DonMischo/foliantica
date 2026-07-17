@@ -7,6 +7,7 @@ import type { GrammarMatch } from "@/lib/api";
 import { grammarApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { splitIntoChunks } from "@/lib/grammarChunks";
+import { shouldSkipGrammarMatch } from "@/lib/grammarUtils";
 
 interface Props {
   /** Plain text of the scene (HTML tags stripped) */
@@ -149,7 +150,9 @@ export function GrammarPanel({ text, language = "auto", onClose, onApplySuggesti
         const result = await grammarApi.check(chunkText, language);
 
         // Shift match offsets so they point into the full text
-        const adjusted = result.matches.map(m => ({ ...m, offset: m.offset + chunkOffset }));
+        const adjusted = result.matches
+          .map(m => ({ ...m, offset: m.offset + chunkOffset }))
+          .filter(m => !shouldSkipGrammarMatch(m, text));
         setMatches(prev => [...prev, ...adjusted]);
 
         if (chunks.length > 1) setProgress({ done: i + 1, total: chunks.length });

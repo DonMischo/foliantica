@@ -51,8 +51,9 @@ swap:
   Content: Inhalt
   App: Anwendung
   Apps: Anwendungen
+  # "Links" intentionally omitted: with ignorecase it matches the far more
+  # common direction adverb "links" (nach links, links vom Fenster).
   Link: Verweis
-  Links: Verweise
   Homepage: Startseite
   Download: Herunterladen
   Downloads: Herunterladen
