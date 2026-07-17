@@ -17,6 +17,11 @@ a = Analysis(
     datas=[
         # Include the templates directory used by the export router
         ("templates", "templates"),
+        # Alembic reads these from disk at runtime (script_location), not via
+        # Python import, so PyInstaller's static analysis never picks them up
+        # on its own.
+        ("alembic.ini", "."),
+        ("alembic", "alembic"),
     ],
     hiddenimports=[
         # uvicorn internals that PyInstaller misses

@@ -65,13 +65,24 @@ async def lifespan(app: FastAPI):
     _pg_ready = False
     for _attempt in range(60):
         try:
-            Base.metadata.create_all(bind=engine)
-            # Run pending migrations (adds columns to existing tables)
             from alembic.config import Config as _AlembicConfig
             from alembic import command as _alembic_cmd
+            from alembic.migration import MigrationContext
             _alembic_cfg = _AlembicConfig(os.path.join(os.path.dirname(__file__), "alembic.ini"))
             _alembic_cfg.set_main_option("script_location", os.path.join(os.path.dirname(__file__), "alembic"))
-            _alembic_cmd.upgrade(_alembic_cfg, "head")
+
+            with engine.connect() as _conn:
+                _current_rev = MigrationContext.configure(_conn).get_current_revision()
+
+            if _current_rev is None:
+                # Brand-new database: create_all() already builds the current
+                # schema (every column any migration would add), so replaying
+                # the migrations for real would try to re-add columns that
+                # already exist. Stamp head instead of upgrading.
+                Base.metadata.create_all(bind=engine)
+                _alembic_cmd.stamp(_alembic_cfg, "head")
+            else:
+                _alembic_cmd.upgrade(_alembic_cfg, "head")
             _pg_ready = True
             break
         except Exception as _e:
