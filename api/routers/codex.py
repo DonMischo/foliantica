@@ -178,6 +178,9 @@ def update_codex_entry(entry_id: int, body: CodexEntryUpdate, db: Session = Depe
     if "inventory" in data:
         inv = data.pop("inventory")
         entry.inventory = json.dumps(inv) if inv is not None else None
+    if "image_crop" in data:
+        crop = data.pop("image_crop")
+        entry.image_crop = json.dumps(crop) if crop is not None else None
     if "is_main_char" in data:
         entry.is_main_char = int(data.pop("is_main_char"))
     if "share_mode" in data:

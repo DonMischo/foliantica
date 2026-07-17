@@ -242,6 +242,7 @@ class CodexEntryBase(BaseModel):
     is_main_char: bool = False
     inventory: Optional[Any] = None  # CharacterInventory JSON or None
     image_path: Optional[str] = None
+    image_crop: Optional[Any] = None  # {x, y, width, height} in original-image px, or None
     name_type: Optional[str] = None  # name generation style (NameType key)
     share_mode: Literal["all", "specific", "none"] = "all"
     share_future: bool = True         # auto-share with future linked projects
@@ -264,6 +265,7 @@ class CodexEntryUpdate(BaseModel):
     tags: Optional[list[str]] = None
     is_main_char: Optional[bool] = None
     inventory: Optional[Any] = None
+    image_crop: Optional[Any] = None
     name_type: Optional[str] = None
     share_mode: Optional[Literal["all", "specific", "none"]] = None
     share_future: Optional[bool] = None
@@ -301,6 +303,7 @@ class CodexEntryOut(CodexEntryBase):
             "is_main_char": bool(entry.is_main_char),
             "inventory": inv,
             "image_path": entry.image_path,
+            "image_crop": entry.get_image_crop(),
             "name_type": entry.name_type,
             "share_mode": getattr(entry, "share_mode", "all") or "all",
             "share_future": bool(getattr(entry, "share_future", 1)),

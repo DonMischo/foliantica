@@ -29,6 +29,7 @@ const base: CodexEntry = {
   is_main_char: false,
   inventory: null,
   image_path: null,
+  image_crop: null,
   name_type: null,
   share_mode: "none",
   share_future: false,

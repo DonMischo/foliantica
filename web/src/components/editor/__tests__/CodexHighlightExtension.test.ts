@@ -19,6 +19,7 @@ function makeEntry(overrides: Partial<CodexEntry> = {}): CodexEntry {
     name_type: null,
     project_id: 1,
     image_path: null,
+    image_crop: null,
     inventory: null,
     share_mode: "all",
     share_future: true,

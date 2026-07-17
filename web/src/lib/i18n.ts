@@ -161,6 +161,10 @@ const en: Record<string, string> = {
   img_remove: "Remove image",
   img_formats: "JPG, PNG, WebP",
   img_new_entry_hint: "Save the entry first to upload an image.",
+  img_view: "View image",
+  img_adjust_crop: "Adjust crop",
+  img_replace: "Replace image",
+  crop_dialog_title: "Adjust image crop",
 
   // Writer's Compendium
   compendium_title: "Writer's Compendium",
@@ -316,6 +320,10 @@ const de: Record<string, string> = {
   img_remove: "Bild entfernen",
   img_formats: "JPG, PNG, WebP",
   img_new_entry_hint: "Eintrag zuerst speichern, um ein Bild hochzuladen.",
+  img_view: "Bild anzeigen",
+  img_adjust_crop: "Schnitt anpassen",
+  img_replace: "Bild ersetzen",
+  crop_dialog_title: "Bildschnitt anpassen",
 
   // Writer's Compendium
   compendium_title: "Schreibkompendium",
@@ -471,6 +479,10 @@ const es: Record<string, string> = {
   img_remove: "Quitar imagen",
   img_formats: "JPG, PNG, WebP",
   img_new_entry_hint: "Guarda la entrada primero para subir una imagen.",
+  img_view: "Ver imagen",
+  img_adjust_crop: "Ajustar recorte",
+  img_replace: "Reemplazar imagen",
+  crop_dialog_title: "Ajustar recorte de imagen",
 
   // Writer's Compendium
   compendium_title: "Compendio del Escritor",
@@ -626,6 +638,10 @@ const fr: Record<string, string> = {
   img_remove: "Supprimer l'image",
   img_formats: "JPG, PNG, WebP",
   img_new_entry_hint: "Enregistrez d'abord l'entrée pour télécharger une image.",
+  img_view: "Afficher l'image",
+  img_adjust_crop: "Ajuster le recadrage",
+  img_replace: "Remplacer l'image",
+  crop_dialog_title: "Ajuster le recadrage",
 
   // Writer's Compendium
   compendium_title: "Compendium de l'Écrivain",
@@ -781,6 +797,10 @@ const pt: Record<string, string> = {
   img_remove: "Remover imagem",
   img_formats: "JPG, PNG, WebP",
   img_new_entry_hint: "Guarda a entrada primeiro para carregar uma imagem.",
+  img_view: "Ver imagem",
+  img_adjust_crop: "Ajustar recorte",
+  img_replace: "Substituir imagem",
+  crop_dialog_title: "Ajustar recorte de imagem",
 
   // Writer's Compendium
   compendium_title: "Compêndio do Escritor",
@@ -936,6 +956,10 @@ const sv: Record<string, string> = {
   img_remove: "Ta bort bild",
   img_formats: "JPG, PNG, WebP",
   img_new_entry_hint: "Spara posten först för att ladda upp en bild.",
+  img_view: "Visa bild",
+  img_adjust_crop: "Justera beskärning",
+  img_replace: "Ersätt bild",
+  crop_dialog_title: "Justera bildbeskärning",
 
   // Writer's Compendium
   compendium_title: "Skrivkompendium",
@@ -1091,6 +1115,10 @@ const da: Record<string, string> = {
   img_remove: "Fjern billede",
   img_formats: "JPG, PNG, WebP",
   img_new_entry_hint: "Gem posten først for at uploade et billede.",
+  img_view: "Vis billede",
+  img_adjust_crop: "Juster tilsnit",
+  img_replace: "Erstat billede",
+  crop_dialog_title: "Juster billedtilsnit",
 
   // Writer's Compendium
   compendium_title: "Skrivekompendium",
@@ -1246,6 +1274,10 @@ const no: Record<string, string> = {
   img_remove: "Fjern bilde",
   img_formats: "JPG, PNG, WebP",
   img_new_entry_hint: "Lagre posten forst for a laste opp et bilde.",
+  img_view: "Vis bilde",
+  img_adjust_crop: "Juster beskjæring",
+  img_replace: "Erstatt bilde",
+  crop_dialog_title: "Juster bildebeskjæring",
 
   // Writer's Compendium
   compendium_title: "Skrivekompendium",
@@ -1401,6 +1433,10 @@ const zh: Record<string, string> = {
   img_remove: "删除图片",
   img_formats: "JPG, PNG, WebP",
   img_new_entry_hint: "请先保存条目，然后再上传图片。",
+  img_view: "查看图片",
+  img_adjust_crop: "调整裁剪",
+  img_replace: "替换图片",
+  crop_dialog_title: "调整图片裁剪",
 
   // Writer's Compendium
   compendium_title: "写作指南",
@@ -1556,6 +1592,10 @@ const ja: Record<string, string> = {
   img_remove: "画像を削除",
   img_formats: "JPG、PNG、WebP",
   img_new_entry_hint: "画像をアップロードするには、まずエントリを保存してください。",
+  img_view: "画像を表示",
+  img_adjust_crop: "トリミングを調整",
+  img_replace: "画像を置き換え",
+  crop_dialog_title: "画像トリミングを調整",
 
   // Writer's Compendium
   compendium_title: "ライターズ・コンペンディウム",
@@ -1711,6 +1751,10 @@ const nl: Record<string, string> = {
   img_remove: "Afbeelding verwijderen",
   img_formats: "JPG, PNG, WebP",
   img_new_entry_hint: "Sla de vermelding eerst op om een afbeelding te uploaden.",
+  img_view: "Afbeelding weergeven",
+  img_adjust_crop: "Uitsnijding aanpassen",
+  img_replace: "Afbeelding vervangen",
+  crop_dialog_title: "Afbeeldingsuitsnijding aanpassen",
 
   // Writer's Compendium
   compendium_title: "Schrijverscompendium",
@@ -1866,6 +1910,10 @@ const it: Record<string, string> = {
   img_remove: "Rimuovi immagine",
   img_formats: "JPG, PNG, WebP",
   img_new_entry_hint: "Salva prima la voce per caricare un'immagine.",
+  img_view: "Visualizza immagine",
+  img_adjust_crop: "Regola ritaglio",
+  img_replace: "Sostituisci immagine",
+  crop_dialog_title: "Regola ritaglio immagine",
 
   // Writer's Compendium
   compendium_title: "Compendio dello Scrittore",
@@ -2021,6 +2069,10 @@ const pl: Record<string, string> = {
   img_remove: "Usuń obraz",
   img_formats: "JPG, PNG, WebP",
   img_new_entry_hint: "Najpierw zapisz wpis, aby przesłać obraz.",
+  img_view: "Wyświetl obraz",
+  img_adjust_crop: "Dostosuj kadrowanie",
+  img_replace: "Zastąp obraz",
+  crop_dialog_title: "Dostosuj kadrowanie obrazu",
 
   // Writer's Compendium
   compendium_title: "Kompendium Pisarza",

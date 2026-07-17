@@ -13,8 +13,9 @@ vi.mock("@/store/queries", () => ({
   useEntryRelations: () => ({ data: [] }),
   useCreateRelation: () => ({ mutate: vi.fn() }),
   useDeleteRelation: () => ({ mutate: vi.fn() }),
-  useUploadCodexImage: () => ({ mutate: vi.fn(), isPending: false }),
-  useDeleteCodexImage: () => ({ mutate: vi.fn(), isPending: false }),
+  useUploadCodexImage: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useDeleteCodexImage: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useUpdateCodexEntry: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
 }));
 
 // ── Language context mock ──────────────────────────────────────────────────────

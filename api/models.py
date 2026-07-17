@@ -177,6 +177,7 @@ class CodexEntry(Base):
     is_main_char: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     inventory:   Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: CharacterInventory
     image_path:  Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    image_crop:  Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: {x, y, width, height} in original-image px
     # Sharing: "all" = visible to all linked projects (default)
     #          "specific" = only projects listed in codex_entry_access
     #          "none" = private to owner project only
@@ -212,6 +213,14 @@ class CodexEntry(Base):
 
     def set_tags(self, tags: list[str]) -> None:
         self.tags = json.dumps(tags)
+
+    def get_image_crop(self) -> Optional[dict]:
+        if not self.image_crop:
+            return None
+        try:
+            return json.loads(self.image_crop)
+        except (json.JSONDecodeError, TypeError):
+            return None
 
     def get_groups(self) -> list[str]:
         try:

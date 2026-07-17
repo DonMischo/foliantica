@@ -3,7 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Plus, Trash2, Link2, ImageIcon, Package, Coins, History, ChevronUp, ChevronDown, Pencil, Globe, LayoutList, Share2, Users, Eye, EyeOff, Gem } from "lucide-react";
 import { imagesApi, translateApi, structureApi, type StructureResult } from "@/lib/api";
-import { useUploadCodexImage, useDeleteCodexImage, useInventorySummary, useCharacterItemLog, useCharacterCurrencyLog, useEntryRelations, useCreateRelation, useDeleteRelation, useSettings, useEntryAccess, useSetEntryAccess } from "@/store/queries";
+import { useUploadCodexImage, useDeleteCodexImage, useUpdateCodexEntry, useInventorySummary, useCharacterItemLog, useCharacterCurrencyLog, useEntryRelations, useCreateRelation, useDeleteRelation, useSettings, useEntryAccess, useSetEntryAccess } from "@/store/queries";
+import * as Popover from "@radix-ui/react-popover";
+import { cropImageStyle, type ImageCrop } from "@/lib/imageCrop";
+import { ImageCropDialog } from "./ImageCropDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -360,8 +363,13 @@ export function CodexEntryDialog({
   const deleteRel    = useDeleteRelation(entryId);
   const uploadImg    = useUploadCodexImage(entryId, projectId);
   const deleteImg    = useDeleteCodexImage(entryId, projectId);
+  const updateEntryImage = useUpdateCodexEntry(projectId);
 
   const [imagePath, setImagePath] = useState<string | null>(initial?.image_path ?? null);
+  const [imageCrop, setImageCrop] = useState<ImageCrop | null>(initial?.image_crop ?? null);
+  const [imageMenuOpen, setImageMenuOpen] = useState(false);
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [viewImageOpen, setViewImageOpen] = useState(false);
 
   // Click-outside to close group dropdown
   useEffect(() => {
@@ -425,6 +433,10 @@ export function CodexEntryDialog({
       setRelPreset(PRESET_RELATIONS[0]);
       setRelCustom("");
       setImagePath(initial?.image_path ?? null);
+      setImageCrop(initial?.image_crop ?? null);
+      setImageMenuOpen(false);
+      setCropDialogOpen(false);
+      setViewImageOpen(false);
     }
   }, [open, initial, allEntries]);
 
@@ -786,42 +798,118 @@ export function CodexEntryDialog({
                 <Label>{t("img_portrait")}</Label>
                 {isExisting ? (
                   <div className="flex items-start gap-3">
-                    <div
-                      className="relative w-20 h-24 rounded border border-border bg-muted/40 flex items-center justify-center overflow-hidden cursor-pointer shrink-0"
-                      onClick={() => {
+                    {(() => {
+                      const pickAndUpload = () => {
                         const input = document.createElement("input");
                         input.type = "file";
                         input.accept = "image/jpeg,image/png,image/webp,image/gif";
                         input.onchange = () => {
                           if (input.files?.[0]) {
-                            uploadImg.mutateAsync(input.files[0]).then((data) => setImagePath(data.image_path));
+                            uploadImg.mutateAsync(input.files[0]).then((data) => {
+                              setImagePath(data.image_path);
+                              setImageCrop(null);
+                              setCropDialogOpen(true);
+                            });
                           }
                         };
                         input.click();
-                      }}
-                      title={imagePath ? t("img_change") : t("img_upload")}
-                    >
-                      {imagePath ? (
-                        <img src={imagesApi.url(imagePath)} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <ImageIcon className="h-6 w-6 text-muted-foreground/40" />
-                      )}
-                    </div>
+                      };
+                      return (
+                        <Popover.Root open={imageMenuOpen} onOpenChange={setImageMenuOpen}>
+                          <Popover.Trigger asChild>
+                            <div
+                              className="relative w-20 h-24 rounded border border-border bg-muted/40 flex items-center justify-center overflow-hidden cursor-pointer shrink-0"
+                              onClick={() => { if (!imagePath) pickAndUpload(); }}
+                              title={imagePath ? t("img_change") : t("img_upload")}
+                            >
+                              {imagePath ? (
+                                <img
+                                  src={imagesApi.url(imagePath)}
+                                  alt=""
+                                  className={imageCrop ? undefined : "w-full h-full object-cover"}
+                                  style={imageCrop ? cropImageStyle(imageCrop, 80, 96) : undefined}
+                                />
+                              ) : (
+                                <ImageIcon className="h-6 w-6 text-muted-foreground/40" />
+                              )}
+                            </div>
+                          </Popover.Trigger>
+                          {imagePath && (
+                            <Popover.Portal>
+                              <Popover.Content
+                                side="right"
+                                align="start"
+                                sideOffset={8}
+                                className="z-50 min-w-[10rem] rounded-lg border border-border bg-popover shadow-xl py-1"
+                              >
+                                <button
+                                  type="button"
+                                  className="w-full text-left text-xs px-3 py-1.5 hover:bg-secondary/60"
+                                  onClick={() => { setViewImageOpen(true); setImageMenuOpen(false); }}
+                                >
+                                  {t("img_view")}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="w-full text-left text-xs px-3 py-1.5 hover:bg-secondary/60"
+                                  onClick={() => { setCropDialogOpen(true); setImageMenuOpen(false); }}
+                                >
+                                  {t("img_adjust_crop")}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="w-full text-left text-xs px-3 py-1.5 hover:bg-secondary/60"
+                                  onClick={() => { setImageMenuOpen(false); pickAndUpload(); }}
+                                >
+                                  {t("img_replace")}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="w-full text-left text-xs px-3 py-1.5 hover:bg-destructive/10 text-destructive"
+                                  onClick={() => {
+                                    setImageMenuOpen(false);
+                                    deleteImg.mutateAsync().then(() => { setImagePath(null); setImageCrop(null); });
+                                  }}
+                                >
+                                  {t("img_remove")}
+                                </button>
+                              </Popover.Content>
+                            </Popover.Portal>
+                          )}
+                        </Popover.Root>
+                      );
+                    })()}
                     <div className="flex flex-col gap-1.5 pt-1">
                       <p className="text-xs text-muted-foreground">{t("img_formats")}</p>
-                      {imagePath && (
-                        <button
-                          type="button"
-                          className="text-xs text-destructive hover:underline text-left"
-                          onClick={() => deleteImg.mutateAsync().then(() => setImagePath(null))}
-                        >
-                          {t("img_remove")}
-                        </button>
-                      )}
                     </div>
                   </div>
                 ) : (
                   <p className="text-xs text-muted-foreground">{t("img_new_entry_hint")}</p>
+                )}
+
+                {imagePath && cropDialogOpen && (
+                  <ImageCropDialog
+                    open={cropDialogOpen}
+                    onClose={() => setCropDialogOpen(false)}
+                    imageSrc={imagesApi.url(imagePath)}
+                    initialCrop={imageCrop}
+                    onSave={(crop) => {
+                      setImageCrop(crop);
+                      setCropDialogOpen(false);
+                      updateEntryImage.mutate({ id: entryId, data: { image_crop: crop } });
+                    }}
+                  />
+                )}
+
+                {imagePath && viewImageOpen && (
+                  <Dialog open={viewImageOpen} onOpenChange={setViewImageOpen}>
+                    <DialogContent className="max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>{t("img_view")}</DialogTitle>
+                      </DialogHeader>
+                      <img src={imagesApi.url(imagePath)} alt="" className="w-full h-auto rounded" />
+                    </DialogContent>
+                  </Dialog>
                 )}
               </div>
 

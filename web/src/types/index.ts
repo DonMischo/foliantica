@@ -337,6 +337,7 @@ export interface CodexEntry {
   is_main_char: boolean;
   inventory: CharacterInventory | null;
   image_path: string | null;
+  image_crop: { x: number; y: number; width: number; height: number } | null;
   name_type: string | null;
   /** "all" = all linked projects | "specific" = access list | "none" = owner only */
   share_mode: "all" | "specific" | "none";
