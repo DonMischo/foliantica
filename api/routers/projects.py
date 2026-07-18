@@ -24,6 +24,7 @@ def _project_to_out(p: Project, parent_title: Optional[str] = None) -> dict:
             pass
     return {
         "id": p.id,
+        "kind": p.kind,
         "title": p.title,
         "description": p.description,
         "book_meta": book_meta,
@@ -32,6 +33,7 @@ def _project_to_out(p: Project, parent_title: Optional[str] = None) -> dict:
         "cover_image": p.cover_image,
         "main_plot_color": p.main_plot_color,
         "plot_template": p.plot_template,
+        "campaign_brief": p.campaign_brief,
         "created_at": p.created_at,
         "updated_at": p.updated_at,
     }
@@ -150,6 +152,7 @@ def create_project(body: ProjectCreate, db: Session = Depends(get_db)):
                 tags=src.tags,
                 is_main_char=src.is_main_char,
                 inventory=src.inventory,
+                rpg_sheet=src.rpg_sheet,
             )
             new_entry.set_groups(src.get_groups())
             db.add(new_entry)

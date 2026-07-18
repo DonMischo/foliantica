@@ -28,6 +28,7 @@ const base: CodexEntry = {
   subtype: null,
   is_main_char: false,
   inventory: null,
+  rpg_sheet: null,
   image_path: null,
   image_crop: null,
   name_type: null,

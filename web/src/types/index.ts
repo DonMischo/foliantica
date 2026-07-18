@@ -44,6 +44,7 @@ export interface SeriesData {
 
 export interface Project {
   id: number;
+  kind: "book" | "rpg";
   title: string;
   description: string | null;
   book_meta: BookMeta | null;
@@ -52,8 +53,128 @@ export interface Project {
   cover_image: string | null;
   main_plot_color: string | null;
   plot_template: string | null;
+  campaign_brief: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface DmSession {
+  id: number;
+  project_id: number;
+  title: string;
+  status: "active" | "ended";
+  summary: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DmRollInfo {
+  sides: number;
+  count: number;
+  modifier: number;
+  advantage: "adv" | "dis" | null;
+  purpose: string | null;
+  results: number[];
+  kept: number;
+  total: number;
+  manual: boolean;
+}
+
+export interface DmTurn {
+  id: number;
+  session_id: number;
+  role: "player" | "dm" | "roll" | "system";
+  content: string;
+  rolls: DmRollInfo | null;
+  effects: DmTurnEffects | null;
+  created_at: string;
+}
+
+export interface SessionZeroAnswers {
+  tone: string[];
+  tone_free: string;
+  genre: string;
+  truths: string[];
+  lines: string;
+}
+
+export interface DmPrefs {
+  dice_mode?: "digital" | "physical";
+  session_zero?: SessionZeroAnswers;
+}
+
+export interface RpgGearItem {
+  name: string;
+  qty: number;
+}
+
+export interface RpgSheet {
+  species: string;
+  class: string;
+  level: number;
+  stats: Record<string, number>;
+  hp: { current: number; max: number };
+  ac: number;
+  abilities: string[];
+  conditions: string[];
+  gear: RpgGearItem[];
+  is_pc: boolean;
+}
+
+export interface DmScene {
+  id: number;
+  project_id: number;
+  session_id: number | null;
+  title: string;
+  location_entry_id: number | null;
+  present_npcs: string[];
+  situation: string | null;
+  is_current: boolean;
+  oracle: Record<string, string> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DmFact {
+  id: number;
+  project_id: number;
+  kind: "fact" | "thread" | "secret" | "foreshadow";
+  text: string;
+  codex_entry_id: number | null;
+  source_turn_id: number | null;
+  status: "open" | "resolved";
+  weight: number;
+  created_at: string;
+}
+
+export interface DmRuleset {
+  stats: string[];
+  standard_array: number[];
+  species: Record<string, { label: string; bonus: Record<string, number>; trait: string; name_style: string }>;
+  classes: Record<string, { label: string; hit_die: number; priorities: string[]; ac_base: number; abilities: string[]; kit: string[] }>;
+}
+
+export interface DmCharacterDraft {
+  name: string;
+  species: string;
+  class_label: string;
+  rpg_sheet: RpgSheet;
+  stat_rolls?: { dice: number[]; total: number }[];
+}
+
+export interface DmTurnEffects {
+  effects: {
+    new_npcs?: { name: string | null; species: string | null; class: string | null; role: string }[];
+    codex_updates?: Record<string, unknown>[];
+    scene?: { new_scene?: boolean; title?: string; situation?: string } | null;
+    roll_request?: { sides: number; purpose: string } | null;
+  };
+  applied: {
+    created_entries: { id: number; name: string }[];
+    updated_entries: { id: number; prev_rpg_sheet: string | null }[];
+    scene: { mode: "created" | "updated"; scene_id: number } | null;
+  };
+  undone: boolean;
 }
 
 export interface Act {
@@ -336,6 +457,7 @@ export interface CodexEntry {
   tags: string[];
   is_main_char: boolean;
   inventory: CharacterInventory | null;
+  rpg_sheet: RpgSheet | null;
   image_path: string | null;
   image_crop: { x: number; y: number; width: number; height: number } | null;
   name_type: string | null;

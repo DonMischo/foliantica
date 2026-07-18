@@ -18,7 +18,7 @@ from database import (
     seed_ai_prompts, seed_publisher_profiles, seed_export_profiles,
 )
 from models import Base
-from routers import projects, acts, chapters, scenes, codex, settings, ai, export, imports, graph, time, fragments, images, scene_commands, grammar, analytics, research, submissions, achievements, vale, comments, prose
+from routers import projects, acts, chapters, scenes, codex, settings, ai, export, imports, graph, time, fragments, images, scene_commands, grammar, analytics, research, submissions, achievements, vale, comments, prose, dm
 from routers import sync as sync_router
 from routers import collab as collab_router
 
@@ -306,6 +306,7 @@ app.include_router(submissions.router)
 app.include_router(comments.router)
 app.include_router(achievements.router)
 app.include_router(prose.router)
+app.include_router(dm.router)
 app.include_router(sync_router.router)
 app.include_router(collab_router.router)
 

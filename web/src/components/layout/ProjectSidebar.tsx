@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   ChevronDown, ChevronRight, Plus, Trash2,
-  GripVertical, Settings, Book, Download, Network, Calendar, Clock, Scissors, Info, ListChecks, MoreHorizontal, LayoutGrid, Users, BarChart2, Mail, Layers2, User, RefreshCw,
+  GripVertical, Settings, Book, Download, Network, Calendar, Clock, Scissors, Info, ListChecks, MoreHorizontal, LayoutGrid, Users, BarChart2, Mail, Layers2, User, RefreshCw, Dices,
 } from "lucide-react";
 import {
   DndContext, closestCenter, DragEndEvent,
@@ -432,6 +432,7 @@ export function ProjectSidebar({ projectId }: Props) {
 
   const { t } = useLanguage();
   const { data: project }        = useProject(projectId);
+  const isRpg = project?.kind === "rpg";
   const { data: acts = [] }      = useActs(projectId);
   const { data: codexEntries = [] } = useCodexEntries(projectId);
 
@@ -539,6 +540,18 @@ export function ProjectSidebar({ projectId }: Props) {
       {/* Presence strip — avatar chips for other connected sessions */}
       {collabConnected && <PresenceBar hostName={project?.book_meta?.author || undefined} />}
 
+      {isRpg ? (
+        /* RPG campaign: no acts/chapters tree — a single Play entry instead */
+        <div className="flex-1 min-h-0 overflow-y-auto p-2">
+          <Link
+            href={`/projects/${projectId}/dm`}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded hover:bg-secondary/50 text-muted-foreground hover:text-foreground"
+          >
+            <Dices className="h-4 w-4" />
+            {t("nav_play")}
+          </Link>
+        </div>
+      ) : (<>
       <div className="flex items-center justify-between px-3 py-2 text-xs text-muted-foreground uppercase tracking-wider">
         <span>{t("nav_story")}</span>
         <div className="flex items-center gap-1">
@@ -582,6 +595,7 @@ export function ProjectSidebar({ projectId }: Props) {
           <p className="text-xs text-muted-foreground text-center py-4">{t("nav_no_acts")}</p>
         )}
       </div>
+      </>)}
 
       <div className="border-t border-border p-2">
         <div className="flex items-center gap-1">
@@ -616,6 +630,7 @@ export function ProjectSidebar({ projectId }: Props) {
             {menuOpen && (
               <div className="absolute bottom-full right-0 mb-1 z-50 bg-popover border border-foreground/25 rounded-lg shadow-[0_0_0_1px_hsl(var(--foreground)/0.1),0_8px_28px_hsl(var(--foreground)/0.22)] py-1 min-w-[190px]">
 
+                {!isRpg && (<>
                 {/* Pages */}
                 <Link
                   href={`/projects/${projectId}/corkboard`}
@@ -704,6 +719,7 @@ export function ProjectSidebar({ projectId }: Props) {
                 </button>
 
                 <div className="border-t border-border/50 my-1" />
+                </>)}
 
                 <Link
                   href="/settings"

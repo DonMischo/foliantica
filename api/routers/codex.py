@@ -138,6 +138,7 @@ def create_codex_entry(body: CodexEntryCreate, db: Session = Depends(get_db)):
     tags      = data.pop("tags", [])
     groups    = data.pop("groups", [])
     inventory = data.pop("inventory", None)
+    rpg_sheet = data.pop("rpg_sheet", None)
     data.pop("is_main_char", None)  # handled via setattr below
     is_main_char = body.is_main_char
     data.pop("entry_group", None)  # not a schema field; set via set_groups
@@ -148,6 +149,8 @@ def create_codex_entry(body: CodexEntryCreate, db: Session = Depends(get_db)):
     entry.is_main_char = int(is_main_char)
     if inventory is not None:
         entry.inventory = json.dumps(inventory)
+    if rpg_sheet is not None:
+        entry.rpg_sheet = json.dumps(rpg_sheet)
     db.add(entry)
     db.commit()
     db.refresh(entry)
@@ -178,6 +181,9 @@ def update_codex_entry(entry_id: int, body: CodexEntryUpdate, db: Session = Depe
     if "inventory" in data:
         inv = data.pop("inventory")
         entry.inventory = json.dumps(inv) if inv is not None else None
+    if "rpg_sheet" in data:
+        sheet = data.pop("rpg_sheet")
+        entry.rpg_sheet = json.dumps(sheet) if sheet is not None else None
     if "image_crop" in data:
         crop = data.pop("image_crop")
         entry.image_crop = json.dumps(crop) if crop is not None else None

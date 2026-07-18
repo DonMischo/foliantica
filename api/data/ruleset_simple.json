@@ -1,0 +1,118 @@
+{
+  "stats": ["str", "dex", "con", "int", "wis", "cha"],
+  "standard_array": [15, 14, 13, 12, 10, 8],
+  "species": {
+    "human": {
+      "label": "Human",
+      "bonus": { "any": 1 },
+      "trait": "Adaptable: +1 to your highest-priority stat and one free reroll during character creation.",
+      "name_style": "human"
+    },
+    "dwarf": {
+      "label": "Dwarf",
+      "bonus": { "con": 2 },
+      "trait": "Stonewise: advantage on checks involving stone, metal, or underground paths.",
+      "name_style": "dwarf"
+    },
+    "elf": {
+      "label": "Elf",
+      "bonus": { "dex": 2 },
+      "trait": "Keen senses: advantage on perception checks by sight or sound.",
+      "name_style": "elf"
+    },
+    "halfling": {
+      "label": "Halfling",
+      "bonus": { "dex": 1, "cha": 1 },
+      "trait": "Lucky: once per session, reroll a natural 1.",
+      "name_style": "halfling"
+    },
+    "orc": {
+      "label": "Orc",
+      "bonus": { "str": 2 },
+      "trait": "Relentless: once per session, drop to 1 HP instead of 0.",
+      "name_style": "orc"
+    },
+    "gnome": {
+      "label": "Gnome",
+      "bonus": { "int": 2 },
+      "trait": "Tinker: you can jury-rig small devices from scraps given a few minutes.",
+      "name_style": "gnome"
+    }
+  },
+  "classes": {
+    "fighter": {
+      "label": "Fighter",
+      "hit_die": 10,
+      "priorities": ["str", "con", "dex", "wis", "cha", "int"],
+      "ac_base": 16,
+      "abilities": [
+        "Second Wind: once per session, recover half your maximum HP.",
+        "Power Strike: before an attack roll, take -2 on the roll for +4 damage."
+      ],
+      "kit": ["Longsword", "Shield", "Chain shirt", "Torch", "Rations (3 days)"]
+    },
+    "rogue": {
+      "label": "Rogue",
+      "hit_die": 8,
+      "priorities": ["dex", "cha", "int", "con", "wis", "str"],
+      "ac_base": 13,
+      "abilities": [
+        "Sneak Attack: +1d6 damage when you strike with surprise or an ally distracts your target.",
+        "Nimble Escape: you can disengage or hide as a quick action."
+      ],
+      "kit": ["Pair of daggers", "Lockpicks", "Dark hooded cloak", "Rope (15 m)", "Rations (3 days)"]
+    },
+    "mage": {
+      "label": "Mage",
+      "hit_die": 6,
+      "priorities": ["int", "wis", "con", "dex", "cha", "str"],
+      "ac_base": 11,
+      "abilities": [
+        "Arcane Bolt: a reliable ranged blast of force (1d8 damage).",
+        "Ritual Casting: with ten minutes and chalk, cast utility magic beyond your prepared spells."
+      ],
+      "kit": ["Spellbook", "Walking staff", "Component pouch", "Ink and quill", "Rations (3 days)"]
+    },
+    "cleric": {
+      "label": "Cleric",
+      "hit_die": 8,
+      "priorities": ["wis", "con", "str", "cha", "int", "dex"],
+      "ac_base": 15,
+      "abilities": [
+        "Healing Word: once per scene, restore 1d8+WIS HP to a creature you can see.",
+        "Turn Undead: present your symbol to drive back the restless dead."
+      ],
+      "kit": ["Mace", "Shield", "Scale mail", "Holy symbol", "Rations (3 days)"]
+    },
+    "ranger": {
+      "label": "Ranger",
+      "hit_die": 10,
+      "priorities": ["dex", "wis", "con", "str", "int", "cha"],
+      "ac_base": 14,
+      "abilities": [
+        "Hunter's Mark: focus on one quarry — advantage on tracking it and +2 damage against it.",
+        "Wild Tracker: you read terrain, weather, and trails like a written page."
+      ],
+      "kit": ["Longbow", "Quiver (20 arrows)", "Short sword", "Leather armor", "Snare wire", "Rations (5 days)"]
+    },
+    "bard": {
+      "label": "Bard",
+      "hit_die": 8,
+      "priorities": ["cha", "dex", "wis", "con", "int", "str"],
+      "ac_base": 12,
+      "abilities": [
+        "Inspire: grant an ally a d6 to add to any roll before the end of the scene.",
+        "Cutting Words: once per scene, subtract a d6 from an enemy's roll with a well-aimed barb."
+      ],
+      "kit": ["Lute", "Rapier", "Fine clothes", "Small mirror", "Rations (3 days)"]
+    }
+  },
+  "name_styles": {
+    "human":    { "first_start": ["Mar", "Ed", "Al", "Ro", "Jo", "Wil", "Hen", "Ka", "Bea", "Isol", "Ger", "Ot"], "first_end": ["ric", "win", "mund", "bert", "san", "trice", "de", "lin", "ta", "ver", "na", "mar"], "last_start": ["Ash", "Black", "Cole", "Fair", "Hart", "Mill", "Stone", "Web", "Cart", "Fletch"], "last_end": ["brook", "er", "field", "man", "wright", "well", "worth", "ley", "don", "gate"] },
+    "dwarf":    { "first_start": ["Bal", "Dur", "Gim", "Thra", "Kor", "Bru", "Dag", "Hel", "Mor", "Vond"], "first_end": ["din", "gan", "li", "grim", "nur", "na", "dis", "ga", "run", "brek"], "last_start": ["Iron", "Stone", "Deep", "Coal", "Hammer", "Anvil", "Copper", "Grey"], "last_end": ["beard", "fist", "delver", "brow", "song", "guard", "vein", "helm"] },
+    "elf":      { "first_start": ["Ael", "Cael", "Fen", "Ith", "Lor", "Nim", "Syl", "Thal", "Vael", "Yll"], "first_end": ["ion", "wen", "dril", "andra", "ias", "eth", "ora", "iel", "aen", "ys"], "last_start": ["Dawn", "Moon", "Star", "Wind", "Leaf", "River", "Frost", "Sun"], "last_end": ["whisper", "shade", "singer", "runner", "weaver", "gleam", "brook", "veil"] },
+    "halfling": { "first_start": ["Bil", "Mer", "Pip", "Ros", "Tan", "Wen", "Fal", "Dai", "Pol", "Nor"], "first_end": ["bo", "ry", "pin", "ie", "do", "na", "co", "sy", "la", "ben"], "last_start": ["Apple", "Butter", "Green", "Honey", "Puddle", "Thistle", "Warm", "Barley"], "last_end": ["barrel", "bloom", "bottom", "foot", "kettle", "patch", "pot", "field"] },
+    "orc":      { "first_start": ["Gro", "Kar", "Mog", "Ur", "Zug", "Dre", "Sha", "Bru", "Gna", "Ruk"], "first_end": ["gash", "nak", "tha", "zag", "ka", "rok", "gra", "dur", "sha", "mok"], "last_start": ["Skull", "Blood", "Iron", "Wolf", "Bone", "Ash", "Storm", "Scar"], "last_end": ["cleaver", "howl", "jaw", "render", "tusk", "eater", "brand", "maw"] },
+    "gnome":    { "first_start": ["Fizz", "Nim", "Bod", "Glim", "Wren", "Zook", "Pim", "Tink", "Quil", "Sniv"], "first_end": ["wick", "ble", "gart", "mer", "ina", "po", "dle", "eron", "ly", "bin"], "last_start": ["Cog", "Spark", "Gear", "Whistle", "Copper", "Fiddle", "Button", "Marble"], "last_end": ["spinner", "bang", "twist", "bolt", "gleam", "sprocket", "winkle", "snap"] }
+  }
+}

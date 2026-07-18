@@ -36,6 +36,7 @@ class ProjectBase(BaseModel):
 
 
 class ProjectCreate(ProjectBase):
+    kind: Literal["book", "rpg"] = "book"
     copy_codex_from: Optional[int] = None   # project_id to deep-copy codex from
     share_codex_from: Optional[int] = None  # project_id to live-share codex with
 
@@ -47,10 +48,12 @@ class ProjectUpdate(BaseModel):
     shared_codex_project_id: Optional[int] = None
     main_plot_color: Optional[str] = None
     plot_template: Optional[str] = None
+    campaign_brief: Optional[str] = None
 
 
 class ProjectOut(ProjectBase):
     id: int
+    kind: str = "book"
     created_at: datetime
     updated_at: datetime
     book_meta: Optional[BookMeta] = None
@@ -59,6 +62,7 @@ class ProjectOut(ProjectBase):
     cover_image: Optional[str] = None
     main_plot_color: Optional[str] = None
     plot_template: Optional[str] = None
+    campaign_brief: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -241,6 +245,7 @@ class CodexEntryBase(BaseModel):
     tags: list[str] = Field(default_factory=list)
     is_main_char: bool = False
     inventory: Optional[Any] = None  # CharacterInventory JSON or None
+    rpg_sheet: Optional[Any] = None  # RPG character sheet JSON or None
     image_path: Optional[str] = None
     image_crop: Optional[Any] = None  # {x, y, width, height} in original-image px, or None
     name_type: Optional[str] = None  # name generation style (NameType key)
@@ -265,6 +270,7 @@ class CodexEntryUpdate(BaseModel):
     tags: Optional[list[str]] = None
     is_main_char: Optional[bool] = None
     inventory: Optional[Any] = None
+    rpg_sheet: Optional[Any] = None
     image_crop: Optional[Any] = None
     name_type: Optional[str] = None
     share_mode: Optional[Literal["all", "specific", "none"]] = None
@@ -287,6 +293,12 @@ class CodexEntryOut(CodexEntryBase):
                 inv = json.loads(entry.inventory)
             except (json.JSONDecodeError, TypeError):
                 pass
+        sheet = None
+        if getattr(entry, "rpg_sheet", None):
+            try:
+                sheet = json.loads(entry.rpg_sheet)
+            except (json.JSONDecodeError, TypeError):
+                pass
         data = {
             "id": entry.id,
             "project_id": entry.project_id,
@@ -302,6 +314,7 @@ class CodexEntryOut(CodexEntryBase):
             "tags": entry.get_tags(),
             "is_main_char": bool(entry.is_main_char),
             "inventory": inv,
+            "rpg_sheet": sheet,
             "image_path": entry.image_path,
             "image_crop": entry.get_image_crop(),
             "name_type": entry.name_type,
@@ -908,4 +921,126 @@ class ResearchItemOut(BaseModel):
                 except Exception:
                     d["tags"] = []
                 return d
+        return data
+
+
+# ── Dungeon Master ────────────────────────────────────────────────────────────
+
+DICE_SIDES = (4, 6, 8, 10, 12, 20, 100)
+
+
+class DmSessionCreate(BaseModel):
+    title: Optional[str] = None
+
+
+class DmSessionOut(BaseModel):
+    id: int
+    project_id: int
+    title: str
+    status: str
+    summary: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class DmTurnOut(BaseModel):
+    id: int
+    session_id: int
+    role: str
+    content: str
+    rolls: Optional[dict] = None
+    effects: Optional[dict] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _parse_json_fields(cls, data):
+        if hasattr(data, "__dict__"):
+            d = {k: v for k, v in vars(data).items() if not k.startswith("_")}
+            for field in ("rolls", "effects"):
+                raw = d.get(field)
+                if isinstance(raw, str):
+                    try:
+                        d[field] = json.loads(raw)
+                    except Exception:
+                        d[field] = None
+            return d
+        return data
+
+
+class DmActionRequest(BaseModel):
+    content: str
+    model: Optional[str] = None
+
+
+class DmRollRequest(BaseModel):
+    sides: int  # one of DICE_SIDES
+    count: int = 1
+    modifier: int = 0
+    advantage: Optional[Literal["adv", "dis"]] = None  # single d20 only
+    purpose: Optional[str] = None
+    manual_results: Optional[list[int]] = None  # physical table rolls entered by the player
+
+
+class DmPrefsUpdate(BaseModel):
+    dice_mode: Optional[Literal["digital", "physical"]] = None
+    session_zero: Optional[dict] = None  # raw wizard answers, kept for prefill
+
+
+class DmFactOut(BaseModel):
+    id: int
+    project_id: int
+    kind: str
+    text: str
+    codex_entry_id: Optional[int] = None
+    source_turn_id: Optional[int] = None
+    status: str
+    weight: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class DmCharGenRequest(BaseModel):
+    species: str
+    char_class: str
+    method: Literal["roll", "array", "manual"] = "roll"
+    manual_stats: Optional[list[int]] = None  # six table-rolled totals (3–18), highest→lowest priority
+    name: Optional[str] = None
+
+
+class DmSceneOut(BaseModel):
+    id: int
+    project_id: int
+    session_id: Optional[int] = None
+    title: str
+    location_entry_id: Optional[int] = None
+    present_npcs: list[str] = Field(default_factory=list)
+    situation: Optional[str] = None
+    is_current: bool = True
+    oracle: Optional[dict] = None  # computed seeded draw, not stored
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _parse_npcs(cls, data):
+        if hasattr(data, "__dict__"):
+            d = {k: v for k, v in vars(data).items() if not k.startswith("_")}
+            raw = d.get("present_npcs")
+            if isinstance(raw, str):
+                try:
+                    d["present_npcs"] = json.loads(raw)
+                except Exception:
+                    d["present_npcs"] = []
+            elif raw is None:
+                d["present_npcs"] = []
+            d["is_current"] = bool(d.get("is_current", 1))
+            return d
         return data

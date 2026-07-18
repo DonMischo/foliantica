@@ -22,6 +22,8 @@ a = Analysis(
         # on its own.
         ("alembic.ini", "."),
         ("alembic", "alembic"),
+        # RPG ruleset read from disk by services/dm_chargen.py
+        ("data", "data"),
     ],
     hiddenimports=[
         # uvicorn internals that PyInstaller misses

@@ -1,5 +1,8 @@
 # ── Local data (contains database + API keys — never commit) ─────────────────
 data/
+# …but the RPG ruleset/oracle definitions are source, not local data
+!api/data/
+!api/data/**
 
 # ── Python / Backend ──────────────────────────────────────────────────────────
 __pycache__/

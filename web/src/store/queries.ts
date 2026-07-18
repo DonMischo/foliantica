@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient, useQueries } from "@tanstack/react-query";
-import { projectsApi, actsApi, chaptersApi, scenesApi, codexApi, settingsApi, timeApi, fragmentsApi, imagesApi, sceneCommandsApi, promptsApi, versionsApi, mentionStatsApi, writingLogApi, synopsisApi, timelineTracksApi, timelineEventsApi, grammarApi, valeApi, proseApi, fontsApi, seriesApi, analyticsApi, researchApi, submissionsApi, exportProfilesApi, publishersApi, achievementsApi, statsApi, syncApi, commentsApi, type StatsTotals, type SyncStatus, type SceneComment, type CommentCreate, type PositionSync } from "@/lib/api";
+import { projectsApi, actsApi, chaptersApi, scenesApi, codexApi, settingsApi, timeApi, fragmentsApi, imagesApi, sceneCommandsApi, promptsApi, versionsApi, mentionStatsApi, writingLogApi, synopsisApi, timelineTracksApi, timelineEventsApi, grammarApi, valeApi, proseApi, fontsApi, seriesApi, analyticsApi, researchApi, submissionsApi, exportProfilesApi, publishersApi, achievementsApi, statsApi, syncApi, commentsApi, dmApi, type StatsTotals, type SyncStatus, type SceneComment, type CommentCreate, type PositionSync, type DmRollRequest } from "@/lib/api";
 import type { GrammarCheckResult, ValeCheckResult, ProseCheckResult, PovStats, QuerySubmissionCreate, ExportProfileCreate } from "@/lib/api";
 import type { SceneCommandIn, ProjectItemLogEntry, ProjectCurrencyLogEntry, OpenRouterModel } from "@/lib/api";
 import type { AIPrompt, ProjectSceneItem, SceneVersion, SceneVersionDetail, CorkboardAct, CorkboardData, CorkboardPrefs, RelationsGraph, SeriesData, ProjectAnalytics, ResearchItem, QuerySubmission, ExportProfile, PublisherProfile } from "@/types";
@@ -1120,5 +1120,79 @@ export const useSyncCommentPositions = (sceneId: number) => {
   return useMutation({
     mutationFn: (updates: PositionSync[]) => commentsApi.syncPositions(sceneId, updates),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["comments", sceneId] }),
+  });
+};
+
+// ── Dungeon Master ────────────────────────────────────────────────────────────
+
+export const useDmSessions = (projectId: number) =>
+  useQuery({ queryKey: ["dm-sessions", projectId], queryFn: () => dmApi.sessions(projectId), enabled: !!projectId });
+
+export const useCreateDmSession = (projectId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (title?: string) => dmApi.createSession(projectId, title),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["dm-sessions", projectId] }),
+  });
+};
+
+export const useDmTurns = (sessionId?: number) =>
+  useQuery({ queryKey: ["dm-turns", sessionId], queryFn: () => dmApi.turns(sessionId!), enabled: !!sessionId });
+
+export const useDmRoll = (sessionId?: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: DmRollRequest) => dmApi.roll(sessionId!, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["dm-turns", sessionId] }),
+  });
+};
+
+export const useDmPrefs = (projectId: number) =>
+  useQuery({ queryKey: ["dm-prefs", projectId], queryFn: () => dmApi.prefs(projectId), enabled: !!projectId });
+
+export const useUpdateDmPrefs = (projectId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Parameters<typeof dmApi.updatePrefs>[1]) => dmApi.updatePrefs(projectId, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["dm-prefs", projectId] }),
+  });
+};
+
+export const useDmRuleset = () =>
+  useQuery({ queryKey: ["dm-ruleset"], queryFn: dmApi.ruleset, staleTime: Infinity });
+
+export const useDmStyle = () =>
+  useQuery({ queryKey: ["dm-style"], queryFn: dmApi.style, staleTime: Infinity });
+
+export const useDmScene = (projectId: number) =>
+  useQuery({ queryKey: ["dm-scene", projectId], queryFn: () => dmApi.currentScene(projectId), enabled: !!projectId });
+
+export const useDmThreads = (projectId: number) =>
+  useQuery({
+    queryKey: ["dm-facts", projectId, "threads"],
+    queryFn: () => dmApi.facts(projectId, { kind: "thread,foreshadow", status: "open" }),
+    enabled: !!projectId,
+  });
+
+export const useEndDmSession = (projectId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionId: number) => dmApi.endSession(sessionId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["dm-sessions", projectId] });
+      qc.invalidateQueries({ queryKey: ["dm-facts", projectId] });
+    },
+  });
+};
+
+export const useUndoDmEffects = (projectId: number, sessionId?: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (turnId: number) => dmApi.undoEffects(turnId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["dm-turns", sessionId] });
+      qc.invalidateQueries({ queryKey: ["dm-scene", projectId] });
+      qc.invalidateQueries({ queryKey: ["codex"] });
+    },
   });
 };

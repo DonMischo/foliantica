@@ -21,6 +21,7 @@ function makeEntry(overrides: Partial<CodexEntry> = {}): CodexEntry {
     image_path: null,
     image_crop: null,
     inventory: null,
+    rpg_sheet: null,
     share_mode: "all",
     share_future: true,
     created_at: "2024-01-01T00:00:00Z",

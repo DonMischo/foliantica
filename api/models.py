@@ -35,6 +35,9 @@ class Project(Base):
     subplot_names: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: ["name", ...]
     corkboard_prefs: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: layout, toggles, colors, stack names
     plot_template: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # selected plot template id
+    kind: Mapped[str] = mapped_column(String(20), nullable=False, default="book", server_default="book")  # 'book' | 'rpg'
+    dm_prefs: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: dice_mode ('digital'|'physical'), …
+    campaign_brief: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # DM memory L3: living "story so far"
 
     acts: Mapped[list["Act"]] = relationship(
         "Act", back_populates="project", cascade="all, delete-orphan",
@@ -178,6 +181,7 @@ class CodexEntry(Base):
     inventory:   Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: CharacterInventory
     image_path:  Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     image_crop:  Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: {x, y, width, height} in original-image px
+    rpg_sheet:   Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: RPG character sheet (stats, hp, ac, gear…)
     # Sharing: "all" = visible to all linked projects (default)
     #          "specific" = only projects listed in codex_entry_access
     #          "none" = private to owner project only
@@ -563,3 +567,70 @@ class TimelineEvent(Base):
     scene_time:   Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON
     color:        Mapped[str]           = mapped_column(String(20),  default="#6b7280")
     created_at:   Mapped[datetime]      = mapped_column(DateTime, default=_now)
+
+
+class DmSession(Base):
+    """One play session of an RPG-kind project. `summary` is filled at session end (memory L2)."""
+    __tablename__ = "dm_sessions"
+
+    id:         Mapped[int]           = mapped_column(Integer, primary_key=True, index=True)
+    project_id: Mapped[int]           = mapped_column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    title:      Mapped[str]           = mapped_column(String(255), default="Session")
+    status:     Mapped[str]           = mapped_column(String(20), default="active")  # active | ended
+    summary:    Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime]      = mapped_column(DateTime, default=_now)
+    updated_at: Mapped[datetime]      = mapped_column(DateTime, default=_now, onupdate=_now)
+
+    turns: Mapped[list["DmTurn"]] = relationship(
+        "DmTurn", back_populates="session", cascade="all, delete-orphan",
+        order_by="DmTurn.id"
+    )
+
+
+class DmTurn(Base):
+    """One entry in a session transcript (memory L0). Dice results live in `rolls` JSON;
+    structured state changes proposed by the DM (Phase 2) in `effects` JSON."""
+    __tablename__ = "dm_turns"
+
+    id:         Mapped[int]           = mapped_column(Integer, primary_key=True, index=True)
+    session_id: Mapped[int]           = mapped_column(Integer, ForeignKey("dm_sessions.id", ondelete="CASCADE"), index=True)
+    role:       Mapped[str]           = mapped_column(String(20))  # player | dm | roll | system
+    content:    Mapped[str]           = mapped_column(Text, default="")
+    rolls:      Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: sides, count, modifier, results, total, manual…
+    effects:    Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: state changes (Phase 2)
+    created_at: Mapped[datetime]      = mapped_column(DateTime, default=_now)
+
+    session: Mapped["DmSession"] = relationship("DmSession", back_populates="turns")
+
+
+class DmFact(Base):
+    """Atomic campaign memory (L1). Every fact links back to the turn it came
+    from (source_turn_id) — compressed memory stays traceable to raw evidence."""
+    __tablename__ = "dm_facts"
+
+    id:             Mapped[int]           = mapped_column(Integer, primary_key=True, index=True)
+    project_id:     Mapped[int]           = mapped_column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    kind:           Mapped[str]           = mapped_column(String(20), default="fact")  # fact | thread | secret | foreshadow
+    text:           Mapped[str]           = mapped_column(Text, nullable=False)
+    codex_entry_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # subject entry (no FK: shared codex)
+    source_turn_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("dm_turns.id", ondelete="SET NULL"), nullable=True, index=True)
+    status:         Mapped[str]           = mapped_column(String(20), default="open")  # open | resolved
+    weight:         Mapped[int]           = mapped_column(Integer, default=1)
+    created_at:     Mapped[datetime]      = mapped_column(DateTime, default=_now)
+
+
+class DmScene(Base):
+    """Tracked game scene of an RPG project: where the party is, who is present,
+    what the situation is. One row per scene; is_current marks the active one."""
+    __tablename__ = "dm_scenes"
+
+    id:                Mapped[int]           = mapped_column(Integer, primary_key=True, index=True)
+    project_id:        Mapped[int]           = mapped_column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    session_id:        Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("dm_sessions.id", ondelete="SET NULL"), nullable=True, index=True)
+    title:             Mapped[str]           = mapped_column(String(255), default="Scene")
+    location_entry_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # codex entry (no FK: shared codex lives in owner project)
+    present_npcs:      Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: ["name", ...]
+    situation:         Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_current:        Mapped[int]           = mapped_column(Integer, default=1)
+    created_at:        Mapped[datetime]      = mapped_column(DateTime, default=_now)
+    updated_at:        Mapped[datetime]      = mapped_column(DateTime, default=_now, onupdate=_now)

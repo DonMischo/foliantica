@@ -7,7 +7,7 @@ import {
   BookOpen, Plus, Trash2, Calendar, BookCopy, Sparkles,
   Link2, ImageIcon, Settings, Upload, FileText, BookMarked, FolderOpen,
   Loader2, Download, Flame, BarChart2, BookMarked as SeriesIcon, GripVertical,
-  ChevronUp, ChevronDown, Pencil, Check, X as XIcon, ScrollText,
+  ChevronUp, ChevronDown, Pencil, Check, X as XIcon, ScrollText, Dices,
 } from "lucide-react";
 import { imagesApi, importApi } from "@/lib/api";
 import { AchievementToastQueue } from "@/components/AchievementToast";
@@ -688,6 +688,7 @@ export default function Dashboard() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [projectKind, setProjectKind] = useState<"book" | "rpg">("book");
   const [codexOption, setCodexOption] = useState<CodexOption>("fresh");
   const [copyFromId, setCopyFromId] = useState<number | "">("");
   const [shareFromId, setShareFromId] = useState<number | "">("");
@@ -777,6 +778,7 @@ export default function Dashboard() {
   const handleOpen = () => {
     setTitle("");
     setDescription("");
+    setProjectKind("book");
     setCodexOption("fresh");
     setCopyFromId("");
     setShareFromId("");
@@ -785,9 +787,10 @@ export default function Dashboard() {
 
   const handleCreate = async () => {
     if (!title.trim()) return;
-    const payload: { title: string; description?: string; copy_codex_from?: number; share_codex_from?: number } = {
+    const payload: { title: string; description?: string; kind?: "book" | "rpg"; copy_codex_from?: number; share_codex_from?: number } = {
       title: title.trim(),
       description: description.trim() || undefined,
+      kind: projectKind,
     };
     if (codexOption === "copy" && copyFromId !== "") {
       payload.copy_codex_from = Number(copyFromId);
@@ -797,7 +800,7 @@ export default function Dashboard() {
     }
     const project = await createProject.mutateAsync(payload);
     setDialogOpen(false);
-    router.push(`/projects/${project.id}`);
+    router.push(projectKind === "rpg" ? `/projects/${project.id}/dm` : `/projects/${project.id}`);
   };
 
   return (
@@ -1177,6 +1180,40 @@ export default function Dashboard() {
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t("dash_kind_section")}</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setProjectKind("book")}
+                  className={cn(
+                    "flex flex-col items-center gap-1.5 rounded-lg border p-3 text-xs transition-colors",
+                    projectKind === "book"
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border text-muted-foreground hover:border-border/80 hover:text-foreground"
+                  )}
+                >
+                  <BookOpen className="h-5 w-5" />
+                  <span className="font-medium">{t("dash_kind_book")}</span>
+                  <span className="text-[10px] opacity-70 text-center">{t("dash_kind_book_desc")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProjectKind("rpg")}
+                  className={cn(
+                    "flex flex-col items-center gap-1.5 rounded-lg border p-3 text-xs transition-colors",
+                    projectKind === "rpg"
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border text-muted-foreground hover:border-border/80 hover:text-foreground"
+                  )}
+                >
+                  <Dices className="h-5 w-5" />
+                  <span className="font-medium">{t("dash_kind_rpg")}</span>
+                  <span className="text-[10px] opacity-70 text-center">{t("dash_kind_rpg_desc")}</span>
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2">

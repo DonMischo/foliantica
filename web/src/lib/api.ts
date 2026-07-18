@@ -7,7 +7,7 @@ import type {
   CorkboardPrefs, SceneConnection, RelationsGraph,
   TimelineTrack, TimelineEventItem, SeriesData,
   ProjectAnalytics, ResearchItem, QuerySubmission, ExportProfile, PublisherProfile,
-  Achievement,
+  Achievement, DmSession, DmTurn, DmPrefs, DmScene, DmRuleset, DmCharacterDraft, DmFact,
 } from "@/types";
 
 const BASE = "/api";
@@ -112,9 +112,9 @@ export interface PovStats {
 export const projectsApi = {
   list: () => req<Project[]>("/projects"),
   get: (id: number) => req<Project>(`/projects/${id}`),
-  create: (data: { title: string; description?: string; copy_codex_from?: number; share_codex_from?: number }) =>
+  create: (data: { title: string; description?: string; kind?: "book" | "rpg"; copy_codex_from?: number; share_codex_from?: number }) =>
     req<Project>("/projects", { method: "POST", body: JSON.stringify(data) }),
-  update: (id: number, data: Partial<Pick<Project, "title" | "description">> & { book_meta?: BookMeta | null; main_plot_color?: string | null; plot_template?: string | null }) =>
+  update: (id: number, data: Partial<Pick<Project, "title" | "description">> & { book_meta?: BookMeta | null; main_plot_color?: string | null; plot_template?: string | null; campaign_brief?: string | null }) =>
     req<Project>(`/projects/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id: number) => req<void>(`/projects/${id}`, { method: "DELETE" }),
   exportStructure: (id: number) =>
@@ -692,6 +692,55 @@ export const chatApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scene_id: sceneId, messages, model }),
     }),
+};
+
+// ── Dungeon Master ────────────────────────────────────────────────────────────
+
+export interface DmRollRequest {
+  sides: number;
+  count?: number;
+  modifier?: number;
+  advantage?: "adv" | "dis" | null;
+  purpose?: string;
+  manual_results?: number[];
+}
+
+export const dmApi = {
+  sessions: (projectId: number) => req<DmSession[]>(`/projects/${projectId}/dm/sessions`),
+  createSession: (projectId: number, title?: string) =>
+    req<DmSession>(`/projects/${projectId}/dm/sessions`, { method: "POST", body: JSON.stringify({ title }) }),
+  deleteSession: (sessionId: number) => req<void>(`/dm/sessions/${sessionId}`, { method: "DELETE" }),
+  turns: (sessionId: number) => req<DmTurn[]>(`/dm/sessions/${sessionId}/turns`),
+  roll: (sessionId: number, data: DmRollRequest) =>
+    req<DmTurn>(`/dm/sessions/${sessionId}/roll`, { method: "POST", body: JSON.stringify(data) }),
+  prefs: (projectId: number) => req<DmPrefs>(`/projects/${projectId}/dm/prefs`),
+  updatePrefs: (projectId: number, data: DmPrefs) =>
+    req<DmPrefs>(`/projects/${projectId}/dm/prefs`, { method: "PATCH", body: JSON.stringify(data) }),
+  actionStream: (sessionId: number, content: string, model?: string) =>
+    fetch(`${BASE}/dm/sessions/${sessionId}/action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content, model }),
+    }),
+  ruleset: () => req<DmRuleset>(`/dm/ruleset`),
+  generateCharacter: (
+    projectId: number,
+    data: { species: string; char_class: string; method: "roll" | "array" | "manual"; manual_stats?: number[]; name?: string },
+  ) =>
+    req<DmCharacterDraft>(`/projects/${projectId}/dm/generate-character`, { method: "POST", body: JSON.stringify(data) }),
+  currentScene: (projectId: number) => req<DmScene | null>(`/projects/${projectId}/dm/scene`),
+  extractEffects: (turnId: number) => req<DmTurn>(`/dm/turns/${turnId}/extract`, { method: "POST" }),
+  undoEffects: (turnId: number) => req<DmTurn>(`/dm/turns/${turnId}/undo-effects`, { method: "POST" }),
+  facts: (projectId: number, params?: { kind?: string; status?: string }) => {
+    const qs = new URLSearchParams(params as Record<string, string>).toString();
+    return req<DmFact[]>(`/projects/${projectId}/dm/facts${qs ? `?${qs}` : ""}`);
+  },
+  consolidate: (sessionId: number) =>
+    req<{ extracted: number; pending_turns: number }>(`/dm/sessions/${sessionId}/consolidate`, { method: "POST" }),
+  endSession: (sessionId: number) =>
+    req<{ session: DmSession; warning: string | null }>(`/dm/sessions/${sessionId}/end`, { method: "POST" }),
+  style: () => req<{ ban_list: string[] }>(`/dm/style`),
+  deleteTurn: (turnId: number) => req<void>(`/dm/turns/${turnId}`, { method: "DELETE" }),
 };
 
 // ── Grammar check ─────────────────────────────────────────────────────────────
