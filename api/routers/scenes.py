@@ -40,7 +40,26 @@ def _collab_check_scene(request: Request, scene_id: int, *, write: bool = False)
 
 # ── Mention scanning ──────────────────────────────────────────────────────────
 
-def _scan_mentions(content: str, entries: list[CodexEntry]) -> dict[int, int]:
+def _genitive_suffixed(name: str) -> str | None:
+    """German genitive of a name/phrase by suffixing "-s" onto the last word,
+    e.g. "Miya" -> "Miyas". Mirrors docker/spacy/server.py's helper of the same
+    name (duplicated, not imported — separate runtime/container) so the plain
+    regex fallback below recognizes the same possessive forms the spaCy path
+    does. Names already ending in a sibilant (s/ß/x/z, or "tz") form the
+    genitive with an apostrophe instead of a fused "-s", so those are left
+    unmodified here."""
+    name = name.strip()
+    if not name:
+        return None
+    *rest, last = name.split(" ")
+    if not last or not last[-1].isalpha():
+        return None
+    if last[-1].lower() in "sxzß" or last.lower().endswith("tz"):
+        return None
+    return " ".join([*rest, last + "s"])
+
+
+def _scan_mentions(content: str, entries: list[CodexEntry], lang: str = "en") -> dict[int, int]:
     """Return {codex_id: count} for every entry that appears in content."""
     plain = re.sub(r"<[^>]+>", "", content or "")
     counts: dict[int, int] = {}
@@ -49,6 +68,8 @@ def _scan_mentions(content: str, entries: list[CodexEntry]) -> dict[int, int]:
         names = [n for n in names if n]
         if not names:
             continue
+        if lang == "de":
+            names = names + [g for n in names if (g := _genitive_suffixed(n))]
         pattern = r"(?<!\w)(?:" + "|".join(re.escape(n) for n in names) + r")(?!\w)"
         c = len(re.findall(pattern, plain, re.IGNORECASE))
         if c:
@@ -56,7 +77,7 @@ def _scan_mentions(content: str, entries: list[CodexEntry]) -> dict[int, int]:
     return counts
 
 
-def _scan_mentions_spacy(content: str, entries: list[CodexEntry], spacy_url: str) -> dict[int, int] | None:
+def _scan_mentions_spacy(content: str, entries: list[CodexEntry], spacy_url: str, lang: str = "en") -> dict[int, int] | None:
     """Call the spaCy service for token-aware mention scanning.
     Returns {codex_id: count} or None if the service is unavailable."""
     try:
@@ -72,6 +93,7 @@ def _scan_mentions_spacy(content: str, entries: list[CodexEntry], spacy_url: str
                 }
                 for e in entries
             ],
+            "lang": lang,
         }
         r = httpx.post(f"{spacy_url.rstrip('/')}/scan", json=payload, timeout=10.0)
         if r.status_code == 200:
@@ -79,6 +101,19 @@ def _scan_mentions_spacy(content: str, entries: list[CodexEntry], spacy_url: str
     except Exception:
         pass
     return None
+
+
+def _project_lang_code(project_id: int, db: Session) -> str:
+    """BCP-47 primary subtag of the project's book_meta.language, e.g.
+    "de-DE" -> "de". Defaults to "en" when unset or unparsable."""
+    row = db.execute(text("SELECT book_meta FROM projects WHERE id = :pid"), {"pid": project_id}).first()
+    if not row or not row[0]:
+        return "en"
+    try:
+        bm = json.loads(row[0])
+        return (bm.get("language") or "en").split("-")[0].split("_")[0].lower()
+    except Exception:
+        return "en"
 
 
 def _get_project_id(scene_id: int, db: Session) -> int | None:
@@ -127,11 +162,12 @@ def _update_mention_stats(
     if entries is None:
         entries = db.query(CodexEntry).filter(CodexEntry.project_id == project_id).all()
 
+    lang = _project_lang_code(project_id, db)
     settings = db.query(UserSettings).first()
     if settings and settings.spacy_enabled and settings.spacy_url:
-        counts = _scan_mentions_spacy(content, entries, settings.spacy_url) or _scan_mentions(content, entries)
+        counts = _scan_mentions_spacy(content, entries, settings.spacy_url, lang) or _scan_mentions(content, entries, lang)
     else:
-        counts = _scan_mentions(content, entries)
+        counts = _scan_mentions(content, entries, lang)
 
     # Replace all existing stats for this scene
     db.query(MentionStat).filter(MentionStat.scene_id == scene_id).delete()

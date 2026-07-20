@@ -9,7 +9,9 @@ POST /scan
       name: str,
       aliases: [str],
       entry_type: str
-    }]
+    }],
+    lang: str = "en"          -- when "de", also matches the German genitive
+                                  ("-s" fused onto the name, e.g. "Miyas")
   }
   response: {
     counts: { "<codex_id>": int },   -- known-entry mention counts
@@ -26,8 +28,32 @@ from spacy.matcher import PhraseMatcher
 
 app = FastAPI(title="Foliantica spaCy")
 
-# Tokenizer-only pipeline for PhraseMatcher (mention scanning) — English is fine for all Latin-script languages
+# Tokenizer-only pipeline for PhraseMatcher (mention scanning). Plain tokenization
+# is language-agnostic enough for Latin-script text, but inflected possessive
+# forms are not — German genitive fuses "-s" directly onto a name with no
+# separator (e.g. "Miyas Schwert"), so there's no token boundary for any
+# tokenizer to split on. That case is handled separately via
+# _genitive_suffixed() below, gated on the caller's declared language.
 nlp = spacy.load("en_core_web_sm", disable=["ner", "parser", "attribute_ruler", "lemmatizer"])
+
+
+def _genitive_suffixed(name: str) -> str | None:
+    """German genitive of a name/phrase by suffixing "-s" onto the last word,
+    e.g. "Miya" -> "Miyas", "Miya Stormwind" -> "Miya Stormwinds". Registered
+    as an extra PhraseMatcher pattern under the same entry id, since there is
+    no separator for the tokenizer to split the fused suffix on (unlike the
+    English possessive's apostrophe). Names already ending in a sibilant
+    (s/ß/x/z, or "tz") form the genitive with an apostrophe instead of a fused
+    "-s" (e.g. "Klaus" -> "Klaus'"), so those are left unmodified here."""
+    name = name.strip()
+    if not name:
+        return None
+    *rest, last = name.split(" ")
+    if not last or not last[-1].isalpha():
+        return None
+    if last[-1].lower() in "sxzß" or last.lower().endswith("tz"):
+        return None
+    return " ".join([*rest, last + "s"])
 
 # Language → model name mapping for NER
 LANG_MODELS: dict[str, str] = {
@@ -74,6 +100,7 @@ class EntryIn(BaseModel):
 class ScanRequest(BaseModel):
     content: str
     entries: list[EntryIn]
+    lang: str = "en"
 
 
 class SuggestRequest(BaseModel):
@@ -117,6 +144,8 @@ def scan(req: ScanRequest):
         all_names = [n for n in [entry.name] + entry.aliases if n.strip()]
         if not all_names:
             continue
+        if req.lang == "de":
+            all_names = all_names + [g for n in all_names if (g := _genitive_suffixed(n))]
         patterns = [nlp.make_doc(n) for n in all_names]
         matcher.add(str(entry.id), patterns)
 

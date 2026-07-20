@@ -14,6 +14,7 @@ function makeEntry(overrides: Partial<CodexEntry> = {}): CodexEntry {
     groups: [],
     species: null,
     subtype: null,
+    gender: null,
     tags: [],
     is_main_char: false,
     name_type: null,
@@ -83,5 +84,62 @@ describe("patchEntryAliases", () => {
     const patched = patchEntryAliases(entries);
     expect(patched[0]._allTerms).toEqual(["Mr. Baggins", "Frodo"]);
     expect(patched[1]._allTerms).toEqual(["Sam"]);
+  });
+});
+
+// ── German genitive ("Lyras" = "Lyra's") ───────────────────────────────────────
+//
+// German fuses the genitive "-s" directly onto a name with no separator
+// ("Lyras Schwert"), unlike English's apostrophe ("Lyra's sword") — the plain
+// \b(name)\b regex has no boundary to already catch this, so lang="de"
+// registers the suffixed form as an extra term.
+
+describe("patchEntryAliases — German genitive", () => {
+  it("does not add a genitive term without lang='de'", () => {
+    const [patched] = patchEntryAliases([makeEntry({ name: "Lyra", aliases: [] })]);
+    expect(patched._allTerms).toEqual(["Lyra"]);
+  });
+
+  it("does not add a genitive term for lang='en'", () => {
+    const [patched] = patchEntryAliases([makeEntry({ name: "Lyra", aliases: [] })], "en");
+    expect(patched._allTerms).toEqual(["Lyra"]);
+  });
+
+  it("adds the genitive form for lang='de'", () => {
+    const [patched] = patchEntryAliases([makeEntry({ name: "Lyra", aliases: [] })], "de");
+    expect(patched._allTerms).toContain("Lyra");
+    expect(patched._allTerms).toContain("Lyras");
+  });
+
+  it("accepts a full BCP 47 tag like 'de-DE'", () => {
+    const [patched] = patchEntryAliases([makeEntry({ name: "Lyra", aliases: [] })], "de-DE");
+    expect(patched._allTerms).toContain("Lyras");
+  });
+
+  it("also suffixes aliases", () => {
+    const [patched] = patchEntryAliases(
+      [makeEntry({ name: "Miyabelle", aliases: ["Miya"] })],
+      "de"
+    );
+    expect(patched._allTerms).toContain("Miya");
+    expect(patched._allTerms).toContain("Miyas");
+  });
+
+  it("suffixes only the last word of a multi-word name", () => {
+    const [patched] = patchEntryAliases([makeEntry({ name: "Lyra Nightsong", aliases: [] })], "de");
+    expect(patched._allTerms).toContain("Lyra Nightsongs");
+    expect(patched._allTerms).not.toContain("Lyras Nightsong");
+  });
+
+  it("does not add a fused suffix for names ending in a sibilant", () => {
+    // "Klaus" forms the genitive with an apostrophe ("Klaus'"), not "Klauss"
+    const [patched] = patchEntryAliases([makeEntry({ name: "Klaus", aliases: [] })], "de");
+    expect(patched._allTerms).toEqual(["Klaus"]);
+  });
+
+  it("genitive form sorts before the bare name (longer first)", () => {
+    const [patched] = patchEntryAliases([makeEntry({ name: "Lyra", aliases: [] })], "de");
+    expect(patched._allTerms[0]).toBe("Lyras");
+    expect(patched._allTerms[1]).toBe("Lyra");
   });
 });

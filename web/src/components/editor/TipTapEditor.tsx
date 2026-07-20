@@ -72,6 +72,9 @@ interface Props {
   hasSelectionRef?: React.MutableRefObject<(() => boolean) | null>;
   /** When false, the CodexHighlight extension is omitted entirely */
   showCodexHighlights?: boolean;
+  /** Project's BCP 47 language (book_meta.language) — enables language-specific
+   * codex highlight matching, e.g. the German genitive ("Lyras" for "Lyra"). */
+  language?: string | null;
 }
 
 // Normalise typographic quotes to ASCII on paste.
@@ -159,16 +162,16 @@ function applyTypewriterScroll(
   } catch { /* view not mounted */ }
 }
 
-export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onOpenLink, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, jumpToValeMatchRef, jumpToTextRef, onPrefillEntry, aiDisabled = false, readOnly = false, commentHighlights, getCommentPositionsRef, onCommentRequest, triggerCommentRef, hasSelectionRef, showCodexHighlights = true }: Props) {
+export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onOpenLink, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, jumpToValeMatchRef, jumpToTextRef, onPrefillEntry, aiDisabled = false, readOnly = false, commentHighlights, getCommentPositionsRef, onCommentRequest, triggerCommentRef, hasSelectionRef, showCodexHighlights = true, language }: Props) {
   const showLineNumbers  = useUIStore((s) => s.showParagraphNumbers);
   const typewriterMode   = useUIStore((s) => s.typewriterMode);
   const typewriterOffset = useUIStore((s) => s.typewriterOffset);
   const focusMode        = useUIStore((s) => s.focusMode);
 
-  const entriesRef = useRef<PatchedEntry[]>(patchEntryAliases(codexEntries));
+  const entriesRef = useRef<PatchedEntry[]>(patchEntryAliases(codexEntries, language));
   const onClickRef = useRef(onCodexEntryClick);
   const showCodexRef = useRef(showCodexHighlights);
-  entriesRef.current = patchEntryAliases(codexEntries);
+  entriesRef.current = patchEntryAliases(codexEntries, language);
   onClickRef.current = onCodexEntryClick;
   showCodexRef.current = showCodexHighlights;
 

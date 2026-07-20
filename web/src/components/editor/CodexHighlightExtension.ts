@@ -9,15 +9,48 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/**
+ * German genitive of a name/phrase by suffixing "-s" onto the last word,
+ * e.g. "Lyra" -> "Lyras", "Lyra Nightsong" -> "Lyra Nightsongs". German fuses
+ * the genitive onto a name with no separator (unlike English's apostrophe,
+ * "Lyra's"), so there is no word boundary for the highlight regex to already
+ * catch this — the suffixed form is registered as its own term instead.
+ * Names already ending in a sibilant (s/ß/x/z, or "tz") form the genitive
+ * with an apostrophe instead of a fused "-s" (e.g. "Klaus" -> "Klaus'"), so
+ * those are left unmodified. Mirrors _genitive_suffixed in
+ * api/routers/scenes.py and docker/spacy/server.py (duplicated, not shared —
+ * different runtimes), so all three mention-matching paths agree.
+ */
+function genitiveSuffixed(name: string): string | null {
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+  const parts = trimmed.split(" ");
+  const last = parts[parts.length - 1];
+  const lastChar = last?.[last.length - 1];
+  if (!lastChar || !/\p{L}/u.test(lastChar)) return null;
+  const lastLower = last.toLowerCase();
+  if ("sxzß".includes(lastLower[lastLower.length - 1]) || lastLower.endsWith("tz")) return null;
+  return [...parts.slice(0, -1), last + "s"].join(" ");
+}
+
 export interface PatchedEntry extends CodexEntry {
   _allTerms: string[];
 }
 
-export function patchEntryAliases(entries: CodexEntry[]): PatchedEntry[] {
-  return entries.map((e) => ({
-    ...e,
-    _allTerms: [e.name, ...(Array.isArray(e.aliases) ? e.aliases : [])].sort((a, b) => b.length - a.length),
-  }));
+/** `lang`: BCP 47 project language (e.g. "de-DE") — pass to also match the
+ * German genitive form of each name/alias. Omit or "en" for English-only. */
+export function patchEntryAliases(entries: CodexEntry[], lang?: string | null): PatchedEntry[] {
+  const primaryLang = (lang || "en").split("-")[0].split("_")[0].toLowerCase();
+  return entries.map((e) => {
+    const base = [e.name, ...(Array.isArray(e.aliases) ? e.aliases : [])];
+    const terms = primaryLang === "de"
+      ? [...base, ...base.map(genitiveSuffixed).filter((t): t is string => !!t)]
+      : base;
+    return {
+      ...e,
+      _allTerms: terms.sort((a, b) => b.length - a.length),
+    };
+  });
 }
 
 function buildDecorations(doc: any, entries: PatchedEntry[]): DecorationSet {

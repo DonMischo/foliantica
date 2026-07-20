@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import server
-from server import _strip_html, app
+from server import _strip_html, _genitive_suffixed, app
 
 client = TestClient(app)
 
@@ -169,3 +169,33 @@ class TestSuggest:
         # Only one entry for "Miya", and the punctuated form must not appear
         assert texts.count("Miya") <= 1
         assert "Miya!" not in texts
+
+
+# ── _genitive_suffixed (German possessive: "Miya" -> "Miyas") ─────────────────
+#
+# German fuses the genitive "-s" directly onto a name with no separator
+# ("Miyas Schwert"), unlike English's apostrophe ("Miya's sword") — spaCy's
+# tokenizer has nothing to split that fused form on, so /scan registers the
+# suffixed form as an extra PhraseMatcher pattern when lang="de".
+
+class TestGenitiveSuffixed:
+    def test_simple_name(self):
+        assert _genitive_suffixed("Miya") == "Miyas"
+
+    def test_multiword_suffixes_last_word_only(self):
+        assert _genitive_suffixed("Miya Stormwind") == "Miya Stormwinds"
+
+    def test_sibilant_ending_returns_none(self):
+        # "Klaus" forms the genitive with an apostrophe ("Klaus'"), not a
+        # fused -s ("Klauss") — no synthetic pattern should be generated.
+        for name in ["Klaus", "Felix", "Fritz", "Franz", "Voß"]:
+            assert _genitive_suffixed(name) is None, name
+
+    def test_empty_string_returns_none(self):
+        assert _genitive_suffixed("") is None
+
+    def test_whitespace_only_returns_none(self):
+        assert _genitive_suffixed("   ") is None
+
+    def test_leading_trailing_whitespace_stripped(self):
+        assert _genitive_suffixed("  Miya  ") == "Miyas"

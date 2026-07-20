@@ -927,6 +927,7 @@ export default function ScenePage() {
             triggerCommentRef={triggerCommentRef}
             hasSelectionRef={hasSelectionRef}
             showCodexHighlights={showCodexHighlights}
+            language={project?.book_meta?.language}
           />
           <StatusBar sceneWordCount={wordCount} />
         </div>

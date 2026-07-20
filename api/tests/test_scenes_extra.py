@@ -487,9 +487,9 @@ class TestScanMentions:
             aliases=json.dumps(aliases) if aliases is not None else None,
         )
 
-    def _scan(self, content: str, entries: list) -> dict:
+    def _scan(self, content: str, entries: list, lang: str = "en") -> dict:
         from routers.scenes import _scan_mentions
-        return _scan_mentions(content, entries)
+        return _scan_mentions(content, entries, lang)
 
     def test_no_entries_returns_empty(self):
         assert self._scan("<p>Clara walked home.</p>", []) == {}
@@ -572,3 +572,93 @@ class TestScanMentions:
         entry = self._entry(1, "Ärger")
         r = self._scan("<p>Ärger war groß.</p>", [entry])
         assert r == {1: 1}
+
+
+# ── _scan_mentions: German genitive ("Miyas" = "Miya's") ──────────────────────
+
+class TestScanMentionsGermanGenitive:
+    """German forms the possessive by fusing "-s" onto the name with no
+    separator ("Miyas Schwert"), unlike English's apostrophe ("Miya's sword").
+    lang="de" must recognize the fused form as a mention; lang="en" (default)
+    must not, since an unrelated word could coincidentally end in the name."""
+
+    def _entry(self, id: int, name: str, aliases: list[str] | None = None) -> object:
+        from types import SimpleNamespace
+        return SimpleNamespace(
+            id=id,
+            name=name,
+            aliases=json.dumps(aliases) if aliases is not None else None,
+        )
+
+    def _scan(self, content: str, entries: list, lang: str = "en") -> dict:
+        from routers.scenes import _scan_mentions
+        return _scan_mentions(content, entries, lang)
+
+    def test_bare_name_still_matches_in_german(self):
+        entry = self._entry(1, "Miya")
+        r = self._scan("<p>Miya ging nach Hause.</p>", [entry], lang="de")
+        assert r == {1: 1}
+
+    def test_genitive_form_not_matched_without_german_lang(self):
+        entry = self._entry(1, "Miya")
+        r = self._scan("<p>Miyas Schwert glänzte.</p>", [entry])  # default lang="en"
+        assert 1 not in r
+
+    def test_genitive_form_matched_with_german_lang(self):
+        entry = self._entry(1, "Miya")
+        r = self._scan("<p>Miyas Schwert glänzte.</p>", [entry], lang="de")
+        assert r == {1: 1}
+
+    def test_bare_and_genitive_both_counted(self):
+        entry = self._entry(1, "Miya")
+        r = self._scan("<p>Miya zog. Miyas Schwert glänzte.</p>", [entry], lang="de")
+        assert r == {1: 2}
+
+    def test_genitive_alias_matched(self):
+        entry = self._entry(1, "Miyabelle", ["Miya"])
+        r = self._scan("<p>Miyas Schwert glänzte.</p>", [entry], lang="de")
+        assert r == {1: 1}
+
+    def test_unrelated_word_not_matched(self):
+        # "Klaras" should not spuriously match "Klara" via genitive if absent
+        entry = self._entry(1, "Klara")
+        r = self._scan("<p>Etwas anderes geschah.</p>", [entry], lang="de")
+        assert 1 not in r
+
+    def test_sibilant_ending_name_gets_no_fused_suffix(self):
+        # "Klaus" forms the genitive with an apostrophe ("Klaus'"), not a fused
+        # -s ("Klauss") — the bare name must still match on its own.
+        entry = self._entry(1, "Klaus")
+        r = self._scan("<p>Klaus kam vorbei.</p>", [entry], lang="de")
+        assert r == {1: 1}
+        r2 = self._scan("<p>Klauss Schwert glänzte.</p>", [entry], lang="de")
+        assert 1 not in r2
+
+    def test_multiword_name_suffixes_last_word(self):
+        entry = self._entry(1, "Miya Sturmwind")
+        r = self._scan("<p>Miya Sturmwinds Schwert glänzte.</p>", [entry], lang="de")
+        assert r == {1: 1}
+
+
+# ── _genitive_suffixed unit tests ──────────────────────────────────────────────
+
+class TestGenitiveSuffixed:
+    def _fn(self, name: str):
+        from routers.scenes import _genitive_suffixed
+        return _genitive_suffixed(name)
+
+    def test_simple_name(self):
+        assert self._fn("Miya") == "Miyas"
+
+    def test_multiword_suffixes_last_word_only(self):
+        assert self._fn("Miya Sturmwind") == "Miya Sturmwinds"
+
+    def test_sibilant_ending_returns_none(self):
+        for name in ["Klaus", "Felix", "Fritz", "Franz", "Voß"]:
+            assert self._fn(name) is None, name
+
+    def test_empty_string_returns_none(self):
+        assert self._fn("") is None
+
+    def test_whitespace_only_returns_none(self):
+        assert self._fn("   ") is None
