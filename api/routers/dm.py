@@ -16,16 +16,18 @@ from sqlalchemy.orm import Session
 
 from ai_providers import stream_provider, post_provider
 from database import get_db, SessionLocal
-from models import Project, DmFact, DmSession, DmScene, DmTurn, CodexEntry, UserSettings, AIPrompt, _now
+from models import Project, DmFact, DmSession, DmScene, DmTurn, CodexEntry, CodexRelation, UserSettings, AIPrompt, _now
 from routers.ai import _resolve_provider, LANGUAGE_NAMES
 from routers.codex import _codex_owner_id
 from schemas import (
     DICE_SIDES,
-    DmActionRequest, DmCharGenRequest, DmFactOut, DmPrefsUpdate, DmRollRequest,
-    DmSceneOut, DmSessionCreate, DmSessionOut, DmTurnOut,
+    CodexEntryOut,
+    DmActionRequest, DmCharacterSaveRequest, DmCharGenRequest, DmFactOut, DmPrefsUpdate,
+    DmRollRequest, DmSceneOut, DmSessionCreate, DmSessionOut, DmTurnOut,
 )
 from services.dm_chargen import build_character, generate_npc, load_ruleset, roll_stat_pool
 from services.dm_oracle import ban_list, draw_for_scene
+from services import wildcards as wc
 
 router = APIRouter(prefix="/api", tags=["dm"])
 
@@ -53,31 +55,70 @@ def _get_session(session_id: int, db: Session) -> DmSession:
 
 
 def _project_language(project: Project) -> str:
-    lang_code = "en"
-    if project.book_meta:
+    lang_code = None
+    # dm_prefs.language wins — RPG projects have no Book Meta dialog
+    if project.dm_prefs:
         try:
-            lang_code = json.loads(project.book_meta).get("language") or "en"
+            lang_code = json.loads(project.dm_prefs).get("language")
         except (json.JSONDecodeError, TypeError):
             pass
-    base = lang_code.split("-")[0].lower()
-    return LANGUAGE_NAMES.get(base, lang_code)
+    if not lang_code and project.book_meta:
+        try:
+            lang_code = json.loads(project.book_meta).get("language")
+        except (json.JSONDecodeError, TypeError):
+            pass
+    base = (lang_code or "en").split("-")[0].lower()
+    return LANGUAGE_NAMES.get(base, lang_code or "en")
 
 
-def _entry_line(e: CodexEntry) -> str:
+def _entry_line(e: CodexEntry, name_by_id: dict[int, str] | None = None) -> str:
+    name_by_id = name_by_id or {}
     aliases = e.get_aliases()
     alias_str = f" (also: {', '.join(aliases)})" if aliases else ""
     line = f"**{e.name}** [{e.entry_type}]{alias_str}: {e.description or ''}"
     if e.rpg_sheet:
         try:
             sheet = json.loads(e.rpg_sheet)
-            gear = ", ".join(g["name"] for g in sheet.get("gear", []))
             conds = ", ".join(sheet.get("conditions", []))
+            species = sheet.get("species", "")
+            if sheet.get("species2"):
+                species = f"{species}/{sheet['species2']} halfblood"
+            gender = sheet.get("gender") or getattr(e, "gender", None)
             line += (
-                f" — {sheet.get('species', '')} {sheet.get('class', '')} L{sheet.get('level', 1)}, "
+                f" — {gender + ' ' if gender else ''}{species} {sheet.get('class', '')} L{sheet.get('level', 1)}, "
                 f"HP {sheet.get('hp', {}).get('current', '?')}/{sheet.get('hp', {}).get('max', '?')}, AC {sheet.get('ac', '?')}"
                 + (f", conditions: {conds}" if conds else "")
-                + (f", gear: {gear}" if gear else "")
             )
+            legacy_gear = ", ".join(g["name"] for g in sheet.get("gear", []))
+            if legacy_gear:
+                line += f", gear: {legacy_gear}"
+            looks = sheet.get("appearance")
+            if looks:
+                marks = ", ".join([*looks.get("scars", []), *looks.get("tattoos", [])])
+                line += (
+                    f"; looks: {looks.get('size', '')}, {looks.get('build', '')}, "
+                    f"{looks.get('hair_color', '')} hair {looks.get('hair_style', '')}, {looks.get('eye_color', '')} eyes"
+                    + (f", {marks}" if marks else "")
+                )
+        except (json.JSONDecodeError, TypeError):
+            pass
+    if e.inventory:
+        try:
+            inv = json.loads(e.inventory)
+            bits = []
+            for c in inv.get("currencies") or []:
+                bits.append(f"{c.get('amount', 0)} {c.get('name', '')}")
+            for p in inv.get("possessions") or []:
+                pname = name_by_id.get(p.get("entry_id"))
+                if pname:
+                    qty = p.get("quantity", 1)
+                    bits.append(f"{pname}{f' ×{qty}' if qty > 1 else ''}")
+            for r in inv.get("relics") or []:
+                rname = name_by_id.get(r.get("entry_id"))
+                if rname:
+                    bits.append(f"{rname} (relic)")
+            if bits:
+                line += f"; carries: {', '.join(bits)}"
         except (json.JSONDecodeError, TypeError):
             pass
     return line
@@ -127,6 +168,7 @@ def _dm_system_prompt(project: Project, db: Session, query_text: str = "") -> st
     owner_id = _codex_owner_id(project)
     entries = db.query(CodexEntry).filter(CodexEntry.project_id == owner_id).all()
     by_name = {e.name.lower(): e for e in entries}
+    name_by_id = {e.id: e.name for e in entries}
 
     scene = (
         db.query(DmScene)
@@ -151,14 +193,22 @@ def _dm_system_prompt(project: Project, db: Session, query_text: str = "") -> st
         parts.append("\n".join(scene_bits))
 
         oracle = draw_for_scene(scene.id)
-        parts.append(
-            "## Scene oracle (random constraints — weave in what fits naturally, never quote them verbatim)\n"
-            f"- Texture of this place: {oracle['scene_texture']}\n"
-            f"- Weather: {oracle['weather']}\n"
-            f"- If a new NPC appears, their quirk: {oracle['npc_quirk']}\n"
-            f"- If the scene stalls, the complication waiting: {oracle['complication']}\n"
-            f"- Meanwhile, offscreen: {oracle['offscreen_move']}"
-        )
+        oracle_lines = [
+            "## Scene oracle (random constraints — weave in what fits naturally, never quote them verbatim)",
+            f"- Texture of this place: {oracle['scene_texture']}",
+            f"- Weather: {oracle['weather']}",
+            f"- If a new NPC appears, their quirk: {oracle['npc_quirk']}",
+            f"- If the scene stalls, the complication waiting: {oracle['complication']}",
+            f"- Meanwhile, offscreen: {oracle['offscreen_move']}",
+        ]
+        wc_tree, wc_enabled = _wildcards_ctx(project, db)
+        if wc_tree and wc_enabled:
+            rng = random.Random(scene.id * 31337 + 7)
+            for cat in rng.sample(wc_enabled, min(2, len(wc_enabled))):
+                spark = wc.draw(wc_tree, cat, rng)
+                if spark:
+                    oracle_lines.append(f"- Wildcard spark ({cat.rsplit('/', 1)[-1]}): {spark}")
+        parts.append("\n".join(oracle_lines))
 
     def _is_pc(e: CodexEntry) -> bool:
         try:
@@ -185,8 +235,21 @@ def _dm_system_prompt(project: Project, db: Session, query_text: str = "") -> st
     if relevant:
         parts.append(
             "## Campaign Codex (established facts — these win over invention)\n"
-            + "\n".join(_entry_line(e) for e in relevant)
+            + "\n".join(_entry_line(e, name_by_id) for e in relevant)
         )
+        rel_ids = [e.id for e in relevant]
+        relations = (
+            db.query(CodexRelation)
+            .filter((CodexRelation.source_id.in_(rel_ids)) | (CodexRelation.target_id.in_(rel_ids)))
+            .all()
+        )
+        rel_lines = []
+        for r in relations:
+            a, b = name_by_id.get(r.source_id), name_by_id.get(r.target_id)
+            if a and b:
+                rel_lines.append(f"- {a} — {r.relation_type or 'related to'} — {b}")
+        if rel_lines:
+            parts.append("## Relations\n" + "\n".join(rel_lines))
 
     threads = (
         db.query(DmFact)
@@ -205,7 +268,73 @@ def _dm_system_prompt(project: Project, db: Session, query_text: str = "") -> st
             lines.append(f"- {f.text}")
         parts.append("\n".join(lines))
 
+    wc_tree, wc_enabled = _wildcards_ctx(project, db)
+    if wc_tree and wc_enabled:
+        listed = "\n".join(f"- {c}" for c in wc_enabled[:40])
+        parts.append(
+            "## Wildcard tables (random detail on demand)\n"
+            "When you want a fresh concrete detail — a building, garment, object, creature, atmosphere — write "
+            "[[wc:<category>]] inline in your narration. It is replaced with a random entry from that table before the "
+            "player sees it, so treat it as the thing itself (e.g. \"You enter [[wc:castles]].\"). Use at most two per "
+            "beat, and only where genuine randomness helps. Available categories:\n" + listed
+        )
+
     return "\n\n".join(parts)
+
+
+def _parse_json_reply(raw: str) -> dict:
+    """Parse a JSON object out of a model reply that may carry markdown fences,
+    reasoning blocks, or chatter around the JSON. Raises ValueError if hopeless."""
+    text = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL)
+    text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip())
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, dict):
+            return parsed
+    except json.JSONDecodeError:
+        pass
+    start, end = text.find("{"), text.rfind("}")
+    if start >= 0 and end > start:
+        try:
+            parsed = json.loads(text[start:end + 1])
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+    raise ValueError(raw[:300])
+
+
+def _wildcards_ctx(project: Project, db: Session) -> tuple[dict | None, list[str]]:
+    """(tree, enabled category paths) for this campaign, or (None, [])."""
+    settings = db.query(UserSettings).first()
+    path = getattr(settings, "wildcards_path", None) if settings else None
+    tree, _err = wc.get_tree(path)
+    if not tree:
+        return None, []
+    try:
+        prefs = json.loads(project.dm_prefs or "{}")
+    except (json.JSONDecodeError, TypeError):
+        prefs = {}
+    enabled = [c for c in (prefs.get("wildcards") or []) if isinstance(c, str)]
+    return tree, enabled
+
+
+_WC_TOKEN_RE = re.compile(r"\[\[wc:([^\]]{1,120})\]\]")
+
+
+def _wc_replacer(tree: dict, enabled: list[str]):
+    """Resolve [[wc:category]] tokens against the campaign's enabled categories."""
+    def replace(text: str) -> str:
+        def sub(m: re.Match) -> str:
+            cat = m.group(1).strip()
+            target = next((c for c in enabled if c == cat), None) \
+                or next((c for c in enabled if cat.lower() in c.lower()), None) \
+                or (random.choice(enabled) if enabled else None)
+            if not target:
+                return ""
+            return wc.draw(tree, target)
+        return _WC_TOKEN_RE.sub(sub, text)
+    return replace
 
 
 def _turn_to_message(turn: DmTurn) -> dict:
@@ -352,7 +481,7 @@ async def player_action(session_id: int, body: DmActionRequest, db: Session = De
     settings = db.query(UserSettings).first()
     if not settings:
         raise HTTPException(400, "No AI provider configured")
-    model = body.model or settings.default_chat_model or settings.default_model
+    model = body.model or settings.default_dm_model or settings.default_chat_model or settings.default_model
     if not model:
         raise HTTPException(400, "No AI model configured")
     pdef, base_url, api_key = _resolve_provider(settings, model=model)
@@ -373,8 +502,15 @@ async def player_action(session_id: int, body: DmActionRequest, db: Session = De
     messages = [{"role": "system", "content": _dm_system_prompt(project, db, query_text=f"{body.content} {recent_text}")}]
     messages += [_turn_to_message(t) for t in history]
 
+    wc_tree, wc_enabled = _wildcards_ctx(project, db)
+    wc_replace = _wc_replacer(wc_tree, wc_enabled) if wc_tree and wc_enabled else None
+
+    def _emit(text: str) -> str:
+        return f"data: {json.dumps({'choices': [{'delta': {'content': text}}]})}\n\n"
+
     async def stream_and_persist():
         collected: list[str] = []
+        holdback = ""  # possible partial [[wc:…]] token spanning stream chunks
         try:
             async for chunk in stream_provider(pdef, base_url, api_key, model, messages):
                 payload = chunk.strip()
@@ -383,13 +519,33 @@ async def player_action(session_id: int, body: DmActionRequest, db: Session = De
                     if data and data != "[DONE]":
                         try:
                             parsed = json.loads(data)
-                            if "error" not in parsed:
-                                delta = (parsed.get("choices") or [{}])[0].get("delta", {}).get("content")
-                                if delta:
-                                    collected.append(delta)
                         except json.JSONDecodeError:
-                            pass
+                            yield chunk
+                            continue
+                        if "error" not in parsed:
+                            delta = (parsed.get("choices") or [{}])[0].get("delta", {}).get("content")
+                            if delta:
+                                if wc_replace:
+                                    text = wc_replace(holdback + delta)
+                                    idx = text.rfind("[[")
+                                    if idx != -1 and "]]" not in text[idx:]:
+                                        holdback, text = text[idx:], text[:idx]
+                                    elif text.endswith("["):
+                                        holdback, text = "[", text[:-1]
+                                    else:
+                                        holdback = ""
+                                    if text:
+                                        collected.append(text)
+                                        yield _emit(text)
+                                else:
+                                    collected.append(delta)
+                                    yield chunk
+                                continue
                 yield chunk
+            if holdback:  # stream ended mid-token — flush as-is
+                collected.append(holdback)
+                yield _emit(holdback)
+                holdback = ""
         finally:
             text = "".join(collected).strip()
             if text:
@@ -422,6 +578,8 @@ def get_ruleset():
         "standard_array": rules["standard_array"],
         "species": rules["species"],
         "classes": rules["classes"],
+        "halfblood": rules.get("halfblood", {}),
+        "appearance": rules.get("appearance", {}),
     }
 
 
@@ -448,6 +606,8 @@ def generate_character(project_id: int, body: DmCharGenRequest, db: Session = De
         character = build_character(
             body.species, body.char_class, totals,
             name=(body.name or None), is_pc=True,
+            species2=(body.species2 or None),
+            gender=body.gender,
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc))
@@ -455,6 +615,88 @@ def generate_character(project_id: int, body: DmCharGenRequest, db: Session = De
     if stat_rolls:
         character["stat_rolls"] = stat_rolls
     return character
+
+
+def _find_or_create_item(name: str, owner_id: int, db: Session, created_record: list | None = None) -> int:
+    """Item codex entry for a piece of gear, deduped by name."""
+    existing = (
+        db.query(CodexEntry)
+        .filter(
+            CodexEntry.project_id == owner_id,
+            CodexEntry.entry_type == "item",
+            func.lower(CodexEntry.name) == name.lower(),
+        )
+        .first()
+    )
+    if existing:
+        return existing.id
+    item = CodexEntry(project_id=owner_id, name=name, entry_type="item", description="", color="#a3a3a3")
+    item.set_aliases([])
+    item.set_tags([])
+    db.add(item)
+    db.flush()
+    if created_record is not None:
+        created_record.append({"id": item.id, "name": name})
+    return item.id
+
+
+def _kit_to_inventory(sheet: dict, owner_id: int, db: Session, created_record: list | None = None) -> dict:
+    """Convert a generated kit into a real CharacterInventory: item codex entries
+    as possessions plus the class's starting currency."""
+    possessions = []
+    for g in sheet.get("gear") or []:
+        if not g.get("name"):
+            continue
+        item_id = _find_or_create_item(g["name"], owner_id, db, created_record)
+        possessions.append({"entry_id": item_id, "quantity": int(g.get("qty") or 1)})
+    cur = (load_ruleset()["classes"].get(sheet.get("class")) or {}).get("starting_currency")
+    currencies = [dict(cur)] if cur else []
+    return {"currencies": currencies, "possessions": possessions, "relics": []}
+
+
+def _species_label(sheet: dict) -> str:
+    rules = load_ruleset()
+    sp = rules["species"].get(sheet.get("species"), {})
+    label = sp.get("label", sheet.get("species") or "")
+    if sheet.get("species2"):
+        sp2 = rules["species"].get(sheet["species2"], {})
+        label = f"{label}–{sp2.get('label', sheet['species2'])} halfblood"
+    return label
+
+
+@router.post("/projects/{project_id}/dm/characters", response_model=CodexEntryOut, status_code=201)
+def save_character(project_id: int, body: DmCharacterSaveRequest, db: Session = Depends(get_db)):
+    """Persist a wizard draft as a codex entry. The kit becomes real inventory:
+    item entries + possessions + starting currency."""
+    project = _get_project(project_id, db)
+    owner_id = _codex_owner_id(project)
+    if not body.name.strip():
+        raise HTTPException(400, "Name required")
+
+    sheet = dict(body.rpg_sheet)
+    inventory = _kit_to_inventory(sheet, owner_id, db)
+    sheet.pop("gear", None)  # inventory is the source of truth from here on
+
+    klass = load_ruleset()["classes"].get(sheet.get("class"), {})
+    entry = CodexEntry(
+        project_id=owner_id,
+        name=body.name.strip(),
+        entry_type="character",
+        description=body.description or "",
+        species=_species_label(sheet),
+        subtype=klass.get("label"),
+        gender=body.gender or sheet.get("gender"),
+        color="#38bdf8",
+        is_main_char=1,
+        inventory=json.dumps(inventory),
+        rpg_sheet=json.dumps(sheet),
+    )
+    entry.set_aliases([])
+    entry.set_tags([])
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    return CodexEntryOut.from_orm_entry(entry)
 
 
 # ── Scene tracking ────────────────────────────────────────────────────────────
@@ -479,6 +721,19 @@ def get_current_scene(project_id: int, db: Session = Depends(get_db)):
 def get_style():
     """Style guardrails for the client-side cliché check."""
     return {"ban_list": ban_list()}
+
+
+@router.get("/dm/wildcards/tree")
+def get_wildcards_tree(db: Session = Depends(get_db)):
+    """Browsable category overview of the configured wildcard source."""
+    settings = db.query(UserSettings).first()
+    path = getattr(settings, "wildcards_path", None) if settings else None
+    if not path:
+        return {"available": False, "error": None, "categories": []}
+    tree, err = wc.get_tree(path)
+    if not tree:
+        return {"available": False, "error": err, "categories": []}
+    return {"available": True, "error": None, "categories": wc.tree_overview(tree)}
 
 
 @router.delete("/dm/turns/{turn_id}", status_code=204)
@@ -521,16 +776,21 @@ def _apply_effects(project: Project, effects: dict, session_id: int | None, db: 
         name = (npc.get("name") or "").strip() or None
         if name and name.lower() in existing_names:
             continue  # already in the codex — extraction over-eagerness
-        gen = generate_npc(npc.get("species"), npc.get("class"))
+        gen = generate_npc(npc.get("species"), npc.get("class"), gender=npc.get("gender"))
         final_name = name or gen["name"]
+        sheet = gen["rpg_sheet"]
+        inventory = _kit_to_inventory(sheet, owner_id, db, applied["created_entries"])
+        sheet.pop("gear", None)
         entry = CodexEntry(
             project_id=owner_id,
             name=final_name,
             entry_type="character",
             description=(npc.get("role") or "").strip(),
             species=gen["species"],
+            gender=sheet.get("gender"),
             color="#8b5cf6",
-            rpg_sheet=json.dumps(gen["rpg_sheet"]),
+            inventory=json.dumps(inventory),
+            rpg_sheet=json.dumps(sheet),
         )
         entry.set_aliases([])
         entry.set_tags([])
@@ -546,33 +806,65 @@ def _apply_effects(project: Project, effects: dict, session_id: int | None, db: 
         if not entry or entry.project_id not in (project.id, owner_id):
             continue
         prev_sheet = entry.rpg_sheet
+        prev_inventory = entry.inventory
         try:
             sheet = json.loads(entry.rpg_sheet or "{}")
         except (json.JSONDecodeError, TypeError):
             sheet = {}
-        sheet.setdefault("gear", [])
         sheet.setdefault("conditions", [])
+        try:
+            inventory = json.loads(entry.inventory or "")
+        except (json.JSONDecodeError, TypeError):
+            inventory = None
+        if not isinstance(inventory, dict):
+            inventory = {}
+        inventory.setdefault("currencies", [])
+        inventory.setdefault("possessions", [])
+        inventory.setdefault("relics", [])
 
+        # Gear operates on the real codex inventory (possessions of item entries)
         for item in upd.get("gear_add") or []:
             if not isinstance(item, dict) or not item.get("name"):
                 continue
             qty = max(1, int(item.get("qty") or 1))
-            match = next((g for g in sheet["gear"] if g.get("name", "").lower() == item["name"].lower()), None)
+            item_id = _find_or_create_item(item["name"], owner_id, db, applied["created_entries"])
+            match = next((p for p in inventory["possessions"] if p.get("entry_id") == item_id), None)
             if match:
-                match["qty"] = match.get("qty", 1) + qty
+                match["quantity"] = match.get("quantity", 1) + qty
             else:
-                sheet["gear"].append({"name": item["name"], "qty": qty})
+                inventory["possessions"].append({"entry_id": item_id, "quantity": qty})
 
         for item in upd.get("gear_remove") or []:
             name = item.get("name") if isinstance(item, dict) else str(item)
             if not name:
                 continue
             qty = max(1, int(item.get("qty") or 1)) if isinstance(item, dict) else 1
-            match = next((g for g in sheet["gear"] if g.get("name", "").lower() == name.lower()), None)
+            owned_item = (
+                db.query(CodexEntry)
+                .filter(
+                    CodexEntry.project_id == owner_id,
+                    CodexEntry.entry_type == "item",
+                    func.lower(CodexEntry.name) == name.lower(),
+                )
+                .first()
+            )
+            if not owned_item:
+                continue
+            match = next((p for p in inventory["possessions"] if p.get("entry_id") == owned_item.id), None)
             if match:
-                match["qty"] = match.get("qty", 1) - qty
-                if match["qty"] <= 0:
-                    sheet["gear"].remove(match)
+                match["quantity"] = match.get("quantity", 1) - qty
+                if match["quantity"] <= 0:
+                    inventory["possessions"].remove(match)
+
+        for cd in upd.get("currency_delta") or []:
+            if not isinstance(cd, dict) or not cd.get("name"):
+                continue
+            amount = int(cd.get("amount") or 0)
+            match = next((c for c in inventory["currencies"] if c.get("name", "").lower() == cd["name"].lower()), None)
+            if match:
+                match["amount"] = max(0, match.get("amount", 0) + amount)
+            elif amount > 0:
+                inventory["currencies"].append({"name": cd["name"], "amount": amount})
 
         delta = upd.get("hp_delta")
         if delta and isinstance(sheet.get("hp"), dict):
@@ -587,7 +879,10 @@ def _apply_effects(project: Project, effects: dict, session_id: int | None, db: 
                 sheet["conditions"].remove(cond)
 
         entry.rpg_sheet = json.dumps(sheet)
-        applied["updated_entries"].append({"id": entry.id, "prev_rpg_sheet": prev_sheet})
+        entry.inventory = json.dumps(inventory)
+        applied["updated_entries"].append({
+            "id": entry.id, "prev_rpg_sheet": prev_sheet, "prev_inventory": prev_inventory,
+        })
 
     sc = effects.get("scene")
     if isinstance(sc, dict) and (sc.get("title") or sc.get("situation")):
@@ -682,6 +977,8 @@ def undo_turn_effects(turn_id: int, db: Session = Depends(get_db)):
         entry = db.get(CodexEntry, updated["id"])
         if entry:
             entry.rpg_sheet = updated.get("prev_rpg_sheet")
+            if "prev_inventory" in updated:
+                entry.inventory = updated.get("prev_inventory")
 
     sc = applied.get("scene")
     if sc:
@@ -772,11 +1069,10 @@ async def extract_turn_effects(turn_id: int, db: Session = Depends(get_db)):
         raise HTTPException(502, f"Provider error: {exc.response.text}")
 
     raw = result["choices"][0]["message"]["content"].strip()
-    raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw)
     try:
-        effects = json.loads(raw)
-    except json.JSONDecodeError:
-        raise HTTPException(502, f"Extraction did not return valid JSON: {raw[:300]}")
+        effects = _parse_json_reply(raw)
+    except ValueError as exc:
+        raise HTTPException(502, f"Extraction did not return valid JSON: {exc}")
 
     applied = _apply_effects(project, effects, session.id, db)
     turn.effects = json.dumps({"effects": effects, "applied": applied, "undone": False})
@@ -884,11 +1180,10 @@ async def consolidate_session(session_id: int, force: bool = False, db: Session 
         "## Transcript stretch\n" + _format_transcript(pending)
     )
     raw = await _ai_complete(project, "dm_facts", user_content, db)
-    raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw)
     try:
-        parsed = json.loads(raw)
-    except json.JSONDecodeError:
-        raise HTTPException(502, f"Fact extraction did not return valid JSON: {raw[:300]}")
+        parsed = _parse_json_reply(raw)
+    except ValueError as exc:
+        raise HTTPException(502, f"Fact extraction did not return valid JSON: {exc}")
 
     last_turn_id = pending[-1].id
     created = 0

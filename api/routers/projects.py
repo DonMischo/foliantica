@@ -149,6 +149,7 @@ def create_project(body: ProjectCreate, db: Session = Depends(get_db)):
                 color=src.color,
                 species=src.species,
                 subtype=src.subtype,
+                gender=src.gender,
                 tags=src.tags,
                 is_main_char=src.is_main_char,
                 inventory=src.inventory,

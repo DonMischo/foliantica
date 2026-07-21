@@ -18,6 +18,13 @@ import type { SessionZeroAnswers } from "@/types";
 
 const TONES = ["Grim & gritty", "Heroic", "Weird & wondrous", "Horror", "Intrigue", "Comedic"];
 
+const LANGUAGES: [string, string][] = [
+  ["en", "English"], ["de", "Deutsch"], ["es", "Español"], ["fr", "Français"],
+  ["it", "Italiano"], ["pt", "Português"], ["nl", "Nederlands"], ["pl", "Polski"],
+  ["sv", "Svenska"], ["da", "Dansk"], ["no", "Norsk"], ["cs", "Čeština"],
+  ["ru", "Русский"], ["zh", "中文"], ["ja", "日本語"],
+];
+
 function composeBrief(a: SessionZeroAnswers): string {
   const tone = [...a.tone, a.tone_free.trim()].filter(Boolean).join(", ");
   const truths = a.truths.map((t, i) => `${i + 1}. ${t.trim()}`).filter((t) => t.length > 3);
@@ -39,13 +46,15 @@ export function SessionZeroWizard({
   const [answers, setAnswers] = useState<SessionZeroAnswers>({
     tone: [], tone_free: "", genre: "", truths: ["", "", ""], lines: "",
   });
+  const [language, setLanguage] = useState("en");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Prefill from a previous run
   useEffect(() => {
     if (open && prefs?.session_zero) setAnswers(prefs.session_zero);
-  }, [open, prefs?.session_zero]);
+    if (open && prefs?.language) setLanguage(prefs.language);
+  }, [open, prefs?.session_zero, prefs?.language]);
 
   const toggleTone = (tone: string) =>
     setAnswers((a) => ({
@@ -58,8 +67,12 @@ export function SessionZeroWizard({
     setError(null);
     try {
       const previous = prefs?.session_zero;
-      await projectsApi.update(projectId, { campaign_brief: composeBrief(answers) });
-      await dmApi.updatePrefs(projectId, { session_zero: answers });
+      // Recompose the brief only when the setup answers actually changed —
+      // a pure language switch must not overwrite an AI-refreshed brief.
+      if (!previous || JSON.stringify(previous) !== JSON.stringify(answers)) {
+        await projectsApi.update(projectId, { campaign_brief: composeBrief(answers) });
+      }
+      await dmApi.updatePrefs(projectId, { session_zero: answers, language });
       // World truths become lore codex entries — but only on first save, not on edits
       if (!previous) {
         for (const truth of answers.truths.map((x) => x.trim()).filter((x) => x.length > 3)) {
@@ -74,6 +87,7 @@ export function SessionZeroWizard({
             groups: [],
             species: null,
             subtype: null,
+            gender: null,
             tags: [],
             is_main_char: false,
             inventory: null,
@@ -108,6 +122,19 @@ export function SessionZeroWizard({
         </DialogHeader>
 
         <div className="space-y-4 pt-1">
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground">{t("dm_language")}</p>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="w-full h-8 rounded-md border border-input bg-background px-2 text-xs"
+            >
+              {LANGUAGES.map(([code, label]) => (
+                <option key={code} value={code}>{label}</option>
+              ))}
+            </select>
+          </div>
+
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-muted-foreground">{t("dm_tone")}</p>
             <div className="flex flex-wrap gap-1.5">

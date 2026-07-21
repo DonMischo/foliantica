@@ -125,6 +125,8 @@ export default function SettingsPage() {
 
   const [defaultModel, setDefaultModel]                   = useState("anthropic/claude-3.5-sonnet");
   const [defaultChatModel, setDefaultChatModel]           = useState<string>("");
+  const [defaultDmModel, setDefaultDmModel]               = useState<string>("");
+  const [wildcardsPath, setWildcardsPath]                 = useState<string>("");
   const [defaultSynopsisModel, setDefaultSynopsisModel]   = useState<string>("");
   const [defaultCodexModel, setDefaultCodexModel]         = useState<string>("");
   const [enabledModels, setEnabledModels]       = useState<string[]>([]);
@@ -499,6 +501,8 @@ export default function SettingsPage() {
       setDefaultChatModel(settings.default_chat_model ?? "");
       setDefaultSynopsisModel(settings.default_synopsis_model ?? "");
       setDefaultCodexModel(settings.default_codex_model ?? "");
+      setDefaultDmModel(settings.default_dm_model ?? "");
+      setWildcardsPath(settings.wildcards_path ?? "");
       setEnabledModels(settings.enabled_models ?? []);
       setGrammarEnabled(settings.grammar_check_enabled ?? false);
       setGrammarUrl(settings.grammar_check_url ?? "http://localhost:8081");
@@ -619,6 +623,8 @@ export default function SettingsPage() {
       default_chat_model: defaultChatModel || null,
       default_synopsis_model: defaultSynopsisModel || null,
       default_codex_model: defaultCodexModel || null,
+      default_dm_model: defaultDmModel || null,
+      wildcards_path: wildcardsPath.trim() || null,
       enabled_models: enabledModels,
       grammar_check_url: grammarUrl,
       grammar_languages: grammarLanguages,
@@ -999,6 +1005,41 @@ export default function SettingsPage() {
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">Used by /ki when distilling codex entries.</p>
+          </div>
+
+          {/* Default dungeon master model */}
+          <div className="space-y-1.5">
+            <Label>Dungeon Master Model</Label>
+            <Select
+              value={defaultDmModel || "__default__"}
+              onValueChange={(v) => setDefaultDmModel(v === "__default__" ? "" : v)}
+            >
+              <SelectTrigger className="w-full max-w-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__default__">Same as default model</SelectItem>
+                {defaultModelChoices.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Narrates RPG campaigns in the Play view. World-state bookkeeping uses the codex model.</p>
+          </div>
+
+          {/* Wildcards source for the RPG dungeon master */}
+          <div className="space-y-1.5">
+            <Label>Wildcards File</Label>
+            <Input
+              value={wildcardsPath}
+              onChange={(e) => setWildcardsPath(e.target.value)}
+              placeholder="C:\path\to\wildcards.yaml — or a folder of YAML/.txt wildcards"
+              className="max-w-xl"
+            />
+            <p className="text-xs text-muted-foreground">
+              Optional. Powers random-detail draws for the dungeon master (scene sparks and inline [[wc:…]] draws).
+              Pick which categories a campaign uses via the shuffle icon in its Play view.
+            </p>
           </div>
 
           {/* Available models (checkbox list for /ki command) */}

@@ -7,7 +7,7 @@ import type {
   CorkboardPrefs, SceneConnection, RelationsGraph,
   TimelineTrack, TimelineEventItem, SeriesData,
   ProjectAnalytics, ResearchItem, QuerySubmission, ExportProfile, PublisherProfile,
-  Achievement, DmSession, DmTurn, DmPrefs, DmScene, DmRuleset, DmCharacterDraft, DmFact,
+  Achievement, DmSession, DmTurn, DmPrefs, DmScene, DmRuleset, DmCharacterDraft, DmFact, RpgSheet, WildcardCategory,
 } from "@/types";
 
 const BASE = "/api";
@@ -520,6 +520,8 @@ export const settingsApi = {
     default_chat_model?: string | null;
     default_synopsis_model?: string | null;
     default_codex_model?: string | null;
+    default_dm_model?: string | null;
+    wildcards_path?: string | null;
     theme?: string;
     enabled_models?: string[];
     language?: string;
@@ -725,9 +727,14 @@ export const dmApi = {
   ruleset: () => req<DmRuleset>(`/dm/ruleset`),
   generateCharacter: (
     projectId: number,
-    data: { species: string; char_class: string; method: "roll" | "array" | "manual"; manual_stats?: number[]; name?: string },
+    data: { species: string; species2?: string; char_class: string; gender?: "male" | "female" | "div"; method: "roll" | "array" | "manual"; manual_stats?: number[]; name?: string },
   ) =>
     req<DmCharacterDraft>(`/projects/${projectId}/dm/generate-character`, { method: "POST", body: JSON.stringify(data) }),
+  saveCharacter: (
+    projectId: number,
+    data: { name: string; description?: string; gender?: string; rpg_sheet: RpgSheet },
+  ) =>
+    req<CodexEntry>(`/projects/${projectId}/dm/characters`, { method: "POST", body: JSON.stringify(data) }),
   currentScene: (projectId: number) => req<DmScene | null>(`/projects/${projectId}/dm/scene`),
   extractEffects: (turnId: number) => req<DmTurn>(`/dm/turns/${turnId}/extract`, { method: "POST" }),
   undoEffects: (turnId: number) => req<DmTurn>(`/dm/turns/${turnId}/undo-effects`, { method: "POST" }),
@@ -741,6 +748,8 @@ export const dmApi = {
     req<{ session: DmSession; warning: string | null }>(`/dm/sessions/${sessionId}/end`, { method: "POST" }),
   style: () => req<{ ban_list: string[] }>(`/dm/style`),
   deleteTurn: (turnId: number) => req<void>(`/dm/turns/${turnId}`, { method: "DELETE" }),
+  wildcardsTree: () =>
+    req<{ available: boolean; error: string | null; categories: WildcardCategory[] }>(`/dm/wildcards/tree`),
 };
 
 // ── Grammar check ─────────────────────────────────────────────────────────────

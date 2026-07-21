@@ -100,7 +100,15 @@ export interface SessionZeroAnswers {
 
 export interface DmPrefs {
   dice_mode?: "digital" | "physical";
+  language?: string;
   session_zero?: SessionZeroAnswers;
+  wildcards?: string[];
+}
+
+export interface WildcardCategory {
+  path: string;
+  count: number;
+  depth: number;
 }
 
 export interface RpgGearItem {
@@ -108,8 +116,21 @@ export interface RpgGearItem {
   qty: number;
 }
 
+export interface RpgAppearance {
+  size: string;
+  build: string;
+  hair_color: string;
+  hair_style: string;
+  eye_color: string;
+  features: string[];
+  scars: string[];
+  tattoos: string[];
+}
+
 export interface RpgSheet {
   species: string;
+  species2?: string | null;
+  gender?: "male" | "female" | "div";
   class: string;
   level: number;
   stats: Record<string, number>;
@@ -118,6 +139,7 @@ export interface RpgSheet {
   abilities: string[];
   conditions: string[];
   gear: RpgGearItem[];
+  appearance?: RpgAppearance;
   is_pc: boolean;
 }
 
@@ -152,12 +174,17 @@ export interface DmRuleset {
   standard_array: number[];
   species: Record<string, { label: string; bonus: Record<string, number>; trait: string; name_style: string }>;
   classes: Record<string, { label: string; hit_die: number; priorities: string[]; ac_base: number; abilities: string[]; kit: string[] }>;
+  halfblood: { note?: string };
+  appearance: Record<string, unknown>;
 }
 
 export interface DmCharacterDraft {
   name: string;
   species: string;
   class_label: string;
+  gender: "male" | "female" | "div";
+  appearance: RpgAppearance;
+  starting_currency: { name: string; amount: number } | null;
   rpg_sheet: RpgSheet;
   stat_rolls?: { dice: number[]; total: number }[];
 }
@@ -454,6 +481,7 @@ export interface CodexEntry {
   groups: string[];
   species: string | null;
   subtype: string | null;
+  gender: "male" | "female" | "div" | null;
   tags: string[];
   is_main_char: boolean;
   inventory: CharacterInventory | null;
@@ -493,6 +521,8 @@ export interface Settings {
   has_api_key: boolean;
   default_model: string;
   default_chat_model: string | null;
+  default_dm_model: string | null;
+  wildcards_path: string | null;
   default_synopsis_model: string | null;
   default_codex_model: string | null;
   theme: string;

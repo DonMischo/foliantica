@@ -274,6 +274,7 @@ export function CodexEntryDialog({
   const [notes, setNotes]             = useState(initial?.notes ?? "");
   const [color, setColor]             = useState(initial?.color ?? "#eab308");
   const [species, setSpecies]         = useState(initial?.species ?? "");
+  const [gender, setGender]           = useState(initial?.gender ?? "");
   const [subtype, setSubtype]         = useState(initial?.subtype ?? "");
   const [tagInput, setTagInput]       = useState("");
   const [tags, setTags]               = useState<string[]>(initial?.tags ?? []);
@@ -392,6 +393,7 @@ export function CodexEntryDialog({
       setColor(initial?.color ?? "#eab308");
       setGroups(initial?.groups ?? []);
       setSpecies(initial?.species ?? "");
+      setGender(initial?.gender ?? "");
       setSubtype(initial?.subtype ?? "");
       setTags(initial?.tags ?? []);
       setIsMainChar(initial?.is_main_char ?? false);
@@ -491,6 +493,7 @@ export function CodexEntryDialog({
       color,
       groups,
       species: entryType === "character" ? (species.trim() || null) : null,
+      gender: entryType === "character" ? ((gender || null) as "male" | "female" | "div" | null) : null,
       subtype: entryType !== "character" ? (subtype.trim() || null) : null,
       tags,
       is_main_char: isMainChar,
@@ -718,6 +721,17 @@ export function CodexEntryDialog({
                       onChange={(e) => setSpecies(e.target.value)}
                       placeholder="e.g. Human, Elf…"
                     />
+                    <Label className="pt-1 block">{t("dm_gender")}</Label>
+                    <select
+                      value={gender}
+                      onChange={(e) => setGender(e.target.value as "male" | "female" | "div" | "")}
+                      className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="">—</option>
+                      <option value="male">{t("dm_male")}</option>
+                      <option value="female">{t("dm_female")}</option>
+                      <option value="div">{t("dm_diverse")}</option>
+                    </select>
                   </>
                 ) : (
                   <>

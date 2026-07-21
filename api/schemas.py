@@ -242,6 +242,7 @@ class CodexEntryBase(BaseModel):
     groups: list[str] = Field(default_factory=list)
     species: Optional[str] = None
     subtype: Optional[str] = None
+    gender: Optional[str] = None  # male | female | div
     tags: list[str] = Field(default_factory=list)
     is_main_char: bool = False
     inventory: Optional[Any] = None  # CharacterInventory JSON or None
@@ -267,6 +268,7 @@ class CodexEntryUpdate(BaseModel):
     groups: Optional[list[str]] = None
     species: Optional[str] = None
     subtype: Optional[str] = None
+    gender: Optional[str] = None
     tags: Optional[list[str]] = None
     is_main_char: Optional[bool] = None
     inventory: Optional[Any] = None
@@ -311,6 +313,7 @@ class CodexEntryOut(CodexEntryBase):
             "groups": entry.get_groups(),
             "species": entry.species,
             "subtype": entry.subtype,
+            "gender": getattr(entry, "gender", None),
             "tags": entry.get_tags(),
             "is_main_char": bool(entry.is_main_char),
             "inventory": inv,
@@ -432,6 +435,8 @@ class SettingsUpdate(BaseModel):
     default_chat_model: Optional[str] = None
     default_synopsis_model: Optional[str] = None
     default_codex_model: Optional[str] = None
+    default_dm_model: Optional[str] = None
+    wildcards_path: Optional[str] = None
     theme: Optional[str] = None
     enabled_models: Optional[list[str]] = None
     language: Optional[str] = None
@@ -464,6 +469,8 @@ class SettingsOut(BaseModel):
     default_chat_model: Optional[str] = None
     default_synopsis_model: Optional[str] = None
     default_codex_model: Optional[str] = None
+    default_dm_model: Optional[str] = None
+    wildcards_path: Optional[str] = None
     theme: str
     enabled_models: list[str]
     language: str
@@ -988,7 +995,9 @@ class DmRollRequest(BaseModel):
 
 class DmPrefsUpdate(BaseModel):
     dice_mode: Optional[Literal["digital", "physical"]] = None
+    language: Optional[str] = None  # BCP 47 code for DM narration (overrides book_meta.language)
     session_zero: Optional[dict] = None  # raw wizard answers, kept for prefill
+    wildcards: Optional[list[str]] = None  # enabled wildcard category paths for this campaign
 
 
 class DmFactOut(BaseModel):
@@ -1007,10 +1016,19 @@ class DmFactOut(BaseModel):
 
 class DmCharGenRequest(BaseModel):
     species: str
+    species2: Optional[str] = None  # set → halfblood: +1 from each parent's primary stat, both traits
     char_class: str
+    gender: Optional[Literal["male", "female", "div"]] = None
     method: Literal["roll", "array", "manual"] = "roll"
     manual_stats: Optional[list[int]] = None  # six table-rolled totals (3–18), highest→lowest priority
     name: Optional[str] = None
+
+
+class DmCharacterSaveRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+    gender: Optional[str] = None
+    rpg_sheet: dict
 
 
 class DmSceneOut(BaseModel):

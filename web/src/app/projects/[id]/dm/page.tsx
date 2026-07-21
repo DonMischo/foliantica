@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Dices, Send, Plus, Hand, Cpu, MapPin, Undo2, UserPlus, Minus, X, ListTree, BookCheck, Sparkles, AlertTriangle, RefreshCw } from "lucide-react";
+import { Dices, Send, Plus, Hand, Cpu, MapPin, Undo2, UserPlus, Minus, X, ListTree, BookCheck, Sparkles, AlertTriangle, RefreshCw, Shuffle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import { CharacterWizard } from "@/components/dm/CharacterWizard";
 import { SessionZeroWizard } from "@/components/dm/SessionZeroWizard";
+import { WildcardPicker } from "@/components/dm/WildcardPicker";
 import type { CodexEntry, DmTurn } from "@/types";
 
 const DICE = [4, 6, 8, 10, 12, 20, 100];
@@ -380,9 +381,10 @@ export default function DmPage() {
   const [streamText, setStreamText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [extracting, setExtracting] = useState(false);
-  const [extractFailed, setExtractFailed] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [sessionZeroOpen, setSessionZeroOpen] = useState(false);
+  const [wildcardsOpen, setWildcardsOpen] = useState(false);
   const [clicheHits, setClicheHits] = useState<string[]>([]);
   const [dismissedGates, setDismissedGates] = useState<number[]>([]);
   const streaming = streamText !== null;
@@ -416,7 +418,7 @@ export default function DmPage() {
 
   const runExtraction = async (sessionId: number) => {
     setExtracting(true);
-    setExtractFailed(false);
+    setExtractError(null);
     try {
       const fresh = await dmApi.turns(sessionId);
       const lastDm = [...fresh].reverse().find((turn) => turn.role === "dm");
@@ -432,8 +434,8 @@ export default function DmPage() {
           })
           .catch(() => {});
       }
-    } catch {
-      setExtractFailed(true);
+    } catch (e) {
+      setExtractError(e instanceof Error ? e.message.replace(/^\d+: /, "") : String(e));
     } finally {
       setExtracting(false);
     }
@@ -542,6 +544,13 @@ export default function DmPage() {
           >
             <Sparkles className="h-4 w-4" />
           </button>
+          <button
+            onClick={() => setWildcardsOpen(true)}
+            title={t("dm_wildcards")}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Shuffle className="h-4 w-4" />
+          </button>
           {sessions.length > 0 && (
             <select
               value={activeSession?.id ?? ""}
@@ -614,7 +623,22 @@ export default function DmPage() {
             )
           )}
           {extracting && <p className="text-xs text-muted-foreground animate-pulse">{t("dm_updating_world")}</p>}
-          {extractFailed && <p className="text-xs text-amber-500">{t("dm_extract_failed")}</p>}
+          {extractError && (
+            <div className="flex items-start gap-2 text-xs text-amber-500">
+              <p className="flex-1">
+                {t("dm_extract_failed")}
+                <span className="block text-[10px] text-muted-foreground break-all">{extractError.slice(0, 300)}</span>
+              </p>
+              <Button
+                variant="outline" size="sm" className="h-6 text-[11px] shrink-0"
+                disabled={extracting || streaming}
+                onClick={() => activeSession && runExtraction(activeSession.id)}
+              >
+                <RefreshCw className="h-3 w-3" />
+                {t("dm_retry")}
+              </Button>
+            </div>
+          )}
           {error && <p className="text-xs text-destructive whitespace-pre-wrap">{error}</p>}
           <div ref={bottomRef} />
         </div>
@@ -714,6 +738,7 @@ export default function DmPage() {
 
       <CharacterWizard projectId={projectId} open={wizardOpen} onClose={() => setWizardOpen(false)} />
       <SessionZeroWizard projectId={projectId} open={sessionZeroOpen} onClose={() => setSessionZeroOpen(false)} />
+      <WildcardPicker projectId={projectId} open={wildcardsOpen} onClose={() => setWildcardsOpen(false)} />
     </div>
   );
 }

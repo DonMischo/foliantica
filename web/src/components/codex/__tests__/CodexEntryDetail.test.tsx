@@ -26,6 +26,7 @@ const base: CodexEntry = {
   notes: null,
   species: null,
   subtype: null,
+  gender: null,
   is_main_char: false,
   inventory: null,
   rpg_sheet: null,

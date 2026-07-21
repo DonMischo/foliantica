@@ -227,8 +227,8 @@ DEFAULT_AI_PROMPTS = [
             "what it establishes as structured data. You never invent anything the narration does not say or strongly imply.\n\n"
             "Return ONLY a JSON object with exactly this shape (no markdown fences, no commentary):\n"
             "{\n"
-            '  "new_npcs": [{"name": "string or null", "species": "string or null", "class": "string or null", "role": "one-line description of who they are and what they want"}],\n'
-            '  "codex_updates": [{"entry_id": 0, "gear_add": [{"name": "string", "qty": 1}], "gear_remove": [{"name": "string", "qty": 1}], "hp_delta": 0, "conditions_add": ["string"], "conditions_remove": ["string"]}],\n'
+            '  "new_npcs": [{"name": "string or null", "species": "string or null", "class": "string or null", "gender": "male|female|div or null", "role": "one-line description of who they are and what they want"}],\n'
+            '  "codex_updates": [{"entry_id": 0, "gear_add": [{"name": "string", "qty": 1}], "gear_remove": [{"name": "string", "qty": 1}], "currency_delta": [{"name": "Gold", "amount": -5}], "hp_delta": 0, "conditions_add": ["string"], "conditions_remove": ["string"]}],\n'
             '  "scene": {"new_scene": false, "title": "string", "location_name": "string or null", "present_npcs": ["name"], "situation": "one sentence"},\n'
             '  "roll_request": {"sides": 20, "purpose": "what the roll is for and what is at stake"}\n'
             "}\n\n"
@@ -237,7 +237,8 @@ DEFAULT_AI_PROMPTS = [
             "not characters already in the entity list. Set name to null unless the narration explicitly states their name. "
             "species/class: your best guess from the allowed lists, or null.\n"
             "- codex_updates: only for entries in the provided entity list, referenced by their numeric id. Record gear gained/lost, "
-            "damage or healing (hp_delta negative for damage), and conditions gained/shaken off. Omit entries with no changes.\n"
+            "money spent or earned (currency_delta, negative when paid), damage or healing (hp_delta negative for damage), and "
+            "conditions gained/shaken off. Omit entries with no changes.\n"
             "- scene: set new_scene true ONLY when the narration moves the action to a different place or a clearly new situation; "
             "otherwise update the current scene. present_npcs lists characters physically present now. Always include scene unless "
             "nothing about the scene is known.\n"
@@ -314,7 +315,7 @@ def seed_ai_prompts():
         "lector_review":  ["{{LANGUAGE}}"],
         "codex_distill":  ["{{LANGUAGE}}"],
         "dm_persona":     ["{{LANGUAGE}}"],
-        "dm_extract":     ["{{LANGUAGE}}"],
+        "dm_extract":     ["{{LANGUAGE}}", "currency_delta"],  # marker forces reseed of pre-currency prompt
         "dm_facts":       ["{{LANGUAGE}}"],
         "dm_summary":     ["{{LANGUAGE}}"],
         "dm_brief":       ["{{LANGUAGE}}"],

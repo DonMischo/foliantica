@@ -1,118 +1,2031 @@
 {
-  "stats": ["str", "dex", "con", "int", "wis", "cha"],
-  "standard_array": [15, 14, 13, 12, 10, 8],
+  "stats": [
+    "str",
+    "dex",
+    "con",
+    "int",
+    "wis",
+    "cha"
+  ],
+  "standard_array": [
+    15,
+    14,
+    13,
+    12,
+    10,
+    8
+  ],
   "species": {
     "human": {
       "label": "Human",
-      "bonus": { "any": 1 },
+      "bonus": {
+        "any": 1
+      },
       "trait": "Adaptable: +1 to your highest-priority stat and one free reroll during character creation.",
       "name_style": "human"
     },
     "dwarf": {
       "label": "Dwarf",
-      "bonus": { "con": 2 },
+      "bonus": {
+        "con": 2
+      },
       "trait": "Stonewise: advantage on checks involving stone, metal, or underground paths.",
       "name_style": "dwarf"
     },
     "elf": {
       "label": "Elf",
-      "bonus": { "dex": 2 },
+      "bonus": {
+        "dex": 2
+      },
       "trait": "Keen senses: advantage on perception checks by sight or sound.",
       "name_style": "elf"
     },
     "halfling": {
       "label": "Halfling",
-      "bonus": { "dex": 1, "cha": 1 },
+      "bonus": {
+        "dex": 1,
+        "cha": 1
+      },
       "trait": "Lucky: once per session, reroll a natural 1.",
       "name_style": "halfling"
     },
     "orc": {
       "label": "Orc",
-      "bonus": { "str": 2 },
+      "bonus": {
+        "str": 2
+      },
       "trait": "Relentless: once per session, drop to 1 HP instead of 0.",
       "name_style": "orc"
     },
     "gnome": {
       "label": "Gnome",
-      "bonus": { "int": 2 },
+      "bonus": {
+        "int": 2
+      },
       "trait": "Tinker: you can jury-rig small devices from scraps given a few minutes.",
       "name_style": "gnome"
+    },
+    "goblin": {
+      "label": "Goblin",
+      "bonus": {
+        "dex": 2
+      },
+      "trait": "Underfoot: advantage on hiding in clutter, shadows, or crowds.",
+      "name_style": "goblin"
+    },
+    "minotaur": {
+      "label": "Minotaur",
+      "bonus": {
+        "str": 1,
+        "con": 1
+      },
+      "trait": "Labyrinth sense: you can always retrace a path you have walked, however twisted.",
+      "name_style": "orc"
+    },
+    "catfolk": {
+      "label": "Catfolk",
+      "bonus": {
+        "dex": 1,
+        "wis": 1
+      },
+      "trait": "Soft paws: you land unharmed from any fall a cat would survive; advantage on balance.",
+      "name_style": "catfolk"
+    },
+    "serpentfolk": {
+      "label": "Serpentfolk",
+      "bonus": {
+        "int": 1,
+        "cha": 1
+      },
+      "trait": "Cold blood: venoms and poisons work slowly on you; advantage on resisting them.",
+      "name_style": "serpent"
+    },
+    "faun": {
+      "label": "Faun",
+      "bonus": {
+        "cha": 2
+      },
+      "trait": "Wild song: animals are inclined to trust you unless you give them reason not to.",
+      "name_style": "fae"
+    },
+    "dhampir": {
+      "label": "Dhampir",
+      "bonus": {
+        "dex": 1,
+        "cha": 1
+      },
+      "trait": "Night eyes: you see in darkness as if it were dusk — but high noon leaves you sluggish.",
+      "name_style": "human"
+    },
+    "drakeblood": {
+      "label": "Drakeblood",
+      "bonus": {
+        "str": 1,
+        "cha": 1
+      },
+      "trait": "Ember breath: once per session, exhale a gout of flame the size of a campfire.",
+      "name_style": "drake"
+    },
+    "fae": {
+      "label": "Fae",
+      "bonus": {
+        "int": 1,
+        "cha": 1
+      },
+      "trait": "Glamour: once per session, appear utterly unremarkable to onlookers for a minute.",
+      "name_style": "fae"
+    },
+    "undead": {
+      "label": "Undead",
+      "bonus": {
+        "con": 2
+      },
+      "trait": "Deathless: you don't breathe, tire, or bleed out — but healing magic restores only half to you.",
+      "name_style": "grave"
+    },
+    "draenei": {
+      "label": "Draenei",
+      "bonus": {
+        "str": 1,
+        "wis": 1
+      },
+      "trait": "Gift of the Light: once per session, lay hands to heal 1d8 HP or lift one affliction.",
+      "name_style": "celestial"
+    },
+    "worgen": {
+      "label": "Worgen",
+      "bonus": {
+        "str": 1,
+        "dex": 1
+      },
+      "trait": "Two shapes: shift between your day face and wolf-form; the wolf gets advantage on chases and intimidation.",
+      "name_style": "human"
+    },
+    "night_elf": {
+      "label": "Night Elf",
+      "bonus": {
+        "dex": 1,
+        "wis": 1
+      },
+      "trait": "Shadowmeld: stand still in shadow and you cannot be seen until you move.",
+      "name_style": "elf"
+    },
+    "blood_elf": {
+      "label": "Blood Elf",
+      "bonus": {
+        "int": 1,
+        "cha": 1
+      },
+      "trait": "Arcane thirst: once per session, drain a nearby enchantment to fuel your own magic.",
+      "name_style": "elf"
+    },
+    "tauren": {
+      "label": "Tauren",
+      "bonus": {
+        "str": 1,
+        "wis": 1
+      },
+      "trait": "War stomp: once per scene, stomp the ground to stagger everything within reach.",
+      "name_style": "orc"
+    },
+    "troll": {
+      "label": "Troll",
+      "bonus": {
+        "con": 2
+      },
+      "trait": "Regeneration: recover 1 HP at the start of every scene; lost pieces grow back in days.",
+      "name_style": "goblin"
+    },
+    "pandaren": {
+      "label": "Pandaren",
+      "bonus": {
+        "con": 1,
+        "wis": 1
+      },
+      "trait": "Steady roll: you cannot be knocked from your feet unless you choose to be.",
+      "name_style": "eastern"
+    },
+    "tiefling": {
+      "label": "Tiefling",
+      "bonus": {
+        "cha": 1,
+        "int": 1
+      },
+      "trait": "Hellish rebuke: once per session, wreathe an attacker in flame (1d6) the moment they hurt you.",
+      "name_style": "drake"
+    },
+    "vampire": {
+      "label": "Vampire",
+      "bonus": {
+        "cha": 1,
+        "dex": 1
+      },
+      "trait": "The thirst: drink from the willing or helpless to heal 1d6 — but sun burns and thresholds bar you.",
+      "name_style": "grave"
+    },
+    "githyanki": {
+      "label": "Githyanki",
+      "bonus": {
+        "str": 1,
+        "int": 1
+      },
+      "trait": "Astral step: once per session, slit the air with silver light and step anywhere you can see.",
+      "name_style": "astral"
+    },
+    "githzerai": {
+      "label": "Githzerai",
+      "bonus": {
+        "wis": 1,
+        "dex": 1
+      },
+      "trait": "Fortress mind: advantage against anything that would read, charm, or invade your thoughts.",
+      "name_style": "astral"
+    },
+    "aasimar": {
+      "label": "Aasimar",
+      "bonus": {
+        "cha": 1,
+        "wis": 1
+      },
+      "trait": "Halo spark: once per session, flare with radiance — foes flinch blind, allies take heart.",
+      "name_style": "celestial"
+    },
+    "genasi": {
+      "label": "Genasi",
+      "bonus": {
+        "con": 1,
+        "int": 1
+      },
+      "trait": "Elemental vein: choose an element at creation; its mundane form cannot harm you.",
+      "name_style": "elemental"
+    },
+    "changeling": {
+      "label": "Changeling",
+      "bonus": {
+        "cha": 2
+      },
+      "trait": "A thousand faces: change your face and voice at will; your true face is yours alone to keep.",
+      "name_style": "human"
+    },
+    "dark_elf": {
+      "label": "Dark Elf",
+      "bonus": {
+        "dex": 1,
+        "int": 1
+      },
+      "trait": "Deep sight: perfect vision in darkness; bright daylight stings.",
+      "name_style": "elf"
+    },
+    "dryad": {
+      "label": "Dryad",
+      "bonus": {
+        "wis": 1,
+        "cha": 1
+      },
+      "trait": "Rooted kin: once per scene, step into one tree and out of another within sight.",
+      "name_style": "fae"
+    },
+    "gorgon": {
+      "label": "Gorgon",
+      "bonus": {
+        "cha": 1,
+        "con": 1
+      },
+      "trait": "Petrifying glare: once per session, lock eyes to freeze a creature in place for a breath or two.",
+      "name_style": "serpent"
+    },
+    "harpy": {
+      "label": "Harpy",
+      "bonus": {
+        "dex": 2
+      },
+      "trait": "Wind-borne: your wings carry you in long glides and short bursts of true flight.",
+      "name_style": "fae"
+    },
+    "kitsune": {
+      "label": "Kitsune",
+      "bonus": {
+        "int": 1,
+        "cha": 1
+      },
+      "trait": "Fox shape: shift into a fox at will; lies feel warm on your tongue when you hear them.",
+      "name_style": "eastern"
+    },
+    "merfolk": {
+      "label": "Merfolk",
+      "bonus": {
+        "con": 1,
+        "cha": 1
+      },
+      "trait": "Two tides: breathe water as easily as air; your legs return on dry land.",
+      "name_style": "elemental"
+    },
+    "oni": {
+      "label": "Oni",
+      "bonus": {
+        "str": 2
+      },
+      "trait": "Iron hide: shrug off the first blow in any fight as if it never landed.",
+      "name_style": "eastern"
+    },
+    "ogre": {
+      "label": "Ogre",
+      "bonus": {
+        "str": 1,
+        "con": 1
+      },
+      "trait": "Bone-breaker: your unarmed blows count as heavy weapons.",
+      "name_style": "orc"
+    },
+    "selkie": {
+      "label": "Selkie",
+      "bonus": {
+        "wis": 1,
+        "dex": 1
+      },
+      "trait": "Seal-skin: with your hide you are a seal in the water; guard it — whoever holds it holds you.",
+      "name_style": "human"
+    },
+    "valkyrie": {
+      "label": "Valkyrie",
+      "bonus": {
+        "str": 1,
+        "wis": 1
+      },
+      "trait": "Chooser of the slain: you feel the moment someone nearby is about to die — once per session, refuse it.",
+      "name_style": "celestial"
+    },
+    "giantkin": {
+      "label": "Giantkin",
+      "bonus": {
+        "str": 1,
+        "con": 1
+      },
+      "trait": "Old blood of giants: you count as one size larger for lifting, carrying, and shoving.",
+      "name_style": "dwarf"
     }
+  },
+  "halfblood": {
+    "note": "Choose two species. Each grants +1 to its primary bonus stat (instead of the full bonus); you keep both traits."
   },
   "classes": {
     "fighter": {
       "label": "Fighter",
       "hit_die": 10,
-      "priorities": ["str", "con", "dex", "wis", "cha", "int"],
+      "priorities": [
+        "str",
+        "con",
+        "dex",
+        "wis",
+        "cha",
+        "int"
+      ],
       "ac_base": 16,
       "abilities": [
         "Second Wind: once per session, recover half your maximum HP.",
         "Power Strike: before an attack roll, take -2 on the roll for +4 damage."
       ],
-      "kit": ["Longsword", "Shield", "Chain shirt", "Torch", "Rations (3 days)"]
+      "kit": [
+        "Longsword",
+        "Shield",
+        "Chain shirt",
+        "Torch",
+        "Rations (3 days)"
+      ],
+      "starting_currency": {
+        "name": "Gold",
+        "amount": 15
+      }
     },
     "rogue": {
       "label": "Rogue",
       "hit_die": 8,
-      "priorities": ["dex", "cha", "int", "con", "wis", "str"],
+      "priorities": [
+        "dex",
+        "cha",
+        "int",
+        "con",
+        "wis",
+        "str"
+      ],
       "ac_base": 13,
       "abilities": [
         "Sneak Attack: +1d6 damage when you strike with surprise or an ally distracts your target.",
         "Nimble Escape: you can disengage or hide as a quick action."
       ],
-      "kit": ["Pair of daggers", "Lockpicks", "Dark hooded cloak", "Rope (15 m)", "Rations (3 days)"]
+      "kit": [
+        "Pair of daggers",
+        "Lockpicks",
+        "Dark hooded cloak",
+        "Rope (15 m)",
+        "Rations (3 days)"
+      ],
+      "starting_currency": {
+        "name": "Gold",
+        "amount": 20
+      }
     },
     "mage": {
       "label": "Mage",
       "hit_die": 6,
-      "priorities": ["int", "wis", "con", "dex", "cha", "str"],
+      "priorities": [
+        "int",
+        "wis",
+        "con",
+        "dex",
+        "cha",
+        "str"
+      ],
       "ac_base": 11,
       "abilities": [
         "Arcane Bolt: a reliable ranged blast of force (1d8 damage).",
         "Ritual Casting: with ten minutes and chalk, cast utility magic beyond your prepared spells."
       ],
-      "kit": ["Spellbook", "Walking staff", "Component pouch", "Ink and quill", "Rations (3 days)"]
+      "kit": [
+        "Spellbook",
+        "Walking staff",
+        "Component pouch",
+        "Ink and quill",
+        "Rations (3 days)"
+      ],
+      "starting_currency": {
+        "name": "Gold",
+        "amount": 10
+      }
     },
     "cleric": {
       "label": "Cleric",
       "hit_die": 8,
-      "priorities": ["wis", "con", "str", "cha", "int", "dex"],
+      "priorities": [
+        "wis",
+        "con",
+        "str",
+        "cha",
+        "int",
+        "dex"
+      ],
       "ac_base": 15,
       "abilities": [
         "Healing Word: once per scene, restore 1d8+WIS HP to a creature you can see.",
         "Turn Undead: present your symbol to drive back the restless dead."
       ],
-      "kit": ["Mace", "Shield", "Scale mail", "Holy symbol", "Rations (3 days)"]
+      "kit": [
+        "Mace",
+        "Shield",
+        "Scale mail",
+        "Holy symbol",
+        "Rations (3 days)"
+      ],
+      "starting_currency": {
+        "name": "Gold",
+        "amount": 12
+      }
     },
     "ranger": {
       "label": "Ranger",
       "hit_die": 10,
-      "priorities": ["dex", "wis", "con", "str", "int", "cha"],
+      "priorities": [
+        "dex",
+        "wis",
+        "con",
+        "str",
+        "int",
+        "cha"
+      ],
       "ac_base": 14,
       "abilities": [
         "Hunter's Mark: focus on one quarry — advantage on tracking it and +2 damage against it.",
         "Wild Tracker: you read terrain, weather, and trails like a written page."
       ],
-      "kit": ["Longbow", "Quiver (20 arrows)", "Short sword", "Leather armor", "Snare wire", "Rations (5 days)"]
+      "kit": [
+        "Longbow",
+        "Quiver (20 arrows)",
+        "Short sword",
+        "Leather armor",
+        "Snare wire",
+        "Rations (5 days)"
+      ],
+      "starting_currency": {
+        "name": "Gold",
+        "amount": 12
+      }
     },
     "bard": {
       "label": "Bard",
       "hit_die": 8,
-      "priorities": ["cha", "dex", "wis", "con", "int", "str"],
+      "priorities": [
+        "cha",
+        "dex",
+        "wis",
+        "con",
+        "int",
+        "str"
+      ],
       "ac_base": 12,
       "abilities": [
         "Inspire: grant an ally a d6 to add to any roll before the end of the scene.",
         "Cutting Words: once per scene, subtract a d6 from an enemy's roll with a well-aimed barb."
       ],
-      "kit": ["Lute", "Rapier", "Fine clothes", "Small mirror", "Rations (3 days)"]
+      "kit": [
+        "Lute",
+        "Rapier",
+        "Fine clothes",
+        "Small mirror",
+        "Rations (3 days)"
+      ],
+      "starting_currency": {
+        "name": "Gold",
+        "amount": 18
+      }
+    },
+    "barbarian": {
+      "label": "Barbarian",
+      "hit_die": 12,
+      "priorities": [
+        "str",
+        "con",
+        "dex",
+        "wis",
+        "cha",
+        "int"
+      ],
+      "ac_base": 13,
+      "abilities": [
+        "Rage: once per scene, +2 damage on every blow and shrug off the first wound entirely.",
+        "Overwhelm: after felling an enemy, immediately strike another within reach."
+      ],
+      "kit": [
+        "Greataxe",
+        "Furs and hides",
+        "Trophy necklace",
+        "Waterskin",
+        "Rations (3 days)"
+      ],
+      "starting_currency": {
+        "name": "Gold",
+        "amount": 8
+      }
+    },
+    "paladin": {
+      "label": "Paladin",
+      "hit_die": 10,
+      "priorities": [
+        "str",
+        "cha",
+        "con",
+        "wis",
+        "int",
+        "dex"
+      ],
+      "ac_base": 17,
+      "abilities": [
+        "Oath Shield: once per session, a blow meant for an ally beside you strikes you instead — halved.",
+        "Sense Corruption: you taste lies sworn on an oath and feel unholy ground through your boots."
+      ],
+      "kit": [
+        "Warhammer",
+        "Heavy shield",
+        "Plate-and-chain",
+        "Oath token",
+        "Rations (3 days)"
+      ],
+      "starting_currency": {
+        "name": "Gold",
+        "amount": 15
+      }
+    },
+    "druid": {
+      "label": "Druid",
+      "hit_die": 8,
+      "priorities": [
+        "wis",
+        "con",
+        "dex",
+        "int",
+        "cha",
+        "str"
+      ],
+      "ac_base": 12,
+      "abilities": [
+        "Wild Shape: once per session, take the form of a harmless beast until you take harm.",
+        "Green Whisper: plants remember — ask a tree or hedge what passed it recently."
+      ],
+      "kit": [
+        "Sickle",
+        "Herb pouch",
+        "Cloak of leaves",
+        "Gnarled staff",
+        "Rations (3 days)"
+      ],
+      "starting_currency": {
+        "name": "Gold",
+        "amount": 8
+      }
+    },
+    "monk": {
+      "label": "Monk",
+      "hit_die": 8,
+      "priorities": [
+        "dex",
+        "wis",
+        "con",
+        "str",
+        "int",
+        "cha"
+      ],
+      "ac_base": 14,
+      "abilities": [
+        "Flurry: when you strike unarmed, strike twice.",
+        "Still Mind: advantage on resisting fear, charm, and provocation."
+      ],
+      "kit": [
+        "Quarterstaff",
+        "Prayer beads",
+        "Simple robes",
+        "Travel tea set",
+        "Rations (3 days)"
+      ],
+      "starting_currency": {
+        "name": "Gold",
+        "amount": 5
+      }
+    },
+    "warlock": {
+      "label": "Warlock",
+      "hit_die": 8,
+      "priorities": [
+        "cha",
+        "int",
+        "con",
+        "dex",
+        "wis",
+        "str"
+      ],
+      "ac_base": 11,
+      "abilities": [
+        "Patron's Lash: a whip of shadow and heat (1d8 damage).",
+        "Whispered Debt: once per session, ask your patron one yes/no question. It always costs something."
+      ],
+      "kit": [
+        "Ritual knife",
+        "Grimoire",
+        "Black candles",
+        "Pact mark",
+        "Rations (3 days)"
+      ],
+      "starting_currency": {
+        "name": "Gold",
+        "amount": 12
+      }
+    },
+    "alchemist": {
+      "label": "Alchemist",
+      "hit_die": 8,
+      "priorities": [
+        "int",
+        "dex",
+        "con",
+        "wis",
+        "cha",
+        "str"
+      ],
+      "ac_base": 12,
+      "abilities": [
+        "Volatile Flask: once per scene, brew a bomb, salve, or smokescreen from your satchel.",
+        "Trained Nose: identify any substance, potion, or poison by smell and a careful taste."
+      ],
+      "kit": [
+        "Alchemy satchel",
+        "Glass vials",
+        "Acid flask",
+        "Leather apron",
+        "Brass goggles",
+        "Rations (3 days)"
+      ],
+      "starting_currency": {
+        "name": "Gold",
+        "amount": 20
+      }
     }
   },
+  "appearance": {
+    "body_size": [
+      "barely waist-high",
+      "very short",
+      "short",
+      "below average height",
+      "average height",
+      "tall",
+      "very tall",
+      "towering"
+    ],
+    "build": [
+      "lean",
+      "wiry",
+      "athletic",
+      "broad-shouldered",
+      "stocky",
+      "lanky",
+      "plump",
+      "delicate",
+      "muscular",
+      "compact",
+      "graceful",
+      "weathered",
+      "barrel-chested",
+      "sinewy",
+      "soft-bodied",
+      "angular"
+    ],
+    "hair_color": [
+      "black",
+      "blue-black",
+      "dark brown",
+      "chestnut",
+      "auburn",
+      "copper-red",
+      "fire-orange",
+      "blond",
+      "silver-blond",
+      "ash gray",
+      "white",
+      "bone white",
+      "moss green",
+      "lavender",
+      "teal",
+      "streaked with gray"
+    ],
+    "hair_style": [
+      "cropped short",
+      "shaved",
+      "shaved at the sides",
+      "in a long braid",
+      "in many small braids",
+      "loose to the shoulders",
+      "wild and unbrushed",
+      "in a topknot",
+      "oiled and combed back",
+      "under a permanent headscarf",
+      "in tight curls",
+      "tonsured",
+      "in a sailor's queue",
+      "half-braided, half-loose"
+    ],
+    "eye_color": [
+      "amber",
+      "black",
+      "ice blue",
+      "deep blue",
+      "brown",
+      "emerald",
+      "golden",
+      "gray",
+      "hazel",
+      "violet",
+      "sea-green",
+      "steel gray",
+      "mismatched (one dark, one pale)",
+      "milky pale"
+    ],
+    "features": [
+      "a spray of freckles",
+      "a striking birthmark",
+      "a gap-toothed grin",
+      "a crooked nose, broken at least once",
+      "heavy brows",
+      "delicate hands",
+      "a missing earlobe",
+      "a silver tooth",
+      "deep laugh lines",
+      "calloused palms",
+      "a long braided beard",
+      "ears pierced many times",
+      "ink-stained fingers",
+      "knuckles like walnuts",
+      "a voice like gravel",
+      "a soft, carrying voice",
+      "one permanently raised eyebrow",
+      "an old limp that vanishes when it matters",
+      "sunburnt and peeling",
+      "unsettlingly steady hands"
+    ],
+    "scars": [
+      {
+        "text": "a lightning-branch scar down the neck",
+        "perk": "Storm-warned: the scar itches hours before bad weather or bad luck."
+      },
+      {
+        "text": "rope-burn ring around one wrist",
+        "perk": "Escaped once: advantage on slipping ropes, chains, and manacles."
+      },
+      {
+        "text": "a burn scar across the knuckles",
+        "perk": "Fire-tested: advantage on keeping calm near open flame."
+      },
+      {
+        "text": "a thin duelist's line along the jaw",
+        "perk": "Measured eye: you can size up a fighter's skill at a glance."
+      },
+      {
+        "text": "claw marks raking one shoulder",
+        "perk": "Beast-read: advantage on sensing when an animal is about to turn."
+      },
+      {
+        "text": "a surgeon's neat scar over the ribs",
+        "perk": "Been under the knife: advantage on judging a healer's competence."
+      },
+      {
+        "text": "an old animal bite on the calf"
+      },
+      {
+        "text": "a pale scar splitting one eyebrow"
+      },
+      {
+        "text": "pockmarks from a childhood fever"
+      },
+      {
+        "text": "a badly-healed break in the nose"
+      },
+      {
+        "text": "frost-white fingertips on one hand"
+      },
+      {
+        "text": "a ring of tooth-marks that no one can name the animal for"
+      }
+    ],
+    "tattoos": [
+      {
+        "text": "a guild mark inked on the forearm",
+        "perk": "Guild kin: one guild treats you as family — decide which the first time it matters."
+      },
+      {
+        "text": "a sailor's compass rose on the shoulder",
+        "perk": "True bearing: you always know which way is north."
+      },
+      {
+        "text": "prayer script curling around the collarbone",
+        "perk": "Blessed ink: once per session, reroll a failed resistance against magic."
+      },
+      {
+        "text": "a faded prison brand",
+        "perk": "Yard rules: prisoners, smugglers, and outcasts will talk to you."
+      },
+      {
+        "text": "a serpent swallowing its tail around the wrist",
+        "perk": "Old cycle: you recognize ritual and occult symbolism on sight."
+      },
+      {
+        "text": "tally marks along the inner arm",
+        "perk": "Kept count: you never lose track of a debt, in either direction."
+      },
+      {
+        "text": "a moth over the heart"
+      },
+      {
+        "text": "an unfinished tattoo, abandoned mid-line"
+      },
+      {
+        "text": "knotwork sleeves from wrist to elbow"
+      },
+      {
+        "text": "a tiny bird behind one ear"
+      },
+      {
+        "text": "a name in a language you no longer speak"
+      },
+      {
+        "text": "stars dotted across the back of the neck"
+      }
+    ]
+  },
   "name_styles": {
-    "human":    { "first_start": ["Mar", "Ed", "Al", "Ro", "Jo", "Wil", "Hen", "Ka", "Bea", "Isol", "Ger", "Ot"], "first_end": ["ric", "win", "mund", "bert", "san", "trice", "de", "lin", "ta", "ver", "na", "mar"], "last_start": ["Ash", "Black", "Cole", "Fair", "Hart", "Mill", "Stone", "Web", "Cart", "Fletch"], "last_end": ["brook", "er", "field", "man", "wright", "well", "worth", "ley", "don", "gate"] },
-    "dwarf":    { "first_start": ["Bal", "Dur", "Gim", "Thra", "Kor", "Bru", "Dag", "Hel", "Mor", "Vond"], "first_end": ["din", "gan", "li", "grim", "nur", "na", "dis", "ga", "run", "brek"], "last_start": ["Iron", "Stone", "Deep", "Coal", "Hammer", "Anvil", "Copper", "Grey"], "last_end": ["beard", "fist", "delver", "brow", "song", "guard", "vein", "helm"] },
-    "elf":      { "first_start": ["Ael", "Cael", "Fen", "Ith", "Lor", "Nim", "Syl", "Thal", "Vael", "Yll"], "first_end": ["ion", "wen", "dril", "andra", "ias", "eth", "ora", "iel", "aen", "ys"], "last_start": ["Dawn", "Moon", "Star", "Wind", "Leaf", "River", "Frost", "Sun"], "last_end": ["whisper", "shade", "singer", "runner", "weaver", "gleam", "brook", "veil"] },
-    "halfling": { "first_start": ["Bil", "Mer", "Pip", "Ros", "Tan", "Wen", "Fal", "Dai", "Pol", "Nor"], "first_end": ["bo", "ry", "pin", "ie", "do", "na", "co", "sy", "la", "ben"], "last_start": ["Apple", "Butter", "Green", "Honey", "Puddle", "Thistle", "Warm", "Barley"], "last_end": ["barrel", "bloom", "bottom", "foot", "kettle", "patch", "pot", "field"] },
-    "orc":      { "first_start": ["Gro", "Kar", "Mog", "Ur", "Zug", "Dre", "Sha", "Bru", "Gna", "Ruk"], "first_end": ["gash", "nak", "tha", "zag", "ka", "rok", "gra", "dur", "sha", "mok"], "last_start": ["Skull", "Blood", "Iron", "Wolf", "Bone", "Ash", "Storm", "Scar"], "last_end": ["cleaver", "howl", "jaw", "render", "tusk", "eater", "brand", "maw"] },
-    "gnome":    { "first_start": ["Fizz", "Nim", "Bod", "Glim", "Wren", "Zook", "Pim", "Tink", "Quil", "Sniv"], "first_end": ["wick", "ble", "gart", "mer", "ina", "po", "dle", "eron", "ly", "bin"], "last_start": ["Cog", "Spark", "Gear", "Whistle", "Copper", "Fiddle", "Button", "Marble"], "last_end": ["spinner", "bang", "twist", "bolt", "gleam", "sprocket", "winkle", "snap"] }
+    "human": {
+      "male_start": [
+        "Mar",
+        "Ed",
+        "Al",
+        "Ro",
+        "Jo",
+        "Wil",
+        "Hen",
+        "Ka",
+        "Bea",
+        "Isol",
+        "Ger",
+        "Ot"
+      ],
+      "male_end": [
+        "ric",
+        "win",
+        "mund",
+        "bert",
+        "san",
+        "ton",
+        "der",
+        "lin",
+        "tor",
+        "ver",
+        "nald",
+        "mar"
+      ],
+      "female_start": [
+        "Ade",
+        "Bri",
+        "Cla",
+        "Ele",
+        "Gwen",
+        "Hel",
+        "Ma",
+        "Ro",
+        "Sy",
+        "Wil"
+      ],
+      "female_end": [
+        "la",
+        "anna",
+        "ra",
+        "nor",
+        "dith",
+        "ga",
+        "beth",
+        "sanne",
+        "bille",
+        "fred"
+      ],
+      "last_start": [
+        "Ash",
+        "Black",
+        "Cole",
+        "Fair",
+        "Hart",
+        "Mill",
+        "Stone",
+        "Web",
+        "Cart",
+        "Fletch"
+      ],
+      "last_end": [
+        "brook",
+        "er",
+        "field",
+        "man",
+        "wright",
+        "well",
+        "worth",
+        "ley",
+        "don",
+        "gate"
+      ]
+    },
+    "dwarf": {
+      "male_start": [
+        "Bal",
+        "Dur",
+        "Gim",
+        "Thra",
+        "Kor",
+        "Bru",
+        "Dag",
+        "Hel",
+        "Mor",
+        "Vond"
+      ],
+      "male_end": [
+        "din",
+        "gan",
+        "li",
+        "grim",
+        "nur",
+        "nor",
+        "dun",
+        "gar",
+        "run",
+        "brek"
+      ],
+      "female_start": [
+        "Bre",
+        "Dag",
+        "Grun",
+        "Hel",
+        "Ket",
+        "Mar",
+        "Sig",
+        "Thra",
+        "Vig",
+        "Yrs"
+      ],
+      "female_end": [
+        "nia",
+        "ny",
+        "hild",
+        "ga",
+        "tra",
+        "dis",
+        "run",
+        "de",
+        "lin",
+        "a"
+      ],
+      "last_start": [
+        "Iron",
+        "Stone",
+        "Deep",
+        "Coal",
+        "Hammer",
+        "Anvil",
+        "Copper",
+        "Grey"
+      ],
+      "last_end": [
+        "beard",
+        "fist",
+        "delver",
+        "brow",
+        "song",
+        "guard",
+        "vein",
+        "helm"
+      ]
+    },
+    "elf": {
+      "male_start": [
+        "Ael",
+        "Cael",
+        "Fen",
+        "Ith",
+        "Lor",
+        "Nim",
+        "Syl",
+        "Thal",
+        "Vael",
+        "Yll"
+      ],
+      "male_end": [
+        "ion",
+        "wen",
+        "dril",
+        "andra",
+        "ias",
+        "eth",
+        "ora",
+        "iel",
+        "aen",
+        "ys"
+      ],
+      "female_start": [
+        "Ael",
+        "Ara",
+        "Elo",
+        "Ith",
+        "Lia",
+        "Nim",
+        "Sae",
+        "Thal",
+        "Vae",
+        "Yll"
+      ],
+      "female_end": [
+        "wen",
+        "riel",
+        "wyn",
+        "andra",
+        "neth",
+        "ara",
+        "iel",
+        "issa",
+        "enna",
+        "ys"
+      ],
+      "last_start": [
+        "Dawn",
+        "Moon",
+        "Star",
+        "Wind",
+        "Leaf",
+        "River",
+        "Frost",
+        "Sun"
+      ],
+      "last_end": [
+        "whisper",
+        "shade",
+        "singer",
+        "runner",
+        "weaver",
+        "gleam",
+        "brook",
+        "veil"
+      ]
+    },
+    "halfling": {
+      "male_start": [
+        "Bil",
+        "Mer",
+        "Pip",
+        "Ros",
+        "Tan",
+        "Wen",
+        "Fal",
+        "Dai",
+        "Pol",
+        "Nor"
+      ],
+      "male_end": [
+        "bo",
+        "ry",
+        "pin",
+        "ie",
+        "do",
+        "na",
+        "co",
+        "sy",
+        "la",
+        "ben"
+      ],
+      "female_start": [
+        "Bel",
+        "Cam",
+        "Dai",
+        "Est",
+        "Lil",
+        "Mar",
+        "Pop",
+        "Ros",
+        "Tan",
+        "Wen"
+      ],
+      "female_end": [
+        "la",
+        "omile",
+        "sy",
+        "ella",
+        "y",
+        "igold",
+        "py",
+        "ie",
+        "sy",
+        "na"
+      ],
+      "last_start": [
+        "Apple",
+        "Butter",
+        "Green",
+        "Honey",
+        "Puddle",
+        "Thistle",
+        "Warm",
+        "Barley"
+      ],
+      "last_end": [
+        "barrel",
+        "bloom",
+        "bottom",
+        "foot",
+        "kettle",
+        "patch",
+        "pot",
+        "field"
+      ]
+    },
+    "orc": {
+      "male_start": [
+        "Gro",
+        "Kar",
+        "Mog",
+        "Ur",
+        "Zug",
+        "Dre",
+        "Sha",
+        "Bru",
+        "Gna",
+        "Ruk"
+      ],
+      "male_end": [
+        "gash",
+        "nak",
+        "tha",
+        "zag",
+        "ka",
+        "rok",
+        "gra",
+        "dur",
+        "sha",
+        "mok"
+      ],
+      "female_start": [
+        "Gash",
+        "Kur",
+        "Mor",
+        "Sha",
+        "Ur",
+        "Zan",
+        "Dre",
+        "Bru",
+        "Gna",
+        "Ruk"
+      ],
+      "female_end": [
+        "a",
+        "ga",
+        "aka",
+        "ki",
+        "zha",
+        "ra",
+        "tha",
+        "na",
+        "sha",
+        "ka"
+      ],
+      "last_start": [
+        "Skull",
+        "Blood",
+        "Iron",
+        "Wolf",
+        "Bone",
+        "Ash",
+        "Storm",
+        "Scar"
+      ],
+      "last_end": [
+        "cleaver",
+        "howl",
+        "jaw",
+        "render",
+        "tusk",
+        "eater",
+        "brand",
+        "maw"
+      ]
+    },
+    "gnome": {
+      "male_start": [
+        "Fizz",
+        "Nim",
+        "Bod",
+        "Glim",
+        "Wren",
+        "Zook",
+        "Pim",
+        "Tink",
+        "Quil",
+        "Sniv"
+      ],
+      "male_end": [
+        "wick",
+        "ble",
+        "gart",
+        "mer",
+        "ina",
+        "po",
+        "dle",
+        "eron",
+        "ly",
+        "bin"
+      ],
+      "female_start": [
+        "Bim",
+        "Dilli",
+        "Fen",
+        "Glim",
+        "Lor",
+        "Nim",
+        "Pip",
+        "Quil",
+        "Tik",
+        "Wren"
+      ],
+      "female_end": [
+        "ble",
+        "a",
+        "wick",
+        "mer",
+        "ina",
+        "sy",
+        "pa",
+        "la",
+        "ki",
+        "na"
+      ],
+      "last_start": [
+        "Cog",
+        "Spark",
+        "Gear",
+        "Whistle",
+        "Copper",
+        "Fiddle",
+        "Button",
+        "Marble"
+      ],
+      "last_end": [
+        "spinner",
+        "bang",
+        "twist",
+        "bolt",
+        "gleam",
+        "sprocket",
+        "winkle",
+        "snap"
+      ]
+    },
+    "goblin": {
+      "male_start": [
+        "Skri",
+        "Zib",
+        "Nak",
+        "Grib",
+        "Fes",
+        "Yip",
+        "Krel",
+        "Sni",
+        "Rat",
+        "Vex"
+      ],
+      "male_end": [
+        "k",
+        "bit",
+        "zle",
+        "git",
+        "nip",
+        "rat",
+        "zik",
+        "let",
+        "chin",
+        "tik"
+      ],
+      "female_start": [
+        "Fiz",
+        "Grib",
+        "Nix",
+        "Ratt",
+        "Skiz",
+        "Snee",
+        "Vex",
+        "Yip",
+        "Zib",
+        "Krel"
+      ],
+      "female_end": [
+        "it",
+        "ba",
+        "ie",
+        "la",
+        "za",
+        "ki",
+        "a",
+        "sy",
+        "bit",
+        "nit"
+      ],
+      "last_start": [
+        "Quick",
+        "Rust",
+        "Mud",
+        "Grease",
+        "Tooth",
+        "Rag",
+        "Sly",
+        "Gut"
+      ],
+      "last_end": [
+        "finger",
+        "snatch",
+        "biter",
+        "runner",
+        "pocket",
+        "wick",
+        "grin",
+        "scrap"
+      ]
+    },
+    "catfolk": {
+      "male_start": [
+        "Mira",
+        "Shen",
+        "Kess",
+        "Rao",
+        "Vish",
+        "Tama",
+        "Nya",
+        "Suri",
+        "Pasha",
+        "Ome"
+      ],
+      "male_end": [
+        "ji",
+        "ka",
+        "ra",
+        "lo",
+        "sha",
+        "ni",
+        "mau",
+        "ri",
+        "tta",
+        "zei"
+      ],
+      "female_start": [
+        "Ami",
+        "Kess",
+        "Mira",
+        "Nya",
+        "Pasha",
+        "Sari",
+        "Suri",
+        "Tama",
+        "Vish",
+        "Zeh"
+      ],
+      "female_end": [
+        "ra",
+        "a",
+        "belle",
+        "sha",
+        "li",
+        "na",
+        "mau",
+        "ri",
+        "tta",
+        "zei"
+      ],
+      "last_start": [
+        "Silent",
+        "Dusk",
+        "Amber",
+        "Swift",
+        "Velvet",
+        "Rain",
+        "Sun",
+        "Shadow"
+      ],
+      "last_end": [
+        "step",
+        "tail",
+        "eye",
+        "claw",
+        "fur",
+        "prowl",
+        "whisker",
+        "leap"
+      ]
+    },
+    "serpent": {
+      "male_start": [
+        "Ssa",
+        "Zeth",
+        "Ixi",
+        "Vess",
+        "Hass",
+        "Ylsi",
+        "Ossa",
+        "Sara",
+        "Neth",
+        "Zsi"
+      ],
+      "male_end": [
+        "lith",
+        "ssir",
+        "za",
+        "neth",
+        "ssa",
+        "rix",
+        "thess",
+        "vass",
+        "ll",
+        "sha"
+      ],
+      "female_start": [
+        "Issa",
+        "Neth",
+        "Ossa",
+        "Sess",
+        "Vess",
+        "Xilo",
+        "Ylsa",
+        "Zeth",
+        "Hass",
+        "Sara"
+      ],
+      "female_end": [
+        "lith",
+        "issa",
+        "za",
+        "neth",
+        "ssa",
+        "ria",
+        "thess",
+        "vassa",
+        "lla",
+        "sha"
+      ],
+      "last_start": [
+        "Coil",
+        "Scale",
+        "Fang",
+        "Venom",
+        "Marsh",
+        "Gleam",
+        "Silk",
+        "Deep"
+      ],
+      "last_end": [
+        "tongue",
+        "back",
+        "bind",
+        "gaze",
+        "shed",
+        "hiss",
+        "ward",
+        "glide"
+      ]
+    },
+    "fae": {
+      "male_start": [
+        "Puck",
+        "Ael",
+        "Bri",
+        "Thistle",
+        "Mab",
+        "Ler",
+        "Sio",
+        "Fenn",
+        "Ela",
+        "Oona"
+      ],
+      "male_end": [
+        "wyn",
+        "dew",
+        "ar",
+        "fyn",
+        "isle",
+        "ette",
+        "bhan",
+        "ick",
+        "ryn",
+        "gh"
+      ],
+      "female_start": [
+        "Ael",
+        "Bri",
+        "Ela",
+        "Fenn",
+        "Mab",
+        "Nia",
+        "Oona",
+        "Siofra",
+        "Tam",
+        "Wynn"
+      ],
+      "female_end": [
+        "wyn",
+        "dew",
+        "ryn",
+        "isle",
+        "ette",
+        "bhan",
+        "gh",
+        "ella",
+        "yss",
+        "ah"
+      ],
+      "last_start": [
+        "Briar",
+        "Glimmer",
+        "Hollow",
+        "Morning",
+        "Nettle",
+        "Owl",
+        "Twilight",
+        "Wisp"
+      ],
+      "last_end": [
+        "thorn",
+        "light",
+        "hill",
+        "dew",
+        "song",
+        "feather",
+        "mist",
+        "ring"
+      ]
+    },
+    "drake": {
+      "male_start": [
+        "Vor",
+        "Kaz",
+        "Ryn",
+        "Sar",
+        "Bhal",
+        "Dra",
+        "Tor",
+        "Ash",
+        "Ig",
+        "Zar"
+      ],
+      "male_end": [
+        "ax",
+        "eth",
+        "gar",
+        "ion",
+        "mach",
+        "usk",
+        "nir",
+        "goth",
+        "ryn",
+        "esh"
+      ],
+      "female_start": [
+        "Ash",
+        "Bhal",
+        "Dra",
+        "Ember",
+        "Ig",
+        "Kaz",
+        "Pyri",
+        "Sar",
+        "Vor",
+        "Zar"
+      ],
+      "female_end": [
+        "a",
+        "eth",
+        "ia",
+        "eska",
+        "nyx",
+        "ara",
+        "essa",
+        "ith",
+        "ryn",
+        "esh"
+      ],
+      "last_start": [
+        "Cinder",
+        "Flame",
+        "Brass",
+        "Ember",
+        "Smoke",
+        "Furnace",
+        "Coal",
+        "Pyre"
+      ],
+      "last_end": [
+        "scale",
+        "wing",
+        "heart",
+        "breath",
+        "spine",
+        "crest",
+        "talon",
+        "brand"
+      ]
+    },
+    "celestial": {
+      "male_start": [
+        "Aza",
+        "Sera",
+        "Uri",
+        "Rapha",
+        "Cass",
+        "Ela",
+        "Ophi",
+        "Zad",
+        "Ana",
+        "Vael"
+      ],
+      "male_end": [
+        "el",
+        "phiel",
+        "iah",
+        "ana",
+        "iel",
+        "riel",
+        "im",
+        "ara",
+        "on",
+        "is"
+      ],
+      "female_start": [
+        "Ana",
+        "Cass",
+        "Ela",
+        "Ophe",
+        "Rapha",
+        "Sera",
+        "Uri",
+        "Vael",
+        "Zad",
+        "Aza"
+      ],
+      "female_end": [
+        "ela",
+        "iah",
+        "riel",
+        "lia",
+        "ella",
+        "phina",
+        "ana",
+        "is",
+        "ara",
+        "iel"
+      ],
+      "last_start": [
+        "Dawn",
+        "Light",
+        "Grace",
+        "Sky",
+        "Halo",
+        "Morning",
+        "Silver",
+        "True"
+      ],
+      "last_end": [
+        "ward",
+        "bearer",
+        "wing",
+        "born",
+        "song",
+        "watch",
+        "flame",
+        "crown"
+      ]
+    },
+    "astral": {
+      "male_start": [
+        "Vlaak",
+        "Xam",
+        "Quith",
+        "Zerth",
+        "Kari",
+        "Dak",
+        "Ghus",
+        "Ris",
+        "Yrl",
+        "Mnem"
+      ],
+      "male_end": [
+        "ith",
+        "achk",
+        "ara",
+        "esh",
+        "oon",
+        "yth",
+        "ik",
+        "ath",
+        "uz",
+        "eq"
+      ],
+      "female_start": [
+        "Dak",
+        "Ghil",
+        "Kari",
+        "Mnem",
+        "Quith",
+        "Ris",
+        "Vlaa",
+        "Xam",
+        "Yrl",
+        "Zerth"
+      ],
+      "female_end": [
+        "a",
+        "ith",
+        "ara",
+        "esh",
+        "oon",
+        "yth",
+        "ika",
+        "ath",
+        "uza",
+        "eq"
+      ],
+      "last_start": [
+        "Void",
+        "Silver",
+        "Knife",
+        "Astral",
+        "Gate",
+        "Mind",
+        "Rift",
+        "Storm"
+      ],
+      "last_end": [
+        "walker",
+        "blade",
+        "seer",
+        "born",
+        "cutter",
+        "speaker",
+        "drifter",
+        "warden"
+      ]
+    },
+    "elemental": {
+      "male_start": [
+        "Cin",
+        "Aqua",
+        "Ter",
+        "Zeph",
+        "Pyra",
+        "Gale",
+        "Mar",
+        "Ember",
+        "Sil",
+        "Bor"
+      ],
+      "male_end": [
+        "der",
+        "ra",
+        "os",
+        "yr",
+        "is",
+        "wen",
+        "ion",
+        "ka",
+        "eus",
+        "ah"
+      ],
+      "female_start": [
+        "Aqua",
+        "Bora",
+        "Cin",
+        "Ember",
+        "Gale",
+        "Mara",
+        "Pyra",
+        "Sil",
+        "Ter",
+        "Zeph"
+      ],
+      "female_end": [
+        "ra",
+        "lia",
+        "dra",
+        "is",
+        "wen",
+        "ina",
+        "essa",
+        "ka",
+        "ys",
+        "ah"
+      ],
+      "last_start": [
+        "Flame",
+        "Tide",
+        "Stone",
+        "Wind",
+        "Ash",
+        "Rain",
+        "Spark",
+        "Frost"
+      ],
+      "last_end": [
+        "heart",
+        "caller",
+        "born",
+        "dancer",
+        "vein",
+        "whisper",
+        "step",
+        "bound"
+      ]
+    },
+    "grave": {
+      "male_start": [
+        "Mort",
+        "Grim",
+        "Vess",
+        "Dust",
+        "Hollow",
+        "Marr",
+        "Sorrow",
+        "Pale",
+        "Ash",
+        "Wither"
+      ],
+      "male_end": [
+        "imer",
+        "wal",
+        "amine",
+        "en",
+        "eth",
+        "ow",
+        "ick",
+        "is",
+        "and",
+        "er"
+      ],
+      "female_start": [
+        "Ash",
+        "Dust",
+        "Hollow",
+        "Marr",
+        "Morta",
+        "Pale",
+        "Sorrow",
+        "Vessa",
+        "Winter",
+        "Wren"
+      ],
+      "female_end": [
+        "a",
+        "wen",
+        "ine",
+        "en",
+        "eth",
+        "ow",
+        "ess",
+        "is",
+        "and",
+        "el"
+      ],
+      "last_start": [
+        "Grave",
+        "Cold",
+        "Last",
+        "Silent",
+        "Winter",
+        "Shroud",
+        "Bone",
+        "Dusk"
+      ],
+      "last_end": [
+        "hand",
+        "breath",
+        "word",
+        "vigil",
+        "shade",
+        "mourn",
+        "rest",
+        "toll"
+      ]
+    },
+    "eastern": {
+      "male_start": [
+        "Mei",
+        "Ren",
+        "Kaz",
+        "Yun",
+        "Hana",
+        "Jin",
+        "Sao",
+        "Tsu",
+        "Li",
+        "Aki"
+      ],
+      "male_end": [
+        "ko",
+        "ji",
+        "lan",
+        "ya",
+        "shi",
+        "ro",
+        "mei",
+        "ka",
+        "to",
+        "na"
+      ],
+      "female_start": [
+        "Aki",
+        "Hana",
+        "Jin",
+        "Li",
+        "Mei",
+        "Ren",
+        "Sao",
+        "Tsu",
+        "Yue",
+        "Yun"
+      ],
+      "female_end": [
+        "ko",
+        "mi",
+        "lan",
+        "ya",
+        "shi",
+        "na",
+        "mei",
+        "ka",
+        "li",
+        "hua"
+      ],
+      "last_start": [
+        "Cloud",
+        "Jade",
+        "Plum",
+        "Bamboo",
+        "Mist",
+        "Lotus",
+        "Iron",
+        "Paper"
+      ],
+      "last_end": [
+        "blossom",
+        "step",
+        "brew",
+        "shadow",
+        "crane",
+        "petal",
+        "fan",
+        "brush"
+      ]
+    }
   }
 }

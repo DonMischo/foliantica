@@ -175,6 +175,7 @@ class CodexEntry(Base):
     entry_group: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON array of group strings
     species:     Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     subtype:     Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    gender:      Mapped[Optional[str]] = mapped_column(String(20),  nullable=True)  # male | female | div
     name_type:   Mapped[Optional[str]] = mapped_column(String(50),  nullable=True)  # name generation style
     tags:        Mapped[Optional[str]] = mapped_column(Text, nullable=True, default="[]")
     is_main_char: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -347,6 +348,8 @@ class UserSettings(Base):
     default_chat_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     default_synopsis_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     default_codex_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    default_dm_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # RPG dungeon-master narration
+    wildcards_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)  # YAML file or folder of wildcards
     theme: Mapped[str] = mapped_column(String(20), default="dark")
     enabled_models: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of model IDs
     language: Mapped[str] = mapped_column(String(10), default="en")

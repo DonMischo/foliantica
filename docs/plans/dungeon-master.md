@@ -3,6 +3,54 @@
 Status: ALL PHASES (0–4) complete (2026-07-18). Later ideas: pgvector
 retrieval, export campaign as book draft, sheet panel in codex detail.
 
+Character-creation upgrade (2026-07-18, wildcard-file-inspired): 14 species,
+12 classes, halfblood (two species, +1 from each parent's primary stat, both
+traits), appearance tables (size/build/hair/eyes/features/scars/tattoos —
+some scars/tattoos carry story perks that join the abilities list), custom
+description composed with the appearance into the codex entry. NPCs are
+halfbloods ~1 in 8.
+
+Species expansion (2026-07-18): 40 species total — WoW-inspired (undead,
+draenei, worgen, night/blood elf, tauren, troll, pandaren), D&D-inspired
+(tiefling, vampire, githyanki, githzerai, aasimar, genasi), and humanoids
+from the wildcard magical-beings catalog (changeling, dark elf, dryad,
+gorgon, harpy, kitsune, merfolk, oni, ogre, selkie, valkyrie, giantkin).
+16 name styles. Half-elf = halfblood(human, elf); dragonborn ≈ drakeblood.
+Note: several names are Blizzard/WotC-derived — fine locally, reconsider
+before shipping as public defaults.
+
+GM language (2026-07-18): dm_prefs.language (set in Session Zero) overrides
+book_meta.language for all DM prompts. Model JSON replies are parsed
+leniently (_parse_json_reply: fences, <think> blocks, brace-extraction
+fallback); extraction failures show the real error with a Retry button.
+
+GM model (2026-07-19): UserSettings.default_dm_model (Settings → AI) drives
+narration; bookkeeping stays on default_codex_model.
+
+Wildcards (2026-07-19): api/services/wildcards.py vendors the user's own
+Billions-of-Wildcards engine (full dynamic-prompts syntax, mtime-cached;
+~1.6 s first parse of the 1.3 MB YAML, ~28 ms cached). Source path is
+user_settings.wildcards_path (Settings → AI); per-campaign category
+selection in dm_prefs.wildcards via the shuffle-icon picker (1,562
+categories, filter, parent-covers-subtree). Three integration points:
+(1) two seeded "wildcard sparks" join the scene oracle; (2) the persona
+lists enabled categories and the DM can write [[wc:<category>]] inline —
+resolved server-side during streaming (holdback buffer for tokens split
+across chunks; fuzzy category match, random-enabled fallback) so the
+player only ever sees the resolved text; (3) resolved text is what gets
+persisted. No path configured → everything degrades to built-in oracles.
+
+Gender + codex integration (2026-07-19): codex_entries.gender (male/female/
+div) — wizard chips, codex dialog select, gendered name syllables per style
+(male_/female_start/end), NPCs get random gender. Character save is now
+server-side (POST /projects/{id}/dm/characters): starter kit becomes real
+CharacterInventory (deduped item entries + class starting_currency);
+effects gear_add/gear_remove/currency_delta operate on inventory with full
+undo (prev_inventory snapshots, created item entries removed). GM context
+includes gender, carried inventory/currencies/relics (names resolved), and
+a Relations section from codex_relations. Legacy rpg_sheet.gear still read
+as fallback.
+
 Phase-4 notes: oracle draws are seeded by scene id (deterministic per scene,
 nothing stored) from `api/data/oracles.json`, which also holds the ban list
 (English + German patterns). The cliché check runs client-side against
