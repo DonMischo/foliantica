@@ -364,7 +364,10 @@ export function CodexEntryDialog({
   const deleteRel    = useDeleteRelation(entryId);
   const uploadImg    = useUploadCodexImage(entryId, projectId);
   const deleteImg    = useDeleteCodexImage(entryId, projectId);
-  const updateEntryImage = useUpdateCodexEntry(projectId);
+  const autoSaveEntry = useUpdateCodexEntry(projectId);
+  // Set to true right after state is (re)synced from `initial` so that sync
+  // doesn't itself trigger an autosave; consumed by the very next autosave effect run.
+  const skipAutosaveRef = useRef(true);
 
   const [imagePath, setImagePath] = useState<string | null>(initial?.image_path ?? null);
   const [imageCrop, setImageCrop] = useState<ImageCrop | null>(initial?.image_crop ?? null);
@@ -439,8 +442,49 @@ export function CodexEntryDialog({
       setImageMenuOpen(false);
       setCropDialogOpen(false);
       setViewImageOpen(false);
+      skipAutosaveRef.current = true;
     }
   }, [open, initial, allEntries]);
+
+  // Autosave every field except description — it saves immediately as you
+  // edit, so there's nothing to lose by closing the dialog. Description stays
+  // manual (via the Save button) since it's a long free-text field edited in
+  // one sitting, and AI translate/structure suggestions apply to it in-place.
+  useEffect(() => {
+    if (!open || !isExisting) return;
+    if (skipAutosaveRef.current) { skipAutosaveRef.current = false; return; }
+    if (!name.trim()) return;
+
+    const payload: Partial<CodexEntry> = {
+      name: name.trim(),
+      aliases,
+      entry_type: entryType,
+      notes: notes || null,
+      color,
+      groups,
+      species: entryType === "character" ? (species.trim() || null) : null,
+      gender: entryType === "character" ? ((gender || null) as CodexEntry["gender"]) : null,
+      subtype: entryType !== "character" ? (subtype.trim() || null) : null,
+      tags,
+      is_main_char: isMainChar,
+      inventory: entryType === "character"
+        ? { possessions: nativePossessions, currencies: nativeCurrencies, relics: nativeRelics }
+        : null,
+      name_type: nameType || null,
+      share_mode: shareMode,
+      share_future: shareFuture,
+    };
+
+    const timer = setTimeout(() => {
+      autoSaveEntry.mutate({ id: entryId, data: payload });
+    }, 600);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    open, isExisting, entryId, name, aliases, entryType, notes, color, groups,
+    species, gender, subtype, tags, isMainChar,
+    nativePossessions, nativeCurrencies, nativeRelics, nameType, shareMode, shareFuture,
+  ]);
 
   // Alias helpers
   const addAlias = () => {
@@ -910,7 +954,7 @@ export function CodexEntryDialog({
                     onSave={(crop) => {
                       setImageCrop(crop);
                       setCropDialogOpen(false);
-                      updateEntryImage.mutate({ id: entryId, data: { image_crop: crop } });
+                      autoSaveEntry.mutate({ id: entryId, data: { image_crop: crop } });
                     }}
                   />
                 )}

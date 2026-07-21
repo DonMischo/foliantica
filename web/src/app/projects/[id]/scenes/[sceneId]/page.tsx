@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { BookOpen, Sparkles, Clock, Moon, Sun, Archive, History, MessageSquare, Focus, Braces, ChevronDown, AlignCenter, Timer, Flag, BookMarked, MoreHorizontal, Check, SpellCheck, User, ListChecks, Save, MessageCircle, GraduationCap, BarChart2, Loader2 } from "lucide-react";
+import { BookOpen, Sparkles, Clock, Moon, Sun, Archive, History, MessageSquare, Focus, Braces, ChevronDown, AlignCenter, Timer, Flag, BookMarked, MoreHorizontal, Check, SpellCheck, User, ListChecks, Save, MessageCircle, BarChart2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TipTapEditor } from "@/components/editor/TipTapEditor";
@@ -17,11 +17,11 @@ import { CodexEntryDialog } from "@/components/codex/CodexEntryDialog";
 import { CommentsPanel } from "@/components/collab/CommentsPanel";
 import { VersionHistoryPanel } from "@/components/editor/VersionHistoryPanel";
 import { ChatPanel } from "@/components/editor/ChatPanel";
-import { WritersCompendium } from "@/components/WritersCompendium";
 import { LinkPanel } from "@/components/editor/LinkPanel";
 import { SceneTimePanel } from "@/components/time/SceneTimePanel";
 import { TimeConfigDialog } from "@/components/time/TimeConfigDialog";
 import { TimelineCommandDialog } from "@/components/timeline/TimelineCommandDialog";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useUIStore } from "@/store/ui";
 import { useCollabStore, getLockHolder } from "@/store/collabStore";
 import { getCoworkIdentity } from "@/lib/api";
@@ -30,7 +30,7 @@ import { useAutosave } from "@/hooks/useAutosave";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useScene, useUpdateScene, useCodexEntries,
-  useCreateCodexEntry, useProject,
+  useCreateCodexEntry, useUpdateCodexEntry, useProject,
   useTimeConfig, useUpdateTimeConfig,
   useCreateFragment, useDeleteScene,
   useSyncSceneCommands, useCreateSceneVersion,
@@ -69,6 +69,7 @@ function getDayNightLabel(config: typeof DEFAULT_TIME_CONFIG, time: SceneTime | 
 }
 
 export default function ScenePage() {
+  const { t } = useLanguage();
   const { id, sceneId } = useParams();
   const router = useRouter();
   const projectId = Number(id);
@@ -82,6 +83,7 @@ export default function ScenePage() {
   const updateScene = useUpdateScene(sceneIdNum);
   const updateTimeConfig = useUpdateTimeConfig(projectId);
   const createEntry = useCreateCodexEntry(projectId);
+  const updateEntry = useUpdateCodexEntry(projectId);
   const createFragment = useCreateFragment(projectId);
   // chapter_id is on scene; hook needs it — use 0 until scene loads, only called after
   const deleteScene = useDeleteScene(scene?.chapter_id ?? 0);
@@ -105,7 +107,6 @@ export default function ScenePage() {
   const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
   const [linkPanelOpen, setLinkPanelOpen] = useState(false);
-  const [compendiumOpen, setCompendiumOpen] = useState(false);
 
   // ── Identity (read once; getCoworkIdentity reads localStorage — no hook needed) ──
   const identity   = useMemo(() => getCoworkIdentity(), []);
@@ -663,10 +664,10 @@ export default function ScenePage() {
               <div className="border-t border-border my-1" />
 
               {/* Scene metadata: POV + Beat */}
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider px-3 pt-1 pb-0.5">Scene info</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider px-3 pt-1 pb-0.5">{t("scene_info_header")}</p>
               <div className="px-3 py-1.5 flex items-center gap-2">
                 <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <span className="text-xs text-muted-foreground shrink-0 w-8">POV</span>
+                <span className="text-xs text-muted-foreground shrink-0 w-8">{t("pov_label")}</span>
                 <select
                   value={scene?.pov_character_id ?? ""}
                   onChange={e => {
@@ -676,7 +677,7 @@ export default function ScenePage() {
                   onClick={e => e.stopPropagation()}
                   className="flex-1 text-xs bg-secondary border border-border rounded px-1.5 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                 >
-                  <option value="">— none —</option>
+                  <option value="">{t("common_none_option")}</option>
                   {characters.map(c => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
@@ -684,7 +685,7 @@ export default function ScenePage() {
               </div>
               <div className="px-3 py-1.5 flex items-center gap-2">
                 <ListChecks className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <span className="text-xs text-muted-foreground shrink-0 w-8">Beat</span>
+                <span className="text-xs text-muted-foreground shrink-0 w-8">{t("corkboard_beat")}</span>
                 <select
                   value={scene?.beat ?? ""}
                   onChange={e => {
@@ -693,7 +694,7 @@ export default function ScenePage() {
                   onClick={e => e.stopPropagation()}
                   className="flex-1 text-xs bg-secondary border border-border rounded px-1.5 py-0.5 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                 >
-                  <option value="">— none —</option>
+                  <option value="">{t("common_none_option")}</option>
                   {allBeats.map(b => (
                     <option key={b.id} value={b.name}>{b.name}</option>
                   ))}
@@ -716,22 +717,15 @@ export default function ScenePage() {
                 className={cn("w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2", thesaurusOpen && "text-primary")}
               >
                 <BookMarked className="h-3.5 w-3.5 text-muted-foreground" />
-                Thesaurus
+                {t("thesaurus_label")}
                 {thesaurusOpen && <Check className="ml-auto h-3 w-3 text-primary" />}
-              </button>
-              <button
-                onClick={() => { setCompendiumOpen(true); setMenuOpen(false); }}
-                className="w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2"
-              >
-                <GraduationCap className="h-3.5 w-3.5 text-muted-foreground" />
-                Writer&apos;s Guide
               </button>
               <button
                 onClick={() => { setCommentsPanelOpen((v) => !v); setMenuOpen(false); }}
                 className={cn("w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2", commentsPanelOpen && "text-primary")}
               >
                 <MessageCircle className="h-3.5 w-3.5 text-muted-foreground" />
-                Comments
+                {t("comments_label")}
                 {sceneComments.filter(c => !c.resolved).length > 0 && (
                   <span className="ml-auto bg-primary/20 text-primary text-[10px] rounded-full px-1 py-0.5 leading-none">
                     {sceneComments.filter(c => !c.resolved).length}
@@ -951,6 +945,7 @@ export default function ScenePage() {
             onSelect={(id) => setSelectedCodexId(id)}
             onClose={() => setCodexSidebarOpen(false)}
             onAdd={(initial) => { if (initial) setNewEntryInitial(initial); setNewEntryDialogOpen(true); }}
+            onOpenEntry={(entry) => { setNewEntryInitial(entry); setNewEntryDialogOpen(true); }}
             onJumpToText={(text) => jumpToTextRef.current?.(text)}
             sceneContent={content}
             sceneId={Number(sceneId)}
@@ -992,9 +987,6 @@ export default function ScenePage() {
             language={project?.book_meta?.language ?? "en"}
           />
         )}
-
-        {/* Writer's Compendium modal */}
-        <WritersCompendium open={compendiumOpen} onClose={() => setCompendiumOpen(false)} />
 
         {/* Grammar check panel */}
         {grammarPanelOpen && (
@@ -1128,9 +1120,12 @@ export default function ScenePage() {
       <CodexEntryDialog
         open={newEntryDialogOpen}
         onClose={() => { setNewEntryDialogOpen(false); setNewEntryInitial({}); }}
-        onSave={(data) => createEntry.mutate({ ...data, project_id: projectId } as any)}
+        onSave={(data) => {
+          if (newEntryInitial.id) updateEntry.mutate({ id: newEntryInitial.id, data });
+          else createEntry.mutate({ ...data, project_id: projectId } as any);
+        }}
         initial={newEntryInitial}
-        title="New Codex Entry"
+        title={newEntryInitial.id ? "Update Codex Entry" : "New Codex Entry"}
       />
 
       <TimeConfigDialog
