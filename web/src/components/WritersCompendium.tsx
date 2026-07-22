@@ -456,7 +456,7 @@ function applySvgTranslation(svg: string, locale: string): string {
 
 // ── Module-level cache ────────────────────────────────────────────────────────
 
-let _data: any = null;
+const _dataByLocale: Record<string, any> = {};
 let _attrMap: Record<string, any> | null = null;
 const _svgCache: Record<string, string> = {};
 
@@ -478,6 +478,7 @@ const CHAPTER_I18N: Record<number, string> = {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function SvgPanel({ file, locale }: { file: string; locale: string }) {
+  const { t } = useLanguage();
   const [svg, setSvg] = useState<string | null>(_svgCache[file] ?? null);
 
   useEffect(() => {
@@ -490,7 +491,7 @@ function SvgPanel({ file, locale }: { file: string; locale: string }) {
       });
   }, [file]);
 
-  if (!svg) return <div className="h-24 flex items-center justify-center text-xs text-muted-foreground">Loading diagram…</div>;
+  if (!svg) return <div className="h-24 flex items-center justify-center text-xs text-muted-foreground">{t("guide_loading_diagram")}</div>;
 
   const content = applySvgTranslation(svg, locale);
   return (
@@ -574,24 +575,25 @@ function SnowflakeSteps({ steps }: { steps: any[] }) {
 }
 
 function CraftExamples({ examples, locale }: { examples: any; locale: string }) {
+  const { t } = useLanguage();
   if (!examples?.entries?.length) return null;
   const filtered = examples.entries.filter((e: any) => e.language === locale);
   const items = filtered.length > 0 ? filtered : examples.entries.filter((e: any) => e.language === "en");
   if (!items.length) return null;
   return (
     <div className="mt-6 border-t border-border pt-4">
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Dos &amp; Don&apos;ts</p>
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">{t("guide_dos_donts")}</p>
       <div className="space-y-3">
         {items.map((e: any) => (
           <div key={e.id} className="border border-border rounded-lg p-3 space-y-2">
             {e.principle && <p className="text-xs font-medium text-foreground/80">{e.principle}</p>}
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="bg-red-500/5 border border-red-500/20 rounded p-2">
-                <p className="text-[10px] font-bold text-red-400 mb-1">✗ Don&apos;t</p>
+                <p className="text-[10px] font-bold text-red-400 mb-1">{t("guide_dont")}</p>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">{e.bad}</p>
               </div>
               <div className="bg-green-500/5 border border-green-500/20 rounded p-2">
-                <p className="text-[10px] font-bold text-green-500 mb-1">✓ Do</p>
+                <p className="text-[10px] font-bold text-green-500 mb-1">{t("guide_do")}</p>
                 <p className="text-[11px] text-muted-foreground leading-relaxed">{e.good}</p>
               </div>
             </div>
@@ -626,6 +628,7 @@ function AccountsList({ accounts }: { accounts: any[] }) {
 }
 
 function ClassicalResources({ resources }: { resources: any[] }) {
+  const { t } = useLanguage();
   return (
     <div className="space-y-3">
       {resources.map((r: any, i: number) => (
@@ -638,25 +641,25 @@ function ClassicalResources({ resources }: { resources: any[] }) {
           {r.pdf_url && (
             <a href={r.pdf_url} target="_blank" rel="noopener noreferrer"
               className="text-[11px] text-primary/70 hover:text-primary mt-1.5 inline-block">
-              PDF ↗
+              {t("guide_pdf_link")}
             </a>
           )}
           {r.gutenberg_url && (
             <a href={r.gutenberg_url} target="_blank" rel="noopener noreferrer"
               className="text-[11px] text-primary/70 hover:text-primary mt-1.5 inline-block">
-              Project Gutenberg ↗
+              {t("guide_gutenberg_link")}
             </a>
           )}
           {r.free_url && (
             <a href={r.free_url} target="_blank" rel="noopener noreferrer"
               className="text-[11px] text-primary/70 hover:text-primary mt-1.5 inline-block">
-              Full text ↗
+              {t("guide_full_text_link")}
             </a>
           )}
           {r.archive_url && (
             <a href={r.archive_url} target="_blank" rel="noopener noreferrer"
               className="text-[11px] text-primary/70 hover:text-primary mt-1.5 inline-block">
-              Internet Archive ↗
+              {t("guide_internet_archive_link")}
             </a>
           )}
           {r.note && <p className="text-[11px] text-muted-foreground/60 italic mt-1">{r.note}</p>}
@@ -667,12 +670,13 @@ function ClassicalResources({ resources }: { resources: any[] }) {
 }
 
 function Sources({ ids }: { ids: string[] }) {
+  const { t } = useLanguage();
   if (!ids?.length || !_attrMap) return null;
   const entries = ids.map((id) => _attrMap![id]).filter(Boolean);
   if (!entries.length) return null;
   return (
     <div className="mt-6 border-t border-border pt-4">
-      <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mb-2">Sources</p>
+      <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mb-2">{t("guide_sources")}</p>
       <ul className="space-y-2">
         {entries.map((e: any) => (
           <li key={e.id} className="text-[11px] text-muted-foreground leading-relaxed">
@@ -704,7 +708,7 @@ function Sources({ ids }: { ids: string[] }) {
   );
 }
 
-function SectionContent({ section, chapter, t, locale, craftExamples }: { section: any; chapter: any; t: (k: string) => string; locale: string; craftExamples?: any }) {
+function SectionContent({ section, chapter, t, locale, craftExamples }: { section: any; chapter: any; t: (k: string, vars?: Record<string, string | number>) => string; locale: string; craftExamples?: any }) {
   const svgFile = SECTION_SVG[section.id];
 
   return (
@@ -792,7 +796,7 @@ function SectionContent({ section, chapter, t, locale, craftExamples }: { sectio
             <div key={i} className="border border-border rounded-lg p-3">
               <p className="text-xs font-bold text-foreground">{a.type}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{a.description}</p>
-              <p className="text-[11px] text-muted-foreground/70 italic mt-1">e.g. {a.example}</p>
+              <p className="text-[11px] text-muted-foreground/70 italic mt-1">{t("guide_examples", { examples: a.example })}</p>
             </div>
           ))}
         </div>
@@ -805,7 +809,7 @@ function SectionContent({ section, chapter, t, locale, craftExamples }: { sectio
             <div key={i} className="border border-red-500/20 rounded-lg p-3">
               <p className="text-xs font-bold text-red-400 mb-0.5">{m.name}</p>
               <p className="text-xs text-muted-foreground mb-1">{m.description}</p>
-              <p className="text-[11px] text-green-500">Fix: {m.fix}</p>
+              <p className="text-[11px] text-green-500">{t("guide_fix", { fix: m.fix })}</p>
             </div>
           ))}
         </div>
@@ -836,7 +840,7 @@ function SectionContent({ section, chapter, t, locale, craftExamples }: { sectio
                 {sg.also_known && <span className="text-[10px] text-muted-foreground/60">aka {sg.also_known}</span>}
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">{sg.description}</p>
-              {sg.examples && <p className="text-[11px] text-muted-foreground/70 italic mt-1">e.g. {sg.examples}</p>}
+              {sg.examples && <p className="text-[11px] text-muted-foreground/70 italic mt-1">{t("guide_examples", { examples: sg.examples })}</p>}
             </div>
           ))}
         </div>
@@ -852,14 +856,14 @@ function SectionContent({ section, chapter, t, locale, craftExamples }: { sectio
                 {g.also_known && <span className="text-[10px] text-muted-foreground/60">aka {g.also_known}</span>}
               </div>
               <div className="space-y-1">
-                {g.core_themes && <MetaRow label="Themes">{g.core_themes}</MetaRow>}
-                {g.world && <MetaRow label="World">{g.world}</MetaRow>}
-                {g.inhabitants && <MetaRow label="Inhabitants">{g.inhabitants}</MetaRow>}
-                {g.society && <MetaRow label="Society">{g.society}</MetaRow>}
-                {g.technology && <MetaRow label="Technology">{g.technology}</MetaRow>}
-                {g.mood && <MetaRow label="Mood">{g.mood}</MetaRow>}
+                {g.core_themes && <MetaRow label={t("guide_themes")}>{g.core_themes}</MetaRow>}
+                {g.world && <MetaRow label={t("guide_world")}>{g.world}</MetaRow>}
+                {g.inhabitants && <MetaRow label={t("guide_inhabitants")}>{g.inhabitants}</MetaRow>}
+                {g.society && <MetaRow label={t("guide_society")}>{g.society}</MetaRow>}
+                {g.technology && <MetaRow label={t("guide_technology")}>{g.technology}</MetaRow>}
+                {g.mood && <MetaRow label={t("guide_mood")}>{g.mood}</MetaRow>}
               </div>
-              {g.examples && <p className="text-[11px] text-muted-foreground/70 italic mt-1.5">e.g. {g.examples}</p>}
+              {g.examples && <p className="text-[11px] text-muted-foreground/70 italic mt-1.5">{t("guide_examples", { examples: g.examples })}</p>}
             </div>
           ))}
         </div>
@@ -895,7 +899,7 @@ function SectionContent({ section, chapter, t, locale, craftExamples }: { sectio
           {section.editing_levels.map((l: any) => (
             <div key={l.level} className="border border-border rounded-lg p-3">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] bg-primary/10 text-primary font-bold rounded px-1.5 py-0.5">Level {l.level}</span>
+                <span className="text-[10px] bg-primary/10 text-primary font-bold rounded px-1.5 py-0.5">{t("guide_level", { level: l.level })}</span>
                 <span className="text-xs font-bold text-foreground">{l.name}</span>
               </div>
               <p className="text-xs text-muted-foreground mb-1.5">{l.focus}</p>
@@ -994,13 +998,14 @@ export function WritersCompendium({ open, onClose, initialSection }: Props) {
   const [active, setActive] = useState<string | null>(initialSection ?? null);
   const [expanded, setExpanded] = useState<Set<number>>(new Set([1]));
 
-  // Fetch JSON + attributions once
+  // Compendium content stays English regardless of UI locale — only the chrome around it is translated.
   useEffect(() => {
     if (!open) return;
-    if (_data) { setData(_data); return; }
+    if (_dataByLocale[locale]) { setData(_dataByLocale[locale]); return; }
     setLoading(true);
+    const fetchCompendium = () => fetch("/compendium/writers_compendium.json").then((r) => r.json());
     Promise.all([
-      fetch("/compendium/writers_compendium.json").then((r) => r.json()),
+      fetchCompendium(),
       _attrMap
         ? Promise.resolve(_attrMap)
         : fetch("/compendium/attributions.json")
@@ -1012,9 +1017,9 @@ export function WritersCompendium({ open, onClose, initialSection }: Props) {
               return map;
             }),
     ])
-      .then(([d]) => { _data = d; setData(d); setLoading(false); })
+      .then(([d]) => { _dataByLocale[locale] = d; setData(d); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [open]);
+  }, [open, locale]);
 
   // Sync initialSection prop
   useEffect(() => {
@@ -1076,7 +1081,7 @@ export function WritersCompendium({ open, onClose, initialSection }: Props) {
           <button
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded"
-            aria-label="Close"
+            aria-label={t("guide_close")}
           >
             <X className="h-4 w-4" />
           </button>
@@ -1143,7 +1148,7 @@ export function WritersCompendium({ open, onClose, initialSection }: Props) {
             {!active && !loading && (
               <div className="flex flex-col items-center justify-center h-full text-center gap-3">
                 <GraduationCap className="h-10 w-10 text-muted-foreground/30" />
-                <p className="text-sm text-muted-foreground">Select a chapter or section from the sidebar</p>
+                <p className="text-sm text-muted-foreground">{t("guide_select_chapter")}</p>
               </div>
             )}
 

@@ -548,6 +548,7 @@ class KiGenerateRequest(BaseModel):
     entry_type: str = ""
     word_count: Optional[int] = None  # per-node override; falls back to prompt's word_count
     create_entry: bool = False  # when True, return structured JSON for codex entry creation
+    update_entry_id: Optional[int] = None  # when set, merge new info into this existing codex entry instead
 
 
 class TranslateRequest(BaseModel):

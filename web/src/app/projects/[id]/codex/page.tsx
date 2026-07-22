@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import {
   Plus, Pencil, Trash2, User, MapPin, Package, Scroll, Tag, Gem,
   LayoutGrid, LayoutList, FolderOpen, Loader2, CheckCircle2, X,
@@ -173,6 +173,8 @@ function useDirImport(projectId: number) {
 export default function CodexPage() {
   const { id } = useParams();
   const projectId = Number(id);
+  const searchParams = useSearchParams();
+  const deepLinkedEntryRef = useRef<string | null>(null);
 
   const { t } = useLanguage();
   const typeLabel = (type: string) => t(`type_${type}`) || type;
@@ -305,6 +307,18 @@ export default function CodexPage() {
     setEditing(entry);
     setDialogOpen(true);
   }, []);
+
+  // Deep link from elsewhere in the app (e.g. the scene editor's Codex sidebar): "?entry=<id>"
+  // opens that entry's edit dialog once its data has loaded.
+  useEffect(() => {
+    const entryParam = searchParams.get("entry");
+    if (!entryParam || isLoading || deepLinkedEntryRef.current === entryParam) return;
+    const entry = entries.find(e => e.id === Number(entryParam));
+    if (entry) {
+      deepLinkedEntryRef.current = entryParam;
+      openEdit(entry);
+    }
+  }, [searchParams, entries, isLoading, openEdit]);
 
   const handleCardClick = useCallback((entry: CodexEntry, e: React.MouseEvent) => {
     if (selectedIds.size > 0) {

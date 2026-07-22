@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { TimeConfig, SceneTime } from "@/types";
 import { cn } from "@/lib/utils";
+import { formatTimeDisplay, getDayNight, parseHourMinuteInput } from "@/lib/sceneTime";
 
 interface Props {
   config: TimeConfig;
@@ -14,52 +15,23 @@ interface Props {
   onChange: (time: SceneTime | null) => void;
   onClose: () => void;
   onOpenConfig: () => void;
+  /** Called when the user enters a minute component (":30", "8.5") while the minute unit is disabled. */
+  onEnableMinutes: () => void;
 }
 
-function formatTimeDisplay(config: TimeConfig, time: SceneTime): string {
-  const enabled = config.units.filter(u => u.enabled);
-  const parts: string[] = [];
-  for (const unit of enabled) {
-    const val = time[unit.id];
-    if (val == null) continue;
-    if (unit.value_names.length > 0) {
-      const idx = val - 1; // value_names are 1-indexed in display
-      const name = unit.value_names[idx] ?? String(val);
-      parts.push(name);
-    } else {
-      parts.push(`${val} ${val === 1 ? unit.singular : unit.plural}`);
-    }
-  }
-  return parts.join(", ") || "—";
-}
-
-function getDayNight(config: TimeConfig, time: SceneTime): "Day" | "Night" | null {
-  const hourUnit = config.units.find(u => u.id === "hour" && u.enabled);
-  if (!hourUnit) return null;
-  const hour = time["hour"];
-  if (hour == null) return null;
-  const dn = config.day_night;
-  const nightEnd = (dn.night_start_hour + dn.night_duration) % dn.hours_per_day;
-  let isNight: boolean;
-  if (dn.night_duration <= 0) {
-    isNight = false;
-  } else if (nightEnd > dn.night_start_hour) {
-    isNight = hour >= dn.night_start_hour && hour < nightEnd;
-  } else {
-    // wraps midnight
-    isNight = hour >= dn.night_start_hour || hour < nightEnd;
-  }
-  return isNight ? "Night" : "Day";
-}
-
-export function SceneTimePanel({ config, sceneTime, onChange, onClose, onOpenConfig }: Props) {
+export function SceneTimePanel({ config, sceneTime, onChange, onClose, onOpenConfig, onEnableMinutes }: Props) {
   const enabledUnits = config.units.filter(u => u.enabled);
+  const minuteUnit = config.units.find(u => u.id === "minute");
 
   // Local draft state
   const [draft, setDraft] = useState<SceneTime>(() => sceneTime ?? {});
+  // Raw text for the hour field — plain digits normally, but accepts "8:30" / "8,5" while typing
+  const [hourText, setHourText] = useState<string>(() => sceneTime?.hour != null ? String(sceneTime.hour) : "");
 
   useEffect(() => {
-    setDraft(sceneTime ?? {});
+    const t = sceneTime ?? {};
+    setDraft(t);
+    setHourText(t.hour != null ? String(t.hour) : "");
   }, [sceneTime]);
 
   const setVal = (unitId: string, raw: string) => {
@@ -73,6 +45,36 @@ export function SceneTimePanel({ config, sceneTime, onChange, onClose, onOpenCon
       }
       return next;
     });
+  };
+
+  const setHourVal = (raw: string) => {
+    setHourText(raw);
+    if (raw.trim() === "") {
+      setDraft(prev => {
+        const next = { ...prev };
+        delete next.hour;
+        delete next.minute;
+        return next;
+      });
+      return;
+    }
+    const parsed = parseHourMinuteInput(raw);
+    if (!parsed) return; // still typing / unparseable (e.g. "8:") — keep last valid values, just update the text
+
+    setDraft(prev => {
+      const next: SceneTime = { ...prev, hour: parsed.hour };
+      if (parsed.minute != null) {
+        next.minute = parsed.minute;
+      } else if (minuteUnit?.enabled) {
+        // bare hour typed while minutes are already in use — reset to :00 for that hour
+        next.minute = 0;
+      }
+      return next;
+    });
+
+    if (parsed.minute != null && minuteUnit && !minuteUnit.enabled) {
+      onEnableMinutes();
+    }
   };
 
   const hasValues = Object.keys(draft).length > 0;
@@ -156,11 +158,23 @@ export function SceneTimePanel({ config, sceneTime, onChange, onClose, onOpenCon
                         <option key={i} value={i + 1}>{name}</option>
                       ))}
                     </select>
+                  ) : unit.id === "hour" ? (
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        value={hourText}
+                        placeholder="8 or 8:30"
+                        onChange={e => setHourVal(e.target.value)}
+                        className="h-7 text-xs"
+                      />
+                      <span className="text-xs text-muted-foreground shrink-0">/ {config.day_night.hours_per_day}</span>
+                    </div>
                   ) : (
                     <div className="flex items-center gap-1.5">
                       <Input
                         type="number"
-                        min={1}
+                        min={unit.id === "minute" || unit.id === "second" ? 0 : 1}
                         max={maxVal}
                         value={val ?? ""}
                         placeholder="unset"

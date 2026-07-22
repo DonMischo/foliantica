@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   ChevronDown, ChevronRight, Plus, Trash2,
-  GripVertical, Settings, Book, Download, Network, Calendar, Clock, Scissors, Info, ListChecks, MoreHorizontal, LayoutGrid, Users, BarChart2, Mail, Layers2, User, RefreshCw, Dices,
+  GripVertical, Settings, Book, Download, Network, Calendar, Clock, Scissors, Info, ListChecks, MoreHorizontal, LayoutGrid, Users, BarChart2, Mail, Layers2, User, RefreshCw, Dices, GraduationCap,
 } from "lucide-react";
 import {
   DndContext, closestCenter, DragEndEvent,
@@ -39,11 +39,13 @@ import { ImportButton } from "@/components/layout/ImportButton";
 import { TimeConfigDialog } from "@/components/time/TimeConfigDialog";
 import { ExportDialog } from "@/components/export/ExportDialog";
 import { BookMetaDialog } from "@/components/project/BookMetaDialog";
+import { WritersCompendium } from "@/components/WritersCompendium";
 import { MAIN_COLOR, SUBPLOT_PALETTE } from "@/components/corkboard/ColorPicker";
 import { useColColorsStore } from "@/store/colColors";
 import { DEFAULT_TIME_CONFIG } from "@/types";
 import type { Act, Chapter, Scene } from "@/types";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { formatTimeDisplay } from "@/lib/sceneTime";
 
 // ── Bar color helpers ─────────────────────────────────────────────────────────
 
@@ -59,13 +61,14 @@ interface Props { projectId: number }
 // ── Scene divider (insert-between) ───────────────────────────────────────────
 
 function SceneDivider({ onInsert }: { onInsert: () => void }) {
+  const { t } = useLanguage();
   return (
     <div className="group relative h-5 flex items-center px-12">
       <div className="w-full h-px bg-transparent group-hover:bg-border/60 transition-colors" />
       <button
         onClick={onInsert}
         className="absolute left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 h-4 w-4 rounded-full bg-card border border-border flex items-center justify-center hover:bg-primary hover:border-primary hover:text-primary-foreground transition-all"
-        title="Insert scene here"
+        title={t("nav_insert_scene_here")}
       >
         <Plus className="h-2.5 w-2.5" />
       </button>
@@ -84,6 +87,11 @@ function SceneItem({
   const router = useRouter();
   const { t } = useLanguage();
   const style = { transform: CSS.Transform.toString(transform), transition };
+  const { data: timeConfigData } = useTimeConfig(projectId);
+  const timeConfig = timeConfigData ?? DEFAULT_TIME_CONFIG;
+  const sceneTimeDisplay = scene.scene_time && Object.keys(scene.scene_time).length > 0
+    ? formatTimeDisplay(timeConfig, scene.scene_time)
+    : null;
 
   // Presence dots — other sessions currently viewing this scene
   const presence    = useCollabStore((s) => s.presence);
@@ -119,8 +127,10 @@ function SceneItem({
       >
         <span className="text-muted-foreground/50 text-[10px] tabular-nums shrink-0 w-4 text-right">{index}.</span>
         <span className="truncate">{scene.title || t("nav_untitled_scene")}</span>
-        {scene.scene_time && Object.keys(scene.scene_time).length > 0 && (
-          <Clock className="h-2.5 w-2.5 shrink-0 text-primary/60" aria-label="Has scene time" />
+        {sceneTimeDisplay && (
+          <span title={sceneTimeDisplay}>
+            <Clock className="h-2.5 w-2.5 shrink-0 text-primary/60" aria-label={t("nav_has_scene_time")} />
+          </span>
         )}
         {presenceDots.map((r) => (
           <span
@@ -131,7 +141,14 @@ function SceneItem({
           />
         ))}
       </Link>
-      <ScenePlanPopover sceneId={scene.id} sceneTitle={scene.title || ""} sceneType={scene.scene_type} />
+      <ScenePlanPopover
+        sceneId={scene.id}
+        sceneTitle={scene.title || ""}
+        sceneType={scene.scene_type}
+        sceneSynopsis={scene.synopsis}
+        sceneBeat={scene.beat}
+        sceneTimeDisplay={sceneTimeDisplay}
+      />
       <button
         className="opacity-0 group-hover:opacity-60 hover:opacity-100 hover:text-destructive"
         onClick={(e) => {
@@ -384,10 +401,10 @@ function ActItem({
             className="hover:text-primary"
             onClick={() => createChapter.mutate({
               act_id: act.id,
-              title: `Chapter ${chapters.length + 1}`,
+              title: `${t("nav_chapter_word")} ${chapters.length + 1}`,
               order_index: chapters.length,
             })}
-            title="Add chapter"
+            title={t("nav_add_chapter")}
           >
             <Plus className="h-3 w-3" />
           </button>
@@ -499,6 +516,7 @@ export function ProjectSidebar({ projectId }: Props) {
   const [exportOpen, setExportOpen] = useState(false);
   const [metaOpen, setMetaOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [compendiumOpen, setCompendiumOpen] = useState(false);
   const timeConfig = timeConfigData ?? DEFAULT_TIME_CONFIG;
 
   const sensors = useSensors(
@@ -532,7 +550,7 @@ export function ProjectSidebar({ projectId }: Props) {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
             </span>
-            Live
+            {t("nav_live")}
           </span>
         )}
       </div>
@@ -558,17 +576,17 @@ export function ProjectSidebar({ projectId }: Props) {
           {/* Bar mode toggle: subplot ↔ POV character */}
           <button
             onClick={toggleBarMode}
-            title={barMode === "subplot" ? "Color bars: subplot — click for POV" : "Color bars: POV — click for subplot"}
+            title={barMode === "subplot" ? t("nav_bar_mode_subplot") : t("nav_bar_mode_pov")}
             className="hover:text-foreground"
           >
             {barMode === "subplot" ? <Layers2 className="h-3 w-3" /> : <User className="h-3 w-3" />}
           </button>
           <button
             className="hover:text-foreground"
-            title="Add act"
+            title={t("nav_add_act")}
             onClick={() => createAct.mutate({
               project_id: projectId,
-              title: `Act ${acts.length + 1}`,
+              title: `${t("nav_act_word")} ${acts.length + 1}`,
               order_index: acts.length,
             })}
           >
@@ -622,7 +640,7 @@ export function ProjectSidebar({ projectId }: Props) {
                 "flex items-center justify-center h-8 w-8 rounded hover:bg-secondary/50 text-muted-foreground hover:text-foreground transition-colors",
                 menuOpen && "bg-secondary/50 text-foreground"
               )}
-              title="More"
+              title={t("nav_more")}
             >
               <MoreHorizontal className="h-4 w-4" />
             </button>
@@ -638,7 +656,7 @@ export function ProjectSidebar({ projectId }: Props) {
                   className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-secondary/50 text-muted-foreground hover:text-foreground"
                 >
                   <LayoutGrid className="h-3.5 w-3.5" />
-                  Corkboard
+                  {t("sidebar_corkboard")}
                 </Link>
                 <Link
                   href={`/projects/${projectId}/plot`}
@@ -646,7 +664,7 @@ export function ProjectSidebar({ projectId }: Props) {
                   className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-secondary/50 text-muted-foreground hover:text-foreground"
                 >
                   <ListChecks className="h-3.5 w-3.5" />
-                  Plot Beats
+                  {t("sidebar_plot_beats")}
                 </Link>
                 <Link
                   href={`/projects/${projectId}/pov`}
@@ -654,7 +672,7 @@ export function ProjectSidebar({ projectId }: Props) {
                   className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-secondary/50 text-muted-foreground hover:text-foreground"
                 >
                   <Users className="h-3.5 w-3.5" />
-                  POV Balance
+                  {t("sidebar_pov_balance")}
                 </Link>
                 <Link
                   href={`/projects/${projectId}/timeline`}
@@ -678,7 +696,7 @@ export function ProjectSidebar({ projectId }: Props) {
                   className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-secondary/50 text-muted-foreground hover:text-foreground"
                 >
                   <BarChart2 className="h-3.5 w-3.5" />
-                  Analytics
+                  {t("sidebar_analytics")}
                 </Link>
                 <Link
                   href={`/projects/${projectId}/queries`}
@@ -686,7 +704,7 @@ export function ProjectSidebar({ projectId }: Props) {
                   className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-secondary/50 text-muted-foreground hover:text-foreground"
                 >
                   <Mail className="h-3.5 w-3.5" />
-                  Query Tracker
+                  {t("sidebar_query_tracker")}
                 </Link>
                 <div className="border-t border-border/50 my-1" />
 
@@ -704,6 +722,13 @@ export function ProjectSidebar({ projectId }: Props) {
                 >
                   <Info className="h-3.5 w-3.5" />
                   {t("nav_project_info")}
+                </button>
+                <button
+                  onClick={() => { setCompendiumOpen(true); setMenuOpen(false); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-secondary/50 text-muted-foreground hover:text-foreground"
+                >
+                  <GraduationCap className="h-3.5 w-3.5" />
+                  {t("guide_menu_label")}
                 </button>
 
                 <div className="border-t border-border/50 my-1" />
@@ -745,13 +770,13 @@ export function ProjectSidebar({ projectId }: Props) {
           )} />
           <span className="flex-1 text-[10px] text-muted-foreground truncate">
             {syncStatus.last_sync_at
-              ? `Synced ${new Date(syncStatus.last_sync_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-              : syncStatus.mode === "offline" ? "Sync drive offline" : "Not yet synced"}
+              ? t("sync_synced_at", { time: new Date(syncStatus.last_sync_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })
+              : syncStatus.mode === "offline" ? t("sync_offline") : t("sync_not_yet")}
           </span>
           <button
             onClick={handleSyncNow}
             disabled={syncing || syncStatus.mode !== "online"}
-            title="Sync now"
+            title={t("sync_now")}
             className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
           >
             <RefreshCw className={cn("h-3 w-3", syncing && "animate-spin")} />
@@ -782,6 +807,8 @@ export function ProjectSidebar({ projectId }: Props) {
         onClose={() => setMetaOpen(false)}
         onSave={(meta) => updateProject.mutate({ id: projectId, data: { book_meta: meta } })}
       />
+
+      <WritersCompendium open={compendiumOpen} onClose={() => setCompendiumOpen(false)} />
     </aside>
   );
 }

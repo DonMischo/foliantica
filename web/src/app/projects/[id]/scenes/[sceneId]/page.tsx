@@ -2,11 +2,10 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { BookOpen, Sparkles, Clock, Moon, Sun, Archive, History, MessageSquare, Focus, Braces, ChevronDown, AlignCenter, Timer, Flag, BookMarked, MoreHorizontal, Check, SpellCheck, User, ListChecks, Save, MessageCircle, BarChart2, Loader2 } from "lucide-react";
+import { BookOpen, Sparkles, Clock, Moon, Sun, Archive, History, MessageSquare, Focus, Braces, ChevronDown, AlignCenter, Timer, BookMarked, MoreHorizontal, Check, SpellCheck, User, ListChecks, Save, MessageCircle, BarChart2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TipTapEditor } from "@/components/editor/TipTapEditor";
-import { StatusBar, SaveIndicator } from "@/components/editor/StatusBar";
 import { ThesaurusPanel } from "@/components/editor/ThesaurusPanel";
 import { GrammarPanel } from "@/components/grammar/GrammarPanel";
 import { ValePanel } from "@/components/vale/ValePanel";
@@ -43,29 +42,22 @@ import type { SceneCommandIn } from "@/lib/api";
 import { versionsApi } from "@/lib/api";
 import { DEFAULT_TIME_CONFIG } from "@/types";
 import { cn } from "@/lib/utils";
+import { formatTimeDisplay, getDayNight } from "@/lib/sceneTime";
 import { htmlToGrammarPlainText } from "@/lib/grammarUtils";
 import { PLOT_TEMPLATES } from "@/lib/plotTemplates";
 
 const COMMENT_CATEGORIES = ["Plot", "Character", "Style", "Language", "Continuity", "Research"];
 const CUSTOM_CATEGORIES_KEY = "fol_comment_categories";
 
+const SENSITIVITY_LABEL_KEYS: Record<SensitivityType, string> = {
+  sensitivity: "scene_flag_sensitivity",
+  cultural: "scene_flag_cultural",
+  research: "scene_flag_research",
+};
+
 function getDayNightLabel(config: typeof DEFAULT_TIME_CONFIG, time: SceneTime | null): "Day" | "Night" | null {
   if (!time) return null;
-  const hourUnit = config.units.find(u => u.id === "hour" && u.enabled);
-  if (!hourUnit) return null;
-  const hour = time["hour"];
-  if (hour == null) return null;
-  const dn = config.day_night;
-  const nightEnd = (dn.night_start_hour + dn.night_duration) % dn.hours_per_day;
-  let isNight: boolean;
-  if (dn.night_duration <= 0) {
-    isNight = false;
-  } else if (nightEnd > dn.night_start_hour) {
-    isNight = hour >= dn.night_start_hour && hour < nightEnd;
-  } else {
-    isNight = hour >= dn.night_start_hour || hour < nightEnd;
-  }
-  return isNight ? "Night" : "Day";
+  return getDayNight(config, time);
 }
 
 export default function ScenePage() {
@@ -245,7 +237,6 @@ export default function ScenePage() {
   const [commentCategory, setCommentCategory]     = useState("");
   const [customCategoryMode, setCustomCategoryMode] = useState(false);
   const replaceWordRef         = useRef<((word: string) => void) | null>(null);
-  const applyFlagRef           = useRef<((type: string) => void) | null>(null);
   const applyGrammarFixRef       = useRef<((matched: string, replacement: string, offset: number) => void) | null>(null);
   const jumpToGrammarMatchRef    = useRef<((matched: string, offset: number) => void) | null>(null);
   const jumpToValeMatchRef       = useRef<((matched: string, skipCount: number) => void) | null>(null);
@@ -262,8 +253,15 @@ export default function ScenePage() {
     [codexEntries],
   );
 
-  // Deduplicated beat names from all plot templates
+  // Beat names from the project's selected plot template (set on the Plot
+  // page); falls back to all templates deduped when no template is selected.
   const allBeats = useMemo(() => {
+    const activeTemplate = project?.plot_template
+      ? PLOT_TEMPLATES.find((t) => t.id === project.plot_template)
+      : null;
+    if (activeTemplate) {
+      return activeTemplate.beats.map((beat) => ({ id: beat.id, name: beat.name }));
+    }
     const seen = new Set<string>();
     const beats: { id: string; name: string }[] = [];
     for (const template of PLOT_TEMPLATES) {
@@ -275,7 +273,7 @@ export default function ScenePage() {
       }
     }
     return beats;
-  }, []);
+  }, [project?.plot_template]);
 
   // Count ghost-text placeholders in current content
   const ghostTexts = useMemo(() => {
@@ -486,15 +484,21 @@ export default function ScenePage() {
     setTimeConfigOpen(true);
   };
 
+  const handleEnableMinutes = () => {
+    const units = timeConfig.units.map(u => u.id === "minute" ? { ...u, enabled: true } : u);
+    updateTimeConfig.mutate({ ...timeConfig, units });
+  };
+
   const handleArchiveScene = async () => {
     if (!scene) return;
-    if (!confirm(`Archive "${scene.title || "Untitled Scene"}"?\n\nThis will save the content as a fragment in the Archive tab. You can then choose to delete the scene.`)) return;
+    const untitled = t("nav_untitled_scene");
+    if (!confirm(t("scene_archive_confirm", { title: scene.title || untitled }))) return;
     await createFragment.mutateAsync({
       tab: "archive",
-      title: scene.title || "Untitled Scene",
+      title: scene.title || untitled,
       content: scene.content || "",
     });
-    if (confirm("Scene archived. Delete the original scene from the story?")) {
+    if (confirm(t("scene_archive_deleted_confirm"))) {
       deleteScene.mutate(sceneIdNum);
       router.push(`/projects/${projectId}`);
     }
@@ -507,7 +511,7 @@ export default function ScenePage() {
   if (!scene) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-        Loading scene...
+        {t("scene_loading")}
       </div>
     );
   }
@@ -517,7 +521,7 @@ export default function ScenePage() {
       {/* ESC hint while in focus mode */}
       {focusMode && (
         <div className="fixed top-3 right-4 z-50 text-[11px] text-muted-foreground/40 pointer-events-none select-none">
-          ESC — exit focus
+          {t("scene_esc_exit_focus")}
         </div>
       )}
 
@@ -527,21 +531,23 @@ export default function ScenePage() {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={handleTitleBlur}
-          placeholder="Scene title..."
+          placeholder={t("scene_title_placeholder")}
           className="border-0 bg-transparent text-sm font-medium h-8 px-2 focus-visible:ring-0 max-w-xs"
         />
         <div className="flex-1" />
 
         {/* Day/night badge */}
         {hasTime && dayNight && (
-          <span className={cn(
-            "flex items-center gap-1 text-xs px-2 py-0.5 rounded-full",
-            dayNight === "Night"
-              ? "bg-[hsl(262_80%_65%/0.2)] text-[hsl(262_80%_75%)]"
-              : "bg-[hsl(38_92%_65%/0.2)] text-[hsl(38_92%_55%)]"
-          )}>
+          <span
+            title={scene.scene_time ? formatTimeDisplay(timeConfig, scene.scene_time) : undefined}
+            className={cn(
+              "flex items-center gap-1 text-xs px-2 py-0.5 rounded-full",
+              dayNight === "Night"
+                ? "bg-[hsl(262_80%_65%/0.2)] text-[hsl(262_80%_75%)]"
+                : "bg-[hsl(38_92%_65%/0.2)] text-[hsl(38_92%_55%)]"
+            )}>
             {dayNight === "Night" ? <Moon className="h-3 w-3" /> : <Sun className="h-3 w-3" />}
-            {dayNight}
+            {dayNight === "Night" ? t("scene_night") : t("scene_day")}
           </span>
         )}
 
@@ -551,7 +557,7 @@ export default function ScenePage() {
             <button
               onClick={() => setGhostPopoverOpen((v) => !v)}
               className="flex items-center gap-1 text-xs px-2 py-1 rounded text-amber-400 hover:bg-amber-400/10 transition-colors"
-              title="Pending placeholders"
+              title={t("scene_pending_placeholders")}
             >
               <Braces className="h-3.5 w-3.5" />
               {ghostTexts.length}
@@ -559,7 +565,7 @@ export default function ScenePage() {
             </button>
             {ghostPopoverOpen && (
               <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-foreground/25 rounded-lg shadow-[0_0_0_1px_hsl(var(--foreground)/0.1),0_8px_28px_hsl(var(--foreground)/0.22)] p-2 min-w-[200px] max-w-[280px]">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 px-1">Placeholders</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5 px-1">{t("scene_placeholders_header")}</p>
                 <div className="space-y-0.5 max-h-48 overflow-y-auto">
                   {ghostTexts.map((text, i) => (
                     <div key={i} className="text-xs px-2 py-1 rounded text-amber-300/80 bg-amber-400/5 font-mono truncate">
@@ -578,10 +584,10 @@ export default function ScenePage() {
           variant="ghost"
           onClick={saveNow}
           className="gap-1.5 text-xs"
-          title="Save now (Ctrl+S)"
+          title={t("scene_save_title")}
         >
           <Save className="h-3.5 w-3.5" />
-          Save
+          {t("common_save")}
         </Button>
 
         {/* History */}
@@ -595,7 +601,7 @@ export default function ScenePage() {
           className="gap-1.5 text-xs"
         >
           <History className="h-3.5 w-3.5" />
-          History
+          {t("scene_history")}
         </Button>
 
         {/* Codex */}
@@ -609,7 +615,7 @@ export default function ScenePage() {
           className="gap-1.5 text-xs"
         >
           <BookOpen className="h-3.5 w-3.5" />
-          Codex
+          {t("nav_codex")}
         </Button>
 
         {/* Add Comment */}
@@ -619,10 +625,10 @@ export default function ScenePage() {
             variant="ghost"
             onClick={() => triggerCommentRef.current?.()}
             className="gap-1.5 text-xs"
-            title="Add comment on selection"
+            title={t("scene_add_comment_title")}
           >
             <MessageSquare className="h-3.5 w-3.5" />
-            Comment
+            {t("scene_comment")}
           </Button>
         )}
 
@@ -633,7 +639,7 @@ export default function ScenePage() {
             variant={menuOpen ? "secondary" : "ghost"}
             onClick={() => setMenuOpen((v) => !v)}
             className="px-2"
-            title="More options"
+            title={t("scene_more_options")}
           >
             <MoreHorizontal className="h-4 w-4" />
           </Button>
@@ -647,8 +653,8 @@ export default function ScenePage() {
                 className={cn("w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2", timePanelOpen && "text-primary")}
               >
                 <Clock className={cn("h-3.5 w-3.5", hasTime ? "text-primary" : "text-muted-foreground")} />
-                Time
-                {hasTime && <span className="ml-auto text-[10px] text-primary">set</span>}
+                {t("scene_time_menu")}
+                {hasTime && <span className="ml-auto text-[10px] text-primary">{t("scene_time_set_badge")}</span>}
               </button>
               {!aiDisabled && (
               <button
@@ -656,7 +662,7 @@ export default function ScenePage() {
                 className={cn("w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2", chatPanelOpen && "text-primary")}
               >
                 <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
-                Chat
+                {t("scene_chat_menu")}
                 {chatPanelOpen && <Check className="ml-auto h-3 w-3 text-primary" />}
               </button>
               )}
@@ -709,16 +715,15 @@ export default function ScenePage() {
                 className="w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2"
               >
                 <AlignCenter className="h-3.5 w-3.5 text-muted-foreground" />
-                Typewriter
+                {t("scene_typewriter")}
                 {typewriterMode && <Check className="ml-auto h-3 w-3 text-primary" />}
               </button>
               <button
-                onClick={() => { setThesaurusOpen((v) => !v); setMenuOpen(false); }}
-                className={cn("w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2", thesaurusOpen && "text-primary")}
+                onClick={() => { setFocusMode(true); setCodexSidebarOpen(false); setTimePanelOpen(false); setHistoryPanelOpen(false); setChatPanelOpen(false); setMenuOpen(false); }}
+                className="w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2 text-muted-foreground"
               >
-                <BookMarked className="h-3.5 w-3.5 text-muted-foreground" />
-                {t("thesaurus_label")}
-                {thesaurusOpen && <Check className="ml-auto h-3 w-3 text-primary" />}
+                <Focus className="h-3.5 w-3.5" />
+                {t("scene_focus_mode_label")}
               </button>
               <button
                 onClick={() => { setCommentsPanelOpen((v) => !v); setMenuOpen(false); }}
@@ -733,13 +738,24 @@ export default function ScenePage() {
                 )}
                 {commentsPanelOpen && sceneComments.filter(c => !c.resolved).length === 0 && <Check className="ml-auto h-3 w-3 text-primary" />}
               </button>
+
+              <div className="border-t border-border my-1" />
+
+              <button
+                onClick={() => { setThesaurusOpen((v) => !v); setMenuOpen(false); }}
+                className={cn("w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2", thesaurusOpen && "text-primary")}
+              >
+                <BookMarked className="h-3.5 w-3.5 text-muted-foreground" />
+                {t("thesaurus_label")}
+                {thesaurusOpen && <Check className="ml-auto h-3 w-3 text-primary" />}
+              </button>
               {appSettings?.grammar_check_enabled && (
                 <button
                   onClick={() => { setGrammarPanelOpen((v) => !v); setMenuOpen(false); }}
                   className={cn("w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2", grammarPanelOpen && "text-primary")}
                 >
                   <SpellCheck className="h-3.5 w-3.5 text-muted-foreground" />
-                  Grammar
+                  {t("scene_grammar")}
                   {grammarPanelOpen && <Check className="ml-auto h-3 w-3 text-primary" />}
                 </button>
               )}
@@ -749,7 +765,7 @@ export default function ScenePage() {
                   className={cn("w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2", valePanelOpen && "text-primary")}
                 >
                   <SpellCheck className="h-3.5 w-3.5 text-muted-foreground" />
-                  Style Checker
+                  {t("scene_style_checker")}
                   {valePanelOpen && <Check className="ml-auto h-3 w-3 text-primary" />}
                 </button>
               )}
@@ -772,38 +788,23 @@ export default function ScenePage() {
                   {proseCheck.isPending
                     ? <Loader2 className="h-3.5 w-3.5 text-muted-foreground animate-spin" />
                     : <BarChart2 className="h-3.5 w-3.5 text-muted-foreground" />}
-                  Prose Metrics
+                  {t("scene_prose_metrics")}
                 </button>
               )}
-
-              <div className="border-t border-border my-1" />
-
-              {/* Flag submenu */}
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider px-3 pt-1 pb-0.5">Flag selection</p>
-              {SENSITIVITY_TYPES.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => { applyFlagRef.current?.(t.id); setMenuOpen(false); }}
-                  className={cn("w-full text-left text-xs px-3 py-1.5 hover:bg-secondary/50 flex items-center gap-2", t.color)}
-                >
-                  <Flag className="h-3 w-3" />
-                  {t.label}
-                </button>
-              ))}
 
               {/* Flags list */}
               {flags.length > 0 && (
                 <>
                   <div className="border-t border-border my-1" />
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider px-3 pt-1 pb-0.5">
-                    Flagged passages ({flags.length})
+                    {t("scene_flagged_passages", { count: flags.length })}
                   </p>
                   <div className="max-h-32 overflow-y-auto">
                     {flags.map((f, i) => {
-                      const type = SENSITIVITY_TYPES.find((t) => t.id === f.type);
+                      const type = SENSITIVITY_TYPES.find((st) => st.id === f.type);
                       return (
                         <div key={i} className="text-xs px-3 py-1">
-                          <span className={cn("text-[10px] font-medium mr-1", type?.color)}>{type?.label}</span>
+                          <span className={cn("text-[10px] font-medium mr-1", type?.color)}>{type ? t(SENSITIVITY_LABEL_KEYS[type.id]) : ""}</span>
                           <span className="text-muted-foreground/70 truncate">{f.text}</span>
                         </div>
                       );
@@ -816,7 +817,7 @@ export default function ScenePage() {
               {sessionTimerEnabled && (
                 <>
                   <div className="border-t border-border my-1" />
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider px-3 pt-1 pb-1">Writing goal</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider px-3 pt-1 pb-1">{t("scene_writing_goal_header")}</p>
                   <div className="flex flex-wrap gap-1 px-3 pb-1.5">
                     {[250, 500, 1000, 1500].map((n) => (
                       <button
@@ -837,7 +838,7 @@ export default function ScenePage() {
                         onClick={() => { clearSession(); setMenuOpen(false); }}
                         className="text-xs px-2 py-0.5 rounded border border-border text-muted-foreground hover:text-foreground"
                       >
-                        Stop
+                        {t("scene_stop_goal")}
                       </button>
                     )}
                   </div>
@@ -852,14 +853,7 @@ export default function ScenePage() {
                 className="w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2 text-muted-foreground"
               >
                 <Archive className="h-3.5 w-3.5" />
-                Archive scene
-              </button>
-              <button
-                onClick={() => { setFocusMode(true); setCodexSidebarOpen(false); setTimePanelOpen(false); setHistoryPanelOpen(false); setChatPanelOpen(false); setMenuOpen(false); }}
-                className="w-full text-left text-xs px-3 py-2 hover:bg-secondary/50 flex items-center gap-2 text-muted-foreground"
-              >
-                <Focus className="h-3.5 w-3.5" />
-                Focus mode
+                {t("scene_archive_label")}
               </button>
             </div>
           )}
@@ -870,7 +864,6 @@ export default function ScenePage() {
       <div className="flex flex-1 overflow-hidden">
         {/* Editor */}
         <div className="relative flex-1 overflow-hidden flex flex-col">
-          <SaveIndicator />
           {/* Co-work lock / editor banner */}
           {isEditor ? (
             <div className="flex items-center gap-2 px-4 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 border-b border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-700 dark:text-emerald-400 shrink-0">
@@ -908,8 +901,8 @@ export default function ScenePage() {
             onOpenLink={() => setLinkPanelOpen(true)}
             onWordSelect={(w) => { if (w) setSelectedWord(w); }}
             onFlagsChange={setFlags}
+            sceneWordCount={wordCount}
             replaceWordRef={replaceWordRef}
-            applyFlagRef={applyFlagRef}
             applyGrammarFixRef={applyGrammarFixRef}
             jumpToGrammarMatchRef={jumpToGrammarMatchRef}
             jumpToValeMatchRef={jumpToValeMatchRef}
@@ -923,7 +916,6 @@ export default function ScenePage() {
             showCodexHighlights={showCodexHighlights}
             language={project?.book_meta?.language}
           />
-          <StatusBar sceneWordCount={wordCount} />
         </div>
 
         {/* Time panel */}
@@ -934,6 +926,7 @@ export default function ScenePage() {
             onChange={handleSceneTimeChange}
             onClose={() => setTimePanelOpen(false)}
             onOpenConfig={handleOpenConfig}
+            onEnableMinutes={handleEnableMinutes}
           />
         )}
 
@@ -945,7 +938,6 @@ export default function ScenePage() {
             onSelect={(id) => setSelectedCodexId(id)}
             onClose={() => setCodexSidebarOpen(false)}
             onAdd={(initial) => { if (initial) setNewEntryInitial(initial); setNewEntryDialogOpen(true); }}
-            onOpenEntry={(entry) => { setNewEntryInitial(entry); setNewEntryDialogOpen(true); }}
             onJumpToText={(text) => jumpToTextRef.current?.(text)}
             sceneContent={content}
             sceneId={Number(sceneId)}

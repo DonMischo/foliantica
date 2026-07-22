@@ -2,11 +2,12 @@
 
 import { useState, useRef } from "react";
 import * as Popover from "@radix-ui/react-popover";
-import { ClipboardList, Plus, X, Check, Trash2 } from "lucide-react";
+import { ClipboardList, Plus, X, Check, Trash2, Clock, ListChecks } from "lucide-react";
 import { useScenePlansStore } from "@/store/scenePlans";
 import { scenesApi } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const SCENE_TYPES = [
   { value: "action",        label: "Action",        color: "#ef4444" },
@@ -20,9 +21,16 @@ interface Props {
   sceneId: number;
   sceneTitle: string;
   sceneType?: string | null;
+  sceneSynopsis?: string | null;
+  sceneBeat?: string | null;
+  sceneTimeDisplay?: string | null;
 }
 
-export function ScenePlanPopover({ sceneId, sceneTitle, sceneType: initialSceneType = null }: Props) {
+export function ScenePlanPopover({
+  sceneId, sceneTitle, sceneType: initialSceneType = null,
+  sceneSynopsis, sceneBeat, sceneTimeDisplay,
+}: Props) {
+  const { t } = useLanguage();
   const { plans, addItem, toggleItem, updateItem, deleteItem, clearDone } =
     useScenePlansStore();
   const items      = plans[sceneId] ?? [];
@@ -72,7 +80,7 @@ export function ScenePlanPopover({ sceneId, sceneTitle, sceneType: initialSceneT
       {/* ── Trigger icon ── */}
       <Popover.Trigger asChild>
         <button
-          title="Scene plan"
+          title={t("scene_plan_header")}
           onClick={(e) => e.stopPropagation()}
           className={cn(
             "relative transition-opacity",
@@ -117,7 +125,7 @@ export function ScenePlanPopover({ sceneId, sceneTitle, sceneType: initialSceneT
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
             <ClipboardList className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <span className="flex-1 text-xs font-medium truncate">
-              {sceneTitle || "Scene Plan"}
+              {sceneTitle || t("scene_plan_header")}
             </span>
             {doneCount > 0 && (
               <button
@@ -134,6 +142,28 @@ export function ScenePlanPopover({ sceneId, sceneTitle, sceneType: initialSceneT
               </button>
             </Popover.Close>
           </div>
+
+          {/* Synopsis / beat / time info */}
+          {(sceneSynopsis || sceneBeat || sceneTimeDisplay) && (
+            <div className="px-3 py-2 border-b border-border space-y-1.5">
+              {sceneSynopsis && (
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{sceneSynopsis}</p>
+              )}
+              {sceneBeat && (
+                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                  <ListChecks className="h-3 w-3 shrink-0" />
+                  <span>{t("corkboard_beat")}:</span>
+                  <span className="text-foreground truncate">{sceneBeat}</span>
+                </div>
+              )}
+              {sceneTimeDisplay && (
+                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                  <Clock className="h-3 w-3 shrink-0" />
+                  <span className="text-foreground truncate">{sceneTimeDisplay}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Scene type row */}
           <div className="px-3 py-2 border-b border-border">

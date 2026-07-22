@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { User, MapPin, Package, Scroll, Tag, Coins, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,7 @@ interface Props {
 }
 
 export function CodexEntryDetail({ entry, allEntries }: Props) {
+  const router = useRouter();
   const [mentionsOpen, setMentionsOpen] = useState(false);
   const { data: relations = [] } = useEntryRelations(entry.id);
   const isCharacter = entry.entry_type === "character";
@@ -45,7 +47,13 @@ export function CodexEntryDetail({ entry, allEntries }: Props) {
       <div className="flex items-center gap-2 mb-3">
         <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
         <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        <h3 className="font-semibold flex-1 text-sm">{entry.name}</h3>
+        <button
+          onClick={() => router.push(`/projects/${entry.project_id}/codex?entry=${entry.id}`)}
+          className="font-semibold flex-1 text-sm text-left truncate hover:underline hover:text-primary"
+          title="Open in Codex"
+        >
+          {entry.name}
+        </button>
         <Button
           size="icon"
           variant="ghost"

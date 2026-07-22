@@ -8,6 +8,7 @@ import { SingleCard } from "./SceneCard";
 import { hexToRgba } from "./ColorPicker";
 import { CONNECTION_TYPES } from "./connectionTypes";
 import { CARD_LIFT } from "@/lib/canvasStyle";
+import { useLanguage } from "@/contexts/LanguageContext";
 import type { CorkboardScene } from "@/types";
 
 // ── Node data contract ────────────────────────────────────────────────────────
@@ -63,6 +64,7 @@ function StackDisplay({
   onTitleChange, onSynopsisChange, onGenerateSynopsis, onColorChange,
   onSubplotChange, onUnstack, onStackRename,
 }: StackDisplayProps) {
+  const { t } = useLanguage();
   const [collapsed, setCollapsed] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState(stackName);
@@ -73,7 +75,7 @@ function StackDisplay({
     setEditingName(false);
   };
 
-  const displayName = stackName || `Stack (${scenes.length})`;
+  const displayName = stackName || t("corkboard_stack_count_paren", { count: scenes.length });
 
   if (collapsed) {
     return (
@@ -106,7 +108,7 @@ function StackDisplay({
         <button
           className="nodrag text-muted-foreground/70 hover:text-foreground"
           onClick={() => setCollapsed(false)}
-          title="Expand stack"
+          title={t("corkboard_stack_expand")}
         >
           <ChevronDown className="h-3 w-3" />
         </button>
@@ -141,14 +143,14 @@ function StackDisplay({
         <button
           className="nodrag text-muted-foreground/30 hover:text-muted-foreground/70 p-0.5"
           onClick={() => { setDraftName(stackName); setEditingName(true); }}
-          title="Rename stack"
+          title={t("corkboard_stack_rename_title")}
         >
           <Pencil className="h-2.5 w-2.5" />
         </button>
         <button
           className="nodrag text-muted-foreground/70 hover:text-foreground"
           onClick={() => setCollapsed(true)}
-          title="Collapse stack"
+          title={t("corkboard_stack_collapse")}
         >
           <ChevronUp className="h-3 w-3" />
         </button>
@@ -183,7 +185,7 @@ function StackDisplay({
           <button
             className="nodrag absolute top-1 right-1 text-[9px] text-muted-foreground/30 hover:text-muted-foreground/70 px-1 rounded"
             onClick={() => onUnstack(scene.id)}
-            title="Move out of stack"
+            title={t("corkboard_stack_move_out")}
           >
             ↑
           </button>
@@ -202,15 +204,16 @@ function BeatChip({
   available: string[];
   onChange: (val: string | null) => void;
 }) {
+  const { t } = useLanguage();
   if (available.length === 0) return null;
   return (
     <select
       className="nodrag text-[9px] bg-transparent border border-border/30 rounded px-1 py-0.5 text-muted-foreground/50 hover:text-muted-foreground cursor-pointer outline-none max-w-[80px] truncate"
       value={current ?? ""}
       onChange={(e) => onChange(e.target.value === "" ? null : e.target.value)}
-      title="Assign beat"
+      title={t("corkboard_beat_chip_assign")}
     >
-      <option value="">— beat —</option>
+      <option value="">{t("corkboard_beat_chip_none")}</option>
       {available.map((b) => (
         <option key={b} value={b}>{b}</option>
       ))}
@@ -227,14 +230,15 @@ function SubplotChip({
   available: string[];
   onChange: (val: string | null) => void;
 }) {
+  const { t } = useLanguage();
   return (
     <select
       className="nodrag text-[9px] bg-transparent border border-border/30 rounded px-1 py-0.5 text-muted-foreground/50 hover:text-muted-foreground cursor-pointer outline-none max-w-[90px] truncate"
       value={current ?? ""}
       onChange={(e) => onChange(e.target.value === "" ? null : e.target.value)}
-      title="Change subplot"
+      title={t("corkboard_subplot_chip_change")}
     >
-      <option value="">Main Plot</option>
+      <option value="">{t("corkboard_main_plot")}</option>
       {available.map((sp) => (
         <option key={sp} value={sp}>{sp}</option>
       ))}
@@ -247,33 +251,34 @@ function SubplotChip({
 /** Colored connection sockets — targets on the left edge, sources on the right.
  *  Handle ids encode the cable type: `tgt-<type>` / `src-<type>`. */
 function TypedHandles() {
+  const { t } = useLanguage();
   const n = CONNECTION_TYPES.length;
   return (
     <>
-      {CONNECTION_TYPES.map((t, i) => {
+      {CONNECTION_TYPES.map((connType, i) => {
         const top = `${((i + 1) / (n + 1)) * 100}%`;
         const common: React.CSSProperties = {
           top,
           width: 9,
           height: 9,
           border: "2px solid hsl(var(--card))",
-          background: t.color,
+          background: connType.color,
         };
         return (
-          <span key={t.id}>
+          <span key={connType.id}>
             <Handle
               type="target"
               position={Position.Left}
-              id={`tgt-${t.id}`}
+              id={`tgt-${connType.id}`}
               style={{ ...common, left: -5 }}
-              title={`${t.label} (in)`}
+              title={t("corkboard_handle_in", { label: connType.label })}
             />
             <Handle
               type="source"
               position={Position.Right}
-              id={`src-${t.id}`}
+              id={`src-${connType.id}`}
               style={{ ...common, right: -5 }}
-              title={`${t.label} (out)`}
+              title={t("corkboard_handle_out", { label: connType.label })}
             />
           </span>
         );
@@ -299,6 +304,7 @@ const webHandleStyle: React.CSSProperties = {
 // ── Custom React Flow node ────────────────────────────────────────────────────
 
 export function SceneNode({ data }: NodeProps<SceneNodeType>) {
+  const { t } = useLanguage();
   const {
     scenes, projectId, sceneColors, colColor, showSynopsis, compact,
     generatingId, availableSubplots, availableBeats, stackName,
@@ -372,7 +378,7 @@ export function SceneNode({ data }: NodeProps<SceneNodeType>) {
         <button
           className="nodrag text-muted-foreground/30 hover:text-primary transition-colors"
           onClick={() => onCodexWeb(representative.id)}
-          title="Show codex web — characters, places & items in this scene"
+          title={t("corkboard_codex_web_hint")}
         >
           <Waypoints className="h-3 w-3" />
         </button>

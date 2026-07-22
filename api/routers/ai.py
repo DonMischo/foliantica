@@ -352,18 +352,48 @@ async def ki_generate(body: KiGenerateRequest, db: Session = Depends(get_db)):
         user_msg = f"{context}\n\n## Instruction\n{body.prompt}" if body.prompt else context
         language = _project_language(scene, db)
 
-    # create_entry mode: override system to demand structured JSON output
-    if body.create_entry:
-        entry_type = (body.entry_type or "character").lower()
+    # create_entry / update_entry_id mode: override system to demand structured JSON output
+    existing_entry: CodexEntry | None = None
+    if body.update_entry_id:
+        existing_entry = db.get(CodexEntry, body.update_entry_id)
+        if not existing_entry:
+            raise HTTPException(404, "Codex entry not found")
+
+    if body.create_entry or existing_entry:
+        entry_type = (existing_entry.entry_type if existing_entry else (body.entry_type or "character")).lower()
         schema = _ENTRY_JSON_SCHEMAS.get(entry_type, _ENTRY_JSON_SCHEMAS["character"])
-        system += (
-            f"\n\nCRITICAL OUTPUT FORMAT: Your ENTIRE response must be a single valid JSON object. "
-            f"No markdown code fences, no preamble, no commentary outside the JSON. "
-            f"Use exactly this structure for a {entry_type}:\n{schema}\n"
-            f"Write every descriptive text value in {language}. "
-            f"The description field uses labelled sections separated by blank lines, matching the schema above. "
-            f"Extract only what is present in the source — do not invent facts."
-        )
+        if existing_entry:
+            existing_json = json.dumps({
+                "name": existing_entry.name,
+                "entry_type": existing_entry.entry_type,
+                "aliases": existing_entry.get_aliases(),
+                "species": existing_entry.species,
+                "subtype": existing_entry.subtype,
+                "tags": existing_entry.get_tags(),
+                "description": existing_entry.description or "",
+            }, ensure_ascii=False, indent=2)
+            system += (
+                f"\n\nCRITICAL OUTPUT FORMAT: Your ENTIRE response must be a single valid JSON object. "
+                f"No markdown code fences, no preamble, no commentary outside the JSON. "
+                f"You are UPDATING an existing codex entry, not creating a new one. Here is its current data:\n"
+                f"{existing_json}\n\n"
+                f"Merge new information found in the source material into this entry: keep existing facts that "
+                f"are still accurate, and add or refine details based on the new information. Do not remove or "
+                f"contradict existing information unless the source material clearly contradicts it. "
+                f"Use exactly this structure for a {entry_type}:\n{schema}\n"
+                f"Write every descriptive text value in {language}. "
+                f"The description field uses labelled sections separated by blank lines, matching the schema above. "
+                f"Return the full, complete updated entry — not just the new information."
+            )
+        else:
+            system += (
+                f"\n\nCRITICAL OUTPUT FORMAT: Your ENTIRE response must be a single valid JSON object. "
+                f"No markdown code fences, no preamble, no commentary outside the JSON. "
+                f"Use exactly this structure for a {entry_type}:\n{schema}\n"
+                f"Write every descriptive text value in {language}. "
+                f"The description field uses labelled sections separated by blank lines, matching the schema above. "
+                f"Extract only what is present in the source — do not invent facts."
+            )
 
     messages = [
         {"role": "system", "content": system},

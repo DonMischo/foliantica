@@ -46,13 +46,12 @@ interface Props {
   onSelect: (id: number) => void;
   onClose: () => void;
   onAdd: (initial?: Partial<CodexEntry>) => void;
-  onOpenEntry?: (entry: CodexEntry) => void;
   onJumpToText?: (text: string) => void;
   sceneContent?: string;
   sceneId?: number;
 }
 
-export function CodexSidebar({ entries, selectedId, onSelect, onClose, onAdd, onOpenEntry, onJumpToText, sceneContent, sceneId }: Props) {
+export function CodexSidebar({ entries, selectedId, onSelect, onClose, onAdd, onJumpToText, sceneContent, sceneId }: Props) {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<EntryType | "all" | "scene" | "suggest">(
     sceneContent ? "scene" : "all"
@@ -263,20 +262,7 @@ export function CodexSidebar({ entries, selectedId, onSelect, onClose, onAdd, on
                     >
                       <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: entry.color }} />
                       <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      {onOpenEntry ? (
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          onClick={(e) => { e.stopPropagation(); onOpenEntry(entry); }}
-                          onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); onOpenEntry(entry); } }}
-                          className="text-sm truncate hover:underline hover:text-primary"
-                          title="Open codex entry"
-                        >
-                          {entry.name}
-                        </span>
-                      ) : (
-                        <span className="text-sm truncate">{entry.name}</span>
-                      )}
+                      <span className="text-sm truncate">{entry.name}</span>
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); setMentionsEntry(entry); }}

@@ -32,9 +32,11 @@ import { SceneImageNode } from "./nodes/SceneImageNode";
 import { KiNode } from "./nodes/KiNode";
 import { SlashCommandMenu, COMMANDS, type CommandItem, type SlashMenuHandle } from "./SlashCommandMenu";
 import { FormattingToolbar } from "./FormattingToolbar";
+import { EditorTopToolbar } from "./EditorTopToolbar";
 import { SearchExtension } from "./SearchExtension";
 import { SearchBar } from "./SearchBar";
 import { EditorContext } from "@/contexts/EditorContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useUIStore } from "@/store/ui";
 import { buildGrammarDocText, findGrammarRange } from "@/lib/grammarUtils";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -51,8 +53,9 @@ interface Props {
   onOpenLink?: () => void;
   onWordSelect?: (word: string | null) => void;
   onFlagsChange?: (flags: FlagItem[]) => void;
+  /** Current word count, shown at the right edge of the top toolbar */
+  sceneWordCount?: number;
   replaceWordRef?: React.MutableRefObject<((word: string) => void) | null>;
-  applyFlagRef?: React.MutableRefObject<((type: string) => void) | null>;
   applyGrammarFixRef?: React.MutableRefObject<((matched: string, replacement: string, plainOffset: number) => void) | null>;
   jumpToGrammarMatchRef?: React.MutableRefObject<((matched: string, plainOffset: number) => void) | null>;
   jumpToValeMatchRef?: React.MutableRefObject<((matched: string, skipCount: number) => void) | null>;
@@ -145,12 +148,14 @@ function grammarFindInDoc(
 
 // ── Typewriter scroll helper ───────────────────────────────────────────────────
 // Called either from handleScrollToSelection (typing) or selectionUpdate (click/arrow).
-// Returns true if a scroll was applied.
-function applyTypewriterScroll(
+// The actual scroll is debounced and animated (see scheduleTypewriterScroll below)
+// so quick cursor moves — e.g. double-clicking a word to select it — don't yank
+// the view away mid-interaction.
+function typewriterScrollDelta(
   view: EditorView,
   container: HTMLDivElement,
   offsetPct: number,
-): void {
+): number | null {
   try {
     const { from } = view.state.selection;
     const coords  = view.coordsAtPos(from);
@@ -158,11 +163,32 @@ function applyTypewriterScroll(
     const target  = rect.height * (offsetPct / 100);
     const current = coords.top - rect.top;
     const diff    = current - target;
-    if (Math.abs(diff) > 2) container.scrollTop += diff;
-  } catch { /* view not mounted */ }
+    return Math.abs(diff) > 2 ? diff : null;
+  } catch {
+    return null; // view not mounted
+  }
 }
 
-export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onOpenLink, onWordSelect, onFlagsChange, replaceWordRef, applyFlagRef, applyGrammarFixRef, jumpToGrammarMatchRef, jumpToValeMatchRef, jumpToTextRef, onPrefillEntry, aiDisabled = false, readOnly = false, commentHighlights, getCommentPositionsRef, onCommentRequest, triggerCommentRef, hasSelectionRef, showCodexHighlights = true, language }: Props) {
+function animateScrollBy(
+  container: HTMLDivElement,
+  delta: number,
+  duration: number,
+  animRef: React.MutableRefObject<number | null>,
+): void {
+  if (animRef.current !== null) cancelAnimationFrame(animRef.current);
+  const start = container.scrollTop;
+  const end = start + delta;
+  const startTime = performance.now();
+  const step = (now: number) => {
+    const t = Math.min((now - startTime) / duration, 1);
+    const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    container.scrollTop = start + (end - start) * eased;
+    animRef.current = t < 1 ? requestAnimationFrame(step) : null;
+  };
+  animRef.current = requestAnimationFrame(step);
+}
+
+export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onOpenLink, onWordSelect, onFlagsChange, sceneWordCount = 0, replaceWordRef, applyGrammarFixRef, jumpToGrammarMatchRef, jumpToValeMatchRef, jumpToTextRef, onPrefillEntry, aiDisabled = false, readOnly = false, commentHighlights, getCommentPositionsRef, onCommentRequest, triggerCommentRef, hasSelectionRef, showCodexHighlights = true, language }: Props) {
   const showLineNumbers  = useUIStore((s) => s.showParagraphNumbers);
   const typewriterMode   = useUIStore((s) => s.typewriterMode);
   const typewriterOffset = useUIStore((s) => s.typewriterOffset);
@@ -188,6 +214,26 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
   typewriterModeRef.current   = typewriterMode;
   typewriterOffsetRef.current = typewriterOffset;
 
+  // Typewriter scroll: wait 1s after the last cursor move before scrolling,
+  // then animate over 0.5s. Prevents the view jumping mid-interaction (e.g.
+  // while double-clicking to select a word).
+  const scrollDebounceRef = useRef<number | null>(null);
+  const scrollAnimRef = useRef<number | null>(null);
+  const scheduleTypewriterScroll = useCallback((view: EditorView, container: HTMLDivElement, offsetPct: number) => {
+    if (scrollDebounceRef.current !== null) window.clearTimeout(scrollDebounceRef.current);
+    scrollDebounceRef.current = window.setTimeout(() => {
+      scrollDebounceRef.current = null;
+      const delta = typewriterScrollDelta(view, container, offsetPct);
+      if (delta !== null) animateScrollBy(container, delta, 500, scrollAnimRef);
+    }, 1000);
+  }, []);
+  useEffect(() => {
+    return () => {
+      if (scrollDebounceRef.current !== null) window.clearTimeout(scrollDebounceRef.current);
+      if (scrollAnimRef.current !== null) cancelAnimationFrame(scrollAnimRef.current);
+    };
+  }, []);
+
   // Search bar state
   const [searchOpen, setSearchOpen] = useState(false);
   const searchOpenRef = useRef(false);
@@ -202,6 +248,9 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
   onOpenChatRef.current = onOpenChat;
   const aiDisabledRef = useRef(aiDisabled);
   aiDisabledRef.current = aiDisabled;
+  const { t } = useLanguage();
+  const tRef = useRef(t);
+  tRef.current = t;
   const onOpenTimelineRef = useRef(onOpenTimeline);
   onOpenTimelineRef.current = onOpenTimeline;
   const onOpenLinkRef = useRef(onOpenLink);
@@ -255,13 +304,26 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
             const base = aiDisabledRef.current
               ? COMMANDS.filter((c) => !AI_IDS.has(c.id))
               : COMMANDS;
+            const translate = tRef.current;
+            const localized = base.map((c) => {
+              const localKeywords = translate(`cmd_${c.id}_keywords`)
+                .split(",")
+                .map((k) => k.trim().toLowerCase())
+                .filter(Boolean);
+              return {
+                ...c,
+                label: translate(`cmd_${c.id}_label`),
+                description: translate(`cmd_${c.id}_desc`),
+                keywords: [...c.keywords, ...localKeywords],
+              };
+            });
             return q
-              ? base.filter(
+              ? localized.filter(
                   (c) =>
                     c.label.toLowerCase().startsWith(q) ||
                     c.keywords.some((k) => k.startsWith(q))
                 )
-              : [...base];
+              : localized;
           },
           render: () => ({
             onStart(props) {
@@ -311,13 +373,24 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
   // treating the load as a user edit (preventUpdate meta alone is unreliable).
   const isSettingContentRef = useRef(false);
 
+  // German "wörtliche Rede" uses „low-high" quotes, not the English “curly” pair
+  // Typography defaults to — LanguageTool's German rules expect the former and
+  // choke on the latter. Single quotes are left straight: Typography can't tell
+  // a closing quote from a contraction apostrophe (e.g. "Geht's"), and mapping
+  // both to the same curly char throws off LanguageTool's quote-pairing.
+  const isGerman = (language ?? "").toLowerCase().startsWith("de");
+
   const editor = useEditor({
     immediatelyRender: false,
     editable: !readOnly,
     extensions: [
       StarterKit.configure({ underline: false }), // Underline added standalone below; exclude from StarterKit to avoid duplicate
       Placeholder.configure({ placeholder: "Start writing your scene… (type / to insert a command)" }),
-      Typography,
+      Typography.configure(
+        isGerman
+          ? { openDoubleQuote: "„", closeDoubleQuote: "“", openSingleQuote: false, closeSingleQuote: false }
+          : {}
+      ),
       Underline,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       TaskList,
@@ -360,7 +433,7 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
         if (!typewriterModeRef.current) return false; // let PM scroll normally
         const container = scrollRef.current;
         if (!container) return false;
-        requestAnimationFrame(() => applyTypewriterScroll(view, container, typewriterOffsetRef.current));
+        scheduleTypewriterScroll(view, container, typewriterOffsetRef.current);
         return true; // consumed — PM will not scroll
       },
     },
@@ -420,17 +493,19 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
     getCommentPositionsRef.current = () => editor ? getCommentPositions(editor.view) : [];
   }, [editor, getCommentPositionsRef]);
 
+  const handleAddComment = useCallback(() => {
+    if (!editor || !onCommentRequestRef.current) return;
+    const { from, to, empty } = editor.state.selection;
+    if (empty) return;
+    const text = editor.state.doc.textBetween(from, to, " ").trim();
+    if (text) onCommentRequestRef.current(from, to, text);
+  }, [editor]);
+
   // Wire comment trigger refs
   useEffect(() => {
     if (!triggerCommentRef) return;
-    triggerCommentRef.current = () => {
-      if (!editor || !onCommentRequestRef.current) return;
-      const { from, to, empty } = editor.state.selection;
-      if (empty) return;
-      const text = editor.state.doc.textBetween(from, to, " ").trim();
-      if (text) onCommentRequestRef.current(from, to, text);
-    };
-  }, [editor, triggerCommentRef]);
+    triggerCommentRef.current = handleAddComment;
+  }, [triggerCommentRef, handleAddComment]);
 
   useEffect(() => {
     if (!hasSelectionRef) return;
@@ -454,11 +529,7 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
     const onSelectionUpdate = () => {
       // Typewriter scroll
       if (typewriterModeRef.current && scrollRef.current) {
-        requestAnimationFrame(() => {
-          if (scrollRef.current) {
-            applyTypewriterScroll(editor.view, scrollRef.current, typewriterOffsetRef.current);
-          }
-        });
+        scheduleTypewriterScroll(editor.view, scrollRef.current, typewriterOffsetRef.current);
       }
       // Word selection for thesaurus
       if (onWordSelectRef.current) {
@@ -488,22 +559,6 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
       editor.chain().focus().deleteRange({ from, to }).insertContent(word).run();
     };
   }, [editor, replaceWordRef]);
-
-  // Wire applyFlagRef so parent can apply sensitivity marks
-  useEffect(() => {
-    if (!applyFlagRef) return;
-    applyFlagRef.current = (type: string) => {
-      if (!editor) return;
-      const { empty } = editor.state.selection;
-      if (empty) return;
-      const isActive = editor.isActive("sensitivityFlag", { type });
-      if (isActive) {
-        editor.chain().focus().unsetMark("sensitivityFlag").run();
-      } else {
-        editor.chain().focus().setMark("sensitivityFlag", { type }).run();
-      }
-    };
-  }, [editor, applyFlagRef]);
 
   // Ctrl+F / Cmd+F → open search bar; Escape → close it
   useEffect(() => {
@@ -640,14 +695,17 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
   }, [editor]);
 
   const wrapperClass = [
-    "h-full overflow-y-auto relative",
+    "flex-1 min-h-0 overflow-y-auto relative",
     showLineNumbers ? "has-line-numbers" : "",
     focusMode ? "focus-mode" : "",
   ].filter(Boolean).join(" ");
 
   return (
     <EditorContext.Provider value={{ characters, items, allEntries: codexEntries, sceneId, projectId: codexEntries[0]?.project_id ?? 0, onPrefillEntry }}>
-      <div className="relative h-full">
+      <div className="relative h-full flex flex-col">
+        {editor && !readOnly && (
+          <EditorTopToolbar editor={editor} onAddComment={onCommentRequest ? handleAddComment : undefined} sceneWordCount={sceneWordCount} t={t} />
+        )}
         <div ref={scrollRef} className={wrapperClass}>
           <EditorContent editor={editor} className="h-full" />
           {editor && <FormattingToolbar editor={editor} />}

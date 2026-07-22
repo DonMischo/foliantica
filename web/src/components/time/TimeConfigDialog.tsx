@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import type { TimeConfig, TimeUnit, DayNightConfig } from "@/types";
 import { DEFAULT_TIME_CONFIG } from "@/types";
 import { cn } from "@/lib/utils";
+import { formatHour24, formatHourAMPM } from "@/lib/sceneTime";
 
 interface Props {
   open: boolean;
@@ -23,6 +24,8 @@ function DayNightDial({ dn, onChange }: {
   dn: DayNightConfig;
   onChange: (dn: DayNightConfig) => void;
 }) {
+  const [format, setFormat] = useState<"24h" | "ampm">("24h");
+  const formatHour = format === "ampm" ? formatHourAMPM : formatHour24;
   const R = 80;          // radius of clock face
   const CX = 100; const CY = 100;  // centre
   const total = dn.hours_per_day;
@@ -120,8 +123,28 @@ function DayNightDial({ dn, onChange }: {
           />
         </div>
       </div>
+
+      {/* Display format toggle, next to the float-hour inputs above */}
+      <div className="flex items-center gap-1 self-end">
+        <span className="text-[10px] text-muted-foreground mr-1">Display:</span>
+        {(["24h", "ampm"] as const).map(f => (
+          <button
+            key={f}
+            onClick={() => setFormat(f)}
+            className={cn(
+              "text-[10px] px-2 py-0.5 rounded-full border transition-colors",
+              format === f
+                ? "bg-primary text-primary-foreground border-transparent"
+                : "border-border text-muted-foreground hover:border-muted-foreground/50"
+            )}
+          >
+            {f === "24h" ? "24h" : "AM/PM"}
+          </button>
+        ))}
+      </div>
+
       <p className="text-xs text-muted-foreground text-center">
-        Night: {dn.night_start_hour}:00 → {((dn.night_start_hour + dn.night_duration) % dn.hours_per_day).toFixed(1)}:00
+        Night: {formatHour(dn.night_start_hour)} → {formatHour((dn.night_start_hour + dn.night_duration) % dn.hours_per_day)}
         &nbsp;·&nbsp;Day: {(dn.hours_per_day - dn.night_duration).toFixed(1)}h
       </p>
     </div>

@@ -17,21 +17,28 @@ interface BtnProps {
   onClick: () => void;
   active: boolean;
   title: string;
+  disabled?: boolean;
   children: React.ReactNode;
 }
 
-function Btn({ onClick, active, title, children }: BtnProps) {
+export function Btn({ onClick, active, title, disabled, children }: BtnProps) {
   return (
     <button
       type="button"
-      // onMouseDown + preventDefault keeps editor focus when clicking toolbar buttons
-      onMouseDown={(e) => { e.preventDefault(); onClick(); }}
+      // onMouseDown + preventDefault keeps editor focus when clicking toolbar buttons.
+      // Deliberately not using the native `disabled` attribute — that suppresses
+      // hover/title tooltips in some browsers, and these icons need to stay
+      // hoverable (to show what they do) even when their action isn't available.
+      onMouseDown={(e) => { e.preventDefault(); if (!disabled) onClick(); }}
+      aria-disabled={disabled}
       title={title}
       className={cn(
         "p-1.5 rounded transition-colors",
-        active
-          ? "bg-primary/20 text-primary"
-          : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+        disabled
+          ? "opacity-40 cursor-not-allowed"
+          : active
+            ? "bg-primary/20 text-primary"
+            : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
       )}
     >
       {children}
@@ -39,30 +46,19 @@ function Btn({ onClick, active, title, children }: BtnProps) {
   );
 }
 
-function Divider() {
+export function Divider() {
   return <div className="w-px h-4 bg-border mx-0.5 shrink-0" />;
 }
 
-// ── Bubble menu toolbar ────────────────────────────────────────────────────────
+// ── Shared formatting buttons (used by both the bubble popup and the topbar) ──
 
-interface Props {
+interface ButtonsProps {
   editor: Editor;
 }
 
-export function FormattingToolbar({ editor }: Props) {
+export function FormattingButtons({ editor }: ButtonsProps) {
   return (
-    <BubbleMenu
-      editor={editor}
-      // Only show for genuine non-empty text selections.
-      // isTextSelection filters out AllSelection (set by setContent on scene load)
-      // and NodeSelection (custom nodes, images, etc.).
-      shouldShow={({ editor, state }) => {
-        const { selection } = state;
-        return editor.isEditable && isTextSelection(selection) && !selection.empty;
-      }}
-      options={{ placement: "top" }}
-      className="flex items-center gap-0.5 rounded-lg border border-border bg-card shadow-xl px-1.5 py-1"
-    >
+    <>
       {/* Inline marks */}
       <Btn
         onClick={() => editor.chain().focus().toggleBold().run()}
@@ -174,6 +170,31 @@ export function FormattingToolbar({ editor }: Props) {
       >
         <AlignJustify className="h-3.5 w-3.5" />
       </Btn>
+    </>
+  );
+}
+
+// ── Bubble menu toolbar (mouse popup on text selection) ───────────────────────
+
+interface Props {
+  editor: Editor;
+}
+
+export function FormattingToolbar({ editor }: Props) {
+  return (
+    <BubbleMenu
+      editor={editor}
+      // Only show for genuine non-empty text selections.
+      // isTextSelection filters out AllSelection (set by setContent on scene load)
+      // and NodeSelection (custom nodes, images, etc.).
+      shouldShow={({ editor, state }) => {
+        const { selection } = state;
+        return editor.isEditable && isTextSelection(selection) && !selection.empty;
+      }}
+      options={{ placement: "top" }}
+      className="flex items-center gap-0.5 rounded-lg border border-border bg-card shadow-xl px-1.5 py-1"
+    >
+      <FormattingButtons editor={editor} />
     </BubbleMenu>
   );
 }

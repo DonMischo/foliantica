@@ -4,10 +4,11 @@
     {
       "name": "web-test",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "-p", "3100"],
+      "runtimeArgs": ["run", "dev"],
       "cwd": "web",
       "env": { "LW_API_PORT": "8799" },
-      "port": 3100
+      "port": 3100,
+      "autoPort": true
     }
   ]
 }

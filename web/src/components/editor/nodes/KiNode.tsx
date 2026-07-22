@@ -6,6 +6,7 @@ import { Sparkles, X, RefreshCw, BookPlus } from "lucide-react";
 import { useState } from "react";
 import { useEditorContext } from "@/contexts/EditorContext";
 import { useSettings, usePrompts, useProjectScenes } from "@/store/queries";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { kiApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { CodexEntry } from "@/types";
@@ -30,11 +31,13 @@ function KiNodeView({ node, updateAttributes, deleteNode, getPos, editor }: any)
   const { data: settings } = useSettings();
   const { data: prompts = [] } = usePrompts();
   const { data: projectScenes = [] } = useProjectScenes(projectId);
+  const { t } = useLanguage();
 
   const [generating, setGenerating]       = useState(false);
   const [result, setResult]               = useState<string | null>(null);
   const [entryJson, setEntryJson]         = useState<Partial<CodexEntry> | null>(null);
   const [createEntryMode, setCreateEntryMode] = useState(false);
+  const [updateEntryId, setUpdateEntryId] = useState<number | null>(null);
   const [error, setError]                 = useState<string | null>(null);
   const [entryType, setEntryType]         = useState("character");
 
@@ -53,6 +56,7 @@ function KiNodeView({ node, updateAttributes, deleteNode, getPos, editor }: any)
 
   const selectedPrompt = prompts.find(p => String(p.id) === promptId) ?? null;
   const isCodexDistill = selectedPrompt?.built_in_key === "codex_distill";
+  const jsonMode = isCodexDistill && (createEntryMode || updateEntryId !== null);
 
   // The effective model: use stored attr, then distill-specific default, then global default
   const effectiveModel = model || (isCodexDistill ? settings?.default_codex_model : null) || settings?.default_model || "";
@@ -67,8 +71,10 @@ function KiNodeView({ node, updateAttributes, deleteNode, getPos, editor }: any)
 
   const addEntry = (id: number) =>
     updateAttributes({ codexIds: [...codexIds, id].join(",") });
-  const removeEntry = (id: number) =>
+  const removeEntry = (id: number) => {
     updateAttributes({ codexIds: codexIds.filter(i => i !== id).join(",") });
+    if (updateEntryId === id) setUpdateEntryId(null);
+  };
 
   const handleGenerate = async () => {
     if (!effectiveModel || !sceneId) return;
@@ -77,7 +83,7 @@ function KiNodeView({ node, updateAttributes, deleteNode, getPos, editor }: any)
     setResult(null);
     setEntryJson(null);
 
-    const collectingJson = isCodexDistill && createEntryMode;
+    const collectingJson = jsonMode;
 
     try {
       const res = await kiApi.stream({
@@ -88,8 +94,9 @@ function KiNodeView({ node, updateAttributes, deleteNode, getPos, editor }: any)
         prompt: prompt || "",
         prompt_id: promptId ? Number(promptId) : null,
         entry_type: isCodexDistill ? entryType : undefined,
-        word_count: (!isCodexDistill || !createEntryMode) ? nodeWordCount : null,
-        create_entry: collectingJson,
+        word_count: !jsonMode ? nodeWordCount : null,
+        create_entry: isCodexDistill && createEntryMode && updateEntryId === null,
+        update_entry_id: updateEntryId ?? undefined,
       });
 
       if (!res.ok) {
@@ -135,7 +142,11 @@ function KiNodeView({ node, updateAttributes, deleteNode, getPos, editor }: any)
           const raw = extractJSON(accumulated);
           const parsed = JSON.parse(raw);
           if (parsed && typeof parsed === "object" && parsed.name) {
-            setEntryJson(parsed as Partial<CodexEntry>);
+            setEntryJson(
+              updateEntryId !== null
+                ? { ...(parsed as Partial<CodexEntry>), id: updateEntryId }
+                : (parsed as Partial<CodexEntry>)
+            );
           } else {
             setResult(accumulated);
           }
@@ -144,7 +155,7 @@ function KiNodeView({ node, updateAttributes, deleteNode, getPos, editor }: any)
         }
       }
     } catch (e: any) {
-      setError(e.message ?? "Generation failed");
+      setError(e.message ?? t("common_generation_failed"));
     } finally {
       setGenerating(false);
     }
@@ -183,7 +194,7 @@ function KiNodeView({ node, updateAttributes, deleteNode, getPos, editor }: any)
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 shrink-0" style={{ color: ACCENT }} />
           <span className="text-[11px] font-semibold uppercase tracking-wide flex-1" style={{ color: ACCENT }}>
-            AI Generate
+            {t("cmd_ki_label")}
           </span>
           <button type="button" onClick={deleteNode} className="text-muted-foreground hover:text-destructive">
             <X className="h-3.5 w-3.5" />
@@ -192,35 +203,39 @@ function KiNodeView({ node, updateAttributes, deleteNode, getPos, editor }: any)
 
         {/* Prompt selector */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground w-14 shrink-0">Prompt</span>
+          <span className="text-xs text-muted-foreground w-14 shrink-0">{t("ki_prompt_selector_label")}</span>
           <select
             value={promptId}
-            onChange={e => { updateAttributes({ promptId: e.target.value }); setCreateEntryMode(false); setResult(null); setEntryJson(null); }}
+            onChange={e => { updateAttributes({ promptId: e.target.value }); setCreateEntryMode(false); setUpdateEntryId(null); setResult(null); setEntryJson(null); }}
             onMouseDown={e => e.stopPropagation()}
             className="bg-background text-xs rounded border border-border px-1.5 py-1 outline-none flex-1 max-w-xs"
           >
-            <option value="">None (legacy)</option>
+            <option value="">{t("ki_none_legacy")}</option>
             {prompts.map(p => (
               <option key={p.id} value={String(p.id)}>{p.name}</option>
             ))}
           </select>
         </div>
 
-        {/* Entry type selector (only for Codex Entry Distillation) */}
+        {/* Entry type selector (only for Codex Entry Distillation, create mode) */}
         {isCodexDistill && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground w-14 shrink-0">Type</span>
-            <select
-              value={entryType}
-              onChange={e => setEntryType(e.target.value)}
-              onMouseDown={e => e.stopPropagation()}
-              className="bg-background text-xs rounded border border-border px-1.5 py-1 outline-none"
-            >
-              <option value="character">Character</option>
-              <option value="location">Location</option>
-              <option value="item">Item</option>
-              <option value="lore">Lore</option>
-            </select>
+          <div className="flex items-center gap-2 flex-wrap">
+            {updateEntryId === null && (
+              <>
+                <span className="text-xs text-muted-foreground w-14 shrink-0">{t("entry_type")}</span>
+                <select
+                  value={entryType}
+                  onChange={e => setEntryType(e.target.value)}
+                  onMouseDown={e => e.stopPropagation()}
+                  className="bg-background text-xs rounded border border-border px-1.5 py-1 outline-none"
+                >
+                  <option value="character">{t("type_character")}</option>
+                  <option value="location">{t("type_location")}</option>
+                  <option value="item">{t("type_item")}</option>
+                  <option value="lore">{t("type_lore")}</option>
+                </select>
+              </>
+            )}
 
             {/* Create entry toggle */}
             <label
@@ -230,18 +245,62 @@ function KiNodeView({ node, updateAttributes, deleteNode, getPos, editor }: any)
               <input
                 type="checkbox"
                 checked={createEntryMode}
-                onChange={e => { setCreateEntryMode(e.target.checked); setResult(null); setEntryJson(null); }}
+                onChange={e => {
+                  setCreateEntryMode(e.target.checked);
+                  if (e.target.checked) setUpdateEntryId(null);
+                  setResult(null); setEntryJson(null);
+                }}
                 className="accent-primary w-3.5 h-3.5"
               />
-              <span className="text-xs text-muted-foreground">Create entry</span>
+              <span className="text-xs text-muted-foreground">{t("ki_create_entry_label")}</span>
             </label>
+
+            {/* Update entry toggle — requires a codex entry already selected below */}
+            <label
+              className={cn(
+                "flex items-center gap-1.5 select-none",
+                selectedEntries.length > 0 ? "cursor-pointer" : "cursor-not-allowed opacity-40"
+              )}
+              onMouseDown={e => e.stopPropagation()}
+              title={selectedEntries.length === 0 ? t("ki_update_entry_disabled_hint") : undefined}
+            >
+              <input
+                type="checkbox"
+                checked={updateEntryId !== null}
+                disabled={selectedEntries.length === 0}
+                onChange={e => {
+                  if (e.target.checked) {
+                    setUpdateEntryId(selectedEntries[0].id);
+                    setCreateEntryMode(false);
+                  } else {
+                    setUpdateEntryId(null);
+                  }
+                  setResult(null); setEntryJson(null);
+                }}
+                className="accent-primary w-3.5 h-3.5"
+              />
+              <span className="text-xs text-muted-foreground">{t("ki_update_entry_label")}</span>
+            </label>
+
+            {updateEntryId !== null && (
+              <select
+                value={updateEntryId}
+                onChange={e => setUpdateEntryId(Number(e.target.value))}
+                onMouseDown={e => e.stopPropagation()}
+                className="bg-background text-xs rounded border border-border px-1.5 py-1 outline-none"
+              >
+                {selectedEntries.map(e => (
+                  <option key={e.id} value={e.id}>{e.name}</option>
+                ))}
+              </select>
+            )}
           </div>
         )}
 
-        {/* Word count — hidden in create-entry mode */}
-        {!(isCodexDistill && createEntryMode) && (
+        {/* Word count — hidden in create/update-entry mode */}
+        {!jsonMode && (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground w-14 shrink-0">Words</span>
+            <span className="text-xs text-muted-foreground w-14 shrink-0">{t("ki_words_label")}</span>
             <input
               type="number"
               min={50}
@@ -274,10 +333,10 @@ function KiNodeView({ node, updateAttributes, deleteNode, getPos, editor }: any)
 
         {/* Model selector */}
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground w-14 shrink-0">Model</span>
+          <span className="text-xs text-muted-foreground w-14 shrink-0">{t("ki_model_label")}</span>
           {enabledModels.length === 0 ? (
             <span className="text-xs text-muted-foreground italic">
-              No models enabled — configure in Settings
+              {t("ki_no_models_enabled")}
             </span>
           ) : (
             <select
@@ -295,11 +354,11 @@ function KiNodeView({ node, updateAttributes, deleteNode, getPos, editor }: any)
 
         {/* Context — scenes */}
         <div className="flex items-start gap-2">
-          <span className="text-xs text-muted-foreground w-14 shrink-0 pt-0.5">Scenes</span>
+          <span className="text-xs text-muted-foreground w-14 shrink-0 pt-0.5">{t("ki_scenes_label")}</span>
           <div className="flex flex-wrap gap-1 flex-1">
             <span className="text-[11px] bg-secondary px-2 py-0.5 rounded flex items-center gap-1">
-              Current scene
-              <span className="text-muted-foreground/50 text-[10px]">auto</span>
+              {t("ki_current_scene")}
+              <span className="text-muted-foreground/50 text-[10px]">{t("ki_auto_tag")}</span>
             </span>
             {extraSceneIds.map(id => {
               const sc = projectScenes.find(s => s.id === id);
@@ -322,7 +381,7 @@ function KiNodeView({ node, updateAttributes, deleteNode, getPos, editor }: any)
                 onMouseDown={e => e.stopPropagation()}
                 className="text-[11px] bg-background border border-border rounded px-1.5 py-0.5 outline-none text-muted-foreground"
               >
-                <option value="">+ Add scene…</option>
+                <option value="">{t("ki_add_scene_option")}</option>
                 {projectScenes
                   .filter(s => s.id !== sceneId && !extraSceneIds.includes(s.id))
                   .map(s => (
@@ -335,7 +394,7 @@ function KiNodeView({ node, updateAttributes, deleteNode, getPos, editor }: any)
 
         {/* Context — codex entries */}
         <div className="flex items-start gap-2">
-          <span className="text-xs text-muted-foreground w-14 shrink-0 pt-0.5">Codex</span>
+          <span className="text-xs text-muted-foreground w-14 shrink-0 pt-0.5">{t("corkboard_codex")}</span>
           <div className="flex flex-wrap gap-1 flex-1">
             {selectedEntries.map(e => (
               <span
@@ -356,14 +415,14 @@ function KiNodeView({ node, updateAttributes, deleteNode, getPos, editor }: any)
                 onMouseDown={e => e.stopPropagation()}
                 className="text-[11px] bg-background border border-border rounded px-1.5 py-0.5 outline-none text-muted-foreground"
               >
-                <option value="">+ Add entry…</option>
+                <option value="">{t("ki_add_entry_option")}</option>
                 {availableEntries.map(e => (
                   <option key={e.id} value={e.id}>{e.name}</option>
                 ))}
               </select>
             )}
             {allEntries.length === 0 && (
-              <span className="text-[11px] text-muted-foreground italic">No codex entries</span>
+              <span className="text-[11px] text-muted-foreground italic">{t("ki_no_codex_entries")}</span>
             )}
           </div>
         </div>
@@ -371,16 +430,16 @@ function KiNodeView({ node, updateAttributes, deleteNode, getPos, editor }: any)
         {/* Prompt / author notes */}
         <div className="flex items-start gap-2">
           <span className="text-xs text-muted-foreground w-14 shrink-0 pt-1.5">
-            {isCodexDistill && createEntryMode ? "Notes" : "Prompt"}
+            {jsonMode ? t("ki_notes_field_label") : t("ki_prompt_selector_label")}
           </span>
           <textarea
             value={prompt}
             onChange={e => updateAttributes({ prompt: e.target.value })}
             onKeyDown={e => e.stopPropagation()}
             placeholder={
-              isCodexDistill && createEntryMode
-                ? "Additional author notes for the entry… (optional)"
-                : "Instructions for the AI… (optional)"
+              jsonMode
+                ? t("ki_notes_placeholder")
+                : t("ki_prompt_placeholder")
             }
             rows={2}
             className="flex-1 bg-background text-xs rounded border border-border px-2 py-1.5 outline-none resize-none"
@@ -400,16 +459,16 @@ function KiNodeView({ node, updateAttributes, deleteNode, getPos, editor }: any)
             <div className="flex items-center gap-2">
               <BookPlus className="h-3.5 w-3.5 shrink-0" style={{ color: ACCENT }} />
               <span className="text-xs font-semibold" style={{ color: ACCENT }}>
-                Entry extracted
+                {entryJson.id ? t("ki_entry_updated") : t("ki_entry_extracted")}
               </span>
             </div>
             <div className="text-xs space-y-0.5">
               <div>
-                <span className="text-muted-foreground">Name: </span>
+                <span className="text-muted-foreground">{t("ki_result_name_label")} </span>
                 <span className="font-medium">{entryJson.name}</span>
               </div>
               <div>
-                <span className="text-muted-foreground">Type: </span>
+                <span className="text-muted-foreground">{t("ki_result_type_label")} </span>
                 <span className="capitalize">{entryJson.entry_type ?? entryType}</span>
                 {(entryJson.species || (entryJson as any).subtype) && (
                   <span className="text-muted-foreground">
@@ -440,8 +499,8 @@ function KiNodeView({ node, updateAttributes, deleteNode, getPos, editor }: any)
             style={{ background: `${ACCENT}25`, color: ACCENT }}
           >
             {generating
-              ? <><RefreshCw className="h-3 w-3 animate-spin" /> {isCodexDistill && createEntryMode ? "Extracting…" : "Generating…"}</>
-              : <><Sparkles className="h-3 w-3" /> {isCodexDistill && createEntryMode ? "Extract entry" : "Generate"}</>
+              ? <><RefreshCw className="h-3 w-3 animate-spin" /> {jsonMode ? (updateEntryId !== null ? t("ki_updating") : t("ki_extracting")) : t("ki_generating")}</>
+              : <><Sparkles className="h-3 w-3" /> {jsonMode ? (updateEntryId !== null ? t("ki_update_entry_label") : t("ki_extract_entry_btn")) : t("ki_generate_btn")}</>
             }
           </button>
 
@@ -453,14 +512,14 @@ function KiNodeView({ node, updateAttributes, deleteNode, getPos, editor }: any)
                 onClick={handleInsert}
                 className="text-xs px-3 py-1.5 rounded font-medium bg-primary text-primary-foreground"
               >
-                Insert &amp; replace
+                {t("ki_insert_replace")}
               </button>
               <button
                 type="button"
                 onClick={() => setResult(null)}
                 className="text-xs text-muted-foreground hover:text-foreground"
               >
-                Discard
+                {t("ki_discard")}
               </button>
             </>
           )}
@@ -475,14 +534,14 @@ function KiNodeView({ node, updateAttributes, deleteNode, getPos, editor }: any)
                 className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-medium bg-primary text-primary-foreground disabled:opacity-40"
               >
                 <BookPlus className="h-3 w-3" />
-                Open in Codex
+                {t("corkboard_open_in_codex")}
               </button>
               <button
                 type="button"
                 onClick={() => setEntryJson(null)}
                 className="text-xs text-muted-foreground hover:text-foreground"
               >
-                Discard
+                {t("ki_discard")}
               </button>
             </>
           )}

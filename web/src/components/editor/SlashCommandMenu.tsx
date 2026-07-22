@@ -3,6 +3,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 import { StickyNote, Coins, Package, ImageIcon, Sparkles, MessageSquare, Braces, GitBranch, Table2, ListChecks, Link as LinkIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export interface CommandItem {
   id: string;
@@ -132,6 +133,7 @@ interface Props {
 
 export const SlashCommandMenu = forwardRef<SlashMenuHandle, Props>(
   function SlashCommandMenu({ items, rect, onSelect, onClose }, ref) {
+    const { t } = useLanguage();
     const menuRef = useRef<HTMLDivElement>(null);
     const [activeIndex, setActiveIndex] = useState(0);
     const [openAbove, setOpenAbove] = useState(false);
@@ -195,7 +197,7 @@ export const SlashCommandMenu = forwardRef<SlashMenuHandle, Props>(
         }}
       >
         <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Insert command
+          {t("slash_insert_command")}
         </p>
         {items.map((cmd, i) => {
           const Icon = cmd.icon;

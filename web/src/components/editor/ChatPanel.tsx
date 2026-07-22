@@ -5,6 +5,7 @@ import { X, Send, Trash2, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { chatApi } from "@/lib/api";
 import { useSettings } from "@/store/queries";
 
@@ -20,6 +21,7 @@ interface Props {
 
 export function ChatPanel({ sceneId, onClose }: Props) {
   const { data: settings } = useSettings();
+  const { t } = useLanguage();
   const enabledModels: string[] = settings?.enabled_models?.length
     ? settings.enabled_models
     : settings?.default_model ? [settings.default_model] : [];
@@ -104,7 +106,7 @@ export function ChatPanel({ sceneId, onClose }: Props) {
       }
     } catch (e: any) {
       if (e.name !== "AbortError") {
-        setLastAssistantContent(`Error: ${e.message ?? "Generation failed"}`);
+        setLastAssistantContent(`Error: ${e.message ?? t("common_generation_failed")}`);
       }
     } finally {
       setLoading(false);
@@ -129,7 +131,7 @@ export function ChatPanel({ sceneId, onClose }: Props) {
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border">
         <MessageSquare className="h-4 w-4 text-primary shrink-0" />
-        <span className="text-sm font-medium shrink-0">Scene Chat</span>
+        <span className="text-sm font-medium shrink-0">{t("cmd_chat_label")}</span>
         <div className="flex-1 min-w-0">
           {enabledModels.length > 0 && (
             <select
@@ -151,7 +153,7 @@ export function ChatPanel({ sceneId, onClose }: Props) {
               variant="ghost"
               className="h-7 w-7"
               onClick={() => setMessages([])}
-              title="Clear conversation"
+              title={t("chat_clear_conversation")}
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
@@ -168,7 +170,7 @@ export function ChatPanel({ sceneId, onClose }: Props) {
           <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground gap-2 pb-8">
             <MessageSquare className="h-8 w-8 opacity-20" />
             <p className="text-xs leading-relaxed">
-              Ask anything about the scene — brainstorm ideas, explore characters, develop plot, or solve a writing problem.
+              {t("chat_empty_hint")}
             </p>
           </div>
         )}
@@ -176,7 +178,7 @@ export function ChatPanel({ sceneId, onClose }: Props) {
         {messages.map((msg, i) => (
           <div key={i} className={cn("flex flex-col gap-0.5", msg.role === "user" && "items-end")}>
             <span className="text-[10px] text-muted-foreground px-1">
-              {msg.role === "user" ? "You" : "AI"}
+              {msg.role === "user" ? t("chat_role_you") : t("scene_ai_short")}
             </span>
             <div
               className={cn(
@@ -208,7 +210,7 @@ export function ChatPanel({ sceneId, onClose }: Props) {
         <Textarea
           ref={textareaRef}
           className="text-xs resize-none flex-1 min-h-[60px]"
-          placeholder="Ask about the scene… (Enter to send, Shift+Enter for newline)"
+          placeholder={t("chat_input_placeholder")}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -220,7 +222,7 @@ export function ChatPanel({ sceneId, onClose }: Props) {
           className="h-8 w-8 shrink-0"
           variant={loading ? "outline" : "default"}
           onClick={loading ? stop : send}
-          title={loading ? "Stop" : "Send"}
+          title={loading ? t("chat_stop") : t("dm_send")}
         >
           {loading
             ? <span className="w-2.5 h-2.5 rounded-sm bg-current" />

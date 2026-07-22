@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { ArrowLeft, ChevronDown, ChevronRight, RotateCcw, Copy, BookOpen, GraduationCap } from "lucide-react";
@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { projectsApi, scenesApi } from "@/lib/api";
 import { useProjectScenes, useCorkboard, useProject } from "@/store/queries";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // ── Local-storage helpers ─────────────────────────────────────────────────────
 
@@ -18,7 +19,7 @@ function storageKey(projectId: number, templateId: string) {
   return `lw_plot_${projectId}_${templateId}`;
 }
 
-interface BeatState { checked: boolean; notes: string }
+interface BeatState { checked: boolean; notes: string; noteHeight?: number }
 type TemplateState = Record<string, BeatState>;
 
 function loadState(projectId: number, templateId: string): TemplateState {
@@ -43,7 +44,41 @@ function BeatRow({
   state: BeatState;
   onChange: (s: BeatState) => void;
 }) {
+  const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const lastAutoHeightRef = useRef<number | null>(null);
+  const stateRef = useRef(state);
+  const onChangeRef = useRef(onChange);
+  stateRef.current = state;
+  onChangeRef.current = onChange;
+
+  // Auto-grow to fit content as it's typed. A persisted noteHeight (from a
+  // manual drag-resize below) acts as a floor, not a cap — typing past it
+  // still grows the box further, so text is never clipped; deleting text
+  // back down settles at the user's manually-chosen size, not below it.
+  useLayoutEffect(() => {
+    const el = textareaRef.current;
+    if (!expanded || !el) return;
+    el.style.height = "auto";
+    const contentHeight = el.scrollHeight;
+    const next = state.noteHeight ? Math.max(contentHeight, state.noteHeight) : contentHeight;
+    el.style.height = `${next}px`;
+    lastAutoHeightRef.current = next;
+  }, [expanded, state.notes, state.noteHeight]);
+
+  // The textarea has a native resize-y corner handle; a drag ends with a
+  // mouseup on the element. If the resulting size isn't what the auto-grow
+  // effect just applied, the user dragged it — persist that height so it
+  // survives re-renders and reloads.
+  const handleMouseUp = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const h = el.offsetHeight;
+    if (lastAutoHeightRef.current !== null && Math.abs(h - lastAutoHeightRef.current) <= 1) return;
+    if (stateRef.current.noteHeight === h) return;
+    onChangeRef.current({ ...stateRef.current, noteHeight: h });
+  };
 
   return (
     <div className={cn("border border-border rounded-lg transition-colors", state.checked && "opacity-60")}>
@@ -66,7 +101,7 @@ function BeatRow({
         <button
           onClick={() => setExpanded((v) => !v)}
           className="text-muted-foreground hover:text-foreground shrink-0 mt-0.5"
-          title="Add notes"
+          title={t("beats_add_notes_title")}
         >
           {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
         </button>
@@ -74,11 +109,14 @@ function BeatRow({
       {expanded && (
         <div className="px-3 pb-3">
           <textarea
+            ref={textareaRef}
             value={state.notes}
             onChange={(e) => onChange({ ...state, notes: e.target.value })}
-            placeholder="Notes for this beat…"
+            onMouseUp={handleMouseUp}
+            placeholder={t("beats_notes_placeholder")}
             rows={2}
-            className="w-full text-xs bg-secondary/30 border border-border rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-ring text-foreground placeholder:text-muted-foreground/50"
+            title={t("beats_resize_hint")}
+            className="w-full text-xs bg-secondary/30 border border-border rounded px-2 py-1.5 resize-y overflow-hidden focus:outline-none focus:ring-1 focus:ring-ring text-foreground placeholder:text-muted-foreground/50"
           />
         </div>
       )}
@@ -110,6 +148,7 @@ export default function PlotPage() {
   const projectId = Number(id);
   const qc = useQueryClient();
 
+  const { t } = useLanguage();
   const { data: project } = useProject(projectId);
   const [activeTemplate, setActiveTemplate] = useState<PlotTemplate>(PLOT_TEMPLATES[0]);
   const [templateInitialised, setTemplateInitialised] = useState(false);
@@ -177,7 +216,7 @@ export default function PlotPage() {
   }, [projectId, activeTemplate.id]);
 
   const resetAll = () => {
-    if (!confirm(`Reset all checkboxes for "${activeTemplate.name}"?`)) return;
+    if (!confirm(t("beats_reset_confirm", { name: activeTemplate.name }))) return;
     saveState(projectId, activeTemplate.id, {});
     setStates({});
   };
@@ -206,7 +245,7 @@ export default function PlotPage() {
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
-        <h1 className="text-xl font-bold">Plot Beats</h1>
+        <h1 className="text-xl font-bold">{t("beats_page_title")}</h1>
       </header>
 
       <main className="flex-1 overflow-y-auto">
@@ -237,10 +276,10 @@ export default function PlotPage() {
                 setCompendiumOpen(true);
               }}
               className="shrink-0 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors px-2 py-1.5 rounded border border-border hover:border-primary/40"
-              title="Open in Writer's Guide"
+              title={t("compendium_open_guide")}
             >
               <GraduationCap className="h-3.5 w-3.5" />
-              Guide
+              {t("beats_guide_label")}
             </button>
           )}
         </div>
@@ -274,13 +313,13 @@ export default function PlotPage() {
           {view === "checklist" && (
             <Button size="sm" variant="ghost" className="gap-1.5 text-xs text-muted-foreground" onClick={resetAll}>
               <RotateCcw className="h-3.5 w-3.5" />
-              Reset
+              {t("beats_reset")}
             </Button>
           )}
           {view === "skeleton" && (
             <Button size="sm" variant="ghost" className="gap-1.5 text-xs text-muted-foreground" onClick={copyskeleton}>
               <Copy className="h-3.5 w-3.5" />
-              {copied ? "Copied!" : "Copy"}
+              {copied ? t("beats_copied") : t("beats_copy")}
             </Button>
           )}
         </div>
@@ -315,11 +354,10 @@ export default function PlotPage() {
         {view === "scenes" && (
           <div>
             <p className="text-xs text-muted-foreground mb-4">
-              Assign each scene to a beat from the <strong>{activeTemplate.name}</strong> template.
-              Beats are also editable in the scene editor (More → Scene info).
+              {t("beats_assign_hint_pre")} <strong>{activeTemplate.name}</strong> {t("beats_assign_hint_post")}
             </p>
             {projectScenes.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No scenes yet.</p>
+              <p className="text-sm text-muted-foreground">{t("beats_no_scenes")}</p>
             ) : (
               <>
                 {/* Beat sections */}
@@ -334,20 +372,20 @@ export default function PlotPage() {
                     <div key={beatName ?? "__unassigned"} className="mb-6">
                       <div className="flex items-center gap-2 mb-2">
                         <h3 className="text-sm font-semibold">
-                          {beatName ?? "Unassigned"}
+                          {beatName ?? t("corkboard_unassigned")}
                         </h3>
                         {beatDef && (
                           <span className="text-[10px] text-muted-foreground/60">~{beatDef.position}%</span>
                         )}
                         <span className="text-xs text-muted-foreground">
-                          ({scenesForBeat.length} scene{scenesForBeat.length !== 1 ? "s" : ""})
+                          {t("beats_scene_count_paren", { count: scenesForBeat.length })}
                         </span>
                       </div>
                       {beatDef && (
                         <p className="text-xs text-muted-foreground mb-2 ml-0.5">{beatDef.description}</p>
                       )}
                       {scenesForBeat.length === 0 ? (
-                        <p className="text-xs text-muted-foreground/50 ml-0.5 italic">No scenes assigned.</p>
+                        <p className="text-xs text-muted-foreground/50 ml-0.5 italic">{t("beats_no_scenes_assigned")}</p>
                       ) : (
                         <div className="space-y-1">
                           {scenesForBeat.map(s => {
@@ -364,7 +402,7 @@ export default function PlotPage() {
                                   onChange={e => handleBeatChange(s.id, e.target.value)}
                                   className="text-xs bg-secondary border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer shrink-0"
                                 >
-                                  <option value="">— none —</option>
+                                  <option value="">{t("common_none_option")}</option>
                                   {activeTemplate.beats.map(b => (
                                     <option key={b.id} value={b.name}>{b.name}</option>
                                   ))}

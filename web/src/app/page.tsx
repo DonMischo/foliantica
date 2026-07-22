@@ -7,7 +7,7 @@ import {
   BookOpen, Plus, Trash2, Calendar, BookCopy, Sparkles,
   Link2, ImageIcon, Settings, Upload, FileText, BookMarked, FolderOpen,
   Loader2, Download, Flame, BarChart2, BookMarked as SeriesIcon, GripVertical,
-  ChevronUp, ChevronDown, Pencil, Check, X as XIcon, ScrollText, Dices,
+  ChevronUp, ChevronDown, Pencil, Check, X as XIcon, ScrollText, Dices, GraduationCap,
 } from "lucide-react";
 import { imagesApi, importApi } from "@/lib/api";
 import { AchievementToastQueue } from "@/components/AchievementToast";
@@ -27,6 +27,7 @@ import {
 } from "@/store/queries";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { cn } from "@/lib/utils";
+import { WritersCompendium } from "@/components/WritersCompendium";
 
 // ── Series view ───────────────────────────────────────────────────────────────
 
@@ -683,7 +684,7 @@ export default function Dashboard() {
   const { data: writingLog = [] } = useGlobalWritingLog();
   const streak = computeStreak(writingLog);
 
-  const [dashView, setDashView] = useState<"projects" | "series" | "codex">("projects");
+  const [dashView, setDashView] = useState<"projects" | "series" | "codex" | "guide">("projects");
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -884,6 +885,18 @@ export default function Dashboard() {
               <ScrollText className="h-4 w-4" />
               Codex
             </button>
+            <button
+              onClick={() => setDashView("guide")}
+              className={cn(
+                "flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+                dashView === "guide"
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <GraduationCap className="h-4 w-4" />
+              {t("dash_writers_guide_tab")}
+            </button>
           </div>
         )}
 
@@ -920,6 +933,10 @@ export default function Dashboard() {
         {dashView === "series" && <SeriesView />}
         {dashView === "codex" && <CodexTabView />}
       </main>
+
+      {dashView === "guide" && (
+        <WritersCompendium open onClose={() => setDashView("projects")} />
+      )}
 
       {/* Mini heatmap strip */}
       {writingLog.length > 0 && (

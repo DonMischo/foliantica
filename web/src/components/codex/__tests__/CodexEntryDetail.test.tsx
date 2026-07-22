@@ -10,6 +10,10 @@ vi.mock("../EntryMentionsDialog", () => ({
   EntryMentionsDialog: () => null,
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 import { CodexEntryDetail } from "../CodexEntryDetail";
 import type { CodexEntry } from "@/types";
 

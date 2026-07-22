@@ -628,6 +628,7 @@ export const kiApi = {
     entry_type?: string;
     word_count?: number | null;
     create_entry?: boolean;
+    update_entry_id?: number | null;
   }) =>
     fetch(`${BASE}/ai/ki`, {
       method: "POST",

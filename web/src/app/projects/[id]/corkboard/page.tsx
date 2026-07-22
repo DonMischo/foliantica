@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useMemo, type CSSProperties } from "react";
 import { useParams } from "next/navigation";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   ReactFlow,
   Background, Controls, MiniMap, Panel,
@@ -394,19 +395,20 @@ interface BeatHeaderNodeData extends Record<string, unknown> {
 type BeatHeaderNodeType = Node<BeatHeaderNodeData, "beatHeaderNode">;
 
 function BeatHeaderNodeComponent({ data }: { data: BeatHeaderNodeData }) {
+  const { t } = useLanguage();
   return (
     <div
       style={{ width: "100%", height: "100%", pointerEvents: "none" }}
       className="flex flex-col items-center justify-center text-center px-3 rounded-lg border-2 border-dashed border-border/50 bg-muted/20"
     >
       <p className={`text-[11px] font-semibold leading-tight truncate w-full text-center ${data.isUnassigned ? "text-muted-foreground/40 italic" : "text-foreground"}`}>
-        {data.isUnassigned ? "— Unassigned —" : data.beatName}
+        {data.isUnassigned ? t("corkboard_unassigned_beat") : data.beatName}
       </p>
       {data.position != null && !data.isUnassigned && (
         <p className="text-[9px] text-muted-foreground/50 mt-0.5">{data.position}%</p>
       )}
       <p className="text-[9px] text-muted-foreground/40 mt-1">
-        {data.sceneCount} scene{data.sceneCount !== 1 ? "s" : ""}
+        {t("corkboard_scene_count", { count: data.sceneCount })}
       </p>
     </div>
   );
@@ -596,6 +598,7 @@ function buildBeatViewNodes(
     "onTitleChange" | "onSynopsisChange" | "onGenerateSynopsis" |
     "onColorChange" | "onSubplotChange" | "onBeatChange" | "onUnstack" | "onStackRename" | "onCodexWeb">,
   projectId: number,
+  t: (key: string, vars?: Record<string, string | number>) => string,
 ): { nodes: AnyNode[]; edges: Edge[] } {
   const sw = compact ? CARD_W_SM : CARD_W;
   const colW = sw + COL_GAP;
@@ -629,7 +632,7 @@ function buildBeatViewNodes(
       position: { x: colX, y: 0 },
       style: { width: sw, height: BEAT_HEADER_H },
       data: {
-        beatName: isUnassigned ? "Unassigned" : col,
+        beatName: isUnassigned ? t("corkboard_unassigned") : col,
         sceneCount: scenes.length,
         position: isUnassigned ? undefined : beatPositions[col],
         isUnassigned,
@@ -800,6 +803,7 @@ function toolBtn(active: boolean): string {
 export default function CorkboardPage() {
   const { id } = useParams();
   const projectId = Number(id);
+  const { t } = useLanguage();
 
   const { data: serverData, isLoading } = useCorkboard(projectId);
   const { data: structure }             = useProjectStructure(projectId);
@@ -1240,7 +1244,7 @@ export default function CorkboardPage() {
       const { nodes: bn, edges: be } = buildBeatViewNodes(
         visibleScenes, allBeatCols, beatPositions, sceneColors,
         resolvedColColors, allCols,
-        compact, beatCascade, generatingId, availableSubplots, beatCols, handlers, projectId,
+        compact, beatCascade, generatingId, availableSubplots, beatCols, handlers, projectId, t,
       );
       builtNodes = bn;
       builtEdges = be;
@@ -1334,7 +1338,7 @@ export default function CorkboardPage() {
     compact, generatingId, availableSubplots, beatCols, stackNames,
     circleRadiusMult, concentricRadiusMult,
     webSceneId, webMentions, codexEntries, codexRelations, handleOpenCodexEntry,
-    handlers, projectId, setNodes, setEdges,
+    handlers, projectId, setNodes, setEdges, t,
   ]);
 
   // ── Apply computed layout to the custom arrangement ───────────────────────
@@ -1770,11 +1774,11 @@ export default function CorkboardPage() {
   const handleRemoveSubplot = (subplot: string) => {
     const affected = localScenes.filter((s) => s.subplot === subplot);
     const sceneNote = affected.length > 0
-      ? ` ${affected.length} scene${affected.length !== 1 ? "s" : ""} will be moved to Main Plot.`
+      ? t("corkboard_scenes_moved_note", { count: affected.length })
       : "";
     setConfirmDialog({
-      message: `Remove subplot "${subplot}"?${sceneNote}`,
-      confirmLabel: "Remove",
+      message: t("corkboard_remove_subplot_confirm", { subplot, sceneNote }),
+      confirmLabel: t("corkboard_remove"),
       destructive: true,
       onConfirm: () => {
         affected.forEach((s) => mutateRef.current.move({ sceneId: s.id, data: { subplot: null } }));
@@ -1815,7 +1819,7 @@ export default function CorkboardPage() {
   if (isLoading) {
     return (
       <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-        Loading corkboard…
+        {t("corkboard_loading")}
       </div>
     );
   }
@@ -1880,7 +1884,7 @@ export default function CorkboardPage() {
           <div className="relative">
             <button
               onClick={() => { setMenuOpen((v) => !v); setFilterOpen(false); }}
-              title="Layout & Style"
+              title={t("corkboard_layout_style")}
               className={toolBtn(menuOpen)}
             >
               <Menu className="h-3.5 w-3.5" />
@@ -1891,7 +1895,7 @@ export default function CorkboardPage() {
                 {/* View section — layout picker, only in free-form mode */}
                 {inFreeForm && (
                   <div>
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">View</p>
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{t("corkboard_view")}</p>
                     <div className="grid grid-cols-2 gap-1">
                       {(["custom", "cascade", "circle", "concentric"] as CorkboardLayout[]).map((l) => (
                         <button
@@ -1912,8 +1916,8 @@ export default function CorkboardPage() {
                       const setMult = layout === "circle" ? setCircleRadiusMult : setConcentricRadiusMult;
                       const pct = mult * 10;
                       return (
-                        <div className="mt-2 flex items-center gap-1.5" title="Ring size relative to auto-fit (−70% … +50%)">
-                          <span className="text-[10px] text-muted-foreground/60 shrink-0">Ring</span>
+                        <div className="mt-2 flex items-center gap-1.5" title={t("corkboard_ring_title")}>
+                          <span className="text-[10px] text-muted-foreground/60 shrink-0">{t("corkboard_ring")}</span>
                           <input
                             type="range" min={-7} max={5} step={1} value={mult}
                             onChange={(e) => setMult(Number(e.target.value))}
@@ -1931,7 +1935,7 @@ export default function CorkboardPage() {
                         className="mt-2 w-full flex items-center justify-center gap-1 text-xs px-2 py-1 rounded-md border border-primary/40 text-primary hover:bg-primary/10 transition-colors"
                       >
                         <Check className="h-3 w-3" />
-                        Apply as Custom
+                        {t("corkboard_apply_as_custom")}
                       </button>
                     )}
                   </div>
@@ -1939,7 +1943,7 @@ export default function CorkboardPage() {
 
                 {/* Style section */}
                 <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Style</p>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">{t("corkboard_style")}</p>
                   <div className="space-y-0.5">
                     {BOARD_STYLES.map((s) => (
                       <button
@@ -1969,22 +1973,22 @@ export default function CorkboardPage() {
           {/* Compact toggle */}
           <button
             onClick={() => setCompact((v) => !v)}
-            title={compact ? "Normal view" : "Compact view"}
+            title={compact ? t("corkboard_normal_view") : t("corkboard_compact_view")}
             className={toolBtn(compact)}
           >
             <ZoomOut className="h-3.5 w-3.5" />
-            Compact
+            {t("corkboard_compact")}
           </button>
 
           {/* Tree (hierarchy) toggle — not available in beat view */}
           {!showBeatView && (
             <button
               onClick={() => setShowHierarchy((v) => !v)}
-              title={showHierarchy ? "Free-form canvas" : "Tree view — acts → chapters → scenes"}
+              title={showHierarchy ? t("corkboard_free_form") : t("corkboard_tree_view")}
               className={toolBtn(showHierarchy)}
             >
               <TreePine className="h-3.5 w-3.5" />
-              Tree
+              {t("corkboard_tree")}
             </button>
           )}
 
@@ -1997,11 +2001,11 @@ export default function CorkboardPage() {
                 return !v;
               });
             }}
-            title={showBeatView ? "Exit beat sheet view" : "Beat sheet view — organize scenes by story beat"}
+            title={showBeatView ? t("corkboard_exit_beat") : t("corkboard_beat_view")}
             className={toolBtn(showBeatView)}
           >
             <BookOpen className="h-3.5 w-3.5" />
-            Beat
+            {t("corkboard_beat")}
           </button>
 
           {/* Template selector — only in beat view */}
@@ -2016,18 +2020,18 @@ export default function CorkboardPage() {
                 }}
                 className="text-xs bg-background border border-border rounded px-1.5 py-0.5 outline-none focus:ring-1 focus:ring-primary text-foreground"
               >
-                <option value="">Auto-detect beats</option>
+                <option value="">{t("corkboard_auto_detect_beats")}</option>
                 {PLOT_TEMPLATES.map((t) => (
                   <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
               </select>
               <button
                 onClick={() => setBeatCascade((v) => !v)}
-                title={beatCascade ? "Spread beat columns" : "Pile scenes in each beat column"}
+                title={beatCascade ? t("corkboard_spread_beats") : t("corkboard_pile_beats")}
                 className={toolBtn(beatCascade)}
               >
                 <Layers2 className="h-3.5 w-3.5" />
-                Pile
+                {t("corkboard_pile")}
               </button>
             </>
           )}
@@ -2036,11 +2040,11 @@ export default function CorkboardPage() {
           {inFreeForm && layout === "custom" && (
             <button
               onClick={() => setShowFrames((v) => !v)}
-              title={showFrames ? "Hide chapter frames" : "Show chapter frames — drag a frame to move all its scenes"}
+              title={showFrames ? t("corkboard_hide_frames") : t("corkboard_show_frames")}
               className={toolBtn(showFrames)}
             >
               <Group className="h-3.5 w-3.5" />
-              Frames
+              {t("corkboard_frames")}
             </button>
           )}
 
@@ -2049,20 +2053,20 @@ export default function CorkboardPage() {
             <>
               <button
                 onClick={() => { setPlotChain(false); setScratchMode((v) => !v); }}
-                title={scratchMode ? "Switch to normal drag" : "Chain drag — grab a scene to pull all later scenes with it"}
+                title={scratchMode ? t("corkboard_switch_normal_drag") : t("corkboard_chain_drag")}
                 className={toolBtn(scratchMode)}
               >
                 <Link2 className="h-3.5 w-3.5" />
-                Chain
+                {t("corkboard_chain")}
               </button>
               {!showHierarchy && (
                 <button
                   onClick={() => { setScratchMode(false); setPlotChain((v) => !v); }}
-                  title={plotChain ? "Switch to normal drag" : "Plot chain — drag a scene to pull later scenes in the same subplot only"}
+                  title={plotChain ? t("corkboard_switch_normal_drag") : t("corkboard_plot_chain_title")}
                   className={toolBtn(plotChain)}
                 >
                   <GitBranch className="h-3.5 w-3.5" />
-                  Plot
+                  {t("corkboard_plot")}
                 </button>
               )}
             </>
@@ -2072,11 +2076,11 @@ export default function CorkboardPage() {
           <div className="relative">
             <button
               onClick={() => setFilterOpen((v) => !v)}
-              title="Filter scenes by plot or beat"
+              title={t("corkboard_filter_hint")}
               className={toolBtn(filtersActive || filterOpen)}
             >
               <Filter className="h-3.5 w-3.5" />
-              Filter
+              {t("corkboard_filter")}
               {filtersActive && (
                 <span className="text-[9px] bg-primary text-primary-foreground rounded-full px-1 min-w-[14px] text-center">
                   {filterSubplots.length + filterBeats.length}
@@ -2086,7 +2090,7 @@ export default function CorkboardPage() {
             {filterOpen && (
               <div className="absolute top-full left-0 mt-1 z-50 w-56 max-h-80 overflow-y-auto bg-card border border-border rounded-lg shadow-lg p-2 space-y-2">
                 <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-1">Plots</p>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-1">{t("corkboard_plots_label")}</p>
                   {allCols.map((col) => (
                     <label key={col} className="flex items-center gap-2 px-1 py-0.5 text-xs cursor-pointer hover:bg-muted rounded">
                       <input
@@ -2097,14 +2101,14 @@ export default function CorkboardPage() {
                         style={{ accentColor: resolvedColColors[col] }}
                       />
                       <span style={{ color: resolvedColColors[col] }}>
-                        {col === MAIN_COL ? "Main Plot" : col}
+                        {col === MAIN_COL ? t("corkboard_main_plot") : col}
                       </span>
                     </label>
                   ))}
                 </div>
                 {(beatCols.length > 0 || localScenes.some((s) => !s.beat)) && (
                   <div>
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-1">Beats</p>
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-1">{t("corkboard_beats_label")}</p>
                     {beatCols.map((beat) => (
                       <label key={beat} className="flex items-center gap-2 px-1 py-0.5 text-xs cursor-pointer hover:bg-muted rounded">
                         <input
@@ -2121,7 +2125,7 @@ export default function CorkboardPage() {
                         checked={filterBeats.includes(NO_BEAT)}
                         onChange={() => toggleFilterBeat(NO_BEAT)}
                       />
-                      <span className="italic text-muted-foreground">No beat</span>
+                      <span className="italic text-muted-foreground">{t("corkboard_no_beat")}</span>
                     </label>
                   </div>
                 )}
@@ -2130,7 +2134,7 @@ export default function CorkboardPage() {
                     onClick={() => { setFilterSubplots([]); setFilterBeats([]); }}
                     className="w-full text-xs text-muted-foreground hover:text-foreground border-t border-border pt-1.5"
                   >
-                    Clear filters
+                    {t("corkboard_clear_filters")}
                   </button>
                 )}
               </div>
@@ -2150,13 +2154,13 @@ export default function CorkboardPage() {
                   alignLeft={col === MAIN_COL}
                 />
                 <span className="text-xs font-medium" style={{ color }}>
-                  {col === MAIN_COL ? "Main" : col}
+                  {col === MAIN_COL ? t("corkboard_main") : col}
                 </span>
                 {col !== MAIN_COL && (
                   <button
                     onClick={() => handleRemoveSubplot(col)}
                     className="text-muted-foreground/30 hover:text-destructive"
-                    title="Remove subplot"
+                    title={t("corkboard_remove_subplot_title")}
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -2176,7 +2180,7 @@ export default function CorkboardPage() {
                 value={newSubplotName}
                 onChange={(e) => setNewSubplotName(e.target.value)}
                 onKeyDown={(e) => e.key === "Escape" && setAddingSubplot(false)}
-                placeholder="Name…"
+                placeholder={t("corkboard_name_placeholder")}
                 className="text-xs bg-background border border-border rounded px-2 py-0.5 w-24 outline-none focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground/40"
               />
               <button type="submit" className="text-xs text-primary">Add</button>
@@ -2188,7 +2192,7 @@ export default function CorkboardPage() {
               className="flex items-center gap-1 text-xs text-muted-foreground/50 hover:text-muted-foreground"
             >
               <Plus className="h-3 w-3" />
-              Subplot
+              {t("corkboard_subplot")}
             </button>
           )}
         </Panel>
@@ -2198,14 +2202,14 @@ export default function CorkboardPage() {
           {showLegend ? (
             <div className="bg-card/90 backdrop-blur border border-border rounded-lg shadow-sm p-2 text-xs space-y-1.5 w-44">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-[10px] uppercase tracking-wide text-muted-foreground">Cables</span>
+                <span className="font-semibold text-[10px] uppercase tracking-wide text-muted-foreground">{t("corkboard_cables")}</span>
                 <button onClick={() => setShowLegend(false)} className="text-muted-foreground/40 hover:text-muted-foreground">
                   <X className="h-3 w-3" />
                 </button>
               </div>
               <div className="flex items-center gap-2">
                 <svg width="26" height="6"><line x1="0" y1="3" x2="26" y2="3" stroke="hsl(var(--border))" strokeWidth="1.5" /></svg>
-                <span className="text-muted-foreground">Sequence (story order)</span>
+                <span className="text-muted-foreground">{t("corkboard_sequence_order")}</span>
               </div>
               {CONNECTION_TYPES.map((t) => (
                 <div key={t.id} className="flex items-center gap-2">
@@ -2216,20 +2220,19 @@ export default function CorkboardPage() {
                 </div>
               ))}
               <p className="text-[9px] text-muted-foreground/50 leading-snug pt-1 border-t border-border/50">
-                Drag from a colored socket to draw a cable. Select a cable + Delete to remove it.
-                Rewire a gray sequence cable to reorder scenes.
+                {t("corkboard_cable_legend_help")}
               </p>
             </div>
           ) : (
             <button
               onClick={() => setShowLegend(true)}
-              title="Cable legend"
+              title={t("corkboard_cable_legend")}
               className="bg-card/90 backdrop-blur border border-border rounded-lg shadow-sm px-2 py-1 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
             >
               {CONNECTION_TYPES.map((t) => (
                 <span key={t.id} className="h-2 w-2 rounded-full" style={{ background: t.color }} />
               ))}
-              Legend
+              {t("corkboard_legend")}
             </button>
           )}
         </Panel>
@@ -2248,7 +2251,7 @@ export default function CorkboardPage() {
                 className="flex items-center gap-1 text-primary hover:underline font-medium"
               >
                 <Undo2 className="h-3 w-3" />
-                Undo
+                {t("corkboard_undo")}
               </button>
               <button
                 onClick={() => setUndoToast(null)}
@@ -2266,20 +2269,20 @@ export default function CorkboardPage() {
             <Layers2 className="h-3 w-3" />
             {webSceneId != null
               ? webEmpty
-                ? "No codex entries are mentioned in this scene yet — write them into the scene text first"
-                : "Codex web — click an entry for details · Esc or click the canvas to close"
+                ? t("corkboard_hint_no_mentions")
+                : t("corkboard_hint_codex_web")
               : showBeatView
-              ? "Beat view — drag a scene into a different column to reassign its beat · pick a template to order columns"
+              ? t("corkboard_hint_beat_view")
               : showHierarchy
               ? scratchMode
-                  ? "Tree · Chain mode — drag a scene to pull all later scenes · drop in another chapter box to reassign"
-                  : "Tree view — drag scenes into chapter boxes to reassign · cables follow sidebar order"
+                  ? t("corkboard_hint_tree_chain")
+                  : t("corkboard_hint_tree")
               : layout !== "custom"
-              ? "Computed view — drag is off · Apply saves these positions to your Custom arrangement"
-              : plotChain ? "Plot Chain — drag a scene to pull all later scenes in the same subplot · other subplots stay put"
-              : scratchMode ? "Chain mode — drag a scene to pull all later scenes · drop in a frame to reassign chapter"
-              : showFrames ? "Frames on — drag a frame to move its chapter · drop a scene into another frame to reassign"
-              : "Drag to reposition · colored sockets draw cables · rewire gray cables to reorder · scroll to zoom"}
+              ? t("corkboard_hint_computed")
+              : plotChain ? t("corkboard_hint_plot_chain")
+              : scratchMode ? t("corkboard_hint_chain_mode")
+              : showFrames ? t("corkboard_hint_frames_on")
+              : t("corkboard_hint_default")}
           </div>
         </Panel>
       </ReactFlow>
@@ -2300,7 +2303,7 @@ export default function CorkboardPage() {
                 onClick={() => setConfirmDialog(null)}
                 className="px-3 py-1.5 text-xs rounded-md border border-border text-muted-foreground hover:bg-muted transition-colors"
               >
-                Cancel
+                {t("common_cancel")}
               </button>
               <button
                 onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }}
@@ -2310,7 +2313,7 @@ export default function CorkboardPage() {
                     : "bg-primary text-primary-foreground hover:bg-primary/90"
                 }`}
               >
-                {confirmDialog.confirmLabel ?? "Confirm"}
+                {confirmDialog.confirmLabel ?? t("common_confirm")}
               </button>
             </div>
           </div>
@@ -2324,7 +2327,7 @@ export default function CorkboardPage() {
             className="flex items-center gap-2 px-3 py-2.5 border-b border-border"
             style={{ borderTop: `3px solid ${drawerEntry.color}` }}
           >
-            <span className="text-sm font-medium flex-1">Codex</span>
+            <span className="text-sm font-medium flex-1">{t("corkboard_codex")}</span>
             <button
               onClick={() => setDrawerEntryId(null)}
               className="text-muted-foreground/50 hover:text-foreground"
@@ -2344,7 +2347,7 @@ export default function CorkboardPage() {
               className="flex items-center justify-center gap-1.5 text-xs text-primary hover:underline"
             >
               <ExternalLink className="h-3 w-3" />
-              Open in Codex
+              {t("corkboard_open_in_codex")}
             </a>
           </div>
         </div>
