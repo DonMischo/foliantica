@@ -83,6 +83,18 @@ class TestUpdateSettings:
         assert d["typewriter_mode"] is True
         assert d["typewriter_offset"] == 40
 
+    def test_autosave_interval_default_is_30(self, client):
+        r = client.get("/api/settings")
+        assert r.json()["autosave_interval"] == 30
+
+    def test_update_autosave_interval(self, client):
+        r = client.post("/api/settings", json={"autosave_interval": 120})
+        assert r.json()["autosave_interval"] == 120
+
+    def test_autosave_interval_is_clamped(self, client):
+        assert client.post("/api/settings", json={"autosave_interval": 1}).json()["autosave_interval"] == 5
+        assert client.post("/api/settings", json={"autosave_interval": 99999}).json()["autosave_interval"] == 3600
+
     def test_grammar_settings(self, client):
         r = client.post("/api/settings", json={
             "grammar_check_enabled": True,

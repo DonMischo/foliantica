@@ -3,7 +3,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useUIStore } from "@/store/ui";
 import { scenesApi } from "@/lib/api";
 
-const INTERVAL_MS = 20_000;
 const STORAGE_PREFIX = "lw_pending_";
 
 interface Options {
@@ -13,6 +12,7 @@ interface Options {
 
 export function useAutosave({ sceneId, enabled }: Options) {
   const setSaveStatus = useUIStore((s) => s.setSaveStatus);
+  const autosaveInterval = useUIStore((s) => s.autosaveInterval);
   const qc = useQueryClient();
   const pendingSaveRef = useRef<{ value: string; sceneId: number } | null>(null);
 
@@ -57,18 +57,19 @@ export function useAutosave({ sceneId, enabled }: Options) {
     };
   }, [sceneId]);
 
-  // 20-second interval save
+  // Periodic interval save — period is the user-configured autosave interval.
   useEffect(() => {
     if (!enabled) return;
+    const intervalMs = Math.max(5, autosaveInterval) * 1000;
     const interval = setInterval(() => {
       const pending = pendingSaveRef.current;
       if (pending) {
         pendingSaveRef.current = null;
         void save(pending.value, pending.sceneId);
       }
-    }, INTERVAL_MS);
+    }, intervalMs);
     return () => clearInterval(interval);
-  }, [save, enabled]);
+  }, [save, enabled, autosaveInterval]);
 
   // Warn on unload if there are unsaved changes
   useEffect(() => {

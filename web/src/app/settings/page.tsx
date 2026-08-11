@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, Fragment } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database, Users, Copy, Link2, ShieldCheck, ListChecks, Info, ChevronDown, ChevronUp, QrCode, Cloud, Highlighter } from "lucide-react";
+import { ArrowLeft, Key, Cpu, Globe, Loader2, RefreshCw, Sparkles, Plus, Trash2, RotateCcw, HelpCircle, Palette, FolderOpen, RotateCw, Hash, AlignCenter, Timer, Container, CheckCircle2, XCircle, AlertCircle, Play, ExternalLink, X, Trophy, Database, Users, Copy, Link2, ShieldCheck, ListChecks, Info, ChevronDown, ChevronUp, QrCode, Cloud, Highlighter, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +32,16 @@ const PROVIDER_HINTS: Record<string, { title: string; steps: string[] }> = {
     ],
   },
 };
+
+// Autosave interval dropdown options (seconds). "Custom" is handled separately.
+const AUTOSAVE_PRESETS: { value: number; label: string }[] = [
+  { value: 30,  label: "30 seconds" },
+  { value: 60,  label: "1 minute" },
+  { value: 120, label: "2 minutes" },
+  { value: 180, label: "3 minutes" },
+  { value: 300, label: "5 minutes" },
+  { value: 600, label: "10 minutes" },
+];
 
 const GRAMMAR_LANGUAGES = [
   { code: "en", label: "English" },
@@ -95,11 +105,15 @@ export default function SettingsPage() {
   const setSessionTimerEnabled  = useUIStore((s) => s.setSessionTimerEnabled);
   const showCodexHighlights     = useUIStore((s) => s.showCodexHighlights);
   const setShowCodexHighlights  = useUIStore((s) => s.setShowCodexHighlights);
+  const autosaveInterval        = useUIStore((s) => s.autosaveInterval);
+  const setAutosaveInterval     = useUIStore((s) => s.setAutosaveInterval);
   const [achPopupsEnabled, setAchPopupsEnabled] = useState(() => {
     if (typeof window === "undefined") return true;
     return localStorage.getItem(ACH_POPUPS_KEY) !== "false";
   });
   const [aiDisabled, setAiDisabled] = useState(false);
+  // Autosave interval: track whether the user is editing a non-preset value.
+  const [autosaveCustom, setAutosaveCustom] = useState(false);
 
   // ── Sync mirror ───────────────────────────────────────────────────────────
   const { data: syncStatus } = useSyncStatus();
@@ -522,6 +536,13 @@ export default function SettingsPage() {
     }
   }, [settings]);
 
+  // Show the custom field when the saved autosave interval isn't one of the presets.
+  useEffect(() => {
+    if (!AUTOSAVE_PRESETS.some((p) => p.value === autosaveInterval)) {
+      setAutosaveCustom(true);
+    }
+  }, [autosaveInterval]);
+
   const handleSyncToggle = async (enabled: boolean) => {
     setSyncEnabled(enabled);
     setSyncSaving(true);
@@ -702,17 +723,17 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="sticky top-0 z-10 bg-background border-b border-border px-6 py-4 flex items-center gap-3">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
+      <header className="shrink-0 z-10 bg-background border-b border-border px-6 py-4 flex items-center gap-3">
         <button onClick={() => router.back()} className="text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-4 w-4" />
         </button>
         <h1 className="text-lg font-semibold">{t("settings_title")}</h1>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* ── Sidebar ── */}
-        <aside className="w-52 shrink-0 border-r border-border sticky top-[57px] h-[calc(100vh-57px)] overflow-y-auto">
+        <aside className="w-52 shrink-0 border-r border-border h-full overflow-y-auto">
           <nav className="p-3 space-y-0.5">
             {([
               { id: "appearance", label: "Appearance",    Icon: Palette },
@@ -1414,6 +1435,56 @@ export default function SettingsPage() {
                 showCodexHighlights ? "translate-x-4" : "translate-x-0"
               )} />
             </button>
+          </div>
+
+          {/* Autosave interval */}
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-2">
+              <Save className="h-3.5 w-3.5 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Autosave interval</p>
+                <p className="text-xs text-muted-foreground">How often the scene editor saves your changes in the background</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select
+                value={autosaveCustom ? "custom" : String(autosaveInterval)}
+                onValueChange={(v) => {
+                  if (v === "custom") { setAutosaveCustom(true); return; }
+                  const n = Number(v);
+                  setAutosaveCustom(false);
+                  setAutosaveInterval(n);
+                  updateSettings.mutate({ autosave_interval: n });
+                }}
+              >
+                <SelectTrigger className="w-36">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {AUTOSAVE_PRESETS.map((p) => (
+                    <SelectItem key={p.value} value={String(p.value)}>{p.label}</SelectItem>
+                  ))}
+                  <SelectItem value="custom">Custom…</SelectItem>
+                </SelectContent>
+              </Select>
+              {autosaveCustom && (
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    type="number"
+                    min={5}
+                    value={autosaveInterval}
+                    onChange={(e) => setAutosaveInterval(Math.max(0, Number(e.target.value) || 0))}
+                    onBlur={(e) => {
+                      const n = Math.max(5, Math.min(3600, Number(e.target.value) || 5));
+                      setAutosaveInterval(n);
+                      updateSettings.mutate({ autosave_interval: n });
+                    }}
+                    className="h-8 w-20"
+                  />
+                  <span className="text-xs text-muted-foreground">sec</span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Achievement popups */}

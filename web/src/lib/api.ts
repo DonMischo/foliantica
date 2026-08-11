@@ -545,6 +545,7 @@ export const settingsApi = {
     sync_mirror_enabled?: boolean;
     sync_local_dir?: string | null;
     codex_highlight_enabled?: boolean;
+    autosave_interval?: number;
   }) => req<Settings>("/settings", { method: "POST", body: JSON.stringify(data) }),
   getModels: () => req<OpenRouterModel[]>("/settings/models"),
   serviceStatus: () => req<{ languagetool: "ok" | "error" | "offline"; pandoc: "ok" | "error" | "offline"; spacy: "ok" | "error" | "offline"; calibre: "ok" | "error" | "offline"; vale: "ok" | "error" | "offline" }>("/settings/service-status"),

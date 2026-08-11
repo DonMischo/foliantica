@@ -550,6 +550,7 @@ export interface Settings {
   sync_mirror_enabled: boolean;
   sync_local_dir: string | null;
   codex_highlight_enabled: boolean;
+  autosave_interval: number;
 }
 
 // ── Fragments ─────────────────────────────────────────────────────────────────

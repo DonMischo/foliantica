@@ -32,7 +32,9 @@ function makeWrapper() {
 beforeEach(() => {
   vi.useFakeTimers();
   vi.clearAllMocks();
-  useUIStore.setState({ saveStatus: "idle" });
+  // Pin the autosave interval to 20s so the timer-based assertions below are
+  // deterministic regardless of the store's default.
+  useUIStore.setState({ saveStatus: "idle", autosaveInterval: 20 });
   vi.mocked(scenesApi.update).mockResolvedValue({} as any);
   localStorage.clear();
 });
@@ -215,6 +217,22 @@ describe("useAutosave", () => {
     // Second interval — nothing pending, should NOT save again
     await act(async () => { vi.advanceTimersByTime(20_000); });
     expect(scenesApi.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("honours the configured autosave interval from the UI store", async () => {
+    useUIStore.setState({ autosaveInterval: 60 });
+    const { result } = renderHook(
+      () => useAutosave({ sceneId: 1, enabled: true }),
+      { wrapper: makeWrapper() }
+    );
+    act(() => { result.current.markDirty("<p>edited</p>"); });
+
+    // 20s is no longer enough — the interval is now 60s.
+    await act(async () => { vi.advanceTimersByTime(20_000); });
+    expect(scenesApi.update).not.toHaveBeenCalled();
+
+    await act(async () => { vi.advanceTimersByTime(40_000); });
+    expect(scenesApi.update).toHaveBeenCalledWith(1, { content: "<p>edited</p>" });
   });
 
   it("saveNow triggers an immediate save with the given content", async () => {

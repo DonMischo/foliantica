@@ -358,6 +358,7 @@ class UserSettings(Base):
     typewriter_offset: Mapped[int] = mapped_column(Integer, default=50)
     session_timer_enabled: Mapped[int] = mapped_column(Integer, default=1)
     codex_highlight_enabled: Mapped[int] = mapped_column(Integer, default=1)
+    autosave_interval: Mapped[int] = mapped_column(Integer, default=30)  # scene editor autosave period, seconds
     # External service settings
     grammar_check_enabled: Mapped[int] = mapped_column(Integer, default=0)
     grammar_check_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

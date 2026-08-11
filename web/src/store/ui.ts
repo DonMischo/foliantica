@@ -11,6 +11,7 @@ interface UIState {
   typewriterOffset: number;   // 0-100, vertical % position for cursor
   focusMode: boolean;
   showCodexHighlights: boolean;
+  autosaveInterval: number;   // scene editor autosave period, seconds
   // Session timer
   sessionTimerEnabled: boolean;
   sessionGoal: number | null;       // target word delta for this session
@@ -24,11 +25,12 @@ interface UIState {
   setTypewriterOffset: (pct: number) => void;
   setFocusMode: (on: boolean) => void;
   setShowCodexHighlights: (on: boolean) => void;
+  setAutosaveInterval: (seconds: number) => void;
   setSessionTimerEnabled: (on: boolean) => void;
   setSessionGoal: (goal: number, baseWords: number) => void;
   clearSession: () => void;
   /** Called once after settings load from DB to hydrate UI prefs. */
-  initFromSettings: (s: Pick<Settings, "show_paragraph_numbers" | "typewriter_mode" | "typewriter_offset" | "session_timer_enabled" | "codex_highlight_enabled">) => void;
+  initFromSettings: (s: Pick<Settings, "show_paragraph_numbers" | "typewriter_mode" | "typewriter_offset" | "session_timer_enabled" | "codex_highlight_enabled" | "autosave_interval">) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -40,6 +42,7 @@ export const useUIStore = create<UIState>((set) => ({
   typewriterOffset: 50,
   focusMode: false,
   showCodexHighlights: true,
+  autosaveInterval: 30,
   sessionTimerEnabled: true,
   sessionGoal: null,
   sessionStartTime: null,
@@ -53,6 +56,7 @@ export const useUIStore = create<UIState>((set) => ({
   setTypewriterOffset: (pct) => set({ typewriterOffset: pct }),
   setFocusMode: (on) => set({ focusMode: on }),
   setShowCodexHighlights: (on) => set({ showCodexHighlights: on }),
+  setAutosaveInterval: (seconds) => set({ autosaveInterval: seconds }),
   setSessionTimerEnabled: (on) =>
     set({ sessionTimerEnabled: on, sessionGoal: null, sessionStartTime: null, sessionBaseWords: null }),
   setSessionGoal: (goal, baseWords) =>
@@ -66,5 +70,6 @@ export const useUIStore = create<UIState>((set) => ({
       typewriterOffset:     s.typewriter_offset,
       sessionTimerEnabled:  s.session_timer_enabled,
       showCodexHighlights:  s.codex_highlight_enabled,
+      autosaveInterval:     s.autosave_interval,
     }),
 }));

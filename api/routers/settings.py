@@ -74,6 +74,7 @@ def _settings_out(s: UserSettings) -> SettingsOut:
         typewriter_offset=s.typewriter_offset if s.typewriter_offset is not None else 50,
         session_timer_enabled=bool(s.session_timer_enabled) if s.session_timer_enabled is not None else True,
         codex_highlight_enabled=bool(s.codex_highlight_enabled) if getattr(s, "codex_highlight_enabled", None) is not None else True,
+        autosave_interval=getattr(s, "autosave_interval", None) or 30,
         grammar_check_enabled=bool(s.grammar_check_enabled),
         grammar_check_url=s.grammar_check_url or "http://localhost:8081",
         grammar_languages=grammar_langs,
@@ -132,6 +133,9 @@ def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
         s.session_timer_enabled = int(body.session_timer_enabled)
     if body.codex_highlight_enabled is not None:
         s.codex_highlight_enabled = int(body.codex_highlight_enabled)
+    if body.autosave_interval is not None:
+        # Clamp to a sane range: at least 5 s, at most 1 hour.
+        s.autosave_interval = max(5, min(3600, int(body.autosave_interval)))
     if body.grammar_check_enabled is not None:
         s.grammar_check_enabled = int(body.grammar_check_enabled)
     if body.grammar_check_url is not None:

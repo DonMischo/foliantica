@@ -445,6 +445,7 @@ class SettingsUpdate(BaseModel):
     typewriter_offset: Optional[int] = None
     session_timer_enabled: Optional[bool] = None
     codex_highlight_enabled: Optional[bool] = None
+    autosave_interval: Optional[int] = None
     grammar_check_enabled: Optional[bool] = None
     grammar_check_url: Optional[str] = None
     grammar_languages: Optional[list[str]] = None
@@ -479,6 +480,7 @@ class SettingsOut(BaseModel):
     typewriter_offset: int
     session_timer_enabled: bool
     codex_highlight_enabled: bool = True
+    autosave_interval: int = 30
     grammar_check_enabled: bool
     grammar_check_url: str
     grammar_languages: list[str]
