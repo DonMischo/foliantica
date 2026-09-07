@@ -182,6 +182,10 @@ def _dm_system_prompt(project: Project, db: Session, query_text: str = "") -> st
             present_names = json.loads(scene.present_npcs or "[]")
         except (json.JSONDecodeError, TypeError):
             present_names = []
+        # Defensive: older rows (or a stray null from the LLM's structured
+        # scene-update JSON) can carry non-string/null entries, which would
+        # otherwise crash str.join()/str.lower() below.
+        present_names = [n for n in present_names if isinstance(n, str) and n.strip()]
         location = db.get(CodexEntry, scene.location_entry_id) if scene.location_entry_id else None
         scene_bits = [f"## Current scene: {scene.title}"]
         if location:
@@ -895,7 +899,11 @@ def _apply_effects(project: Project, effects: dict, session_id: int | None, db: 
         location_id = None
         if sc.get("location_name"):
             location_id = existing_names.get(sc["location_name"].lower())
-        npcs_json = json.dumps(sc.get("present_npcs") or [])
+        # Drop null/non-string entries — the model's structured JSON has been
+        # observed padding this array with nulls, which would otherwise crash
+        # the DM prompt builder's str.join() the next time the scene loads.
+        raw_npcs = sc.get("present_npcs") or []
+        npcs_json = json.dumps([n for n in raw_npcs if isinstance(n, str) and n.strip()])
 
         if current and not sc.get("new_scene"):
             applied["scene"] = {
