@@ -1057,11 +1057,15 @@ class DmSceneOut(BaseModel):
             raw = d.get("present_npcs")
             if isinstance(raw, str):
                 try:
-                    d["present_npcs"] = json.loads(raw)
+                    raw = json.loads(raw)
                 except Exception:
-                    d["present_npcs"] = []
-            elif raw is None:
-                d["present_npcs"] = []
+                    raw = []
+            if raw is None:
+                raw = []
+            # Drop null/non-string entries — the model's structured JSON has
+            # been observed padding this array with nulls, which would
+            # otherwise fail list[str] validation below.
+            d["present_npcs"] = [n for n in raw if isinstance(n, str) and n.strip()]
             d["is_current"] = bool(d.get("is_current", 1))
             return d
         return data
