@@ -146,6 +146,14 @@ Write-Host ""
 
 $webDir = Join-Path $Root "web"
 
+# The backend needs to know the frontend's port too: collab.py's WebSocket
+# auth trusts the host's own page by checking its Origin against LW_WEB_PORT
+# (see _origin_matches_web_port) - without this, a non-default -Port here
+# silently breaks that check and the collab WebSocket gets rejected.
+# Start-Process inherits the current environment, so setting it here is
+# enough to reach the backend process started below.
+$env:LW_WEB_PORT = [string]$Port
+
 Start-Process powershell -ArgumentList @(
     "-NoProfile", "-ExecutionPolicy", "Bypass",
     "-File", "$Root\scripts\prod-backend.ps1",
