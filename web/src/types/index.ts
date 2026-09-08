@@ -108,6 +108,14 @@ export interface DmPrefs {
 
 export type DmPov = "second" | "first" | "third";
 
+export interface DmCodexUpdate {
+  entry_id: number | null;
+  name: string;
+  entry_type: string;
+  description_add: string;
+  evidence: string;
+}
+
 export interface DmRelationSuggestion {
   source_id: number;
   source_name: string;

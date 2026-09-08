@@ -1193,6 +1193,10 @@ export const useEndDmSession = (projectId: number) => {
   });
 };
 
+/** One-shot codex pass over play memory. Suggestions only — nothing is written. */
+export const useSuggestCodexUpdates = (projectId: number) =>
+  useMutation({ mutationFn: (instruction: string) => dmApi.suggestCodexUpdates(projectId, instruction) });
+
 /** One-shot relation pass over play memory. Suggestions only — nothing is written. */
 export const useSuggestDmRelations = (projectId: number) =>
   useMutation({ mutationFn: () => dmApi.suggestRelations(projectId) });

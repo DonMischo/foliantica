@@ -7,7 +7,7 @@ import type {
   CorkboardPrefs, SceneConnection, RelationsGraph,
   TimelineTrack, TimelineEventItem, SeriesData,
   ProjectAnalytics, ResearchItem, QuerySubmission, ExportProfile, PublisherProfile,
-  Achievement, DmSession, DmTurn, DmPrefs, DmScene, DmRuleset, DmCharacterDraft, DmFact, DmRelationSuggestion, RpgSheet, WildcardCategory,
+  Achievement, DmSession, DmTurn, DmPrefs, DmScene, DmRuleset, DmCharacterDraft, DmFact, DmRelationSuggestion, DmCodexUpdate, RpgSheet, WildcardCategory,
 } from "@/types";
 
 const BASE = "/api";
@@ -756,6 +756,14 @@ export const dmApi = {
   deleteTurn: (turnId: number) => req<void>(`/dm/turns/${turnId}`, { method: "DELETE" }),
   wildcardsTree: () =>
     req<{ available: boolean; error: string | null; categories: WildcardCategory[] }>(`/dm/wildcards/tree`),
+  suggestCodexUpdates: (projectId: number, instruction: string) =>
+    req<DmCodexUpdate[]>(`/projects/${projectId}/dm/suggest-codex-updates`, {
+      method: "POST", body: JSON.stringify({ instruction }),
+    }),
+  applyCodexUpdates: (projectId: number, updates: DmCodexUpdate[]) =>
+    req<{ created: number; updated: number }>(`/projects/${projectId}/dm/apply-codex-updates`, {
+      method: "POST", body: JSON.stringify({ updates }),
+    }),
   suggestRelations: (projectId: number) =>
     req<DmRelationSuggestion[]>(`/projects/${projectId}/dm/suggest-relations`, { method: "POST" }),
   drawWildcard: (category: string) =>

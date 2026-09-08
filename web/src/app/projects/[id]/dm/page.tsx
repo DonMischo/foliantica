@@ -21,6 +21,7 @@ import { SessionZeroWizard } from "@/components/dm/SessionZeroWizard";
 import { WildcardPicker } from "@/components/dm/WildcardPicker";
 import { CodexText } from "@/components/dm/CodexText";
 import { RelationSuggestDialog } from "@/components/dm/RelationSuggestDialog";
+import { CodexUpdateDialog } from "@/components/dm/CodexUpdateDialog";
 import { CommandList, WildcardDrawPicker, commandQuery, matchingCommands, type DmCommandKey } from "@/components/dm/DmCommandMenu";
 import type { CodexEntry, DmPov, DmTurn } from "@/types";
 
@@ -445,6 +446,7 @@ export default function DmPage() {
   const [sessionZeroOpen, setSessionZeroOpen] = useState(false);
   const [wildcardsOpen, setWildcardsOpen] = useState(false);
   const [relationsOpen, setRelationsOpen] = useState(false);
+  const [codexUpdate, setCodexUpdate] = useState<{ instruction: string } | null>(null);
   const [clicheHits, setClicheHits] = useState<string[]>([]);
   const [dismissedGates, setDismissedGates] = useState<number[]>([]);
   const streaming = streamText !== null;
@@ -477,6 +479,16 @@ export default function DmPage() {
     setCmdQuery(null);
     if (key === "wildcard") {
       setWildcardDrawOpen(true);
+      return;
+    }
+    if (key === "codex") {
+      // Whatever else was typed becomes the instruction ("/codex Drache — add
+      // that he fears the deep tunnels"); empty means "catch the codex up".
+      const range = cmdRange ?? { from: input.length, to: input.length };
+      const instruction = (input.slice(0, range.from) + input.slice(range.to)).trim();
+      setInput("");
+      setCmdRange(null);
+      setCodexUpdate({ instruction });
       return;
     }
     if (key === "roll20") {
@@ -971,6 +983,12 @@ export default function DmPage() {
       <SessionZeroWizard projectId={projectId} open={sessionZeroOpen} onClose={() => setSessionZeroOpen(false)} />
       <WildcardPicker projectId={projectId} open={wildcardsOpen} onClose={() => setWildcardsOpen(false)} />
       <RelationSuggestDialog projectId={projectId} open={relationsOpen} onClose={() => setRelationsOpen(false)} />
+      <CodexUpdateDialog
+        projectId={projectId}
+        instruction={codexUpdate?.instruction ?? ""}
+        open={codexUpdate !== null}
+        onClose={() => setCodexUpdate(null)}
+      />
     </div>
   );
 }

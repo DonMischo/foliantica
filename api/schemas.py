@@ -1006,6 +1006,23 @@ class DmPrefsUpdate(BaseModel):
     pov: Optional[Literal["second", "first", "third"]] = None  # narration point of view
 
 
+class DmCodexUpdate(BaseModel):
+    """A codex change proposed by /codex. entry_id None → create a new entry."""
+    entry_id: Optional[int] = None
+    name: str
+    entry_type: str = "character"
+    description_add: str = ""
+    evidence: str = ""
+
+
+class DmCodexUpdateRequest(BaseModel):
+    instruction: str = ""  # what the player typed after /codex, if anything
+
+
+class DmCodexApplyRequest(BaseModel):
+    updates: list[DmCodexUpdate]
+
+
 class DmRelationSuggestion(BaseModel):
     """A relation the model proposes from play memory. Nothing is written until
     the player confirms it, so this carries the evidence for that decision."""

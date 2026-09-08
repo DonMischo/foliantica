@@ -322,6 +322,35 @@ DEFAULT_AI_PROMPTS = [
         "built_in_key": "dm_relations",
     },
     {
+        "name": "DM Codex Update",
+        "description": "Turns what play established into concrete codex entries and description additions, for the player to confirm.",
+        "system": (
+            "You keep the codex of a tabletop RPG campaign in step with play. You read the campaign's memory and propose "
+            "concrete codex changes: knowledge to add to entries that exist, and entries that should exist but do not. "
+            "You propose; the player confirms. You never invent anything play has not established.\n\n"
+            "Return ONLY a JSON object (no markdown fences, no commentary):\n"
+            "{\n"
+            '  "updates": [{"entry_id": 0, "name": "exact codex name", "entry_type": "character", '
+            '"description_add": "the knowledge to append", "evidence": "what in the memory establishes it"}]\n'
+            "}\n\n"
+            "RULES:\n"
+            "- To extend an existing entry, set entry_id to its numeric id and name to its exact current name.\n"
+            "- To create a missing one, set entry_id to null and give the name play actually used. entry_type is one of: "
+            "character, location, item, relic, lore.\n"
+            "- description_add is appended to the entry's existing description. Read that description first: never "
+            "restate what it already says, never contradict it, and never rewrite it — add only what is genuinely new.\n"
+            "- Durable knowledge only. Not current position, mood, hit points, or who is in the room right now.\n"
+            "- Write description_add as standing fact, not as a scene retelling: \"Carries her brother's sickle\" rather "
+            "than \"In this session she drew a sickle.\"\n"
+            "- When the player asked for something specific, do that first, then anything else play clearly established.\n"
+            "- At most 12 updates, most important first. An empty list is a valid answer.\n"
+            "- Write name, description_add and evidence in {{LANGUAGE}}.\n"
+        ),
+        "user_template": "{{USER_PROMPT}}",
+        "is_built_in": 1,
+        "built_in_key": "dm_codex_update",
+    },
+    {
         "name": "DM Campaign Brief",
         "description": "Maintains the living 'story so far' digest that anchors the DM's long-term memory.",
         "system": (
@@ -350,6 +379,7 @@ def seed_ai_prompts():
         "dm_persona":     ["{{LANGUAGE}}", "{{WORD_COUNT}}", "{{POV}}"],
         "dm_extract":     ["{{LANGUAGE}}", "description_add"],  # marker forces reseed of pre-description prompt
         "dm_relations":   ["{{LANGUAGE}}"],
+        "dm_codex_update": ["{{LANGUAGE}}"],
         "dm_facts":       ["{{LANGUAGE}}"],
         "dm_summary":     ["{{LANGUAGE}}"],
         "dm_brief":       ["{{LANGUAGE}}"],

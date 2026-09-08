@@ -23,6 +23,7 @@ from schemas import (
     DICE_SIDES,
     CodexEntryOut,
     DmActionRequest, DmCharacterSaveRequest, DmCharGenRequest, DmFactOut, DmPrefsUpdate,
+    DmCodexApplyRequest, DmCodexUpdate, DmCodexUpdateRequest,
     DmRelationSuggestion, DmRollRequest, DmSceneOut, DmSessionCreate, DmSessionOut, DmTurnOut,
 )
 from services.dm_chargen import build_character, generate_npc, load_ruleset, roll_stat_pool
@@ -52,6 +53,16 @@ _POV_DIRECTIVE = {
     ),
 }
 DEFAULT_POV = "second"
+
+# Appended to every DM prompt rather than seeded into the persona, so it reaches
+# installs with a customised persona too. Without it the model answers "codex
+# updated:" with a formatted entry block that was never actually written.
+_CODEX_OWNERSHIP = (
+    "## The codex is the app's, not yours\n"
+    "The app writes codex entries, relations and inventory itself, and the player has a /codex command to review "
+    "and confirm changes. Never print a codex entry block as narration and never claim you have created, edited "
+    "or saved one. Answer in the fiction — what the character knows or says — and leave the bookkeeping alone."
+)
 
 # /roll20: the player wants the die called for, not another narration beat. This
 # overrides the persona's length and structure rules for this one reply.
@@ -199,7 +210,7 @@ def _dm_system_prompt(project: Project, db: Session, query_text: str = "") -> st
     overrides = [line for token, line in fallbacks.items() if token not in system]
     system = system.replace("{{WORD_COUNT}}", str(words)).replace("{{POV}}", _POV_DIRECTIVE[pov])
 
-    parts = [system]
+    parts = [system, _CODEX_OWNERSHIP]
     if overrides:
         parts.append(
             "## Narration settings (these override the style contract above)\n"
@@ -771,27 +782,14 @@ def get_current_scene(project_id: int, db: Session = Depends(get_db)):
     return out
 
 
-def _relations_user_content(project: Project, db: Session) -> str:
-    """Everything the campaign remembers, flattened for the relation pass:
-    codex entries, relations already established, the brief, session summaries,
-    facts, and the transcript of the latest session."""
-    owner_id = _codex_owner_id(project)
-    entries = db.query(CodexEntry).filter(CodexEntry.project_id == owner_id).all()
-    name_by_id = {e.id: e.name for e in entries}
+def _block(title: str, lines: list[str]) -> str:
+    return f"## {title}\n" + ("\n".join(lines) if lines else "none")
 
-    entry_lines = [
-        f"- {e.name} [{e.entry_type}]" + (f": {(e.description or '')[:200]}" if e.description else "")
-        for e in entries
-    ]
 
-    rel_lines = []
-    entry_ids = list(name_by_id)
-    if entry_ids:
-        for r in db.query(CodexRelation).filter(CodexRelation.source_id.in_(entry_ids)).all():
-            a, b = name_by_id.get(r.source_id), name_by_id.get(r.target_id)
-            if a and b:
-                rel_lines.append(f"- {a} — {r.relation_type or 'related to'} — {b}")
-
+def _memory_blocks(project: Project, db: Session) -> list[str]:
+    """What the campaign remembers, as prompt blocks: the brief, session
+    summaries, campaign facts, and the latest session's transcript. Shared by
+    every review pass that reasons over play rather than a single turn."""
     summaries = [
         f"- {s.title}: {s.summary}"
         for s in db.query(DmSession)
@@ -826,21 +824,180 @@ def _relations_user_content(project: Project, db: Session) -> str:
         )[::-1]
         turn_lines = [f"- {'Player' if t.role == 'player' else 'DM'}: {t.content}" for t in turns]
 
-    def block(title: str, lines: list[str]) -> str:
-        return f"## {title}\n" + ("\n".join(lines) if lines else "none")
-
-    parts = [
-        block("Codex entries (only these names may be used)", entry_lines),
-        block("Relations already established", rel_lines),
-    ]
+    blocks = []
     if project.campaign_brief:
-        parts.append(f"## Campaign brief\n{project.campaign_brief}")
-    parts += [
-        block("Session summaries", summaries),
-        block("Campaign memory", fact_lines),
-        block("Latest session transcript", turn_lines),
+        blocks.append(f"## Campaign brief\n{project.campaign_brief}")
+    blocks += [
+        _block("Session summaries", summaries),
+        _block("Campaign memory", fact_lines),
+        _block("Latest session transcript", turn_lines),
     ]
+    return blocks
+
+
+def _relations_user_content(project: Project, db: Session) -> str:
+    """Memory plus the codex names and the relations already on record."""
+    owner_id = _codex_owner_id(project)
+    entries = db.query(CodexEntry).filter(CodexEntry.project_id == owner_id).all()
+    name_by_id = {e.id: e.name for e in entries}
+
+    entry_lines = [
+        f"- {e.name} [{e.entry_type}]" + (f": {(e.description or '')[:200]}" if e.description else "")
+        for e in entries
+    ]
+
+    rel_lines = []
+    if name_by_id:
+        for r in db.query(CodexRelation).filter(CodexRelation.source_id.in_(list(name_by_id))).all():
+            a, b = name_by_id.get(r.source_id), name_by_id.get(r.target_id)
+            if a and b:
+                rel_lines.append(f"- {a} — {r.relation_type or 'related to'} — {b}")
+
+    return "\n\n".join([
+        _block("Codex entries (only these names may be used)", entry_lines),
+        _block("Relations already established", rel_lines),
+        *_memory_blocks(project, db),
+    ])
+
+
+def _codex_update_user_content(project: Project, instruction: str, db: Session) -> str:
+    """Memory plus every codex entry with its id and full current description,
+    so the pass can tell a genuine addition from a restatement."""
+    owner_id = _codex_owner_id(project)
+    entries = db.query(CodexEntry).filter(CodexEntry.project_id == owner_id).all()
+    entry_lines = [
+        f"- id={e.id} | {e.name} [{e.entry_type}]: {e.description or '(no description yet)'}"
+        for e in entries
+    ]
+    parts = [_block("Codex entries", entry_lines), *_memory_blocks(project, db)]
+    if instruction.strip():
+        parts.append(f"## What the player asked for\n{instruction.strip()}")
     return "\n\n".join(parts)
+
+
+_CODEX_TYPES = {"character", "location", "item", "relic", "lore"}
+
+
+@router.post("/projects/{project_id}/dm/suggest-codex-updates", response_model=list[DmCodexUpdate])
+async def suggest_codex_updates(
+    project_id: int, body: DmCodexUpdateRequest, db: Session = Depends(get_db),
+):
+    """Read play memory and propose codex changes. Writes nothing — the client
+    confirms them through apply-codex-updates."""
+    project = _get_project(project_id, db)
+
+    settings = db.query(UserSettings).first()
+    if not settings:
+        raise HTTPException(400, "No AI provider configured")
+    model = settings.default_codex_model or settings.default_model
+    if not model:
+        raise HTTPException(400, "No AI model configured")
+    pdef, base_url, api_key = _resolve_provider(settings, model=model)
+
+    row = db.query(AIPrompt).filter(AIPrompt.built_in_key == "dm_codex_update").first()
+    if not row:
+        raise HTTPException(500, "dm_codex_update prompt missing")
+    system = row.system.replace("{{LANGUAGE}}", _project_language(project))
+
+    try:
+        result = await post_provider(
+            pdef, base_url, api_key, model,
+            [
+                {"role": "system", "content": system},
+                {"role": "user", "content": _codex_update_user_content(project, body.instruction, db)},
+            ],
+            timeout=90,
+        )
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(502, f"Provider error: {exc.response.text}")
+
+    raw = result["choices"][0]["message"]["content"].strip()
+    try:
+        parsed = _parse_json_reply(raw)
+    except ValueError as exc:
+        raise HTTPException(502, f"Codex pass did not return valid JSON: {exc}")
+
+    owner_id = _codex_owner_id(project)
+    by_id = {
+        e.id: e for e in db.query(CodexEntry).filter(CodexEntry.project_id == owner_id).all()
+    }
+    by_name = {(e.name or "").lower(): e for e in by_id.values()}
+
+    out: list[DmCodexUpdate] = []
+    seen: set[str] = set()
+    for item in parsed.get("updates") or []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        addition = str(item.get("description_add") or "").strip()
+        if not name or not addition:
+            continue
+        # An id the codex does not have is a hallucination, but the name may still
+        # match an entry — fall back to that before treating it as a new entry.
+        entry = by_id.get(item.get("entry_id")) or by_name.get(name.lower())
+        if entry and addition.lower() in (entry.description or "").lower():
+            continue  # already recorded
+        key = f"{entry.id if entry else name.lower()}|{addition.lower()}"
+        if key in seen:
+            continue
+        seen.add(key)
+        entry_type = str(item.get("entry_type") or "").strip().lower()
+        out.append(DmCodexUpdate(
+            entry_id=entry.id if entry else None,
+            name=entry.name if entry else name,
+            entry_type=entry.entry_type if entry else (entry_type if entry_type in _CODEX_TYPES else "character"),
+            description_add=addition,
+            evidence=str(item.get("evidence") or "").strip(),
+        ))
+    return out
+
+
+@router.post("/projects/{project_id}/dm/apply-codex-updates")
+def apply_codex_updates(
+    project_id: int, body: DmCodexApplyRequest, db: Session = Depends(get_db),
+):
+    """Write the codex changes the player confirmed."""
+    project = _get_project(project_id, db)
+    owner_id = _codex_owner_id(project)
+    created, updated = 0, 0
+
+    for upd in body.updates:
+        addition = upd.description_add.strip()
+        if not addition:
+            continue
+        entry = db.get(CodexEntry, upd.entry_id) if upd.entry_id else None
+        if entry and entry.project_id != owner_id:
+            continue
+        if entry:
+            if addition.lower() in (entry.description or "").lower():
+                continue
+            entry.description = f"{entry.description.rstrip()} {addition}" if entry.description else addition
+            updated += 1
+        else:
+            name = upd.name.strip()
+            if not name:
+                continue
+            existing = (
+                db.query(CodexEntry)
+                .filter(CodexEntry.project_id == owner_id, func.lower(CodexEntry.name) == name.lower())
+                .first()
+            )
+            if existing:  # created between the pass and the confirmation
+                existing.description = (
+                    f"{existing.description.rstrip()} {addition}" if existing.description else addition
+                )
+                updated += 1
+                continue
+            db.add(CodexEntry(
+                project_id=owner_id,
+                name=name,
+                entry_type=upd.entry_type if upd.entry_type in _CODEX_TYPES else "character",
+                description=addition,
+            ))
+            created += 1
+
+    db.commit()
+    return {"created": created, "updated": updated}
 
 
 @router.post("/projects/{project_id}/dm/suggest-relations", response_model=list[DmRelationSuggestion])

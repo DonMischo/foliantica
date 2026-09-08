@@ -183,6 +183,131 @@ class TestDescriptionAdd:
         assert db.get(CodexEntry, entry.id).description == "Salt-house foreman."
 
 
+# ── /codex (codex update pass) ────────────────────────────────────────────────
+
+class TestCodexUpdates:
+    @pytest.fixture(autouse=True)
+    def provider(self, db):
+        seed = next(p for p in DEFAULT_AI_PROMPTS if p["built_in_key"] == "dm_codex_update")
+        db.add(UserSettings(active_provider="ollama", default_model="mock"))
+        db.add(AIPrompt(**seed))
+        db.commit()
+
+    @pytest.fixture
+    def vesna(self, db, project):
+        entry = CodexEntry(project_id=project.id, name="Vesna", entry_type="character",
+                           description="Salt-house foreman.")
+        db.add(entry)
+        db.commit()
+        db.refresh(entry)
+        return entry
+
+    def _reply(self, updates):
+        return {"choices": [{"message": {"content": json.dumps({"updates": updates})}}]}
+
+    def _suggest(self, client, project, monkeypatch, updates, instruction=""):
+        async def fake_post(*args, **kwargs):
+            return self._reply(updates)
+        monkeypatch.setattr(dm_mod, "post_provider", fake_post)
+        return client.post(f"/api/projects/{project.id}/dm/suggest-codex-updates",
+                           json={"instruction": instruction}).json()
+
+    def test_proposes_an_addition_to_an_existing_entry(self, client, project, vesna, monkeypatch):
+        rows = self._suggest(client, project, monkeypatch, [
+            {"entry_id": vesna.id, "name": "Vesna", "description_add": "Owes the guild forty marks."},
+        ])
+        assert len(rows) == 1
+        assert rows[0]["entry_id"] == vesna.id
+        assert rows[0]["entry_type"] == "character"
+
+    def test_suggesting_writes_nothing(self, client, project, vesna, db, monkeypatch):
+        self._suggest(client, project, monkeypatch, [
+            {"entry_id": vesna.id, "name": "Vesna", "description_add": "Owes the guild forty marks."},
+        ])
+        db.expire_all()
+        assert db.get(CodexEntry, vesna.id).description == "Salt-house foreman."
+
+    def test_a_hallucinated_id_falls_back_to_the_name(self, client, project, vesna, monkeypatch):
+        rows = self._suggest(client, project, monkeypatch, [
+            {"entry_id": 999999, "name": "Vesna", "description_add": "Keeps a branding iron."},
+        ])
+        assert rows[0]["entry_id"] == vesna.id
+
+    def test_proposes_a_new_entry_when_the_codex_lacks_it(self, client, project, vesna, monkeypatch):
+        rows = self._suggest(client, project, monkeypatch, [
+            {"entry_id": None, "name": "Erdbrecher", "entry_type": "lore",
+             "description_add": "A wingless dragon that carries its bonded partner underground."},
+        ])
+        assert rows[0]["entry_id"] is None
+        assert rows[0]["entry_type"] == "lore"
+
+    def test_drops_what_the_description_already_says(self, client, project, vesna, monkeypatch):
+        assert self._suggest(client, project, monkeypatch, [
+            {"entry_id": vesna.id, "name": "Vesna", "description_add": "salt-house foreman."},
+        ]) == []
+
+    def test_drops_rows_without_an_addition(self, client, project, vesna, monkeypatch):
+        assert self._suggest(client, project, monkeypatch, [
+            {"entry_id": vesna.id, "name": "Vesna", "description_add": ""},
+            {"entry_id": None, "name": "", "description_add": "orphaned"},
+        ]) == []
+
+    def test_falls_back_to_character_for_an_unknown_type(self, client, project, vesna, monkeypatch):
+        rows = self._suggest(client, project, monkeypatch, [
+            {"entry_id": None, "name": "Thing", "entry_type": "spaceship", "description_add": "It hums."},
+        ])
+        assert rows[0]["entry_type"] == "character"
+
+    def test_the_instruction_reaches_the_prompt(self, client, project, vesna, monkeypatch):
+        seen = {}
+
+        async def fake_post(pdef, base_url, api_key, model, messages, **kwargs):
+            seen["user"] = messages[1]["content"]
+            return self._reply([])
+        monkeypatch.setattr(dm_mod, "post_provider", fake_post)
+
+        client.post(f"/api/projects/{project.id}/dm/suggest-codex-updates",
+                    json={"instruction": "update the codex for Drache"})
+        assert "update the codex for Drache" in seen["user"]
+        assert f"id={vesna.id}" in seen["user"]  # entries carry ids for the pass
+
+    # ── apply ────────────────────────────────────────────────────────────────
+
+    def test_apply_appends_to_an_existing_entry(self, client, project, vesna, db):
+        r = client.post(f"/api/projects/{project.id}/dm/apply-codex-updates", json={"updates": [
+            {"entry_id": vesna.id, "name": "Vesna", "description_add": "Owes the guild forty marks."},
+        ]})
+        assert r.json() == {"created": 0, "updated": 1}
+        db.expire_all()
+        assert db.get(CodexEntry, vesna.id).description == "Salt-house foreman. Owes the guild forty marks."
+
+    def test_apply_creates_a_new_entry(self, client, project, db):
+        r = client.post(f"/api/projects/{project.id}/dm/apply-codex-updates", json={"updates": [
+            {"entry_id": None, "name": "Erdbrecher", "entry_type": "lore", "description_add": "A wingless dragon."},
+        ]})
+        assert r.json() == {"created": 1, "updated": 0}
+        entry = db.query(CodexEntry).filter(CodexEntry.name == "Erdbrecher").first()
+        assert entry.entry_type == "lore"
+        assert entry.description == "A wingless dragon."
+
+    def test_apply_extends_rather_than_duplicating_a_name_created_meanwhile(self, client, project, vesna, db):
+        """The pass proposed a new entry, but the name now exists — extend it."""
+        r = client.post(f"/api/projects/{project.id}/dm/apply-codex-updates", json={"updates": [
+            {"entry_id": None, "name": "vesna", "description_add": "Owes the guild forty marks."},
+        ]})
+        assert r.json() == {"created": 0, "updated": 1}
+        assert db.query(CodexEntry).filter(CodexEntry.project_id == project.id).count() == 1
+
+    def test_apply_is_idempotent_for_text_already_present(self, client, project, vesna, db):
+        body = {"updates": [{"entry_id": vesna.id, "name": "Vesna", "description_add": "Owes forty marks."}]}
+        client.post(f"/api/projects/{project.id}/dm/apply-codex-updates", json=body)
+        assert client.post(f"/api/projects/{project.id}/dm/apply-codex-updates", json=body).json() == {
+            "created": 0, "updated": 0,
+        }
+        db.expire_all()
+        assert db.get(CodexEntry, vesna.id).description.count("Owes forty marks.") == 1
+
+
 # ── Relation suggestions ──────────────────────────────────────────────────────
 
 class TestSuggestRelations:

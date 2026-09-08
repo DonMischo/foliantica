@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Shuffle, Dices } from "lucide-react";
+import { Shuffle, Dices, BookMarked } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 export const DM_COMMANDS = [
   { key: "wildcard", icon: Shuffle },
   { key: "roll20", icon: Dices },
+  { key: "codex", icon: BookMarked },
 ] as const;
 export type DmCommandKey = (typeof DM_COMMANDS)[number]["key"];
 
