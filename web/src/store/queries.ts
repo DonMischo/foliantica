@@ -1193,6 +1193,10 @@ export const useEndDmSession = (projectId: number) => {
   });
 };
 
+/** One-shot relation pass over play memory. Suggestions only — nothing is written. */
+export const useSuggestDmRelations = (projectId: number) =>
+  useMutation({ mutationFn: () => dmApi.suggestRelations(projectId) });
+
 export const useDeleteDmTurn = (projectId: number, sessionId?: number) => {
   const qc = useQueryClient();
   return useMutation({

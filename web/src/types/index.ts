@@ -108,6 +108,16 @@ export interface DmPrefs {
 
 export type DmPov = "second" | "first" | "third";
 
+export interface DmRelationSuggestion {
+  source_id: number;
+  source_name: string;
+  target_id: number;
+  target_name: string;
+  relation_type: string;
+  evidence: string;
+  existing_type: string | null;
+}
+
 export interface WildcardCategory {
   path: string;
   count: number;

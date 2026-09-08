@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Shuffle } from "lucide-react";
+import { Shuffle, Dices } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,10 @@ import { dmApi } from "@/lib/api";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 /** Commands offered by the "/" menu in the DM input. */
-export const DM_COMMANDS = [{ key: "wildcard", icon: Shuffle }] as const;
+export const DM_COMMANDS = [
+  { key: "wildcard", icon: Shuffle },
+  { key: "roll20", icon: Dices },
+] as const;
 export type DmCommandKey = (typeof DM_COMMANDS)[number]["key"];
 
 /** The trailing "/query" the caret sits in, or null when the menu should close. */

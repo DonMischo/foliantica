@@ -985,6 +985,8 @@ class DmTurnOut(BaseModel):
 class DmActionRequest(BaseModel):
     content: str
     model: Optional[str] = None
+    # "roll_request": answer with the roll's stakes in a line or two, not a full beat
+    mode: Optional[Literal["roll_request"]] = None
 
 
 class DmRollRequest(BaseModel):
@@ -1002,6 +1004,18 @@ class DmPrefsUpdate(BaseModel):
     session_zero: Optional[dict] = None  # raw wizard answers, kept for prefill
     wildcards: Optional[list[str]] = None  # enabled wildcard category paths for this campaign
     pov: Optional[Literal["second", "first", "third"]] = None  # narration point of view
+
+
+class DmRelationSuggestion(BaseModel):
+    """A relation the model proposes from play memory. Nothing is written until
+    the player confirms it, so this carries the evidence for that decision."""
+    source_id: int
+    source_name: str
+    target_id: int
+    target_name: str
+    relation_type: str
+    evidence: str = ""
+    existing_type: Optional[str] = None  # set → confirming replaces this relation
 
 
 class DmFactOut(BaseModel):

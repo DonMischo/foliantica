@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Dices, Send, Plus, Hand, Cpu, MapPin, Undo2, UserPlus, Minus, X, ListTree, BookCheck, Sparkles, AlertTriangle, RefreshCw, Shuffle, Trash2, Eye, ChevronDown, Square } from "lucide-react";
+import { Dices, Send, Plus, Hand, Cpu, MapPin, Undo2, UserPlus, Minus, X, ListTree, BookCheck, Sparkles, AlertTriangle, RefreshCw, Shuffle, Trash2, Eye, ChevronDown, Square, Share2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import { CharacterWizard } from "@/components/dm/CharacterWizard";
 import { SessionZeroWizard } from "@/components/dm/SessionZeroWizard";
 import { WildcardPicker } from "@/components/dm/WildcardPicker";
 import { CodexText } from "@/components/dm/CodexText";
+import { RelationSuggestDialog } from "@/components/dm/RelationSuggestDialog";
 import { CommandList, WildcardDrawPicker, commandQuery, matchingCommands, type DmCommandKey } from "@/components/dm/DmCommandMenu";
 import type { CodexEntry, DmPov, DmTurn } from "@/types";
 
@@ -443,6 +444,7 @@ export default function DmPage() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [sessionZeroOpen, setSessionZeroOpen] = useState(false);
   const [wildcardsOpen, setWildcardsOpen] = useState(false);
+  const [relationsOpen, setRelationsOpen] = useState(false);
   const [clicheHits, setClicheHits] = useState<string[]>([]);
   const [dismissedGates, setDismissedGates] = useState<number[]>([]);
   const streaming = streamText !== null;
@@ -473,7 +475,18 @@ export default function DmPage() {
 
   const pickCommand = (key: DmCommandKey) => {
     setCmdQuery(null);
-    if (key === "wildcard") setWildcardDrawOpen(true);
+    if (key === "wildcard") {
+      setWildcardDrawOpen(true);
+      return;
+    }
+    if (key === "roll20") {
+      // Send straight away: anything else typed stays as the player's action,
+      // and the DM answers with the stakes of the roll instead of a full beat.
+      const range = cmdRange ?? { from: input.length, to: input.length };
+      setInput("");
+      setCmdRange(null);
+      doAction((input.slice(0, range.from) + input.slice(range.to)).trim(), "roll_request");
+    }
   };
 
   /** Replace the "/…" token with the drawn wildcard text. */
@@ -544,7 +557,7 @@ export default function DmPage() {
     }
   };
 
-  const doAction = async (text: string) => {
+  const doAction = async (text: string, mode?: "roll_request") => {
     if (!activeSession) return;
     setPendingPlayer(text || null);
     setStreamText("");
@@ -557,7 +570,7 @@ export default function DmPage() {
     const controller = new AbortController();
     abortRef.current = controller;
     try {
-      const res = await dmApi.actionStream(activeSession.id, text, undefined, controller.signal);
+      const res = await dmApi.actionStream(activeSession.id, text, undefined, controller.signal, mode);
       if (!res.ok) throw new Error(await res.text());
       const reader = res.body?.getReader();
       if (!reader) throw new Error("No response body");
@@ -682,6 +695,13 @@ export default function DmPage() {
             className="text-muted-foreground hover:text-foreground"
           >
             <Shuffle className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setRelationsOpen(true)}
+            title={t("dm_relations_title")}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Share2 className="h-4 w-4" />
           </button>
           {sessions.length > 0 && (
             <select
@@ -950,6 +970,7 @@ export default function DmPage() {
       <CharacterWizard projectId={projectId} open={wizardOpen} onClose={() => setWizardOpen(false)} />
       <SessionZeroWizard projectId={projectId} open={sessionZeroOpen} onClose={() => setSessionZeroOpen(false)} />
       <WildcardPicker projectId={projectId} open={wildcardsOpen} onClose={() => setWildcardsOpen(false)} />
+      <RelationSuggestDialog projectId={projectId} open={relationsOpen} onClose={() => setRelationsOpen(false)} />
     </div>
   );
 }

@@ -228,7 +228,7 @@ DEFAULT_AI_PROMPTS = [
             "Return ONLY a JSON object with exactly this shape (no markdown fences, no commentary):\n"
             "{\n"
             '  "new_npcs": [{"name": "string or null", "species": "string or null", "class": "string or null", "gender": "male|female|div or null", "role": "one-line description of who they are and what they want"}],\n'
-            '  "codex_updates": [{"entry_id": 0, "gear_add": [{"name": "string", "qty": 1}], "gear_remove": [{"name": "string", "qty": 1}], "currency_delta": [{"name": "Gold", "amount": -5}], "hp_delta": 0, "conditions_add": ["string"], "conditions_remove": ["string"]}],\n'
+            '  "codex_updates": [{"entry_id": 0, "gear_add": [{"name": "string", "qty": 1}], "gear_remove": [{"name": "string", "qty": 1}], "currency_delta": [{"name": "Gold", "amount": -5}], "hp_delta": 0, "conditions_add": ["string"], "conditions_remove": ["string"], "description_add": "string or null"}],\n'
             '  "scene": {"new_scene": false, "title": "string", "location_name": "string or null", "present_npcs": ["name"], "situation": "one sentence"},\n'
             '  "roll_request": {"sides": 20, "purpose": "what the roll is for and what is at stake"}\n'
             "}\n\n"
@@ -239,6 +239,10 @@ DEFAULT_AI_PROMPTS = [
             "- codex_updates: only for entries in the provided entity list, referenced by their numeric id. Record gear gained/lost, "
             "money spent or earned (currency_delta, negative when paid), damage or healing (hp_delta negative for damage), and "
             "conditions gained/shaken off. Omit entries with no changes.\n"
+            "- description_add: one short sentence of DURABLE new knowledge the narration established about that entry — a name "
+            "learned, a motive revealed, a permanent mark, a role or allegiance. It is appended to the entry's existing "
+            "description, so never restate what the description already says, and never record transient state (position, mood, "
+            "current HP, who is in the room). Null when the narration added no lasting knowledge.\n"
             "- scene: set new_scene true ONLY when the narration moves the action to a different place or a clearly new situation; "
             "otherwise update the current scene. present_npcs lists characters physically present now. Always include scene unless "
             "nothing about the scene is known.\n"
@@ -289,6 +293,35 @@ DEFAULT_AI_PROMPTS = [
         "built_in_key": "dm_summary",
     },
     {
+        "name": "DM Relations",
+        "description": "Reads a campaign's play memory and proposes relations between codex entries for the player to confirm.",
+        "system": (
+            "You map the social web of a tabletop RPG campaign. You read the campaign's accumulated play memory and propose "
+            "relations between entries that already exist in the codex. You propose; the player confirms. You never invent "
+            "entries and never invent a relation the memory does not support.\n\n"
+            "Return ONLY a JSON object (no markdown fences, no commentary):\n"
+            "{\n"
+            '  "relations": [{"source": "exact codex name", "target": "exact codex name", "relation_type": "2-4 words", '
+            '"evidence": "the sentence from the memory that establishes this"}]\n'
+            "}\n\n"
+            "RULES:\n"
+            "- Both source and target MUST be names from the provided codex list, copied exactly. Drop anything else.\n"
+            "- relation_type reads as a directed phrase from source to target: \"owes money to\", \"sister of\", "
+            "\"betrayed\", \"sworn to\", \"hunts\". Not a bare noun, not a full sentence.\n"
+            "- Only relations the memory actually establishes. A shared scene is not a relation. If two entries merely "
+            "appear together, say nothing about them.\n"
+            "- Do not repeat a relation already listed as established, unless play has genuinely changed what it is — then "
+            "propose the new type and let the evidence say what changed.\n"
+            "- One entry per pair, in the direction that reads naturally. At most 12 proposals, strongest evidence first.\n"
+            "- evidence is quoted or closely paraphrased from the memory, never your own inference.\n"
+            "- Return an empty list when the memory supports nothing. That is a valid, useful answer.\n"
+            "- Write relation_type and evidence in {{LANGUAGE}}.\n"
+        ),
+        "user_template": "{{USER_PROMPT}}",
+        "is_built_in": 1,
+        "built_in_key": "dm_relations",
+    },
+    {
         "name": "DM Campaign Brief",
         "description": "Maintains the living 'story so far' digest that anchors the DM's long-term memory.",
         "system": (
@@ -315,7 +348,8 @@ def seed_ai_prompts():
         "lector_review":  ["{{LANGUAGE}}"],
         "codex_distill":  ["{{LANGUAGE}}"],
         "dm_persona":     ["{{LANGUAGE}}", "{{WORD_COUNT}}", "{{POV}}"],
-        "dm_extract":     ["{{LANGUAGE}}", "currency_delta"],  # marker forces reseed of pre-currency prompt
+        "dm_extract":     ["{{LANGUAGE}}", "description_add"],  # marker forces reseed of pre-description prompt
+        "dm_relations":   ["{{LANGUAGE}}"],
         "dm_facts":       ["{{LANGUAGE}}"],
         "dm_summary":     ["{{LANGUAGE}}"],
         "dm_brief":       ["{{LANGUAGE}}"],

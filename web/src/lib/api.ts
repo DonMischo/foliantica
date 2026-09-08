@@ -7,7 +7,7 @@ import type {
   CorkboardPrefs, SceneConnection, RelationsGraph,
   TimelineTrack, TimelineEventItem, SeriesData,
   ProjectAnalytics, ResearchItem, QuerySubmission, ExportProfile, PublisherProfile,
-  Achievement, DmSession, DmTurn, DmPrefs, DmScene, DmRuleset, DmCharacterDraft, DmFact, RpgSheet, WildcardCategory,
+  Achievement, DmSession, DmTurn, DmPrefs, DmScene, DmRuleset, DmCharacterDraft, DmFact, DmRelationSuggestion, RpgSheet, WildcardCategory,
 } from "@/types";
 
 const BASE = "/api";
@@ -720,11 +720,14 @@ export const dmApi = {
   prefs: (projectId: number) => req<DmPrefs>(`/projects/${projectId}/dm/prefs`),
   updatePrefs: (projectId: number, data: DmPrefs) =>
     req<DmPrefs>(`/projects/${projectId}/dm/prefs`, { method: "PATCH", body: JSON.stringify(data) }),
-  actionStream: (sessionId: number, content: string, model?: string, signal?: AbortSignal) =>
+  actionStream: (
+    sessionId: number, content: string, model?: string, signal?: AbortSignal,
+    mode?: "roll_request",
+  ) =>
     fetch(`${BASE}/dm/sessions/${sessionId}/action`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, model }),
+      body: JSON.stringify({ content, model, mode }),
       signal,
     }),
   ruleset: () => req<DmRuleset>(`/dm/ruleset`),
@@ -753,6 +756,8 @@ export const dmApi = {
   deleteTurn: (turnId: number) => req<void>(`/dm/turns/${turnId}`, { method: "DELETE" }),
   wildcardsTree: () =>
     req<{ available: boolean; error: string | null; categories: WildcardCategory[] }>(`/dm/wildcards/tree`),
+  suggestRelations: (projectId: number) =>
+    req<DmRelationSuggestion[]>(`/projects/${projectId}/dm/suggest-relations`, { method: "POST" }),
   drawWildcard: (category: string) =>
     req<{ category: string; value: string }>(`/dm/wildcards/draw?category=${encodeURIComponent(category)}`),
 };

@@ -23,7 +23,7 @@ from schemas import (
     DICE_SIDES,
     CodexEntryOut,
     DmActionRequest, DmCharacterSaveRequest, DmCharGenRequest, DmFactOut, DmPrefsUpdate,
-    DmRollRequest, DmSceneOut, DmSessionCreate, DmSessionOut, DmTurnOut,
+    DmRelationSuggestion, DmRollRequest, DmSceneOut, DmSessionCreate, DmSessionOut, DmTurnOut,
 )
 from services.dm_chargen import build_character, generate_npc, load_ruleset, roll_stat_pool
 from services.dm_oracle import ban_list, draw_for_scene
@@ -52,6 +52,16 @@ _POV_DIRECTIVE = {
     ),
 }
 DEFAULT_POV = "second"
+
+# /roll20: the player wants the die called for, not another narration beat. This
+# overrides the persona's length and structure rules for this one reply.
+_ROLL_REQUEST_DIRECTIVE = (
+    "## This reply only — call for a d20, nothing else\n"
+    "Ignore the length and paragraph rules above. Do NOT narrate a beat, do not advance the scene, do not "
+    "describe anything new happening. In at most two sentences, name what the player is rolling for and what "
+    "is at stake if it fails, then ask for one d20 and stop. If the situation genuinely needs no roll, say so "
+    "in one sentence instead of inventing a risk."
+)
 
 
 def _get_project(project_id: int, db: Session) -> Project:
@@ -540,7 +550,10 @@ async def player_action(session_id: int, body: DmActionRequest, db: Session = De
     )[::-1]
 
     recent_text = " ".join(t.content for t in history[-6:] if t.role in ("player", "dm"))
-    messages = [{"role": "system", "content": _dm_system_prompt(project, db, query_text=f"{body.content} {recent_text}")}]
+    system = _dm_system_prompt(project, db, query_text=f"{body.content} {recent_text}")
+    if body.mode == "roll_request":
+        system += f"\n\n{_ROLL_REQUEST_DIRECTIVE}"
+    messages = [{"role": "system", "content": system}]
     messages += [_turn_to_message(t) for t in history]
 
     wc_tree, wc_enabled = _wildcards_ctx(project, db)
@@ -758,6 +771,156 @@ def get_current_scene(project_id: int, db: Session = Depends(get_db)):
     return out
 
 
+def _relations_user_content(project: Project, db: Session) -> str:
+    """Everything the campaign remembers, flattened for the relation pass:
+    codex entries, relations already established, the brief, session summaries,
+    facts, and the transcript of the latest session."""
+    owner_id = _codex_owner_id(project)
+    entries = db.query(CodexEntry).filter(CodexEntry.project_id == owner_id).all()
+    name_by_id = {e.id: e.name for e in entries}
+
+    entry_lines = [
+        f"- {e.name} [{e.entry_type}]" + (f": {(e.description or '')[:200]}" if e.description else "")
+        for e in entries
+    ]
+
+    rel_lines = []
+    entry_ids = list(name_by_id)
+    if entry_ids:
+        for r in db.query(CodexRelation).filter(CodexRelation.source_id.in_(entry_ids)).all():
+            a, b = name_by_id.get(r.source_id), name_by_id.get(r.target_id)
+            if a and b:
+                rel_lines.append(f"- {a} — {r.relation_type or 'related to'} — {b}")
+
+    summaries = [
+        f"- {s.title}: {s.summary}"
+        for s in db.query(DmSession)
+        .filter(DmSession.project_id == project.id, DmSession.summary.isnot(None))
+        .order_by(DmSession.created_at)
+        .all()
+    ]
+
+    facts = (
+        db.query(DmFact)
+        .filter(DmFact.project_id == project.id)
+        .order_by(DmFact.weight.desc(), DmFact.id.desc())
+        .limit(80)
+        .all()
+    )
+    fact_lines = [f"- [{f.kind}] {f.text}" for f in facts]
+
+    latest = (
+        db.query(DmSession)
+        .filter(DmSession.project_id == project.id)
+        .order_by(DmSession.created_at.desc())
+        .first()
+    )
+    turn_lines = []
+    if latest:
+        turns = (
+            db.query(DmTurn)
+            .filter(DmTurn.session_id == latest.id, DmTurn.role.in_(("player", "dm")))
+            .order_by(DmTurn.id.desc())
+            .limit(HISTORY_TURNS)
+            .all()
+        )[::-1]
+        turn_lines = [f"- {'Player' if t.role == 'player' else 'DM'}: {t.content}" for t in turns]
+
+    def block(title: str, lines: list[str]) -> str:
+        return f"## {title}\n" + ("\n".join(lines) if lines else "none")
+
+    parts = [
+        block("Codex entries (only these names may be used)", entry_lines),
+        block("Relations already established", rel_lines),
+    ]
+    if project.campaign_brief:
+        parts.append(f"## Campaign brief\n{project.campaign_brief}")
+    parts += [
+        block("Session summaries", summaries),
+        block("Campaign memory", fact_lines),
+        block("Latest session transcript", turn_lines),
+    ]
+    return "\n\n".join(parts)
+
+
+@router.post("/projects/{project_id}/dm/suggest-relations", response_model=list[DmRelationSuggestion])
+async def suggest_relations(project_id: int, db: Session = Depends(get_db)):
+    """Read the campaign's play memory and propose codex relations. Writes
+    nothing — the client confirms each one through POST /api/codex/relations."""
+    project = _get_project(project_id, db)
+
+    owner_id = _codex_owner_id(project)
+    entries = db.query(CodexEntry).filter(CodexEntry.project_id == owner_id).all()
+    if len(entries) < 2:
+        return []  # nothing to relate — answer without touching a provider
+    by_name = {(e.name or "").lower(): e for e in entries}
+
+    settings = db.query(UserSettings).first()
+    if not settings:
+        raise HTTPException(400, "No AI provider configured")
+    model = settings.default_codex_model or settings.default_model
+    if not model:
+        raise HTTPException(400, "No AI model configured")
+    pdef, base_url, api_key = _resolve_provider(settings, model=model)
+
+    row = db.query(AIPrompt).filter(AIPrompt.built_in_key == "dm_relations").first()
+    if not row:
+        raise HTTPException(500, "dm_relations prompt missing")
+    system = row.system.replace("{{LANGUAGE}}", _project_language(project))
+
+    try:
+        result = await post_provider(
+            pdef, base_url, api_key, model,
+            [
+                {"role": "system", "content": system},
+                {"role": "user", "content": _relations_user_content(project, db)},
+            ],
+            timeout=90,
+        )
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(502, f"Provider error: {exc.response.text}")
+
+    raw = result["choices"][0]["message"]["content"].strip()
+    try:
+        parsed = _parse_json_reply(raw)
+    except ValueError as exc:
+        raise HTTPException(502, f"Relation pass did not return valid JSON: {exc}")
+
+    established = {
+        (r.source_id, r.target_id): r.relation_type
+        for r in db.query(CodexRelation)
+        .filter(CodexRelation.source_id.in_([e.id for e in entries]))
+        .all()
+    }
+
+    suggestions: list[DmRelationSuggestion] = []
+    seen: set[tuple[int, int]] = set()
+    for item in parsed.get("relations") or []:
+        if not isinstance(item, dict):
+            continue
+        source = by_name.get(str(item.get("source") or "").strip().lower())
+        target = by_name.get(str(item.get("target") or "").strip().lower())
+        rel_type = str(item.get("relation_type") or "").strip()
+        # Hallucinated names, self-relations and repeats are dropped rather than
+        # shown — the player should only ever review actionable proposals.
+        if not source or not target or source.id == target.id or not rel_type:
+            continue
+        if (source.id, target.id) in seen:
+            continue
+        existing = established.get((source.id, target.id))
+        if existing and existing.strip().lower() == rel_type.lower():
+            continue
+        seen.add((source.id, target.id))
+        suggestions.append(DmRelationSuggestion(
+            source_id=source.id, source_name=source.name,
+            target_id=target.id, target_name=target.name,
+            relation_type=rel_type,
+            evidence=str(item.get("evidence") or "").strip(),
+            existing_type=existing,
+        ))
+    return suggestions
+
+
 @router.get("/dm/style")
 def get_style():
     """Style guardrails for the client-side cliché check."""
@@ -924,10 +1087,18 @@ def _apply_effects(project: Project, effects: dict, session_id: int | None, db: 
             if cond in sheet["conditions"]:
                 sheet["conditions"].remove(cond)
 
+        # Durable knowledge the narration established — appended so the codex
+        # grows with the campaign instead of freezing at character creation.
+        prev_description = entry.description
+        addition = (upd.get("description_add") or "").strip() if isinstance(upd.get("description_add"), str) else ""
+        if addition and addition.lower() not in (entry.description or "").lower():
+            entry.description = f"{entry.description.rstrip()} {addition}" if entry.description else addition
+
         entry.rpg_sheet = json.dumps(sheet)
         entry.inventory = json.dumps(inventory)
         applied["updated_entries"].append({
             "id": entry.id, "prev_rpg_sheet": prev_sheet, "prev_inventory": prev_inventory,
+            "prev_description": prev_description,
         })
 
     sc = effects.get("scene")
@@ -1027,6 +1198,8 @@ def _undo_effects(turn: DmTurn, db: Session) -> bool:
             entry.rpg_sheet = updated.get("prev_rpg_sheet")
             if "prev_inventory" in updated:
                 entry.inventory = updated.get("prev_inventory")
+            if "prev_description" in updated:
+                entry.description = updated.get("prev_description")
 
     sc = applied.get("scene")
     if sc:
