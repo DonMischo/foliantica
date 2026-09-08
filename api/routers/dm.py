@@ -792,21 +792,13 @@ def draw_wildcard(category: str, db: Session = Depends(get_db)):
 
 @router.delete("/dm/turns/{turn_id}", status_code=204)
 def delete_turn(turn_id: int, db: Session = Depends(get_db)):
-    """Delete a DM narration for a reroll. Only the session's last turn may go —
-    rerolling mid-history would corrupt the transcript."""
+    """Remove one turn from the transcript — the last narration for a reroll, or
+    any player/DM turn the player wants gone. World changes the turn applied are
+    rolled back first, so the codex never keeps state from a turn that is gone."""
     turn = db.get(DmTurn, turn_id)
     if not turn:
         raise HTTPException(404, "Turn not found")
-    if turn.role != "dm":
-        raise HTTPException(400, "Only DM narration can be rerolled")
-    last = (
-        db.query(DmTurn)
-        .filter(DmTurn.session_id == turn.session_id)
-        .order_by(DmTurn.id.desc())
-        .first()
-    )
-    if last.id != turn.id:
-        raise HTTPException(400, "Only the latest turn can be rerolled")
+    _undo_effects(turn, db)  # no-op when the turn applied nothing
     db.delete(turn)
     db.commit()
 
@@ -1013,17 +1005,15 @@ def apply_turn_effects(turn_id: int, effects: dict, db: Session = Depends(get_db
     return turn
 
 
-@router.post("/dm/turns/{turn_id}/undo-effects", response_model=DmTurnOut)
-def undo_turn_effects(turn_id: int, db: Session = Depends(get_db)):
-    turn = db.get(DmTurn, turn_id)
-    if not turn:
-        raise HTTPException(404, "Turn not found")
+def _undo_effects(turn: DmTurn, db: Session) -> bool:
+    """Roll back the codex/scene changes a turn applied. Does not commit.
+    Returns False when the turn has nothing applied (or was already undone)."""
     try:
         stored = json.loads(turn.effects or "")
     except (json.JSONDecodeError, TypeError):
-        raise HTTPException(400, "Turn has no effects")
+        return False
     if not stored.get("applied") or stored.get("undone"):
-        raise HTTPException(400, "Nothing to undo")
+        return False
     applied = stored["applied"]
 
     for created in applied.get("created_entries") or []:
@@ -1054,6 +1044,16 @@ def undo_turn_effects(turn_id: int, db: Session = Depends(get_db)):
 
     stored["undone"] = True
     turn.effects = json.dumps(stored)
+    return True
+
+
+@router.post("/dm/turns/{turn_id}/undo-effects", response_model=DmTurnOut)
+def undo_turn_effects(turn_id: int, db: Session = Depends(get_db)):
+    turn = db.get(DmTurn, turn_id)
+    if not turn:
+        raise HTTPException(404, "Turn not found")
+    if not _undo_effects(turn, db):
+        raise HTTPException(400, "Nothing to undo")
     db.commit()
     db.refresh(turn)
     return turn

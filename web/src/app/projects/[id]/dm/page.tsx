@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Dices, Send, Plus, Hand, Cpu, MapPin, Undo2, UserPlus, Minus, X, ListTree, BookCheck, Sparkles, AlertTriangle, RefreshCw, Shuffle, Trash2, Eye, ChevronDown } from "lucide-react";
+import { Dices, Send, Plus, Hand, Cpu, MapPin, Undo2, UserPlus, Minus, X, ListTree, BookCheck, Sparkles, AlertTriangle, RefreshCw, Shuffle, Trash2, Eye, ChevronDown, Square } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { dmApi, codexApi, type DmRollRequest } from "@/lib/api";
 import {
   useDmSessions, useCreateDmSession, useDmTurns, useDmRoll,
   useDmPrefs, useUpdateDmPrefs, useDmScene, useUndoDmEffects, useCodexEntries,
-  useDmThreads, useEndDmSession, useDmStyle, useProject, useDeleteDmSession,
+  useDmThreads, useEndDmSession, useDmStyle, useProject, useDeleteDmSession, useDeleteDmTurn,
 } from "@/store/queries";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { CharacterWizard } from "@/components/dm/CharacterWizard";
@@ -68,11 +68,29 @@ function EffectChips({
   );
 }
 
+/** Trash affordance revealed on hover over a turn. */
+function DeleteTurnButton({
+  turnId, onDelete, disabled,
+}: { turnId: number; onDelete: (turnId: number) => void; disabled: boolean }) {
+  const { t } = useLanguage();
+  return (
+    <button
+      onClick={() => onDelete(turnId)}
+      disabled={disabled}
+      title={t("dm_delete_turn")}
+      className="shrink-0 self-start mt-1 text-muted-foreground/0 group-hover:text-muted-foreground hover:!text-destructive transition-colors disabled:opacity-40"
+    >
+      <Trash2 className="h-3 w-3" />
+    </button>
+  );
+}
+
 function TurnItem({
-  turn, onUndo, undoPending, entries, lang,
+  turn, onUndo, undoPending, entries, lang, onDelete, deletePending,
 }: {
   turn: DmTurn; onUndo: (turnId: number) => void; undoPending: boolean;
   entries: CodexEntry[]; lang?: string | null;
+  onDelete: (turnId: number) => void; deletePending: boolean;
 }) {
   if (turn.role === "roll") {
     return (
@@ -86,7 +104,8 @@ function TurnItem({
   }
   if (turn.role === "player") {
     return (
-      <div className="flex justify-end">
+      <div className="group flex justify-end items-start gap-1.5">
+        <DeleteTurnButton turnId={turn.id} onDelete={onDelete} disabled={deletePending} />
         <div className="max-w-[80%] rounded-lg bg-primary/10 border border-primary/20 px-3 py-2 text-sm whitespace-pre-wrap">
           {turn.content}
         </div>
@@ -97,11 +116,14 @@ function TurnItem({
     return <p className="text-center text-xs text-muted-foreground italic">{turn.content}</p>;
   }
   return (
-    <div className="max-w-[92%]">
-      <div className="text-sm leading-relaxed whitespace-pre-wrap">
-        <CodexText text={turn.content} entries={entries} lang={lang} />
+    <div className="group flex items-start gap-1.5 max-w-[92%]">
+      <div className="min-w-0">
+        <div className="text-sm leading-relaxed whitespace-pre-wrap">
+          <CodexText text={turn.content} entries={entries} lang={lang} />
+        </div>
+        <EffectChips turn={turn} onUndo={onUndo} undoPending={undoPending} />
       </div>
-      <EffectChips turn={turn} onUndo={onUndo} undoPending={undoPending} />
+      <DeleteTurnButton turnId={turn.id} onDelete={onDelete} disabled={deletePending} />
     </div>
   );
 }
@@ -409,6 +431,7 @@ export default function DmPage() {
   const diceMode = prefsQuery.data?.dice_mode ?? "digital";
   const pov: DmPov = prefsQuery.data?.pov ?? "second";
   const deleteMutation = useDeleteDmSession(projectId);
+  const deleteTurnMutation = useDeleteDmTurn(projectId, activeSession?.id);
   const { data: codexEntries = [] } = useCodexEntries(projectId);
 
   const [input, setInput] = useState("");
@@ -423,6 +446,8 @@ export default function DmPage() {
   const [clicheHits, setClicheHits] = useState<string[]>([]);
   const [dismissedGates, setDismissedGates] = useState<number[]>([]);
   const streaming = streamText !== null;
+  // Aborts the in-flight narration request (stop button / Escape).
+  const abortRef = useRef<AbortController | null>(null);
   const { data: style } = useDmStyle();
   const { data: project } = useProject(projectId);
   // Same precedence the DM prompt uses: dm_prefs.language wins over book meta.
@@ -527,9 +552,12 @@ export default function DmPage() {
     setClicheHits([]);
 
     let streamed = false;
+    let cancelled = false;
     let acc = "";
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
-      const res = await dmApi.actionStream(activeSession.id, text);
+      const res = await dmApi.actionStream(activeSession.id, text, undefined, controller.signal);
       if (!res.ok) throw new Error(await res.text());
       const reader = res.body?.getReader();
       if (!reader) throw new Error("No response body");
@@ -561,17 +589,43 @@ export default function DmPage() {
       }
       streamed = acc.length > 0;
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      // Cancelling is not an error — the partial narration is kept and can be
+      // deleted or rerolled from the transcript.
+      cancelled = e instanceof DOMException && e.name === "AbortError";
+      if (!cancelled) setError(e instanceof Error ? e.message : String(e));
     } finally {
+      abortRef.current = null;
+      // The server persists what it streamed in its own finally block; give it a
+      // beat to land before refetching, or the partial turn is missed.
+      if (cancelled) await new Promise((resolve) => setTimeout(resolve, 400));
       await qc.invalidateQueries({ queryKey: ["dm-turns", activeSession.id] });
       setPendingPlayer(null);
       setStreamText(null);
     }
-    if (streamed) {
+    if (streamed && !cancelled) {
       const lower = acc.toLowerCase();
       setClicheHits((style?.ban_list ?? []).filter((b) => lower.includes(b.toLowerCase())));
       await runExtraction(activeSession.id);
     }
+  };
+
+  const cancelStream = () => abortRef.current?.abort();
+
+  // Escape cancels the narration from anywhere on the page — the textarea is
+  // disabled while streaming, so it cannot carry the key itself.
+  useEffect(() => {
+    if (!streaming) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      cancelStream();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [streaming]);
+
+  const deleteTurn = (turnId: number) => {
+    if (confirm(`${t("dm_delete_turn")}?`)) deleteTurnMutation.mutate(turnId);
   };
 
   const send = () => {
@@ -699,6 +753,8 @@ export default function DmPage() {
               undoPending={undoMutation.isPending}
               entries={codexEntries}
               lang={narrationLang}
+              onDelete={deleteTurn}
+              deletePending={deleteTurnMutation.isPending}
             />
           ))}
           {pendingPlayer && (
@@ -842,9 +898,21 @@ export default function DmPage() {
             className="flex-1 resize-none text-sm"
             disabled={streaming || !!rollGate}
           />
-          <Button onClick={send} disabled={!canSend} size="sm" className="h-9" title={t("dm_send")}>
-            <Send className="h-4 w-4" />
-          </Button>
+          {streaming ? (
+            <Button
+              onClick={cancelStream}
+              variant="outline"
+              size="sm"
+              className="h-9 text-destructive"
+              title={t("dm_stop_hint")}
+            >
+              <Square className="h-4 w-4 fill-current" />
+            </Button>
+          ) : (
+            <Button onClick={send} disabled={!canSend} size="sm" className="h-9" title={t("dm_send")}>
+              <Send className="h-4 w-4" />
+            </Button>
+          )}
         </div>
         </>
         )}

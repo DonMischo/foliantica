@@ -720,11 +720,12 @@ export const dmApi = {
   prefs: (projectId: number) => req<DmPrefs>(`/projects/${projectId}/dm/prefs`),
   updatePrefs: (projectId: number, data: DmPrefs) =>
     req<DmPrefs>(`/projects/${projectId}/dm/prefs`, { method: "PATCH", body: JSON.stringify(data) }),
-  actionStream: (sessionId: number, content: string, model?: string) =>
+  actionStream: (sessionId: number, content: string, model?: string, signal?: AbortSignal) =>
     fetch(`${BASE}/dm/sessions/${sessionId}/action`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content, model }),
+      signal,
     }),
   ruleset: () => req<DmRuleset>(`/dm/ruleset`),
   generateCharacter: (

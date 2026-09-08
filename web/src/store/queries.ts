@@ -1193,6 +1193,19 @@ export const useEndDmSession = (projectId: number) => {
   });
 };
 
+export const useDeleteDmTurn = (projectId: number, sessionId?: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (turnId: number) => dmApi.deleteTurn(turnId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["dm-turns", sessionId] });
+      // Deleting a turn rolls back the world changes it applied.
+      qc.invalidateQueries({ queryKey: ["dm-scene", projectId] });
+      qc.invalidateQueries({ queryKey: ["codex"] });
+    },
+  });
+};
+
 export const useUndoDmEffects = (projectId: number, sessionId?: number) => {
   const qc = useQueryClient();
   return useMutation({

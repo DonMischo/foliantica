@@ -7,7 +7,7 @@ import json
 import pytest
 
 from database import DEFAULT_AI_PROMPTS
-from models import AIPrompt, Project
+from models import AIPrompt, CodexEntry, DmTurn, Project
 from routers.dm import _dm_system_prompt
 
 
@@ -102,6 +102,62 @@ class TestPrefs:
     def test_rejects_an_unknown_pov(self, client, project):
         r = client.patch(f"/api/projects/{project.id}/dm/prefs", json={"pov": "omniscient"})
         assert r.status_code == 422
+
+
+# ── Turn deletion ─────────────────────────────────────────────────────────────
+
+class TestDeleteTurn:
+    @pytest.fixture
+    def session_id(self, client, project):
+        return client.post(f"/api/projects/{project.id}/dm/sessions", json={}).json()["id"]
+
+    def _turn(self, db, session_id, role, content, effects=None):
+        turn = DmTurn(session_id=session_id, role=role, content=content, effects=effects)
+        db.add(turn)
+        db.commit()
+        db.refresh(turn)
+        return turn
+
+    def test_deletes_a_player_prompt(self, client, db, session_id):
+        turn = self._turn(db, session_id, "player", "I kick the door.")
+
+        assert client.delete(f"/api/dm/turns/{turn.id}").status_code == 204
+        assert client.get(f"/api/dm/sessions/{session_id}/turns").json() == []
+
+    def test_deletes_a_dm_answer_mid_history(self, client, db, session_id):
+        """The old endpoint only allowed the session's last turn; a player
+        clearing a bad exchange needs to reach earlier ones too."""
+        first = self._turn(db, session_id, "dm", "The door holds.")
+        self._turn(db, session_id, "player", "I kick it again.")
+
+        assert client.delete(f"/api/dm/turns/{first.id}").status_code == 204
+        remaining = client.get(f"/api/dm/sessions/{session_id}/turns").json()
+        assert [t["content"] for t in remaining] == ["I kick it again."]
+
+    def test_rolls_back_the_world_changes_the_turn_applied(self, client, db, project, session_id):
+        entry = CodexEntry(project_id=project.id, name="Ilya", entry_type="character",
+                           rpg_sheet=json.dumps({"hp": {"current": 4, "max": 10}}))
+        db.add(entry)
+        db.commit()
+        db.refresh(entry)
+        before = entry.rpg_sheet
+
+        entry.rpg_sheet = json.dumps({"hp": {"current": 1, "max": 10}})
+        turn = self._turn(db, session_id, "dm", "The blade bites.", effects=json.dumps({
+            "applied": {
+                "created_entries": [],
+                "updated_entries": [{"id": entry.id, "prev_rpg_sheet": before}],
+                "scene": None,
+            }
+        }))
+        db.commit()
+
+        assert client.delete(f"/api/dm/turns/{turn.id}").status_code == 204
+        db.expire_all()
+        assert json.loads(db.get(CodexEntry, entry.id).rpg_sheet)["hp"]["current"] == 4
+
+    def test_unknown_turn_404s(self, client):
+        assert client.delete("/api/dm/turns/999999").status_code == 404
 
 
 # ── Session deletion ──────────────────────────────────────────────────────────
