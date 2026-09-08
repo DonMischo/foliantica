@@ -39,6 +39,20 @@ _FALLBACK_PERSONA = (
     "Honour every dice result. Narrate exclusively in {{LANGUAGE}}."
 )
 
+# Expansion of the {{POV}} placeholder in the DM persona prompt.
+_POV_DIRECTIVE = {
+    "second": 'Write in second person, present tense ("you draw the blade").',
+    "first": (
+        'Write in first person as the player character, present tense ("I draw the blade") — '
+        "still never decide what they think, feel or say."
+    ),
+    "third": (
+        "Write in third person limited, present tense, following the player character by name "
+        '("Kara draws the blade").'
+    ),
+}
+DEFAULT_POV = "second"
+
 
 def _get_project(project_id: int, db: Session) -> Project:
     project = db.get(Project, project_id)
@@ -158,7 +172,30 @@ def _dm_system_prompt(project: Project, db: Session, query_text: str = "") -> st
     system = (row.system if row and row.system else _FALLBACK_PERSONA)
     system = system.replace("{{LANGUAGE}}", _project_language(project))
 
-    parts = [system, f"# Campaign: {project.title}"]
+    try:
+        prefs = json.loads(project.dm_prefs or "{}")
+    except (json.JSONDecodeError, TypeError):
+        prefs = {}
+
+    # Narration length (the prompt row's word_count, same knob /ki uses) and POV.
+    # Both are placeholders in the built-in persona; a custom persona that dropped
+    # them gets them appended as an explicit override instead.
+    words = (row.word_count if row else None) or 400
+    pov = prefs.get("pov") if prefs.get("pov") in _POV_DIRECTIVE else DEFAULT_POV
+    fallbacks = {
+        "{{WORD_COUNT}}": f"Aim for about {words} words per beat, and never exceed {round(words * 1.5)}.",
+        "{{POV}}": _POV_DIRECTIVE[pov],
+    }
+    overrides = [line for token, line in fallbacks.items() if token not in system]
+    system = system.replace("{{WORD_COUNT}}", str(words)).replace("{{POV}}", _POV_DIRECTIVE[pov])
+
+    parts = [system]
+    if overrides:
+        parts.append(
+            "## Narration settings (these override the style contract above)\n"
+            + "\n".join(f"- {o}" for o in overrides)
+        )
+    parts.append(f"# Campaign: {project.title}")
     if project.description:
         parts.append(project.description)
 
@@ -738,6 +775,19 @@ def get_wildcards_tree(db: Session = Depends(get_db)):
     if not tree:
         return {"available": False, "error": err, "categories": []}
     return {"available": True, "error": None, "categories": wc.tree_overview(tree)}
+
+
+@router.get("/dm/wildcards/draw")
+def draw_wildcard(category: str, db: Session = Depends(get_db)):
+    """Draw one random entry from a wildcard category, for the /wildcard input command."""
+    settings = db.query(UserSettings).first()
+    tree, err = wc.get_tree(getattr(settings, "wildcards_path", None) if settings else None)
+    if not tree:
+        raise HTTPException(400, err or "No wildcard source configured")
+    value = wc.draw(tree, category)
+    if not value:
+        raise HTTPException(404, f"No entries for category '{category}'")
+    return {"category": category, "value": value}
 
 
 @router.delete("/dm/turns/{turn_id}", status_code=204)

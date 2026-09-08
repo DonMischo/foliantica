@@ -1001,6 +1001,7 @@ class DmPrefsUpdate(BaseModel):
     language: Optional[str] = None  # BCP 47 code for DM narration (overrides book_meta.language)
     session_zero: Optional[dict] = None  # raw wizard answers, kept for prefill
     wildcards: Optional[list[str]] = None  # enabled wildcard category paths for this campaign
+    pov: Optional[Literal["second", "first", "third"]] = None  # narration point of view
 
 
 class DmFactOut(BaseModel):

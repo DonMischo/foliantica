@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { Dices, Send, Plus, Hand, Cpu, MapPin, Undo2, UserPlus, Minus, X, ListTree, BookCheck, Sparkles, AlertTriangle, RefreshCw, Shuffle } from "lucide-react";
+import { Dices, Send, Plus, Hand, Cpu, MapPin, Undo2, UserPlus, Minus, X, ListTree, BookCheck, Sparkles, AlertTriangle, RefreshCw, Shuffle, Trash2, Eye, ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -13,15 +13,18 @@ import { dmApi, codexApi, type DmRollRequest } from "@/lib/api";
 import {
   useDmSessions, useCreateDmSession, useDmTurns, useDmRoll,
   useDmPrefs, useUpdateDmPrefs, useDmScene, useUndoDmEffects, useCodexEntries,
-  useDmThreads, useEndDmSession, useDmStyle, useProject,
+  useDmThreads, useEndDmSession, useDmStyle, useProject, useDeleteDmSession,
 } from "@/store/queries";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { CharacterWizard } from "@/components/dm/CharacterWizard";
 import { SessionZeroWizard } from "@/components/dm/SessionZeroWizard";
 import { WildcardPicker } from "@/components/dm/WildcardPicker";
-import type { CodexEntry, DmTurn } from "@/types";
+import { CodexText } from "@/components/dm/CodexText";
+import { CommandList, WildcardDrawPicker, commandQuery, matchingCommands, type DmCommandKey } from "@/components/dm/DmCommandMenu";
+import type { CodexEntry, DmPov, DmTurn } from "@/types";
 
 const DICE = [4, 6, 8, 10, 12, 20, 100];
+const POV_OPTIONS: DmPov[] = ["second", "first", "third"];
 
 // ── Transcript entries ────────────────────────────────────────────────────────
 
@@ -66,8 +69,11 @@ function EffectChips({
 }
 
 function TurnItem({
-  turn, onUndo, undoPending,
-}: { turn: DmTurn; onUndo: (turnId: number) => void; undoPending: boolean }) {
+  turn, onUndo, undoPending, entries, lang,
+}: {
+  turn: DmTurn; onUndo: (turnId: number) => void; undoPending: boolean;
+  entries: CodexEntry[]; lang?: string | null;
+}) {
   if (turn.role === "roll") {
     return (
       <div className="flex justify-center">
@@ -92,7 +98,9 @@ function TurnItem({
   }
   return (
     <div className="max-w-[92%]">
-      <div className="text-sm leading-relaxed whitespace-pre-wrap">{turn.content}</div>
+      <div className="text-sm leading-relaxed whitespace-pre-wrap">
+        <CodexText text={turn.content} entries={entries} lang={lang} />
+      </div>
       <EffectChips turn={turn} onUndo={onUndo} undoPending={undoPending} />
     </div>
   );
@@ -164,21 +172,45 @@ function PartyCard({ projectId }: { projectId: number }) {
   );
 }
 
+const THREADS_OPEN_KEY = "lw_dm_threads_open";
+
 function ThreadsCard({ projectId }: { projectId: number }) {
   const { t } = useLanguage();
   const { data: threads = [] } = useDmThreads(projectId);
+  const [open, setOpen] = useState(true);
+
+  // Read the persisted state after mount — localStorage is unavailable during SSR.
+  useEffect(() => {
+    setOpen(localStorage.getItem(THREADS_OPEN_KEY) !== "0");
+  }, []);
+
+  const toggle = () => {
+    setOpen((prev) => {
+      localStorage.setItem(THREADS_OPEN_KEY, prev ? "0" : "1");
+      return !prev;
+    });
+  };
+
   if (threads.length === 0) return null;
   return (
     <div className="rounded-lg border border-border p-2.5 space-y-1">
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+      <button
+        onClick={toggle}
+        aria-expanded={open}
+        className="w-full text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1 hover:text-foreground"
+      >
         <ListTree className="h-3 w-3" />
         {t("dm_threads")}
-      </p>
-      <ul className="space-y-1">
-        {threads.map((f) => (
-          <li key={f.id} className="text-[11px] text-muted-foreground leading-snug">• {f.text}</li>
-        ))}
-      </ul>
+        <span className="ml-auto tabular-nums">{threads.length}</span>
+        <ChevronDown className={cn("h-3 w-3 transition-transform", !open && "-rotate-90")} />
+      </button>
+      {open && (
+        <ul className="space-y-1">
+          {threads.map((f) => (
+            <li key={f.id} className="text-[11px] text-muted-foreground leading-snug">• {f.text}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -375,6 +407,9 @@ export default function DmPage() {
   const prefsQuery = useDmPrefs(projectId);
   const updatePrefs = useUpdateDmPrefs(projectId);
   const diceMode = prefsQuery.data?.dice_mode ?? "digital";
+  const pov: DmPov = prefsQuery.data?.pov ?? "second";
+  const deleteMutation = useDeleteDmSession(projectId);
+  const { data: codexEntries = [] } = useCodexEntries(projectId);
 
   const [input, setInput] = useState("");
   const [pendingPlayer, setPendingPlayer] = useState<string | null>(null);
@@ -390,6 +425,49 @@ export default function DmPage() {
   const streaming = streamText !== null;
   const { data: style } = useDmStyle();
   const { data: project } = useProject(projectId);
+  // Same precedence the DM prompt uses: dm_prefs.language wins over book meta.
+  const narrationLang = prefsQuery.data?.language ?? project?.book_meta?.language ?? null;
+
+  // "/" command menu in the action input
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [cmdQuery, setCmdQuery] = useState<string | null>(null);
+  const [cmdRange, setCmdRange] = useState<{ from: number; to: number } | null>(null);
+  const [cmdActive, setCmdActive] = useState(0);
+  const [wildcardDrawOpen, setWildcardDrawOpen] = useState(false);
+  const cmdMatches = cmdQuery === null ? [] : matchingCommands(cmdQuery);
+  const cmdOpen = cmdMatches.length > 0 && !wildcardDrawOpen;
+
+  /** Re-read the caret and decide whether it sits inside a "/…" token. */
+  const syncCommand = (el: HTMLTextAreaElement) => {
+    const caret = el.selectionStart ?? el.value.length;
+    const query = commandQuery(el.value, caret);
+    setCmdQuery(query);
+    setCmdActive(0);
+    setCmdRange(query === null ? null : { from: caret - query.length - 1, to: caret });
+  };
+
+  const pickCommand = (key: DmCommandKey) => {
+    setCmdQuery(null);
+    if (key === "wildcard") setWildcardDrawOpen(true);
+  };
+
+  /** Replace the "/…" token with the drawn wildcard text. */
+  const insertDraw = (value: string) => {
+    const range = cmdRange ?? { from: input.length, to: input.length };
+    setInput(input.slice(0, range.from) + value + input.slice(range.to));
+    setWildcardDrawOpen(false);
+    setCmdQuery(null);
+    setCmdRange(null);
+    // setTimeout, not rAF: rAF never fires in a backgrounded tab, which would
+    // strand focus outside the input.
+    setTimeout(() => {
+      const el = inputRef.current;
+      if (!el) return;
+      el.focus();
+      const caret = range.from + value.length;
+      el.setSelectionRange(caret, caret);
+    }, 0);
+  };
 
   const bottomRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -582,6 +660,19 @@ export default function DmPage() {
               {t("dm_end_session")}
             </Button>
           )}
+          {activeSession && (
+            <button
+              onClick={() => {
+                if (!confirm(t("dm_delete_session_confirm", { title: activeSession.title }))) return;
+                deleteMutation.mutate(activeSession.id, { onSuccess: () => setSelectedSessionId(null) });
+              }}
+              disabled={streaming || deleteMutation.isPending}
+              title={t("dm_delete_session")}
+              className="text-muted-foreground hover:text-destructive disabled:opacity-40"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
         </header>
 
         {/* Transcript */}
@@ -606,6 +697,8 @@ export default function DmPage() {
               turn={turn}
               onUndo={(turnId) => undoMutation.mutate(turnId)}
               undoPending={undoMutation.isPending}
+              entries={codexEntries}
+              lang={narrationLang}
             />
           ))}
           {pendingPlayer && (
@@ -617,7 +710,9 @@ export default function DmPage() {
           )}
           {streaming && (
             streamText ? (
-              <div className="max-w-[92%] text-sm leading-relaxed whitespace-pre-wrap">{streamText}</div>
+              <div className="max-w-[92%] text-sm leading-relaxed whitespace-pre-wrap">
+                <CodexText text={streamText} entries={codexEntries} lang={narrationLang} />
+              </div>
             ) : (
               <p className="text-xs text-muted-foreground animate-pulse">{t("dm_narrating")}</p>
             )
@@ -700,11 +795,43 @@ export default function DmPage() {
 
         {/* Input */}
         {!sessionEnded && (
+        <>
+        {cmdOpen && <CommandList query={cmdQuery!} active={cmdActive} onPick={pickCommand} />}
+        <WildcardDrawPicker
+          open={wildcardDrawOpen}
+          onClose={() => setWildcardDrawOpen(false)}
+          onDraw={insertDraw}
+        />
         <div className="border-t border-border p-3 flex gap-2 items-end">
           <Textarea
+            ref={inputRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value);
+              syncCommand(e.target);
+            }}
+            onClick={(e) => syncCommand(e.currentTarget)}
+            onKeyUp={(e) => { if (e.key !== "Escape") syncCommand(e.currentTarget); }}
+            onBlur={() => setCmdQuery(null)}
             onKeyDown={(e) => {
+              if (cmdOpen) {
+                if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                  e.preventDefault();
+                  const step = e.key === "ArrowDown" ? 1 : cmdMatches.length - 1;
+                  setCmdActive((i) => (i + step) % cmdMatches.length);
+                  return;
+                }
+                if (e.key === "Enter" || e.key === "Tab") {
+                  e.preventDefault();
+                  pickCommand((cmdMatches[cmdActive] ?? cmdMatches[0]).key);
+                  return;
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setCmdQuery(null);
+                  return;
+                }
+              }
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 send();
@@ -719,6 +846,7 @@ export default function DmPage() {
             <Send className="h-4 w-4" />
           </Button>
         </div>
+        </>
         )}
       </div>
 
@@ -727,6 +855,21 @@ export default function DmPage() {
         <SceneCard projectId={projectId} />
         <PartyCard projectId={projectId} />
         <ThreadsCard projectId={projectId} />
+        <div className="rounded-lg border border-border p-2.5 space-y-1">
+          <label className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+            <Eye className="h-3 w-3" />
+            {t("dm_pov")}
+          </label>
+          <select
+            value={pov}
+            onChange={(e) => updatePrefs.mutate({ pov: e.target.value as DmPov })}
+            className="w-full h-7 rounded-md border border-input bg-background px-2 text-xs"
+          >
+            {POV_OPTIONS.map((option) => (
+              <option key={option} value={option}>{t(`dm_pov_${option}`)}</option>
+            ))}
+          </select>
+        </div>
         <DiceTray
           diceMode={diceMode}
           onModeChange={(mode) => updatePrefs.mutate({ dice_mode: mode })}

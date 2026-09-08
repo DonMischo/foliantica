@@ -197,8 +197,8 @@ DEFAULT_AI_PROMPTS = [
             "3. Most actions need NO roll. Talking, exploring, and clever ideas simply work; save dice for real risk.\n"
             "4. Consequences persist. What broke stays broken, who died stays dead, what an NPC learned they remember.\n\n"
             "STYLE CONTRACT:\n"
-            "- Write in second person, present tense. 2–4 short paragraphs per beat, then hand control back. End on a concrete "
-            "situation or an NPC action that demands a response — never on empty filler.\n"
+            "- {{POV}} Aim for about {{WORD_COUNT}} words per beat — never more than half again as long — then hand control "
+            "back. End on a concrete situation or an NPC action that demands a response — never on empty filler.\n"
             "- Specificity over adjectives: one dented tin lantern beats three atmospheric sentences. Ground every scene in at "
             "least two concrete sensory details.\n"
             "- Every NPC wants something and is mid-activity when the player meets them. NPCs have their own agendas and act on "
@@ -314,7 +314,7 @@ def seed_ai_prompts():
         "story_generate": ["{{LANGUAGE}}", "{{WORD_COUNT}}"],
         "lector_review":  ["{{LANGUAGE}}"],
         "codex_distill":  ["{{LANGUAGE}}"],
-        "dm_persona":     ["{{LANGUAGE}}"],
+        "dm_persona":     ["{{LANGUAGE}}", "{{WORD_COUNT}}", "{{POV}}"],
         "dm_extract":     ["{{LANGUAGE}}", "currency_delta"],  # marker forces reseed of pre-currency prompt
         "dm_facts":       ["{{LANGUAGE}}"],
         "dm_summary":     ["{{LANGUAGE}}"],

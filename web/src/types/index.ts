@@ -103,7 +103,10 @@ export interface DmPrefs {
   language?: string;
   session_zero?: SessionZeroAnswers;
   wildcards?: string[];
+  pov?: DmPov;
 }
+
+export type DmPov = "second" | "first" | "third";
 
 export interface WildcardCategory {
   path: string;

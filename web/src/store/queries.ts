@@ -1136,6 +1136,14 @@ export const useCreateDmSession = (projectId: number) => {
   });
 };
 
+export const useDeleteDmSession = (projectId: number) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionId: number) => dmApi.deleteSession(sessionId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["dm-sessions", projectId] }),
+  });
+};
+
 export const useDmTurns = (sessionId?: number) =>
   useQuery({ queryKey: ["dm-turns", sessionId], queryFn: () => dmApi.turns(sessionId!), enabled: !!sessionId });
 

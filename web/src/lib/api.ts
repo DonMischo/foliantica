@@ -752,6 +752,8 @@ export const dmApi = {
   deleteTurn: (turnId: number) => req<void>(`/dm/turns/${turnId}`, { method: "DELETE" }),
   wildcardsTree: () =>
     req<{ available: boolean; error: string | null; categories: WildcardCategory[] }>(`/dm/wildcards/tree`),
+  drawWildcard: (category: string) =>
+    req<{ category: string; value: string }>(`/dm/wildcards/draw?category=${encodeURIComponent(category)}`),
 };
 
 // ── Grammar check ─────────────────────────────────────────────────────────────
