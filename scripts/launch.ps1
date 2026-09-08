@@ -74,11 +74,26 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
 }
 
 # -- Decide install vs. fast-start ----------------------------------------------
-# A build is considered present when the venv and the standalone Next.js
+# A build is considered present when a *working* venv and the standalone Next.js
 # server both already exist. -ForceInstall always takes the slow path.
+# The venv must actually run: a python.exe blocked by Windows Smart App Control
+# still passes Test-Path, and treating that as "built" would fast-start straight
+# into a backend that cannot boot.
 $venvPath      = Join-Path $Root "api\.venv"
 $standaloneSrv = Join-Path $Root "web\.next\standalone\server.js"
-$alreadyBuilt  = (Test-Path $venvPath) -and (Test-Path $standaloneSrv)
+$venvPython    = Join-Path $venvPath "Scripts\python.exe"
+
+$venvUsable = $false
+if (Test-Path $venvPython) {
+    try {
+        & $venvPython -c "pass" 2>$null
+        $venvUsable = ($LASTEXITCODE -eq 0)
+    } catch {
+        $venvUsable = $false
+    }
+}
+
+$alreadyBuilt  = $venvUsable -and (Test-Path $standaloneSrv)
 $needsInstall  = $ForceInstall -or (-not $alreadyBuilt)
 
 if ($needsInstall) {
@@ -86,9 +101,23 @@ if ($needsInstall) {
     Write-Host ""
 
     # -- Python venv -------------------------------------------------------------
-    if (-not (Test-Path $venvPath)) {
-        Write-Host "  $(white "Creating Python environment...")"
-        uv venv $venvPath
+    # Built with the stdlib venv module, not "uv venv": uv writes a small
+    # trampoline python.exe that Windows Smart App Control blocks (unsigned, no
+    # reputation), which makes every later "uv pip install" fail with
+    # "Failed to inspect Python interpreter". The stdlib module copies the real
+    # interpreter instead, which SAC allows.
+    # A venv whose python.exe cannot run ($venvUsable, checked above) is rebuilt
+    # rather than reused, so a previously blocked environment heals itself.
+    if (-not $venvUsable) {
+        if (Test-Path $venvPath) {
+            Write-Host "  $(white "Python environment is unusable - rebuilding it...")"
+            Remove-Item -Recurse -Force $venvPath
+        } else {
+            Write-Host "  $(white "Creating Python environment...")"
+        }
+        $basePython = (& uv python find 3.14 | Select-Object -First 1)
+        if (-not $basePython) { $basePython = (& uv python find | Select-Object -First 1) }
+        & "$($basePython.Trim())" -m venv $venvPath
         Write-Host ""
     }
 
