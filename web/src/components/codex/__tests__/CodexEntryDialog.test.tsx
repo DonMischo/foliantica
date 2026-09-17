@@ -139,3 +139,65 @@ describe("CodexEntryDialog — submit payload", () => {
     expect(onSave.mock.calls[0][0].name).toBe("Samwise");
   });
 });
+
+describe("CodexEntryDialog — autosave refetch does not reset the form", () => {
+  // Autosaving a field invalidates the codex query; the refetch hands the dialog
+  // fresh `initial` / `allEntries` references. The form must keep what the user
+  // typed instead of re-seeding from the (stale) snapshot it opened with.
+  const existing = () => ({
+    id: 7,
+    name: "Frodo",
+    entry_type: "character",
+    aliases: ["Ring-bearer"],
+    species: "",
+  });
+
+  it("keeps a typed species across an identical-content prop refresh", () => {
+    const { rerender } = render(
+      <CodexEntryDialog {...defaultProps} initial={existing()} allEntries={[]} />
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("e.g. Human, Elf…"), {
+      target: { value: "Hobbit" },
+    });
+
+    // Simulated refetch: same data, brand-new object references.
+    rerender(<CodexEntryDialog {...defaultProps} initial={existing()} allEntries={[]} />);
+
+    expect(screen.getByPlaceholderText("e.g. Human, Elf…")).toHaveValue("Hobbit");
+  });
+
+  it("keeps a newly added alias across an identical-content prop refresh", () => {
+    const { rerender } = render(
+      <CodexEntryDialog {...defaultProps} initial={existing()} allEntries={[]} />
+    );
+
+    // Enter commits the alias (same handler as the Add button, whose
+    // "common_add" label is shared with the tag and group fields).
+    const aliasInput = screen.getByPlaceholderText("entry_add_alias");
+    fireEvent.change(aliasInput, { target: { value: "Underhill" } });
+    fireEvent.keyDown(aliasInput, { key: "Enter" });
+    expect(screen.getByText("Underhill")).toBeInTheDocument();
+
+    rerender(<CodexEntryDialog {...defaultProps} initial={existing()} allEntries={[]} />);
+
+    expect(screen.getByText("Underhill")).toBeInTheDocument();
+  });
+
+  it("re-seeds the form when the dialog switches to a different entry", () => {
+    const { rerender } = render(
+      <CodexEntryDialog {...defaultProps} initial={existing()} allEntries={[]} />
+    );
+    expect(screen.getByPlaceholderText("Entry name…")).toHaveValue("Frodo");
+
+    rerender(
+      <CodexEntryDialog
+        {...defaultProps}
+        initial={{ id: 9, name: "Samwise", entry_type: "character", aliases: [] }}
+        allEntries={[]}
+      />
+    );
+
+    expect(screen.getByPlaceholderText("Entry name…")).toHaveValue("Samwise");
+  });
+});

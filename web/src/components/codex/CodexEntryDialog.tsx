@@ -26,8 +26,8 @@ const ENTRY_TYPES: string[] = [...BUILT_IN_TYPES, "custom"];
 
 // Stable empty-array fallback — must live outside the component so its reference
 // never changes between renders. Using [] as a default parameter creates a new
-// array on every render, which makes the useEffect([…allEntries]) dependency fire
-// every render and produces an infinite setState → re-render loop.
+// array on every render, which would make any hook depending on `allEntries`
+// fire every render — historically an infinite setState → re-render loop.
 const EMPTY_ENTRIES: CodexEntry[] = [];
 
 const TRANSLATE_LANGUAGES = [
@@ -444,7 +444,14 @@ export function CodexEntryDialog({
       setViewImageOpen(false);
       skipAutosaveRef.current = true;
     }
-  }, [open, initial, allEntries]);
+    // Re-seed only when the dialog opens or switches to a different entry.
+    // Depending on the `initial` / `allEntries` object identities would re-run
+    // this after every autosave: the mutation invalidates the codex query, the
+    // refetch hands down fresh array/object references, and the form would be
+    // reset to the stale snapshot taken when the dialog opened — wiping what
+    // the user just typed (species, aliases, …) from the form.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initial?.id]);
 
   // Autosave every field except description — it saves immediately as you
   // edit, so there's nothing to lose by closing the dialog. Description stays
