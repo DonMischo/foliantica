@@ -18,7 +18,7 @@ import httpx
 import pytest
 
 from models import ExportProfile
-from services.export import _strip_command_nodes
+from services.export import _strip_command_nodes, calibre_toc_args
 
 
 PANDOC_URL = "http://pandoc-test:8082"
@@ -440,3 +440,28 @@ class TestExportPdfLive:
         r = client.get("/api/projects/export/fonts")
         assert r.status_code == 200
         assert isinstance(r.json().get("fonts"), list)
+
+
+# ── Calibre TOC flags ─────────────────────────────────────────────────────────
+
+def _heading_opts(acts, chapters, scenes):
+    from types import SimpleNamespace
+    return SimpleNamespace(include_act_headings=acts, include_chapter_headings=chapters,
+                           include_scene_headings=scenes)
+
+
+def test_calibre_toc_args_nests_acts_chapters_scenes():
+    assert calibre_toc_args(_heading_opts(True, True, True)) == [
+        "--level1-toc", "//h:h1[not(@class='title')]",
+        "--level2-toc", "//h:h2",
+        "--level3-toc", "//h:h3",
+    ]
+
+
+def test_calibre_toc_args_promotes_chapters_without_acts():
+    # Calibre drops level-2 entries that have no level-1 parent.
+    assert calibre_toc_args(_heading_opts(False, True, False)) == ["--level1-toc", "//h:h2"]
+
+
+def test_calibre_toc_args_empty_without_headings():
+    assert calibre_toc_args(_heading_opts(False, False, False)) == []

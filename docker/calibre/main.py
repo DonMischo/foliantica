@@ -9,6 +9,7 @@ POST /convert
     author:   str | None
     language: str | None   — BCP-47 code, e.g. "en", "de"
     cover:    str | None   — base64-encoded PNG/JPEG
+    toc_args: list[str]    — extra ebook-convert TOC flags (--levelN-toc XPaths)
 
 GET /health
   Health check
@@ -39,6 +40,7 @@ class ConvertRequest(BaseModel):
     author: str | None = None
     language: str | None = None
     cover: str | None = None
+    toc_args: list[str] = []
 
 
 @app.get("/health")
@@ -57,7 +59,7 @@ def convert(req: ConvertRequest):
         dst = Path(tmp) / f"output.{fmt}"
         src.write_text(req.html, encoding="utf-8")
 
-        cmd = ["ebook-convert", str(src), str(dst)]
+        cmd = ["ebook-convert", str(src), str(dst), *req.toc_args]
 
         if req.title:
             cmd += ["--title", req.title]

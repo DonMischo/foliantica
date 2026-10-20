@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session, selectinload
 from database import get_db
 from models import Project, Act, Chapter, UserSettings, ExportProfile, PublisherProfile
 from schemas import ExportOptions, ExportProfileCreate, ExportProfileUpdate, ExportProfileOut, PublisherProfileOut, BatchExportRequest
-from services.export import export_markdown, export_latex, export_epub_style, export_html
+from services.export import export_markdown, export_latex, export_epub_style, export_html, calibre_toc_args
 
 router = APIRouter(prefix="/api/projects", tags=["export"])
 
@@ -147,7 +147,7 @@ async def export_project(
                 src = _Path(tmp) / "input.html"
                 dst = _Path(tmp) / f"output.{calibre_fmt}"
                 src.write_text(html, encoding="utf-8")
-                cmd = ["ebook-convert", str(src), str(dst)]
+                cmd = ["ebook-convert", str(src), str(dst), *calibre_toc_args(opts)]
                 if project.title:              cmd += ["--title", project.title]
                 if meta.get("author"):         cmd += ["--authors", meta["author"]]
                 if meta.get("language", "en"): cmd += ["--language", meta.get("language", "en")]
@@ -172,6 +172,7 @@ async def export_project(
                 "title":    project.title or "",
                 "author":   meta.get("author", ""),
                 "language": meta.get("language", "en"),
+                "toc_args": calibre_toc_args(opts),
             }
             if cover_b64:
                 payload["cover"] = cover_b64

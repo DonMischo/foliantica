@@ -632,6 +632,27 @@ h1, h2, h3, h4, h5, h6 {{ font-family: {h_family}; }}
 </html>"""
 
 
+def calibre_toc_args(opts) -> list[str]:
+    """ebook-convert flags that build the TOC from the headings export_html emits.
+
+    Calibre's automatic chapter detection only matches headings containing words
+    like "Chapter" or "Part", so titled or non-English chapters end up with an
+    empty TOC. A level-N entry is dropped without a level-(N-1) parent, so the
+    topmost included heading becomes level 1. The title-page h1 is excluded.
+    """
+    tags = []
+    if opts.include_act_headings:
+        tags.append("//h:h1[not(@class='title')]")
+    if opts.include_chapter_headings:
+        tags.append("//h:h2")
+    if opts.include_scene_headings:
+        tags.append("//h:h3")
+    args: list[str] = []
+    for level, xpath in enumerate(tags, start=1):
+        args += [f"--level{level}-toc", xpath]
+    return args
+
+
 # ── EPUB style (CSS) export ───────────────────────────────────────────────────
 
 _EPUB_CSS_TEMPLATE = """\
