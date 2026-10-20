@@ -6,7 +6,7 @@
 
 You open the app. Your manuscript is there, exactly where you left it. The world-bible is a sidebar click away. The timeline remembers every hour of every day you mapped. Thirty-eight publisher formatting profiles are waiting for submission day. Nothing lives in someone else's cloud.
 
-Foliantica is a **local-first, all-in-one writing studio** — manuscript editor, codex, timeline, corkboard, analytics, and submission tracker in a single desktop app. Offline by default. No subscriptions. No accounts. No telemetry. Your words stay yours.
+Foliantica is a **local-first, all-in-one writing studio** — manuscript editor, codex, timeline, corkboard, plot structure, analytics, submission tracker, and an AI game master for solo RPG campaigns in a single desktop app. Offline by default. No subscriptions. No accounts. No telemetry. Your words stay yours.
 
 ---
 
@@ -14,11 +14,13 @@ Foliantica is a **local-first, all-in-one writing studio** — manuscript editor
 - 🌍 **World-builder native.** Codex, relations graph, configurable time system, and timeline — built in, not bolted on.
 - 📤 **Submission-ready.** One click generates manuscripts formatted for 38+ publishers and agents, downloaded as a ZIP.
 - ☁️ **Optional sync.** Point the data folder at Dropbox, Google Drive, or OneDrive — that's all it takes.
-- 💬 **A second opinion when everyone else is busy.** Chat about your plot, ask if a scene lands, brainstorm a name — the AI knows your characters and your world, but the story is still yours to write.
+- 💬 **A second opinion when everyone else is busy.** Chat about your plot, ask if a scene lands, brainstorm a name — the AI knows your characters and your world, but the story is still yours to write. Bring your own provider: OpenRouter, OpenAI, Anthropic, Groq, Mistral, Gemini, or a local Ollama model.
+- 🎲 **AI Dungeon Master.** Turn a project into a solo RPG campaign — the DM narrates, you roll real dice, and your codex grows with every session.
 - 👥 **Co-work.** Invite a writing partner, editor, or student over the local network or internet — they get their own role, their own access level, and their comments appear live in your editor.
 - 🔎 **Prose checker.** Structural feedback on your writing: sentence variety, dialogue ratio, passive voice, weasel words, and more — powered by Vale with multilingual fiction rule sets.
+- 🌐 **13 interface languages.** English, German, Spanish, French, Portuguese, Italian, Dutch, Polish, Swedish, Danish, Norwegian, Chinese, and Japanese.
 
-→ [See the full feature list](#features)
+→ [See the full feature list](#features) · machine-readable version: [`docs/features.yaml`](docs/features.yaml)
 
 Available as a **standalone desktop app** (Windows, macOS, Linux) or run directly from source.
 
@@ -34,7 +36,7 @@ Download the latest installer from [Releases](../../releases) and run it — no 
 
 ### Run from Source
 
-Double-click **`LaunchFoliantica.bat`** (Windows) — it starts the backend, frontend, and the Docker sidecars (LanguageTool + Pandoc) in one step.
+Double-click **`LaunchFoliantica.bat`** (Windows) or run **`./LaunchFoliantica.sh`** (macOS / Linux) — it starts the backend, frontend, and the Docker sidecars (LanguageTool, Vale, Pandoc) in one step.
 
 ```powershell
 .\LaunchFoliantica.bat
@@ -42,12 +44,12 @@ Double-click **`LaunchFoliantica.bat`** (Windows) — it starts the backend, fro
 
 Then open **http://localhost:3000** in your browser.
 
-> Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and Docker Desktop (for grammar check and PDF/EPUB/DOCX export).
+> Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and Docker Desktop (for grammar check, prose check, and PDF/EPUB/DOCX export).
 
 ### Build the Desktop App
 
 ```powershell
-.\build.ps1       # Windows
+.\build.bat       # Windows
 ./build.sh        # macOS / Linux
 ```
 
@@ -57,12 +59,21 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 
 ## Features
 
+**Writing:** [Story Editor](#️-story-editor) · [Scene Plan](#️-scene-plan) · [Version History](#-version-history) · [Fragments](#️-fragments) · [Import](#-import)
+**Structure:** [Plot Structure & Beat Sheets](#-plot-structure--beat-sheets) · [Corkboard](#-corkboard) · [POV Tracker](#-pov-tracker)
+**World-building:** [Codex](#-codex-world-building-database) · [Shared Codex & Series](#-shared-codex--series-management) · [Relations Graph](#️-relations-graph) · [Time System](#-time-system) · [Timeline](#-timeline) · [Research Board](#-research-board)
+**Feedback:** [Prose Checker](#-prose-checker) · [Grammar & Style](#-grammar--style-check) · [Analytics](#-analytics) · [Stats & Achievements](#-stats-dashboard--achievements) · [Writer's Guide](#-writers-guide--genre-wiki)
+**AI:** [AI Assistant](#-ai-assistant) · [AI Prompts](#-ai-prompts) · [AI Dungeon Master](#-ai-dungeon-master-rpg-campaigns)
+**Sharing & output:** [Co-work](#-co-work) · [Export](#-export) · [Publisher Pack & Query Tracker](#-publisher-pack--query-tracker) · [Data Folder & Sync](#️-data-folder--sync)
+
 ### ✍️ Story Editor
+
+*The distraction-free manuscript editor at the heart of the app: a four-level story hierarchy, rich text, autosave, and writer-focused modes.*
 
 - **4-level hierarchy**: Project → Act → Chapter → Scene
 - Drag-and-drop reordering at every level; hover any divider and click **+** to insert a scene between existing ones
 - Double-click any act or chapter title to rename inline; scene titles auto-generated from content when left blank
-- Debounced **autosave** (1 s) + periodic interval save; localStorage fallback when the backend is unreachable
+- Debounced **autosave** with a configurable interval + periodic interval save; localStorage fallback when the backend is unreachable
 - Word count in the status bar; per-scene counts persist to the database
 - **Slash commands** (`/`) — headings, lists, blockquote, task list, table, divider, images, currency/item nodes, AI nodes, timeline events, and more
 - **Rich formatting toolbar** — appears on text selection with bold, italic, underline, strikethrough, headings, lists, blockquote, and text alignment
@@ -75,8 +86,11 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 - **Find & Replace** — Ctrl+F / Cmd+F with match highlighting and replace
 - **Ghost text** — AI-powered inline autocomplete suggestions drawn from your own prose style
 - **Read view** — flowing, story-typography prose per chapter or per act
+- **Human-readable scene time** — the scene's in-world time shown in plain words
 
 ### 🗒️ Scene Plan
+
+*A per-scene to-do list so you know what each scene still has to achieve.*
 
 - Per-scene **checklist** — click the clipboard icon next to any scene name in the sidebar
 - Add, check off, edit inline (double-click), or bulk-clear completed tasks
@@ -84,21 +98,46 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 
 ### 🕓 Version History
 
+*Automatic, deduplicated snapshots of every scene, so no edit is ever truly lost.*
+
 - **Automatic snapshots** every 5 minutes while a scene is open (only when content changed)
 - **Scene-leave snapshot** on navigation; **pre-restore snapshot** before any restore
 - SHA-256 deduplication — identical content never stored twice
 - Retention: up to 30 versions per scene; oldest pruned after 30 days
 - **History sidebar** — relative timestamps, inline preview, one-click restore with confirmation
 
+### 🧭 Plot Structure & Beat Sheets
+
+*Map your story onto a proven structure and see which beats your scenes already cover.*
+
+- **Seven built-in templates**: Save the Cat, Hero's Journey, Seven-Point Structure, Three-Act Structure, Eight-Point Story Arc, Snowflake Method, and Freytag's Pyramid
+- Each beat shows its name, purpose, and target position in the story (percent of total length)
+- Add your own notes to any beat; resize beat spans to fit your pacing
+- The selected template is stored per project and shared with the Corkboard's beat labels
+- One click opens the matching chapter of the Writer's Guide
+
 ### 📋 Corkboard
 
+*A visual board of scene cards for seeing — and rearranging — the shape of your story.*
+
 - Visual scene-card view across acts and chapters
-- **Subplot columns** — drag scenes into parallel plot threads; main plot always leftmost
+- **Subplot columns** — drag scenes into parallel plot threads; main plot always leftmost; subplot colours seeded automatically
 - **Stack groups** — scenes sharing a stack value move as one unit
 - Cards show synopsis, word count, POV character, and beat label
 - Free-canvas mode with React Flow positions
+- **Board styles** — switchable visual themes, adjustable card corner radius, preferences remembered per project
+
+### 👁️ POV Tracker
+
+*See whose eyes the story is told through, and how evenly screen time is shared.*
+
+- Point-of-view distribution per character — colour-coded bars with scene count and percentage
+- Assign the POV character of every scene from one list
+- POV choices sync with the Corkboard cards and the Stats dashboard's "POV screen time" chart
 
 ### 👥 Co-work
+
+*Invite writing partners, editors, or students into your project with fine-grained roles and live comments.*
 
 - **Invite a guest** with a named invitation link — share it over the network or open a Cloudflare Tunnel for internet access (no port-forwarding required)
 - **QR code** in Settings → Co-work for easy mobile join
@@ -114,7 +153,10 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 
 ### 🔎 Prose Checker
 
+*Structural and stylistic feedback on your prose, run entirely on your machine.*
+
 - **Structural analysis** at a glance: sentence length variance, average sentence length, dialogue ratio, passive-voice rate, and weasel-word density — all shown in the Vale panel
+- **Prose Metrics** can be run individually from the scene menu
 - **Vale-powered style rules** — a curated fiction rule set covering:
   - *Passive voice* — flags passive constructions in prose
   - *Weasel words* — hedging language that weakens sentences
@@ -130,27 +172,47 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 
 ### 📊 Analytics
 
+*Numbers on your manuscript — readability, scene types, and writing habits.*
+
 - **Scene-level breakdown** — word count, scene type, average sentence length, dialogue ratio
 - **Chapter-level stats** — Flesch readability score, Kincaid grade level, scene type distribution
 - **Project totals** — total word count, overall scene type chart
 - **Writing log** — daily word counts and streaks; calendar heat-map style view
 
+### 🏆 Stats Dashboard & Achievements
+
+*A cross-project dashboard of your writing activity, plus 100+ achievements that reward the habit.*
+
+- **Activity heat-map** for the last 52 weeks
+- Charts: this week, output by day of week, cumulative growth, words per project, POV screen time, scene-length distribution, daily output with 7-day average
+- **Pending placeholders** — lists unfinished placeholders left in your manuscript
+- **Achievements** in tiered chains — writing streaks (1 → 365 days), total words (100 → 250k+), codex building, research, queries, and more — each with a literary quote
+- **Toast notification** the moment an achievement unlocks
+- **Showcase** — pin up to 6 favourite achievements to the top of your dashboard
+
 ### 📚 Codex (World-Building Database)
 
+*Your world bible: characters, places, items, and lore — linked, searchable, and highlighted right in your prose.*
+
 - Entry types: **Character**, **Location**, **Item**, **Lore**, **Custom**
-- Fields: name, aliases, description, notes, colour tag, groups, species / subtype, tags
+- Fields: name, aliases, description, notes, colour tag, groups, species / subtype, gender, tags
+- **Portraits** — upload an image and crop it to a portrait
 - **Main character flag** — protagonists starred (★) in dropdowns and centred in the relations graph
-- **Character inventory** — custom currencies and possessions (linked items, quantity, notes)
-- Inline **Codex highlighting** — any word matching an entry name or alias gets a coloured underline; click to open the entry
+- **Character inventory** — custom currencies and possessions (linked items, quantity, notes), with a full item and currency log per scene and per character
+- **Autosave** while you edit an entry
+- **AI codex updates** — let the AI propose additions to an entry based on your scenes
+- Inline **Codex highlighting** — any word matching an entry name or alias gets a coloured underline (including German genitive forms); click to open the entry
 - **List view** and **Grid view** — sortable by name, type, group, colour, or tags
 - **Filters** — type, group, species, subtype, tags — multi-select, combine freely
 - **Multi-select + bulk-edit** — change type, subtype/species, add shared tags/relations, or delete in one action
 - **Typed relations** between entries (Friend, Enemy, Family, Leads, Possession, custom…)
 - **Share mode** per entry — control which linked projects can read it
-- **Import** from CSV, JSON, or a folder of `.md` files
+- **Import** from CSV, JSON, Markdown, or a folder of `.md` files
 - **Mention stats** — see which scenes reference each codex entry and how often
 
 ### 🔗 Shared Codex & Series Management
+
+*Share one world bible across several books and manage them as a series.*
 
 - Link a project to an existing world-bible — both projects share the same codex entries in real time
 - Or **copy** the codex to start an independent fork
@@ -159,12 +221,17 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 
 ### 🕸️ Relations Graph
 
-- SVG radial mindmap — one entry at centre, linked entries on the inner ring, second-degree connections on the outer ring
-- **Depth slider (1–3)** — control relationship hops
+*An interactive map of how everyone and everything in your world is connected.*
+
+- **Physics-based graph** (d3-force) — nodes settle naturally; drag any node and its position is remembered per project
+- **Depth slider (1–3)** — control relationship hops out from the centre entry
 - Click any node to re-centre; right-click for *Edit Entry* / *Remove Relation*
-- Solid lines = explicit relations; dashed lines = inline `[rel:]` tags detected in scene prose
+- Solid lines = explicit relations; animated dashed lines = inline `[rel:]` tags detected in scene prose
+- Shared visual style with the Timeline and Corkboard canvases
 
 ### 🕐 Time System
+
+*Define how time works in your world — any calendar, any units, any day length.*
 
 - Per-project **configurable time units** — any combination of Age, Year, Season, Month, Day, Hour, Minute, Second; rename any unit to fit your world
 - Custom count-per-parent (e.g. 13 months/year) and **named values** (e.g. custom month or season names)
@@ -173,6 +240,8 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 
 ### 📅 Timeline
 
+*See your scenes and world events laid out in in-world chronological order.*
+
 - Horizontal grid — rows are scenes, columns are time points
 - Column headers show formatted in-world time with ☀ / 🌙 badge; click a cell to jump to that scene
 - **Timeline tracks** — parallel story threads (e.g. "Parallel world", "Backstory") with custom colour and time range
@@ -180,6 +249,8 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 - Shared-codex projects display a combined multi-project timeline
 
 ### 🔬 Research Board
+
+*Collect links, notes, images, and PDFs next to your manuscript.*
 
 - Clip **URLs** (auto-fetches title, description, and preview image), **text notes**, **images**, and **PDFs**
 - **Drag-and-drop** or **Ctrl+V** paste to attach an image to any clip — works even with a text field focused
@@ -192,11 +263,32 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 
 ### 🗃️ Fragments
 
+*A home for cut prose, ideas, and scraps that don't belong in a scene yet.*
+
 - **Snippets**, **Ideas**, and **Archive** tabs built in; add any number of custom tabs
 - Lightweight note cards with category labels and drag-to-reorder
-- Great for cut prose, worldbuilding scraps, and anything that doesn't belong in a scene yet
+- Fragments and research clippings unified across all tabs
+
+### 📥 Import
+
+*Bring an existing manuscript or world bible into Foliantica.*
+
+- **Story import** from Markdown — `#` becomes the project, `##` acts, `###` chapters, `####` scenes (older two-level files are handled too)
+- **Codex import** — native Markdown format (`## character: Name`), legacy YAML-frontmatter files, CSV, or JSON
+
+### 📖 Writer's Guide & Genre Wiki
+
+*A built-in craft handbook — always one click away from the editor.*
+
+- Chapters on show-don't-tell, pacing, character arcs, dialogue, story structure, self-editing, and more, each with dos and don'ts, examples, and sources
+- Illustrated with SVG diagrams (pacing matrix, three-act structure, character arcs, self-edit checklist…)
+- **Character archetypes** — hero, villain, and supporting-cast types
+- **Genre & Subgenre Wiki** — from epic fantasy to Silkpunk, Flintlock, Fairytale Noir, Eldritch, Ecofantasy, and Epistolary
+- Translated into all interface languages
 
 ### 🤖 AI Assistant
+
+*An AI writing companion that knows your characters and world — you choose the provider and model.*
 
 - Sidebar panel — **Continue**, **Rewrite**, **Brainstorm**, **Ask**, **Custom** modes
 - **`/ki` inline AI node** — insert a generation block directly into the prose:
@@ -204,26 +296,49 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
   - Inject **codex entries** and **extra scenes** as context
   - Set a **word count** target
 - **Auto-synopsis** — one-click scene synopsis generation from the scene toolbar
-- Streams output from any [OpenRouter](https://openrouter.ai) model
+- **Multiple providers** — OpenRouter, OpenAI, Anthropic, Groq, Mistral, Google Gemini, or a local **Ollama** model (fully offline)
+- Streaming output; API keys stored server-side, never sent to the browser
 - **Per-operation model overrides** — dedicate a model to synopsis, codex distillation, and scene chat independently of the global default
 - Project language propagates to all AI prompts automatically (e.g. writes in German when `language: "de"`)
 
 ### 📝 AI Prompts
 
-- Built-in prompts: **Story Generation**, **Lector Review**, **Codex Entry Distillation**
+*Edit every prompt the AI uses, or write your own.*
+
+- Built-in prompts: **Story Generation**, **Lector Review**, **Codex Entry Distillation**, plus six editable **Dungeon Master** prompts
 - **Custom prompts** — name, system instruction, user template, and word count target
 - Template placeholders: `{{SCENE_CONTENT}}`, `{{CODEX_ENTRIES}}`, `{{USER_PROMPT}}`, `{{LANGUAGE}}`, `{{WORD_COUNT}}`, `{{ENTRY_TYPE}}`
 - Manage all prompts in **Settings → AI Prompts**; revert built-ins to factory defaults any time
 
+### 🎲 AI Dungeon Master (RPG Campaigns)
+
+*Create a project of kind **RPG** and play a solo tabletop campaign with an AI game master that remembers everything — built on the same codex and AI providers as your books.*
+
+- **Play view** — persistent sessions and turns with streaming second-person narration; cancel a running narration or delete individual turns
+- **Real dice** — a dice tray rolls on the server, or you enter your physical table rolls; the AI never rolls for you and honours every result
+- **Session Zero wizard** — set up the campaign's premise, tone, and boundaries before the first scene
+- **Character wizard** — a simple d20 ruleset with species and classes, stat rolling, and syllable-based name generation; add your own custom species, classes, and other ruleset entries; characters are saved as codex entries with an RPG sheet
+- **State keeping** — after each narration the app extracts effects (new NPCs, gear, HP, conditions, current scene) and applies them, with **per-turn undo**
+- **Memory pyramid** — facts, threads, secrets, and foreshadowing linked back to the turn they came from; session summaries; a campaign brief; full-text retrieval so the DM stays consistent over long campaigns
+- **Codex grows with play** — the DM proposes codex additions and new relations; you confirm each one in a dialog before anything is written
+- **Creativity kit** — scene-seeded oracle tables, a cliché ban-list with automatic narration reroll, and wildcard draws ("Billions of Wildcards" syntax, from your own YAML/text wildcard files)
+- **Commands** — `/codex` (catch the codex up with what play established), `/roll20`, `/wildcard`
+- **Narration controls** — length and point of view (first, second, or third person)
+- Codex names highlighted in the narration; end a session to consolidate its memory
+
 ### 🔍 Grammar & Style Check
 
-- Powered by **LanguageTool** (self-hosted via Docker — your text never leaves your machine)
+*Grammar, spelling, and style checking that runs locally.*
+
+- Powered by **LanguageTool** (self-hosted via Docker, native on arm64 too — your text never leaves your machine)
 - Colour-coded highlighting by category: grammar, style, spelling, punctuation
 - Click any issue to jump to the exact occurrence in the editor (handles repeated phrases correctly)
 - One-click **Apply suggestion** to accept a fix; 3-minute timeout with a patience message while the check runs
 - Supported languages: English, German, French, Spanish, Portuguese, Italian, Dutch, Polish, Russian, and more
 
 ### 📤 Export
+
+*Turn your manuscript into print- and e-book-ready files with full control over typography.*
 
 - **Markdown** — clean `.md` output
 - **LaTeX** — `\chapter` / `\section` structure, proper escaping, configurable font/size/margins/drop-caps
@@ -235,6 +350,8 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 - **EPUB Style export** — standalone CSS + optional cover image for custom EPUB toolchains
 
 ### 📬 Publisher Pack & Query Tracker
+
+*Format your manuscript for dozens of publishers at once, then track every submission.*
 
 - **38 publisher / agent formatting profiles** across 9 categories:
   - Standard Formats (SMF TNR, SMF Courier)
@@ -252,6 +369,15 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 - **Query Tracker** — log every agent and publisher query: date sent, response deadline, submission type, status (Queried → Partial → Full → Offer / Pass), and notes
 - Status overview strip showing live counts and a pipeline progress bar
 
+### ☁️ Data Folder & Sync
+
+*Keep your data where you want it — including a cloud folder for cross-device use.*
+
+- Point the **data folder** at Dropbox, Google Drive, OneDrive, or a NAS; migrate existing data in one click
+- **Background mirror** every 5 minutes — a database dump plus incremental copy of uploads (only new or changed files)
+- Manual **sync now**, **dump**, and **restore** from Settings
+- Notification when a sync happens or needs attention
+
 ---
 
 ## Stack
@@ -262,20 +388,23 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 | Frontend | Next.js 14, TypeScript, Tailwind CSS, shadcn/ui |
 | Editor | TipTap v3 — Typography, Underline, TextAlign, TaskList, Table + custom extensions |
 | State | Zustand + TanStack Query v5 |
-| Backend | FastAPI, SQLAlchemy 2.0, PostgreSQL 17 / SQLite (WAL) |
-| AI | OpenRouter (any model, proxied via backend) |
+| Backend | FastAPI, SQLAlchemy 2.0, Alembic, PostgreSQL 17 / SQLite (WAL) |
+| AI | OpenRouter, OpenAI, Anthropic, Groq, Mistral, Gemini, Ollama (proxied via backend) |
+| Graphs | d3-force, React Flow |
 | Export | Markdown, LaTeX, PDF / EPUB / DOCX via Pandoc (Docker sidecar) |
 | Style check | Vale (Docker sidecar) — multilingual fiction rule sets |
+| Grammar | LanguageTool (Docker sidecar) |
 | Co-work | WebSocket event push, JWT guest auth, Cloudflare Tunnel |
 
 ---
 
 ## Settings
 
-- **OpenRouter API key** — stored server-side, never sent to the browser
+- **AI provider & API keys** — choose a provider; keys are stored server-side, never sent to the browser
 - **AI models** — global default; separate overrides for chat, synopsis, and codex distillation; per-model enable/disable for `/ki`
 - **Themes** — Dark, Light, and themed variants
-- **Editor** — paragraph numbers, typewriter mode and offset, session timer
+- **Interface language** — 13 languages
+- **Editor** — paragraph numbers, typewriter mode and offset, session timer, autosave interval
 - **Grammar Check** — enable, set LanguageTool service URL and active languages
 - **Prose / Vale** — enable Vale style check, set service URL, manage rule sets and custom rules
 - **Co-work** — enable guest access, create named invitations, set access modes, open a Cloudflare Tunnel for internet access
@@ -283,6 +412,7 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 - **Data folder** — point to Dropbox / Drive / OneDrive for cross-device sync; migrate existing data in one click
 - **AI Prompts** — edit, create, delete, revert built-ins to factory defaults
 - **Codex highlight** — toggle the coloured underline for codex entry names in the editor
+- **Wildcards** — path to a YAML file or folder of wildcards used by the Dungeon Master
 
 ---
 
@@ -307,6 +437,7 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 | Bulk-edit codex entries | Check multiple entries → floating action bar |
 | Sort codex by tags | List view → click the **Tags** column header |
 | Add custom month/season names | Time System → unit row → **Custom names** |
+| Pick a plot structure | Plot page → choose a template |
 | Export a single manuscript | Sidebar → **Export → Single** |
 | Export to multiple publishers at once | Sidebar → **Export → Publisher Pack** |
 | Track an agent query | Sidebar overflow → **Query Tracker** |
@@ -331,6 +462,9 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 | Jump to a Vale finding in the editor | Click the finding in the Vale panel |
 | Add your own style rule entry | Vale panel → rule → Configure → Add entry |
 | Toggle codex highlight underlines | Settings → Editor → Codex highlight |
+| Start an RPG campaign | New Project → kind **RPG** → Dungeon Master |
+| Write play results into the codex | Dungeon Master → type `/codex` |
+| Pin achievements to your dashboard | Stats → achievement → **Add to showcase** |
 
 ---
 
@@ -341,25 +475,33 @@ foliantica/
 ├── electron/             # Electron main process + splash screen
 │   └── assets/           # App icons (ico, icns, png)
 ├── api/                  # FastAPI backend
-│   ├── routers/          # projects, scenes, codex, time, graph, ai,
-│   │                     #   settings, export, imports, analytics,
-│   │                     #   submissions, research, fragments, grammar,
-│   │                     #   prose, vale, collab, comments, sync,
-│   │                     #   scene_commands, achievements
-│   ├── services/         # Tag parsing, AI streaming, export renderers
+│   ├── routers/          # projects, acts, chapters, scenes, codex, time,
+│   │                     #   graph, ai, settings, export, imports,
+│   │                     #   analytics, submissions, research, fragments,
+│   │                     #   grammar, prose, vale, collab, comments, sync,
+│   │                     #   scene_commands, achievements, dm, images
+│   ├── services/         # Tag parsing, importer, export renderers,
+│   │                     #   DM character generation, oracle, wildcards
+│   ├── data/             # DM ruleset + oracle tables
+│   ├── alembic/          # Database migrations (applied on startup)
+│   ├── ai_providers.py   # Provider adapters (OpenAI-compatible, Anthropic, Ollama…)
 │   ├── models.py         # SQLAlchemy ORM models
 │   ├── schemas.py        # Pydantic request/response schemas
 │   └── database.py       # Engine, session, migration helpers, publisher seed data
 ├── docker/
 │   └── pandoc/           # Pandoc + LaTeX sidecar (PDF/EPUB/DOCX export)
+├── docs/
+│   └── features.yaml     # Machine-readable feature list
 └── web/                  # Next.js 14 frontend
     └── src/
         ├── app/          # App Router pages
-        │                 #   (editor, codex, timeline, corkboard, analytics,
-        │                 #    research, fragments, queries, settings…)
+        │                 #   (editor, codex, timeline, corkboard, plot, pov,
+        │                 #    relations, analytics, dm, fragments, queries,
+        │                 #    stats, settings…)
         ├── components/   # Editor, Codex, AI panel, Export dialog,
-        │                 #   Corkboard, Analytics, Research, Fragments,
-        │                 #   Query Tracker, Version History, Scene Plan
+        │                 #   Corkboard, Dungeon Master, Research, Fragments,
+        │                 #   Writer's Guide, Version History, Scene Plan
+        ├── lib/          # API client, i18n, plot templates, utilities
         ├── store/        # Zustand UI store + TanStack Query hooks
         └── types/        # Shared TypeScript interfaces
 ```

@@ -1,0 +1,344 @@
+# Foliantica — machine-readable feature list.
+# Mirrors the "Features" section of README.md; keep both in sync.
+
+app:
+  name: Foliantica
+  tagline: "Your manuscript. Your world. Your machine."
+  description: >-
+    A local-first, all-in-one writing studio for authors who build worlds:
+    manuscript editor, codex, timeline, corkboard, plot structure, analytics,
+    submission tracker, and an AI game master for solo RPG campaigns.
+  version: "2.4.0"
+  license: see LICENSE
+  principles:
+    - Offline by default — nothing leaves the machine without consent
+    - No subscriptions, no accounts, no telemetry
+    - Optional sync through any cloud folder
+  platforms: [Windows, macOS, Linux]
+  distribution: [desktop installer (Electron), run from source]
+  interface_languages: [en, de, es, fr, pt, it, nl, pl, sv, da, "no", zh, ja]
+
+features:
+  - id: story-editor
+    name: Story Editor
+    category: writing
+    overview: >-
+      The distraction-free manuscript editor at the heart of the app: a
+      four-level story hierarchy, rich text, autosave, and writer-focused modes.
+    capabilities:
+      - "Project → Act → Chapter → Scene hierarchy with drag-and-drop reordering at every level"
+      - Insert a scene between two others via the divider "+"
+      - Inline rename of acts and chapters; auto-generated scene titles
+      - Debounced autosave with configurable interval and localStorage fallback when offline
+      - Live and persisted word counts
+      - "Slash commands: headings, lists, blockquote, task list, table, divider, images, currency/item nodes, AI nodes, timeline events"
+      - Selection bubble toolbar with formatting and alignment
+      - Smart typography (curly quotes, en/em dashes, ellipses)
+      - Tables, task lists, embedded images
+      - Native spellcheck with personal dictionary, language from book metadata
+      - Typewriter mode, focus mode, paragraph numbers
+      - Find & Replace (Ctrl/Cmd+F)
+      - AI ghost-text autocomplete in your own style
+      - Read view per chapter or act
+      - Human-readable in-world scene time
+
+  - id: scene-plan
+    name: Scene Plan
+    category: writing
+    overview: A per-scene to-do list so you know what each scene still has to achieve.
+    capabilities:
+      - Per-scene checklist opened from the sidebar
+      - Add, check off, inline edit, bulk-clear completed tasks
+      - Progress bar and completion badge
+
+  - id: version-history
+    name: Version History
+    category: writing
+    overview: Automatic, deduplicated snapshots of every scene, so no edit is ever truly lost.
+    capabilities:
+      - Snapshots every 5 minutes while a scene is open (only on change)
+      - Scene-leave and pre-restore snapshots
+      - SHA-256 deduplication
+      - Up to 30 versions per scene, pruned after 30 days
+      - History sidebar with preview and one-click restore
+
+  - id: plot-structure
+    name: Plot Structure & Beat Sheets
+    category: structure
+    overview: Map your story onto a proven structure and see which beats your scenes already cover.
+    capabilities:
+      - "Templates: Save the Cat, Hero's Journey, Seven-Point Structure, Three-Act Structure, Eight-Point Story Arc, Snowflake Method, Freytag's Pyramid"
+      - Beat name, purpose, and target position (percent of story)
+      - Per-beat notes and resizable beat spans
+      - Template stored per project and shared with Corkboard beat labels
+      - Links to the matching Writer's Guide chapter
+
+  - id: corkboard
+    name: Corkboard
+    category: structure
+    overview: A visual board of scene cards for seeing — and rearranging — the shape of your story.
+    capabilities:
+      - Scene cards across acts and chapters (synopsis, word count, POV, beat label)
+      - Subplot columns with auto-seeded colours; main plot leftmost
+      - Stack groups that move as one unit
+      - Free-canvas mode (React Flow)
+      - Switchable board styles, adjustable card corner radius, per-project preferences
+
+  - id: pov-tracker
+    name: POV Tracker
+    category: structure
+    overview: See whose eyes the story is told through, and how evenly screen time is shared.
+    capabilities:
+      - POV distribution per character with scene count and percentage
+      - Assign the POV character of every scene from one list
+      - Syncs with Corkboard cards and the Stats "POV screen time" chart
+
+  - id: codex
+    name: Codex (World-Building Database)
+    category: world-building
+    overview: >-
+      Your world bible: characters, places, items, and lore — linked,
+      searchable, and highlighted right in your prose.
+    capabilities:
+      - "Entry types: Character, Location, Item, Lore, Custom"
+      - "Fields: name, aliases, description, notes, colour, groups, species/subtype, gender, tags"
+      - Portrait upload with cropping
+      - Main-character flag
+      - Character inventory with currencies, items, and per-scene/per-character logs
+      - Autosave while editing
+      - AI-proposed codex updates from your scenes
+      - Inline highlighting of entry names and aliases in the editor (incl. German genitive)
+      - List and grid views, sorting, multi-select filters
+      - Bulk edit (type, subtype, tags, relations, delete)
+      - Typed relations (Friend, Enemy, Family, Leads, Possession, custom)
+      - Per-entry share mode for linked projects
+      - Import from CSV, JSON, Markdown, or a folder of .md files
+      - Mention stats per entry
+
+  - id: shared-codex-series
+    name: Shared Codex & Series Management
+    category: world-building
+    overview: Share one world bible across several books and manage them as a series.
+    capabilities:
+      - Link projects to a shared codex (live) or copy it as a fork
+      - Series view with order, role labels, and shared covers
+      - Combined timeline across shared projects
+
+  - id: relations-graph
+    name: Relations Graph
+    category: world-building
+    overview: An interactive map of how everyone and everything in your world is connected.
+    capabilities:
+      - Physics-based layout (d3-force) with draggable, persisted node positions
+      - Depth slider (1–3 hops)
+      - Click to re-centre; right-click to edit entry or remove relation
+      - Solid lines for explicit relations, animated dashed lines for inline [rel:] tags
+      - Shared visual style with Timeline and Corkboard
+
+  - id: time-system
+    name: Time System
+    category: world-building
+    overview: Define how time works in your world — any calendar, any units, any day length.
+    capabilities:
+      - Configurable, renameable units (Age, Year, Season, Month, Day, Hour, Minute, Second)
+      - Custom counts per parent and named values
+      - Day/night cycle dial
+      - Per-scene time panel with live preview and day/night label
+
+  - id: timeline
+    name: Timeline
+    category: world-building
+    overview: See your scenes and world events laid out in in-world chronological order.
+    capabilities:
+      - Scene × time-point grid; click a cell to jump to the scene
+      - Parallel tracks with colour and time range
+      - Free-standing events, insertable from the editor via /timeline
+      - Combined multi-project timeline for shared codices
+
+  - id: research-board
+    name: Research Board
+    category: world-building
+    overview: Collect links, notes, images, and PDFs next to your manuscript.
+    capabilities:
+      - URL clips with auto-fetched title, description, preview image
+      - Text notes, images, PDFs (inline preview)
+      - Drag-and-drop or Ctrl+V image attach
+      - Image lightbox
+      - Tags and tag filter
+      - Link clips to scenes or codex entries
+
+  - id: fragments
+    name: Fragments
+    category: writing
+    overview: A home for cut prose, ideas, and scraps that don't belong in a scene yet.
+    capabilities:
+      - Snippets, Ideas, Archive tabs plus unlimited custom tabs
+      - Note cards with categories and drag-to-reorder
+      - Fragments and research clippings unified across tabs
+
+  - id: import
+    name: Import
+    category: writing
+    overview: Bring an existing manuscript or world bible into Foliantica.
+    capabilities:
+      - "Story import from Markdown (# project, ## act, ### chapter, #### scene; legacy two-level files supported)"
+      - Codex import from native Markdown, YAML-frontmatter files, CSV, or JSON
+
+  - id: prose-checker
+    name: Prose Checker
+    category: feedback
+    overview: Structural and stylistic feedback on your prose, run entirely on your machine.
+    capabilities:
+      - "Metrics: sentence length variance, average sentence length, dialogue ratio, passive-voice rate, weasel-word density"
+      - Prose Metrics runnable individually from the scene menu
+      - "Vale fiction rules: passive voice, weasel words, buzzwords, nominal style, redundancy, adverbs"
+      - Rule sets for English, German, Dutch, Italian, Polish
+      - Per-entry rule configuration and custom regex rules
+      - Jump from finding to exact occurrence
+    requires: Vale Docker sidecar
+
+  - id: grammar-check
+    name: Grammar & Style Check
+    category: feedback
+    overview: Grammar, spelling, and style checking that runs locally.
+    capabilities:
+      - Self-hosted LanguageTool (native arm64 support)
+      - Colour-coded categories (grammar, style, spelling, punctuation)
+      - Jump to occurrence and one-click apply suggestion
+      - Many languages (en, de, fr, es, pt, it, nl, pl, ru, …)
+    requires: LanguageTool Docker sidecar
+
+  - id: analytics
+    name: Analytics
+    category: feedback
+    overview: Numbers on your manuscript — readability, scene types, and writing habits.
+    capabilities:
+      - Scene-level word count, scene type, sentence length, dialogue ratio
+      - Chapter-level Flesch readability and Kincaid grade
+      - Project totals and scene-type charts
+      - Writing log with daily counts, streaks, and heat-map
+
+  - id: stats-achievements
+    name: Stats Dashboard & Achievements
+    category: feedback
+    overview: A cross-project dashboard of your writing activity, plus 100+ achievements that reward the habit.
+    capabilities:
+      - 52-week activity heat-map
+      - "Charts: this week, by day of week, cumulative growth, words per project, POV screen time, scene-length distribution, daily output with 7-day average"
+      - Pending-placeholder list
+      - Tiered achievement chains (streaks, total words, codex, research, queries, …) with literary quotes
+      - Unlock toast notifications
+      - Showcase of up to 6 pinned achievements
+
+  - id: writers-guide
+    name: Writer's Guide & Genre Wiki
+    category: feedback
+    overview: A built-in craft handbook — always one click away from the editor.
+    capabilities:
+      - Craft chapters (show-don't-tell, pacing, character arcs, dialogue, structure, self-editing, …) with dos, don'ts, examples, sources
+      - SVG diagrams
+      - Hero, villain, and supporting-cast archetypes
+      - Genre & Subgenre Wiki (incl. Silkpunk, Flintlock, Fairytale Noir, Eldritch, Ecofantasy, Epistolary)
+      - Translated into all interface languages
+
+  - id: ai-assistant
+    name: AI Assistant
+    category: ai
+    overview: An AI writing companion that knows your characters and world — you choose the provider and model.
+    capabilities:
+      - "Sidebar modes: Continue, Rewrite, Brainstorm, Ask, Custom"
+      - "/ki inline AI node with prompt choice, codex/scene context, and word-count target"
+      - One-click auto-synopsis
+      - Streaming output
+      - Per-operation model overrides (synopsis, codex distillation, scene chat)
+      - Project language propagated to all prompts
+    providers: [OpenRouter, OpenAI, Anthropic, Groq, Mistral, Google Gemini, Ollama]
+    privacy: API keys stored server-side; Ollama runs fully offline
+
+  - id: ai-prompts
+    name: AI Prompts
+    category: ai
+    overview: Edit every prompt the AI uses, or write your own.
+    capabilities:
+      - "Built-ins: Story Generation, Lector Review, Codex Entry Distillation, six Dungeon Master prompts"
+      - Custom prompts with system instruction, user template, word-count target
+      - "Placeholders: {{SCENE_CONTENT}}, {{CODEX_ENTRIES}}, {{USER_PROMPT}}, {{LANGUAGE}}, {{WORD_COUNT}}, {{ENTRY_TYPE}}"
+      - Revert built-ins to factory defaults
+
+  - id: dungeon-master
+    name: AI Dungeon Master (RPG Campaigns)
+    category: ai
+    overview: >-
+      Play a solo tabletop campaign in an RPG-kind project with an AI game
+      master that remembers everything, built on the same codex and AI
+      providers as your books.
+    capabilities:
+      - Persistent sessions and turns with streaming narration; cancel narration, delete turns
+      - Server-rolled or manually entered physical dice — the AI never rolls
+      - Session Zero wizard for premise, tone, boundaries
+      - Character wizard with a simple d20 ruleset, species, classes, stat rolling, name generation
+      - Custom ruleset entries (species, classes, …)
+      - Characters saved as codex entries with an RPG sheet
+      - Automatic effects extraction (NPCs, gear, HP, conditions, scene) with per-turn undo
+      - "Memory pyramid: sourced facts/threads/secrets/foreshadowing, session summaries, campaign brief, full-text retrieval"
+      - Codex additions and relation suggestions confirmed in a dialog before writing
+      - Scene-seeded oracle tables, cliché ban-list with narration reroll, wildcard draws
+      - "Commands: /codex, /roll20, /wildcard"
+      - Narration length and POV (first, second, third person)
+      - Codex highlighting in narration; session end consolidates memory
+
+  - id: co-work
+    name: Co-work
+    category: sharing
+    overview: Invite writing partners, editors, or students into your project with fine-grained roles and live comments.
+    capabilities:
+      - Named invitation links over LAN or Cloudflare Tunnel; QR code join
+      - "Access modes: Read-only, Appearance-only, Assigned scenes, Editor, Full"
+      - Student mode with teacher dashboard
+      - Threaded inline comments with categories (Question, Suggestion, Correction, Praise)
+      - Live presence, scene soft-locks, WebSocket push
+      - Session management (kick, revoke)
+
+  - id: export
+    name: Export
+    category: output
+    overview: Turn your manuscript into print- and e-book-ready files with full control over typography.
+    capabilities:
+      - "Formats: Markdown, LaTeX, PDF, EPUB, DOCX"
+      - Scene selection and heading options
+      - Full typography control (font, size, spacing, indent, alignment, margins, page numbers, drop caps)
+      - Saved profiles (Classic Novel, Manuscript, Modern, custom)
+      - Standalone EPUB style export
+    requires: Pandoc Docker sidecar (PDF/EPUB/DOCX)
+
+  - id: publisher-pack
+    name: Publisher Pack & Query Tracker
+    category: output
+    overview: Format your manuscript for dozens of publishers at once, then track every submission.
+    capabilities:
+      - 38 publisher/agent formatting profiles in 9 categories (US, UK, agencies, genre, self-publishing, German, French, Spanish, standard)
+      - Multi-publisher ZIP export named Publisher_Title.ext
+      - Profile badges, word-count range, open/agented status, guideline links
+      - "Query Tracker: date, deadline, type, status pipeline (Queried → Partial → Full → Offer / Pass), notes"
+      - Status overview with pipeline progress bar
+
+  - id: data-sync
+    name: Data Folder & Sync
+    category: output
+    overview: Keep your data where you want it — including a cloud folder for cross-device use.
+    capabilities:
+      - Data folder on Dropbox, Google Drive, OneDrive, or NAS with one-click migration
+      - Background mirror every 5 minutes (database dump + incremental uploads)
+      - Manual sync, dump, and restore
+      - Sync notifications
+
+stack:
+  desktop: Electron 42, electron-builder
+  frontend: Next.js 14, TypeScript, Tailwind CSS, shadcn/ui
+  editor: TipTap v3 with custom extensions
+  state: Zustand, TanStack Query v5
+  backend: FastAPI, SQLAlchemy 2.0, Alembic, PostgreSQL 17 / SQLite (WAL)
+  ai: OpenRouter, OpenAI, Anthropic, Groq, Mistral, Gemini, Ollama
+  graphs: d3-force, React Flow
+  sidecars: [Pandoc, Vale, LanguageTool]
+  co_work: WebSocket, JWT guest auth, Cloudflare Tunnel
