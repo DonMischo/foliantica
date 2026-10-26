@@ -1,24 +1,28 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, ChevronUp, ChevronDown } from "lucide-react";
+import { X, ChevronUp, ChevronDown, ChevronRight } from "lucide-react";
 import type { Editor } from "@tiptap/react";
 import { SEARCH_KEY } from "./SearchExtension";
 
 interface Props {
   editor: Editor;
   onClose: () => void;
+  showReplace: boolean;
+  onToggleReplace: () => void;
 }
 
-export function SearchBar({ editor, onClose }: Props) {
+export function SearchBar({ editor, onClose, showReplace, onToggleReplace }: Props) {
   const [term, setTerm] = useState("");
+  const [replacement, setReplacement] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const canReplace = showReplace && editor.isEditable;
 
-  // Focus & select-all when the bar opens
+  // Focus & select-all when the bar opens, or when Ctrl+F / Ctrl+H is pressed again
   useEffect(() => {
     inputRef.current?.focus();
     inputRef.current?.select();
-  }, []);
+  }, [showReplace]);
 
   // Re-render whenever editor state changes so result count is live
   const [, tick] = useState(0);
@@ -55,13 +59,38 @@ export function SearchBar({ editor, onClose }: Props) {
     if (e.key === "Escape") close();
   };
 
+  const replaceOne = () => {
+    editor.commands.replaceCurrent(replacement);
+    scrollToMatch();
+  };
+
+  const handleReplaceKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (e.ctrlKey || e.metaKey) editor.commands.replaceAll(replacement);
+      else replaceOne();
+    }
+    if (e.key === "Escape") close();
+  };
+
   const close = () => {
     editor.commands.clearSearch();
     onClose();
   };
 
   return (
-    <div className="absolute top-2 right-3 z-30 flex items-center gap-1 bg-card border border-border rounded-lg shadow-xl px-2 py-1.5">
+    <div className="absolute top-2 right-3 z-30 flex flex-col gap-1 bg-card border border-border rounded-lg shadow-xl px-2 py-1.5">
+    <div className="flex items-center gap-1">
+      {editor.isEditable && (
+        <button
+          type="button"
+          onClick={onToggleReplace}
+          title="Toggle replace (Ctrl+H)"
+          className="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+        >
+          <ChevronRight className={`h-3.5 w-3.5 transition-transform ${showReplace ? "rotate-90" : ""}`} />
+        </button>
+      )}
       <input
         ref={inputRef}
         value={term}
@@ -104,6 +133,38 @@ export function SearchBar({ editor, onClose }: Props) {
       >
         <X className="h-3.5 w-3.5" />
       </button>
+    </div>
+
+    {canReplace && (
+      <div className="flex items-center gap-1 pl-5">
+        <input
+          value={replacement}
+          onChange={(e) => setReplacement(e.target.value)}
+          onKeyDown={handleReplaceKeyDown}
+          placeholder="Replace with…"
+          className="bg-transparent text-sm outline-none w-44 text-foreground placeholder:text-muted-foreground"
+          spellCheck={false}
+        />
+        <button
+          type="button"
+          onMouseDown={(e) => { e.preventDefault(); replaceOne(); }}
+          disabled={total === 0}
+          title="Replace (Enter)"
+          className="px-1.5 py-0.5 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-secondary/60 disabled:opacity-30 transition-colors"
+        >
+          Replace
+        </button>
+        <button
+          type="button"
+          onMouseDown={(e) => { e.preventDefault(); editor.commands.replaceAll(replacement); }}
+          disabled={total === 0}
+          title="Replace all (Ctrl+Enter)"
+          className="px-1.5 py-0.5 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-secondary/60 disabled:opacity-30 transition-colors"
+        >
+          All
+        </button>
+      </div>
+    )}
     </div>
   );
 }

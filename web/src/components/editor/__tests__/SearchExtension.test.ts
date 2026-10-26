@@ -147,3 +147,61 @@ describe("SearchExtension — clearSearch", () => {
     expect(SEARCH_KEY.getState(editor.state)!.current).toBe(0);
   });
 });
+
+// ── replaceCurrent / replaceAll ──────────────────────────────────────────────
+
+describe("SearchExtension — replace", () => {
+  let editor: Editor;
+  afterEach(() => { editor.destroy(); });
+
+  it("replaceCurrent replaces only the current match and moves to the next", () => {
+    editor = makeEditor("<p>cat dog cat</p>");
+    editor.commands.setSearchTerm("cat");
+    editor.commands.replaceCurrent("bird");
+    expect(editor.getText()).toBe("bird dog cat");
+    const s = SEARCH_KEY.getState(editor.state)!;
+    expect(s.results).toHaveLength(1);
+    expect(s.current).toBe(0);
+  });
+
+  it("replaceCurrent skips past a replacement that contains the term", () => {
+    editor = makeEditor("<p>cat dog cat</p>");
+    editor.commands.setSearchTerm("cat");
+    editor.commands.replaceCurrent("cats");
+    expect(editor.getText()).toBe("cats dog cat");
+    const s = SEARCH_KEY.getState(editor.state)!;
+    // current now points at the second, untouched "cat", not the new "cats"
+    expect(s.results[s.current].from).toBeGreaterThan(5);
+  });
+
+  it("replaceCurrent with an empty string deletes the match", () => {
+    editor = makeEditor("<p>a cat b</p>");
+    editor.commands.setSearchTerm("cat ");
+    editor.commands.replaceCurrent("");
+    expect(editor.getText()).toBe("a b");
+  });
+
+  it("replaceAll replaces every match, case-insensitively", () => {
+    editor = makeEditor("<p>Cat dog cat.</p><p>cat!</p>");
+    editor.commands.setSearchTerm("cat");
+    editor.commands.replaceAll("bird");
+    expect(editor.getText()).toBe("bird dog bird.\n\nbird!");
+    expect(SEARCH_KEY.getState(editor.state)!.results).toHaveLength(0);
+  });
+
+  it("replace commands return false when there are no results", () => {
+    editor = makeEditor("<p>dog</p>");
+    editor.commands.setSearchTerm("cat");
+    expect(editor.commands.replaceCurrent("x")).toBe(false);
+    expect(editor.commands.replaceAll("x")).toBe(false);
+    expect(editor.getText()).toBe("dog");
+  });
+
+  it("replaceAll is a single undo step", () => {
+    editor = makeEditor("<p>cat cat</p>");
+    editor.commands.setSearchTerm("cat");
+    editor.commands.replaceAll("dog");
+    editor.commands.undo();
+    expect(editor.getText()).toBe("cat cat");
+  });
+});

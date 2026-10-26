@@ -38,6 +38,8 @@ declare module "@tiptap/core" {
       clearSearch: () => ReturnType;
       nextSearchResult: () => ReturnType;
       prevSearchResult: () => ReturnType;
+      replaceCurrent: (replacement: string) => ReturnType;
+      replaceAll: (replacement: string) => ReturnType;
     };
   }
 }
@@ -99,6 +101,40 @@ export const SearchExtension = Extension.create({
         }
         return true;
       },
+
+      replaceCurrent: (replacement: string) => ({ tr, dispatch, state }) => {
+        const s = SEARCH_KEY.getState(state);
+        if (!s?.results.length) return false;
+        if (dispatch) {
+          const { from, to } = s.results[s.current];
+          tr.insertText(replacement, from, to);
+          // Continue at the first match after the inserted text, so a
+          // replacement that itself contains the term isn't matched again.
+          const end = from + replacement.length;
+          const results = findAll(tr.doc, s.term);
+          const next = Math.max(0, results.findIndex((r) => r.from >= end));
+          tr.setMeta(SEARCH_KEY, { type: "SET", term: s.term, results, current: next });
+          if (results.length > 0) {
+            tr.setSelection(TextSelection.create(tr.doc, results[next].from));
+            tr.scrollIntoView();
+          }
+          dispatch(tr);
+        }
+        return true;
+      },
+
+      replaceAll: (replacement: string) => ({ tr, dispatch, state }) => {
+        const s = SEARCH_KEY.getState(state);
+        if (!s?.results.length) return false;
+        if (dispatch) {
+          // Back to front so earlier positions stay valid.
+          for (const { from, to } of [...s.results].reverse()) {
+            tr.insertText(replacement, from, to);
+          }
+          dispatch(tr);
+        }
+        return true;
+      },
     };
   },
 
@@ -113,7 +149,7 @@ export const SearchExtension = Extension.create({
           apply(tr, prev, _, newState): SearchState {
             const meta = tr.getMeta(SEARCH_KEY);
             if (meta?.type === "SET") {
-              return { term: meta.term, results: meta.results, current: 0 };
+              return { term: meta.term, results: meta.results, current: meta.current ?? 0 };
             }
             if (meta?.type === "CLEAR") {
               return { term: "", results: [], current: 0 };

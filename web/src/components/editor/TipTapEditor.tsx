@@ -236,6 +236,7 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
 
   // Search bar state
   const [searchOpen, setSearchOpen] = useState(false);
+  const [replaceOpen, setReplaceOpen] = useState(false);
   const searchOpenRef = useRef(false);
   searchOpenRef.current = searchOpen;
 
@@ -560,11 +561,13 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
     };
   }, [editor, replaceWordRef]);
 
-  // Ctrl+F / Cmd+F → open search bar; Escape → close it
+  // Ctrl+F / Cmd+F → open search bar; Ctrl+H / Cmd+H → open it with replace; Escape → close it
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+      const key = e.key.toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && (key === "f" || key === "h")) {
         e.preventDefault();
+        setReplaceOpen(key === "h");
         setSearchOpen(true);
       }
       if (e.key === "Escape" && searchOpenRef.current) {
@@ -720,7 +723,12 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
           )}
         </div>
         {editor && searchOpen && (
-          <SearchBar editor={editor} onClose={() => setSearchOpen(false)} />
+          <SearchBar
+            editor={editor}
+            onClose={() => setSearchOpen(false)}
+            showReplace={replaceOpen}
+            onToggleReplace={() => setReplaceOpen((v) => !v)}
+          />
         )}
       </div>
     </EditorContext.Provider>

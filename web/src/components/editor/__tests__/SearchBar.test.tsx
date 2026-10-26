@@ -24,7 +24,10 @@ function makeEditor(scrollEl: ReturnType<typeof makeScrollEl>) {
       nextSearchResult: vi.fn(),
       clearSearch: vi.fn(),
       setSearchTerm: vi.fn(),
+      replaceCurrent: vi.fn(),
+      replaceAll: vi.fn(),
     },
+    isEditable: true,
     view: {
       dom: {
         querySelector: vi.fn().mockReturnValue(scrollEl),
@@ -62,14 +65,14 @@ afterEach(() => {
 describe("SearchBar — next button (ChevronDown)", () => {
   it("calls nextSearchResult on mousedown", () => {
     const { editor, onClose } = setup();
-    render(<SearchBar editor={editor} onClose={onClose} />);
+    render(<SearchBar editor={editor} onClose={onClose} showReplace={false} onToggleReplace={vi.fn()} />);
     fireEvent.mouseDown(screen.getByTitle("Next (Enter)"));
     expect(editor.commands.nextSearchResult).toHaveBeenCalledOnce();
   });
 
   it("calls scrollIntoView on the current result element", () => {
     const { editor, scrollEl, onClose } = setup();
-    render(<SearchBar editor={editor} onClose={onClose} />);
+    render(<SearchBar editor={editor} onClose={onClose} showReplace={false} onToggleReplace={vi.fn()} />);
     fireEvent.mouseDown(screen.getByTitle("Next (Enter)"));
     expect(
       (editor.view.dom as any).querySelector
@@ -84,14 +87,14 @@ describe("SearchBar — next button (ChevronDown)", () => {
 describe("SearchBar — prev button (ChevronUp)", () => {
   it("calls prevSearchResult on mousedown", () => {
     const { editor, onClose } = setup();
-    render(<SearchBar editor={editor} onClose={onClose} />);
+    render(<SearchBar editor={editor} onClose={onClose} showReplace={false} onToggleReplace={vi.fn()} />);
     fireEvent.mouseDown(screen.getByTitle("Previous (Shift+Enter)"));
     expect(editor.commands.prevSearchResult).toHaveBeenCalledOnce();
   });
 
   it("calls scrollIntoView on the current result element", () => {
     const { editor, scrollEl, onClose } = setup();
-    render(<SearchBar editor={editor} onClose={onClose} />);
+    render(<SearchBar editor={editor} onClose={onClose} showReplace={false} onToggleReplace={vi.fn()} />);
     fireEvent.mouseDown(screen.getByTitle("Previous (Shift+Enter)"));
     expect(scrollEl.scrollIntoView).toHaveBeenCalledWith({
       block: "nearest",
@@ -105,7 +108,7 @@ describe("SearchBar — prev button (ChevronUp)", () => {
 describe("SearchBar — keyboard navigation", () => {
   it("Enter calls nextSearchResult and scrolls", () => {
     const { editor, scrollEl, onClose } = setup();
-    render(<SearchBar editor={editor} onClose={onClose} />);
+    render(<SearchBar editor={editor} onClose={onClose} showReplace={false} onToggleReplace={vi.fn()} />);
     const input = screen.getByPlaceholderText("Find in scene…");
     fireEvent.keyDown(input, { key: "Enter" });
     expect(editor.commands.nextSearchResult).toHaveBeenCalledOnce();
@@ -117,7 +120,7 @@ describe("SearchBar — keyboard navigation", () => {
 
   it("Shift+Enter calls prevSearchResult and scrolls", () => {
     const { editor, scrollEl, onClose } = setup();
-    render(<SearchBar editor={editor} onClose={onClose} />);
+    render(<SearchBar editor={editor} onClose={onClose} showReplace={false} onToggleReplace={vi.fn()} />);
     const input = screen.getByPlaceholderText("Find in scene…");
     fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
     expect(editor.commands.prevSearchResult).toHaveBeenCalledOnce();
@@ -129,7 +132,7 @@ describe("SearchBar — keyboard navigation", () => {
 
   it("Escape calls clearSearch and onClose", () => {
     const { editor, onClose } = setup();
-    render(<SearchBar editor={editor} onClose={onClose} />);
+    render(<SearchBar editor={editor} onClose={onClose} showReplace={false} onToggleReplace={vi.fn()} />);
     const input = screen.getByPlaceholderText("Find in scene…");
     fireEvent.keyDown(input, { key: "Escape" });
     expect(editor.commands.clearSearch).toHaveBeenCalledOnce();
@@ -140,7 +143,7 @@ describe("SearchBar — keyboard navigation", () => {
     const { editor, onClose } = setup();
     // querySelector returns null — should not throw
     (editor.view.dom as any).querySelector.mockReturnValue(null);
-    render(<SearchBar editor={editor} onClose={onClose} />);
+    render(<SearchBar editor={editor} onClose={onClose} showReplace={false} onToggleReplace={vi.fn()} />);
     expect(() =>
       fireEvent.mouseDown(screen.getByTitle("Next (Enter)"))
     ).not.toThrow();
@@ -152,7 +155,7 @@ describe("SearchBar — keyboard navigation", () => {
 describe("SearchBar — result counter", () => {
   it("shows no counter when input is empty", () => {
     const { editor, onClose } = setup();
-    render(<SearchBar editor={editor} onClose={onClose} />);
+    render(<SearchBar editor={editor} onClose={onClose} showReplace={false} onToggleReplace={vi.fn()} />);
     expect(screen.queryByText(/\//)).not.toBeInTheDocument();
   });
 
@@ -163,9 +166,55 @@ describe("SearchBar — result counter", () => {
       current: 0,
     });
     const { editor, onClose } = setup();
-    render(<SearchBar editor={editor} onClose={onClose} />);
+    render(<SearchBar editor={editor} onClose={onClose} showReplace={false} onToggleReplace={vi.fn()} />);
     const input = screen.getByPlaceholderText("Find in scene…");
     fireEvent.change(input, { target: { value: "xyz" } });
     expect(screen.getByText("no results")).toBeInTheDocument();
+  });
+});
+
+// ── Replace row ───────────────────────────────────────────────────────────────
+
+describe("SearchBar — replace", () => {
+  function renderReplace(editable = true) {
+    const { editor, onClose } = setup();
+    (editor as unknown as { isEditable: boolean }).isEditable = editable;
+    render(<SearchBar editor={editor} onClose={onClose} showReplace onToggleReplace={vi.fn()} />);
+    return editor;
+  }
+
+  it("is hidden when showReplace is false", () => {
+    const { editor, onClose } = setup();
+    render(<SearchBar editor={editor} onClose={onClose} showReplace={false} onToggleReplace={vi.fn()} />);
+    expect(screen.queryByPlaceholderText("Replace with…")).toBeNull();
+  });
+
+  it("is hidden for a read-only editor", () => {
+    renderReplace(false);
+    expect(screen.queryByPlaceholderText("Replace with…")).toBeNull();
+  });
+
+  it("Replace button replaces the current match with the typed text", () => {
+    const editor = renderReplace();
+    fireEvent.change(screen.getByPlaceholderText("Replace with…"), { target: { value: "dog" } });
+    fireEvent.mouseDown(screen.getByTitle("Replace (Enter)"));
+    expect(editor.commands.replaceCurrent).toHaveBeenCalledWith("dog");
+  });
+
+  it("All button replaces every match", () => {
+    const editor = renderReplace();
+    fireEvent.change(screen.getByPlaceholderText("Replace with…"), { target: { value: "dog" } });
+    fireEvent.mouseDown(screen.getByTitle("Replace all (Ctrl+Enter)"));
+    expect(editor.commands.replaceAll).toHaveBeenCalledWith("dog");
+  });
+
+  it("Enter replaces one, Ctrl+Enter replaces all", () => {
+    const editor = renderReplace();
+    const input = screen.getByPlaceholderText("Replace with…");
+    fireEvent.change(input, { target: { value: "dog" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(editor.commands.replaceCurrent).toHaveBeenCalledWith("dog");
+    fireEvent.keyDown(input, { key: "Enter", ctrlKey: true });
+    expect(editor.commands.replaceAll).toHaveBeenCalledWith("dog");
   });
 });
