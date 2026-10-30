@@ -363,6 +363,15 @@
       },
       "trait": "Old blood of giants: you count as one size larger for lifting, carrying, and shoving.",
       "name_style": "dwarf"
+    },
+    "high_dragon": {
+      "label": "High Dragon (human form)",
+      "bonus": {
+        "cha": 1,
+        "con": 1
+      },
+      "trait": "Veiled wyrm: once per session let the true shape surface — a roar that routs lesser creatures — but animals shun you until you next rest.",
+      "name_style": "drake"
     }
   },
   "halfblood": {

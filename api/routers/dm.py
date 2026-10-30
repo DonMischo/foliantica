@@ -23,10 +23,10 @@ from schemas import (
     DICE_SIDES,
     CodexEntryOut,
     DmActionRequest, DmCharacterSaveRequest, DmCharGenRequest, DmFactOut, DmPrefsUpdate,
-    DmCodexApplyRequest, DmCodexUpdate, DmCodexUpdateRequest,
+    DmCodexApplyRequest, DmCodexUpdate, DmCodexUpdateRequest, DmCustomEntry,
     DmRelationSuggestion, DmRollRequest, DmSceneOut, DmSessionCreate, DmSessionOut, DmTurnOut,
 )
-from services.dm_chargen import build_character, generate_npc, load_ruleset, roll_stat_pool
+from services.dm_chargen import build_character, generate_npc, load_ruleset, merge_custom, roll_stat_pool
 from services.dm_oracle import ban_list, draw_for_scene
 from services import wildcards as wc
 
@@ -64,14 +64,19 @@ _CODEX_OWNERSHIP = (
     "or saved one. Answer in the fiction — what the character knows or says — and leave the bookkeeping alone."
 )
 
-# /roll20: the player wants the die called for, not another narration beat. This
-# overrides the persona's length and structure rules for this one reply.
-_ROLL_REQUEST_DIRECTIVE = (
-    "## This reply only — call for a d20, nothing else\n"
-    "Ignore the length and paragraph rules above. Do NOT narrate a beat, do not advance the scene, do not "
-    "describe anything new happening. In at most two sentences, name what the player is rolling for and what "
-    "is at stake if it fails, then ask for one d20 and stop. If the situation genuinely needs no roll, say so "
-    "in one sentence instead of inventing a risk."
+# /roll20: the player states the attempt and its terms, rolls, and the result
+# comes back here to be narrated — one reply, no "what are you rolling for?"
+# round trip. The [Dice] line carries the attempt, the terms and the total,
+# because the player's context is sent as the roll's purpose.
+_ROLL_RESOLVE_DIRECTIVE = (
+    "## This reply only — resolve the roll that just happened\n"
+    "The last [Dice] line is the player's roll. Its text states what they attempted and any success or failure "
+    "terms they set, followed by the result. Narrate what happens now, at your normal beat length.\n"
+    "- Honour the total exactly, and honour the terms the player stated — those win over your own judgement.\n"
+    "- With no stated terms, read the total: 10 or less fails, 11 to 15 succeeds at a cost, 16 or more is a "
+    "clean success. A failure changes the situation or costs something; it is never \"nothing happens\".\n"
+    "- Never re-roll, never ask for another roll for this same attempt, and never restate the number — show "
+    "the outcome in the fiction instead."
 )
 
 
@@ -562,8 +567,8 @@ async def player_action(session_id: int, body: DmActionRequest, db: Session = De
 
     recent_text = " ".join(t.content for t in history[-6:] if t.role in ("player", "dm"))
     system = _dm_system_prompt(project, db, query_text=f"{body.content} {recent_text}")
-    if body.mode == "roll_request":
-        system += f"\n\n{_ROLL_REQUEST_DIRECTIVE}"
+    if body.mode == "roll_resolve":
+        system += f"\n\n{_ROLL_RESOLVE_DIRECTIVE}"
     messages = [{"role": "system", "content": system}]
     messages += [_turn_to_message(t) for t in history]
 
@@ -635,9 +640,67 @@ async def player_action(session_id: int, body: DmActionRequest, db: Session = De
 
 # ── Character generation ──────────────────────────────────────────────────────
 
-@router.get("/dm/ruleset")
-def get_ruleset():
+def _custom_ruleset(db: Session) -> dict:
+    settings = db.query(UserSettings).first()
+    try:
+        return json.loads(getattr(settings, "dm_custom_ruleset", None) or "{}")
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+
+def _effective_ruleset(db: Session) -> dict:
+    """Shipped ruleset with the player's custom species and classes merged in."""
+    return merge_custom(_custom_ruleset(db))
+
+
+def _slugify(label: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "_", label.lower()).strip("_")
+    return slug or "custom"
+
+
+@router.post("/dm/custom-entries")
+def add_custom_entry(body: DmCustomEntry, db: Session = Depends(get_db)):
+    """Define a species or class of your own: a name (and optional note) over an
+    existing entry's mechanics. Stored per install, shared by every campaign."""
     rules = load_ruleset()
+    if body.base not in rules[body.kind]:
+        raise HTTPException(400, f"Unknown {body.kind[:-2] if body.kind == 'classes' else 'species'}: {body.base}")
+
+    settings = db.query(UserSettings).first()
+    if not settings:
+        raise HTTPException(400, "No settings row")
+    custom = _custom_ruleset(db)
+    bucket = dict(custom.get(body.kind) or {})
+
+    key = _slugify(body.label)
+    if key in rules[body.kind]:
+        raise HTTPException(400, f"\"{body.label}\" is already a built-in — pick another name")
+    bucket[key] = {"label": body.label.strip(), "base": body.base, "note": (body.note or "").strip() or None}
+
+    custom[body.kind] = bucket
+    settings.dm_custom_ruleset = json.dumps(custom)
+    db.commit()
+    return {"key": key, **bucket[key]}
+
+
+@router.delete("/dm/custom-entries/{kind}/{key}", status_code=204)
+def delete_custom_entry(kind: str, key: str, db: Session = Depends(get_db)):
+    if kind not in ("species", "classes"):
+        raise HTTPException(400, "kind must be 'species' or 'classes'")
+    settings = db.query(UserSettings).first()
+    custom = _custom_ruleset(db)
+    bucket = dict(custom.get(kind) or {})
+    if key not in bucket:
+        raise HTTPException(404, "Custom entry not found")
+    del bucket[key]
+    custom[kind] = bucket
+    settings.dm_custom_ruleset = json.dumps(custom)
+    db.commit()
+
+
+@router.get("/dm/ruleset")
+def get_ruleset(db: Session = Depends(get_db)):
+    rules = _effective_ruleset(db)
     return {
         "stats": rules["stats"],
         "standard_array": rules["standard_array"],
@@ -652,7 +715,7 @@ def get_ruleset():
 def generate_character(project_id: int, body: DmCharGenRequest, db: Session = Depends(get_db)):
     """Build a character draft (no save). Wizard saves it via the normal codex API."""
     _get_project(project_id, db)
-    rules = load_ruleset()
+    rules = _effective_ruleset(db)
 
     stat_rolls = None
     if body.method == "manual":
@@ -673,6 +736,7 @@ def generate_character(project_id: int, body: DmCharGenRequest, db: Session = De
             name=(body.name or None), is_pc=True,
             species2=(body.species2 or None),
             gender=body.gender,
+            rules=rules,
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc))
@@ -714,13 +778,13 @@ def _kit_to_inventory(sheet: dict, owner_id: int, db: Session, created_record: l
             continue
         item_id = _find_or_create_item(g["name"], owner_id, db, created_record)
         possessions.append({"entry_id": item_id, "quantity": int(g.get("qty") or 1)})
-    cur = (load_ruleset()["classes"].get(sheet.get("class")) or {}).get("starting_currency")
+    cur = (_effective_ruleset(db)["classes"].get(sheet.get("class")) or {}).get("starting_currency")
     currencies = [dict(cur)] if cur else []
     return {"currencies": currencies, "possessions": possessions, "relics": []}
 
 
-def _species_label(sheet: dict) -> str:
-    rules = load_ruleset()
+def _species_label(sheet: dict, db: Session) -> str:
+    rules = _effective_ruleset(db)
     sp = rules["species"].get(sheet.get("species"), {})
     label = sp.get("label", sheet.get("species") or "")
     if sheet.get("species2"):
@@ -742,13 +806,13 @@ def save_character(project_id: int, body: DmCharacterSaveRequest, db: Session = 
     inventory = _kit_to_inventory(sheet, owner_id, db)
     sheet.pop("gear", None)  # inventory is the source of truth from here on
 
-    klass = load_ruleset()["classes"].get(sheet.get("class"), {})
+    klass = _effective_ruleset(db)["classes"].get(sheet.get("class"), {})
     entry = CodexEntry(
         project_id=owner_id,
         name=body.name.strip(),
         entry_type="character",
         description=body.description or "",
-        species=_species_label(sheet),
+        species=_species_label(sheet, db),
         subtype=klass.get("label"),
         gender=body.gender or sheet.get("gender"),
         color="#38bdf8",
@@ -1142,7 +1206,10 @@ def _apply_effects(project: Project, effects: dict, session_id: int | None, db: 
         name = (npc.get("name") or "").strip() or None
         if name and name.lower() in existing_names:
             continue  # already in the codex — extraction over-eagerness
-        gen = generate_npc(npc.get("species"), npc.get("class"), gender=npc.get("gender"))
+        gen = generate_npc(
+            npc.get("species"), npc.get("class"), gender=npc.get("gender"),
+            rules=_effective_ruleset(db),
+        )
         final_name = name or gen["name"]
         sheet = gen["rpg_sheet"]
         inventory = _kit_to_inventory(sheet, owner_id, db, applied["created_entries"])
@@ -1393,7 +1460,7 @@ def _extract_user_content(turn: DmTurn, project: Project, db: Session) -> str:
     owner_id = _codex_owner_id(project)
     entries = db.query(CodexEntry).filter(CodexEntry.project_id == owner_id).all()
     entity_lines = [f"- id={e.id} | {e.name} [{e.entry_type}]" for e in entries]
-    rules = load_ruleset()
+    rules = _effective_ruleset(db)
 
     current = (
         db.query(DmScene)

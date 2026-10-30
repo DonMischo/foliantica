@@ -378,6 +378,9 @@ class UserSettings(Base):
     vale_last_synced: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     vale_sync_errors: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON: {filename: error}
     ai_disabled: Mapped[int] = mapped_column(Integer, default=0)
+    # JSON: {"species": {key: {...}}, "classes": {key: {...}}} — player-defined
+    # entries merged over ruleset_simple.json, so app updates never clobber them
+    dm_custom_ruleset: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # Multi-provider AI adapter (Phase 2)
     active_provider: Mapped[str] = mapped_column(String(50), default="openrouter")
     ai_providers_cfg: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON

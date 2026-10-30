@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Dices, RefreshCw } from "lucide-react";
+import { Dices, RefreshCw, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
 import { dmApi } from "@/lib/api";
 import { useDmRuleset } from "@/store/queries";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { CustomEntryForm } from "./CustomEntryForm";
 import type { DmCharacterDraft, RpgAppearance } from "@/types";
 
 type Method = "roll" | "array" | "manual";
@@ -47,6 +48,20 @@ export function CharacterWizard({
   const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /** Drop a custom entry, moving the selection off it if it was chosen. */
+  const removeCustom = async (kind: "species" | "classes", key: string) => {
+    await dmApi.deleteCustomEntry(kind, key);
+    if (kind === "species") {
+      setSpeciesSel((sel) => {
+        const kept = sel.filter((s) => s !== key);
+        return kept.length ? kept : ["human"];
+      });
+    } else if (charClass === key) {
+      setCharClass("fighter");
+    }
+    qc.invalidateQueries({ queryKey: ["dm-ruleset"] });
+  };
 
   const toggleSpecies = (key: string) =>
     setSpeciesSel((sel) => {
@@ -163,20 +178,37 @@ export function CharacterWizard({
             </p>
             <div className="flex flex-wrap gap-1.5">
               {Object.entries(ruleset.species).map(([key, sp]) => (
-                <button
+                <span
                   key={key}
-                  onClick={() => toggleSpecies(key)}
-                  title={sp.trait}
                   className={cn(
-                    "px-2.5 py-1 rounded-md border text-xs",
+                    "group inline-flex items-center rounded-md border text-xs",
                     speciesSel.includes(key)
                       ? "border-primary bg-primary/10 text-foreground"
                       : "border-border text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {sp.label}
-                </button>
+                  <button onClick={() => toggleSpecies(key)} title={sp.trait} className="px-2.5 py-1">
+                    {sp.label}
+                  </button>
+                  {sp.custom_base && (
+                    <button
+                      onClick={() => removeCustom("species", key)}
+                      title={t("dm_custom_remove")}
+                      className="pr-1.5 text-muted-foreground/0 group-hover:text-muted-foreground hover:!text-destructive"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </span>
               ))}
+              <CustomEntryForm
+                kind="species"
+                ruleset={ruleset}
+                onSaved={(key) => {
+                  qc.invalidateQueries({ queryKey: ["dm-ruleset"] });
+                  setSpeciesSel([key]);
+                }}
+              />
             </div>
             {speciesSel.length === 2 && (
               <p className="text-[10px] text-muted-foreground">{t("dm_halfblood_hint")}</p>
@@ -213,20 +245,37 @@ export function CharacterWizard({
             <p className="text-xs font-medium text-muted-foreground">{t("dm_class")}</p>
             <div className="flex flex-wrap gap-1.5">
               {Object.entries(ruleset.classes).map(([key, cl]) => (
-                <button
+                <span
                   key={key}
-                  onClick={() => setCharClass(key)}
-                  title={cl.abilities.join("\n")}
                   className={cn(
-                    "px-2.5 py-1 rounded-md border text-xs",
+                    "group inline-flex items-center rounded-md border text-xs",
                     charClass === key
                       ? "border-primary bg-primary/10 text-foreground"
                       : "border-border text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {cl.label}
-                </button>
+                  <button onClick={() => setCharClass(key)} title={cl.abilities.join("\n")} className="px-2.5 py-1">
+                    {cl.label}
+                  </button>
+                  {cl.custom_base && (
+                    <button
+                      onClick={() => removeCustom("classes", key)}
+                      title={t("dm_custom_remove")}
+                      className="pr-1.5 text-muted-foreground/0 group-hover:text-muted-foreground hover:!text-destructive"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </span>
               ))}
+              <CustomEntryForm
+                kind="classes"
+                ruleset={ruleset}
+                onSaved={(key) => {
+                  qc.invalidateQueries({ queryKey: ["dm-ruleset"] });
+                  setCharClass(key);
+                }}
+              />
             </div>
           </div>
 

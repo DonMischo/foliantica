@@ -985,8 +985,8 @@ class DmTurnOut(BaseModel):
 class DmActionRequest(BaseModel):
     content: str
     model: Optional[str] = None
-    # "roll_request": answer with the roll's stakes in a line or two, not a full beat
-    mode: Optional[Literal["roll_request"]] = None
+    # "roll_resolve": narrate the outcome of the [Dice] line that just landed
+    mode: Optional[Literal["roll_resolve"]] = None
 
 
 class DmRollRequest(BaseModel):
@@ -1047,6 +1047,14 @@ class DmFactOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class DmCustomEntry(BaseModel):
+    """A player-defined species or class: a name over an existing entry's rules."""
+    kind: Literal["species", "classes"]
+    label: str = Field(min_length=1, max_length=60)
+    base: str  # key of the built-in it inherits mechanics from
+    note: Optional[str] = Field(default=None, max_length=400)  # replaces the trait / adds an ability
 
 
 class DmCharGenRequest(BaseModel):

@@ -11,6 +11,7 @@ from database import DEFAULT_AI_PROMPTS
 import routers.dm as dm_mod
 from models import AIPrompt, CodexEntry, CodexRelation, DmTurn, Project, UserSettings
 from routers.dm import _apply_effects, _dm_system_prompt
+from services.dm_chargen import build_character, load_ruleset, merge_custom
 from schemas import DmActionRequest
 
 
@@ -92,23 +93,151 @@ class TestPov:
         assert "third person limited" in prompt
 
 
-# ── /roll20 (roll-request mode) ───────────────────────────────────────────────
+# ── /roll20 (roll-resolve mode) ───────────────────────────────────────────────
 
-class TestRollRequestMode:
-    """The directive is appended to the system prompt only for mode=roll_request;
+class TestRollResolveMode:
+    """The directive is appended to the system prompt only for mode=roll_resolve;
     the streaming call itself is not exercised here."""
 
-    def test_directive_overrides_the_beat_structure(self):
-        assert "Do NOT narrate a beat" in dm_mod._ROLL_REQUEST_DIRECTIVE
-        assert "d20" in dm_mod._ROLL_REQUEST_DIRECTIVE
+    def test_directive_binds_the_model_to_the_result(self):
+        directive = dm_mod._ROLL_RESOLVE_DIRECTIVE
+        assert "Honour the total exactly" in directive
+        # The player's stated terms outrank the fallback thresholds.
+        assert "terms the player stated" in directive
+        assert "never ask for another roll" in directive
+
+    def test_directive_gives_thresholds_only_as_a_fallback(self):
+        assert "With no stated terms" in dm_mod._ROLL_RESOLVE_DIRECTIVE
 
     def test_schema_accepts_the_mode(self):
-        assert DmActionRequest(content="", mode="roll_request").mode == "roll_request"
+        assert DmActionRequest(content="", mode="roll_resolve").mode == "roll_resolve"
         assert DmActionRequest(content="I climb").mode is None
 
     def test_schema_rejects_an_unknown_mode(self):
         with pytest.raises(ValidationError):
             DmActionRequest(content="", mode="freeform")
+
+    def test_the_retired_request_mode_is_gone(self):
+        """/roll20 no longer asks the DM what the roll is for — the player says."""
+        assert not hasattr(dm_mod, "_ROLL_REQUEST_DIRECTIVE")
+        with pytest.raises(ValidationError):
+            DmActionRequest(content="", mode="roll_request")
+
+
+# ── Custom species and classes ────────────────────────────────────────────────
+
+class TestCustomRuleset:
+    """A custom entry is a name (and optional note) over a built-in's mechanics,
+    stored in user_settings so app updates cannot overwrite it."""
+
+    @pytest.fixture(autouse=True)
+    def settings(self, db):
+        db.add(UserSettings())
+        db.commit()
+
+    def test_high_dragon_ships_as_a_default(self):
+        species = load_ruleset()["species"]
+        assert "high_dragon" in species
+        assert species["high_dragon"]["label"] == "High Dragon (human form)"
+
+    def test_vampire_ships_as_a_default(self):
+        assert "vampire" in load_ruleset()["species"]
+
+    # ── merge ────────────────────────────────────────────────────────────────
+
+    def test_custom_species_inherits_the_base_mechanics(self):
+        merged = merge_custom({"species": {"wyrmkin": {"label": "Wyrmkin", "base": "drakeblood"}}})
+        base = merged["species"]["drakeblood"]
+        made = merged["species"]["wyrmkin"]
+        assert made["label"] == "Wyrmkin"
+        assert made["bonus"] == base["bonus"]
+        assert made["name_style"] == base["name_style"]
+        assert made["custom_base"] == "drakeblood"
+
+    def test_a_note_replaces_the_species_trait(self):
+        merged = merge_custom({"species": {"wyrmkin": {
+            "label": "Wyrmkin", "base": "drakeblood", "note": "Scaled hide: +1 AC unarmoured.",
+        }}})
+        assert merged["species"]["wyrmkin"]["trait"] == "Scaled hide: +1 AC unarmoured."
+
+    def test_a_note_is_appended_to_class_abilities(self):
+        merged = merge_custom({"classes": {"blood_knight": {
+            "label": "Blood Knight", "base": "paladin", "note": "Crimson oath.",
+        }}})
+        base = merge_custom(None)["classes"]["paladin"]
+        assert merged["classes"]["blood_knight"]["abilities"] == [*base["abilities"], "Crimson oath."]
+
+    def test_an_unknown_base_is_skipped_not_fatal(self):
+        merged = merge_custom({"species": {"ghost": {"label": "Ghost", "base": "does_not_exist"}}})
+        assert "ghost" not in merged["species"]
+
+    def test_a_custom_cannot_shadow_a_built_in(self):
+        merged = merge_custom({"species": {"elf": {"label": "Not An Elf", "base": "orc"}}})
+        assert merged["species"]["elf"]["label"] == "Elf"
+
+    def test_no_customs_leaves_the_ruleset_untouched(self):
+        assert merge_custom(None) is load_ruleset()
+        assert merge_custom({})["species"] is load_ruleset()["species"]
+
+    def test_a_character_can_be_built_from_a_custom_pair(self):
+        merged = merge_custom({
+            "species": {"wyrmkin": {"label": "Wyrmkin", "base": "drakeblood"}},
+            "classes": {"blood_knight": {"label": "Blood Knight", "base": "paladin"}},
+        })
+        char = build_character("wyrmkin", "blood_knight", [15, 14, 13, 12, 10, 8],
+                               name="Test", rules=merged)
+        assert char["species"] == "Wyrmkin"
+        assert char["class_label"] == "Blood Knight"
+        assert char["rpg_sheet"]["hp"]["max"] > 0
+
+    # ── endpoints ────────────────────────────────────────────────────────────
+
+    def test_post_creates_and_ruleset_returns_it(self, client):
+        r = client.post("/api/dm/custom-entries", json={
+            "kind": "species", "label": "Wyrm Kin", "base": "drakeblood",
+        })
+        assert r.status_code == 200
+        assert r.json()["key"] == "wyrm_kin"
+
+        species = client.get("/api/dm/ruleset").json()["species"]
+        assert species["wyrm_kin"]["label"] == "Wyrm Kin"
+        assert species["wyrm_kin"]["custom_base"] == "drakeblood"
+
+    def test_post_rejects_an_unknown_base(self, client):
+        r = client.post("/api/dm/custom-entries", json={
+            "kind": "species", "label": "Ghost", "base": "does_not_exist",
+        })
+        assert r.status_code == 400
+
+    def test_post_rejects_a_built_in_name(self, client):
+        r = client.post("/api/dm/custom-entries", json={
+            "kind": "species", "label": "elf", "base": "orc",
+        })
+        assert r.status_code == 400
+
+    def test_a_custom_class_can_generate_a_character(self, client, project):
+        client.post("/api/dm/custom-entries", json={
+            "kind": "classes", "label": "Blood Knight", "base": "paladin",
+        })
+        r = client.post(f"/api/projects/{project.id}/dm/generate-character", json={
+            "species": "high_dragon", "char_class": "blood_knight", "method": "array",
+        })
+        assert r.status_code == 200, r.text
+        assert r.json()["class_label"] == "Blood Knight"
+        assert r.json()["species"] == "High Dragon (human form)"
+
+    def test_delete_removes_it(self, client):
+        client.post("/api/dm/custom-entries", json={
+            "kind": "species", "label": "Wyrm Kin", "base": "drakeblood",
+        })
+        assert client.delete("/api/dm/custom-entries/species/wyrm_kin").status_code == 204
+        assert "wyrm_kin" not in client.get("/api/dm/ruleset").json()["species"]
+
+    def test_delete_404s_for_an_unknown_key(self, client):
+        assert client.delete("/api/dm/custom-entries/species/nope").status_code == 404
+
+    def test_delete_rejects_an_unknown_kind(self, client):
+        assert client.delete("/api/dm/custom-entries/monsters/x").status_code == 400
 
 
 # ── Prefs endpoint ────────────────────────────────────────────────────────────

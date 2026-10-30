@@ -7,7 +7,7 @@ import type {
   CorkboardPrefs, SceneConnection, RelationsGraph,
   TimelineTrack, TimelineEventItem, SeriesData,
   ProjectAnalytics, ResearchItem, QuerySubmission, ExportProfile, PublisherProfile,
-  Achievement, DmSession, DmTurn, DmPrefs, DmScene, DmRuleset, DmCharacterDraft, DmFact, DmRelationSuggestion, DmCodexUpdate, RpgSheet, WildcardCategory,
+  Achievement, DmSession, DmTurn, DmPrefs, DmScene, DmRuleset, DmCharacterDraft, DmFact, DmRelationSuggestion, DmCodexUpdate, DmCustomEntry, RpgSheet, WildcardCategory,
 } from "@/types";
 
 const BASE = "/api";
@@ -722,7 +722,7 @@ export const dmApi = {
     req<DmPrefs>(`/projects/${projectId}/dm/prefs`, { method: "PATCH", body: JSON.stringify(data) }),
   actionStream: (
     sessionId: number, content: string, model?: string, signal?: AbortSignal,
-    mode?: "roll_request",
+    mode?: "roll_resolve",
   ) =>
     fetch(`${BASE}/dm/sessions/${sessionId}/action`, {
       method: "POST",
@@ -731,6 +731,12 @@ export const dmApi = {
       signal,
     }),
   ruleset: () => req<DmRuleset>(`/dm/ruleset`),
+  addCustomEntry: (data: DmCustomEntry) =>
+    req<{ key: string; label: string; base: string; note: string | null }>(`/dm/custom-entries`, {
+      method: "POST", body: JSON.stringify(data),
+    }),
+  deleteCustomEntry: (kind: "species" | "classes", key: string) =>
+    req<void>(`/dm/custom-entries/${kind}/${key}`, { method: "DELETE" }),
   generateCharacter: (
     projectId: number,
     data: { species: string; species2?: string; char_class: string; gender?: "male" | "female" | "div"; method: "roll" | "array" | "manual"; manual_stats?: number[]; name?: string },

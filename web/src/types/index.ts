@@ -193,10 +193,17 @@ export interface DmFact {
 export interface DmRuleset {
   stats: string[];
   standard_array: number[];
-  species: Record<string, { label: string; bonus: Record<string, number>; trait: string; name_style: string }>;
-  classes: Record<string, { label: string; hit_die: number; priorities: string[]; ac_base: number; abilities: string[]; kit: string[] }>;
+  species: Record<string, { label: string; bonus: Record<string, number>; trait: string; name_style: string; custom_base?: string }>;
+  classes: Record<string, { label: string; hit_die: number; priorities: string[]; ac_base: number; abilities: string[]; kit: string[]; custom_base?: string }>;
   halfblood: { note?: string };
   appearance: Record<string, unknown>;
+}
+
+export interface DmCustomEntry {
+  kind: "species" | "classes";
+  label: string;
+  base: string;
+  note?: string;
 }
 
 export interface DmCharacterDraft {

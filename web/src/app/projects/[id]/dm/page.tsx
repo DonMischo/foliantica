@@ -461,6 +461,9 @@ export default function DmPage() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [cmdQuery, setCmdQuery] = useState<string | null>(null);
   const [cmdRange, setCmdRange] = useState<{ from: number; to: number } | null>(null);
+  // /roll20 context waiting for the die: the attempt and its success/failure
+  // terms. Sent as the roll's purpose, then resolved in a single DM reply.
+  const [pendingRoll, setPendingRoll] = useState<string | null>(null);
   const [cmdActive, setCmdActive] = useState(0);
   const [wildcardDrawOpen, setWildcardDrawOpen] = useState(false);
   const cmdMatches = cmdQuery === null ? [] : matchingCommands(cmdQuery);
@@ -492,12 +495,13 @@ export default function DmPage() {
       return;
     }
     if (key === "roll20") {
-      // Send straight away: anything else typed stays as the player's action,
-      // and the DM answers with the stakes of the roll instead of a full beat.
+      // Arm the roll instead of sending. Whatever else was typed is the context
+      // — the attempt and any success/failure terms — and rides along as the
+      // roll's purpose, so the DM gets attempt, terms and result in one go.
       const range = cmdRange ?? { from: input.length, to: input.length };
       setInput("");
       setCmdRange(null);
-      doAction((input.slice(0, range.from) + input.slice(range.to)).trim(), "roll_request");
+      setPendingRoll((input.slice(0, range.from) + input.slice(range.to)).trim());
     }
   };
 
@@ -569,7 +573,7 @@ export default function DmPage() {
     }
   };
 
-  const doAction = async (text: string, mode?: "roll_request") => {
+  const doAction = async (text: string, mode?: "roll_resolve") => {
     if (!activeSession) return;
     setPendingPlayer(text || null);
     setStreamText("");
@@ -634,6 +638,24 @@ export default function DmPage() {
     }
   };
 
+  /**
+   * Roll, then — when /roll20 armed this one — hand the result straight back to
+   * the DM. The armed context rides along as the roll's purpose, so the [Dice]
+   * line the model reads carries the attempt, its terms and the total together.
+   */
+  const rollAndResolve = (req: DmRollRequest) => {
+    const context = pendingRoll;
+    rollMutation.mutate(
+      context ? { ...req, purpose: context || req.purpose } : req,
+      context === null ? undefined : {
+        onSuccess: () => {
+          setPendingRoll(null);
+          doAction("", "roll_resolve");
+        },
+      },
+    );
+  };
+
   const cancelStream = () => abortRef.current?.abort();
 
   // Escape cancels the narration from anywhere on the page — the textarea is
@@ -657,6 +679,7 @@ export default function DmPage() {
     if (!canSend) return;
     const text = input.trim();
     setInput("");
+    setPendingRoll(null); // sending something else abandons the armed roll
     doAction(text);
   };
 
@@ -848,6 +871,24 @@ export default function DmPage() {
           </div>
         )}
 
+        {/* /roll20 armed: waiting for the die, then resolved in one DM reply */}
+        {pendingRoll !== null && (
+          <div className="mx-3 mb-1 flex items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2">
+            <Dices className="h-4 w-4 text-primary shrink-0 animate-pulse" />
+            <p className="flex-1 text-xs">
+              <span className="font-medium">{t("dm_roll_armed")}</span>
+              {pendingRoll && <span className="text-muted-foreground"> — {pendingRoll}</span>}
+            </p>
+            <button
+              onClick={() => setPendingRoll(null)}
+              className="text-muted-foreground hover:text-foreground"
+              title={t("common_cancel")}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* Roll-request banner */}
         {rollGate && (
           <div className="mx-3 mb-1 flex items-center gap-2 rounded-md border border-primary/40 bg-primary/5 px-3 py-2">
@@ -973,9 +1014,9 @@ export default function DmPage() {
         <DiceTray
           diceMode={diceMode}
           onModeChange={(mode) => updatePrefs.mutate({ dice_mode: mode })}
-          onRoll={(req) => rollMutation.mutate(req)}
+          onRoll={rollAndResolve}
           disabled={!activeSession || streaming || sessionEnded}
-          requestedSides={rollGate?.sides ?? null}
+          requestedSides={rollGate?.sides ?? (pendingRoll !== null ? 20 : null)}
         />
       </aside>
 

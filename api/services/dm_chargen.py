@@ -17,6 +17,35 @@ def load_ruleset() -> dict:
     return json.loads(_RULESET_PATH.read_text(encoding="utf-8"))
 
 
+def merge_custom(custom: dict | None) -> dict:
+    """The shipped ruleset with the player's own species and classes merged in.
+
+    A custom entry is a copy of the base it names, with its own label and an
+    optional note replacing the species trait / added to the class abilities.
+    Copying the base keeps every downstream consumer working on the same shape,
+    so nothing else has to know custom entries exist. Entries naming a base that
+    no longer exists are skipped rather than crashing character creation.
+    """
+    rules = load_ruleset()
+    if not custom:
+        return rules
+
+    merged = {**rules, "species": dict(rules["species"]), "classes": dict(rules["classes"])}
+    for kind, trait_field in (("species", "trait"), ("classes", "abilities")):
+        for key, entry in (custom.get(kind) or {}).items():
+            base = merged[kind].get((entry or {}).get("base"))
+            if not base or key in rules[kind]:
+                continue  # unknown base, or would shadow a built-in
+            made = dict(base)
+            made["label"] = entry.get("label") or key
+            note = (entry.get("note") or "").strip()
+            if note:
+                made[trait_field] = note if trait_field == "trait" else [*base["abilities"], note]
+            made["custom_base"] = entry["base"]
+            merged[kind][key] = made
+    return merged
+
+
 def stat_mod(score: int) -> int:
     return (score - 10) // 2
 
@@ -82,6 +111,7 @@ def build_character(
     rng: random.Random | None = None,
     species2: str | None = None,
     gender: str | None = None,
+    rules: dict | None = None,
 ) -> dict:
     """Assemble a character dict from six stat totals (highest→lowest by class
     priority). With *species2* set, the character is a halfblood: +1 to each
@@ -91,7 +121,7 @@ def build_character(
     on a codex entry.
     """
     rng = rng or random
-    rules = load_ruleset()
+    rules = rules or load_ruleset()
     sp = rules["species"].get(species)
     cl = rules["classes"].get(klass)
     if not sp:
@@ -166,11 +196,12 @@ def generate_npc(
     klass: str | None,
     rng: random.Random | None = None,
     gender: str | None = None,
+    rules: dict | None = None,
 ) -> dict:
     """Random-fill any missing choice and build an NPC stat block (code-named,
     code-rolled). Roughly one in eight NPCs turns out to be a halfblood."""
     rng = rng or random
-    rules = load_ruleset()
+    rules = rules or load_ruleset()
     species = species if species in rules["species"] else rng.choice(list(rules["species"]))
     klass = klass if klass in rules["classes"] else rng.choice(list(rules["classes"]))
     species2 = None
@@ -178,4 +209,6 @@ def generate_npc(
         others = [s for s in rules["species"] if s != species]
         species2 = rng.choice(others)
     totals = [p["total"] for p in roll_stat_pool(rng)]
-    return build_character(species, klass, totals, is_pc=False, rng=rng, species2=species2, gender=gender)
+    return build_character(
+        species, klass, totals, is_pc=False, rng=rng, species2=species2, gender=gender, rules=rules,
+    )
