@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X, ChevronUp, ChevronDown, ChevronRight } from "lucide-react";
 import type { Editor } from "@tiptap/react";
-import { SEARCH_KEY } from "./SearchExtension";
+import { SEARCH_KEY, buildSearchRegex, type SearchOptions } from "./SearchExtension";
 
 interface Props {
   editor: Editor;
@@ -15,6 +15,7 @@ interface Props {
 export function SearchBar({ editor, onClose, showReplace, onToggleReplace }: Props) {
   const [term, setTerm] = useState("");
   const [replacement, setReplacement] = useState("");
+  const [options, setOptions] = useState<SearchOptions>({ regex: false, caseSensitive: false });
   const inputRef = useRef<HTMLInputElement>(null);
   const canReplace = showReplace && editor.isEditable;
 
@@ -35,10 +36,17 @@ export function SearchBar({ editor, onClose, showReplace, onToggleReplace }: Pro
   const s = SEARCH_KEY.getState(editor.state);
   const total = s?.results.length ?? 0;
   const current = total > 0 ? (s?.current ?? 0) + 1 : 0;
+  const invalid = !!term && options.regex && !buildSearchRegex(term, options);
 
   const handleChange = (value: string) => {
     setTerm(value);
-    editor.commands.setSearchTerm(value);
+    editor.commands.setSearchTerm(value, options);
+  };
+
+  const toggleOption = (key: keyof SearchOptions) => {
+    const next = { ...options, [key]: !options[key] };
+    setOptions(next);
+    editor.commands.setSearchTerm(term, next);
   };
 
   // PM updates the DOM synchronously on dispatch, so we can query the
@@ -101,9 +109,28 @@ export function SearchBar({ editor, onClose, showReplace, onToggleReplace }: Pro
         spellCheck={false}
       />
 
+      {/* Options */}
+      {([
+        ["caseSensitive", "Aa", "Match case"],
+        ["regex", ".*", "Regular expression"],
+      ] as const).map(([key, label, title]) => (
+        <button
+          key={key}
+          type="button"
+          onMouseDown={(e) => { e.preventDefault(); toggleOption(key); }}
+          title={title}
+          aria-pressed={!!options[key]}
+          className={`px-1 rounded font-mono text-[11px] transition-colors ${
+            options[key] ? "bg-primary/20 text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+
       {/* Result counter */}
-      <span className="text-[11px] text-muted-foreground tabular-nums shrink-0 w-14 text-right">
-        {!term ? "" : total === 0 ? "no results" : `${current} / ${total}`}
+      <span className={`text-[11px] tabular-nums shrink-0 w-16 text-right ${invalid ? "text-destructive" : "text-muted-foreground"}`}>
+        {!term ? "" : invalid ? "invalid regex" : total === 0 ? "no results" : `${current} / ${total}`}
       </span>
 
       {/* Navigation */}
@@ -142,6 +169,7 @@ export function SearchBar({ editor, onClose, showReplace, onToggleReplace }: Pro
           onChange={(e) => setReplacement(e.target.value)}
           onKeyDown={handleReplaceKeyDown}
           placeholder="Replace with…"
+          title={options.regex ? "$1 or \\1 inserts group 1, $0 the whole match, \\t a tab" : undefined}
           className="bg-transparent text-sm outline-none w-44 text-foreground placeholder:text-muted-foreground"
           spellCheck={false}
         />

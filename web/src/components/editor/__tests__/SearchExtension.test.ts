@@ -205,3 +205,97 @@ describe("SearchExtension — replace", () => {
     expect(editor.getText()).toBe("cat cat");
   });
 });
+
+// ── Regex & match case ───────────────────────────────────────────────────────
+
+describe("SearchExtension — regex and match case", () => {
+  let editor: Editor;
+  afterEach(() => { editor.destroy(); });
+
+  const texts = (e: Editor) =>
+    SEARCH_KEY.getState(e.state)!.results.map((r) => e.state.doc.textBetween(r.from, r.to));
+
+  it("plain mode treats regex characters literally", () => {
+    editor = makeEditor("<p>a.c abc a.c</p>");
+    editor.commands.setSearchTerm("a.c");
+    expect(texts(editor)).toEqual(["a.c", "a.c"]);
+  });
+
+  it("regex mode matches a pattern", () => {
+    editor = makeEditor("<p>a.c abc a1c</p>");
+    editor.commands.setSearchTerm("a.c", { regex: true });
+    expect(texts(editor)).toEqual(["a.c", "abc", "a1c"]);
+  });
+
+  it("match case is off by default and can be turned on", () => {
+    editor = makeEditor("<p>Cat cat</p>");
+    editor.commands.setSearchTerm("cat");
+    expect(texts(editor)).toEqual(["Cat", "cat"]);
+    editor.commands.setSearchTerm("cat", { caseSensitive: true });
+    expect(texts(editor)).toEqual(["cat"]);
+  });
+
+  it("^ and $ anchor to each paragraph", () => {
+    editor = makeEditor("<p>one two</p><p>three four</p>");
+    editor.commands.setSearchTerm("^\\w+", { regex: true });
+    expect(texts(editor)).toEqual(["one", "three"]);
+    editor.commands.setSearchTerm("\\w+$", { regex: true });
+    expect(texts(editor)).toEqual(["two", "four"]);
+  });
+
+  it("finds a match spanning differently formatted text", () => {
+    editor = makeEditor("<p>a <strong>bo</strong>ld word</p>");
+    editor.commands.setSearchTerm("bold");
+    expect(texts(editor)).toEqual(["bold"]);
+  });
+
+  it("an invalid regex yields no results and does not throw", () => {
+    editor = makeEditor("<p>abc</p>");
+    expect(() => editor.commands.setSearchTerm("a(", { regex: true })).not.toThrow();
+    expect(SEARCH_KEY.getState(editor.state)!.results).toHaveLength(0);
+  });
+
+  it("keeps the options when the document changes", () => {
+    editor = makeEditor("<p>a1</p>");
+    editor.commands.setSearchTerm("a\\d", { regex: true });
+    editor.commands.insertContentAt(editor.state.doc.content.size - 1, " a2");
+    expect(texts(editor)).toEqual(["a1", "a2"]);
+  });
+
+  it("replaceAll expands $1 and \\1 capture groups", () => {
+    editor = makeEditor("<p>Smith, John</p><p>Doe, Jane</p>");
+    editor.commands.setSearchTerm("(\\w+), (\\w+)", { regex: true });
+    editor.commands.replaceAll("$2 \\1");
+    expect(editor.getText()).toBe("John Smith\n\nJane Doe");
+  });
+
+  it("replaceCurrent expands $0 / $& / \\0 to the whole match", () => {
+    editor = makeEditor("<p>cat dog bird</p>");
+    editor.commands.setSearchTerm("\\w+", { regex: true });
+    editor.commands.replaceCurrent("[$0]");
+    editor.commands.replaceCurrent("<$&>");
+    editor.commands.replaceCurrent("(\\0)");
+    expect(editor.getText()).toBe("[cat] <dog> (bird)");
+  });
+
+  it("replacement understands \\t and \\\\ escapes", () => {
+    editor = makeEditor("<p>a-b</p>");
+    editor.commands.setSearchTerm("-", { regex: true });
+    editor.commands.replaceAll("\\t\\\\");
+    expect(editor.getText()).toBe("a\t\\b");
+  });
+
+  it("plain mode inserts the replacement literally", () => {
+    editor = makeEditor("<p>cat</p>");
+    editor.commands.setSearchTerm("cat");
+    editor.commands.replaceAll("$1 \\t");
+    expect(editor.getText()).toBe("$1 \\t");
+  });
+
+  it("an empty-width regex (^) can prefix every paragraph", () => {
+    editor = makeEditor("<p>one</p><p>two</p>");
+    editor.commands.setSearchTerm("^", { regex: true });
+    editor.commands.replaceAll("> ");
+    expect(editor.getText()).toBe("> one\n\n> two");
+  });
+});

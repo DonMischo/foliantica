@@ -83,7 +83,7 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 - **Typewriter mode** — cursor stays pinned at a configurable vertical offset as you write
 - **Focus mode** — dims everything outside the active paragraph
 - **Paragraph numbers** — optional markers at a configurable interval
-- **Find & Replace** — Ctrl+F / Cmd+F to find with match highlighting; Ctrl+H / Cmd+H to replace one match or all (Ctrl+Enter) in a single undo step
+- **Find & Replace** — Ctrl+F / Cmd+F to find with match highlighting; Ctrl+H / Cmd+H to replace one match or all (Ctrl+Enter) in a single undo step; **Match case** (`Aa`) and Notepad++-style **regex** (`.*`) with `$1` / `\1` capture groups in the replacement
 - **Ghost text** — AI-powered inline autocomplete suggestions drawn from your own prose style
 - **Read view** — flowing, story-typography prose per chapter or per act
 - **Human-readable scene time** — the scene's in-world time shown in plain words
@@ -430,6 +430,7 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 | Insert a table | Type `/table` in the editor |
 | Insert a task list | Type `/tasklist` in the editor |
 | Find & replace in a scene | Ctrl+H — Enter replaces one, Ctrl+Enter replaces all |
+| Regex replace (e.g. "Smith, John" → "John Smith") | Ctrl+H → click `.*` → find `(\w+), (\w+)`, replace with `$2 $1` |
 | Smart quotes & em-dashes | Just type — they're applied automatically |
 | Format selected text | Select text → bubble toolbar |
 | Add an in-world event to the timeline | Type `/timeline` in the editor |

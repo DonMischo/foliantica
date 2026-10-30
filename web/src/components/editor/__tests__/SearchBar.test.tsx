@@ -50,6 +50,7 @@ function setup() {
 beforeEach(() => {
   vi.spyOn(SEARCH_KEY, "getState").mockReturnValue({
     term: "test",
+    options: {},
     results: [{ from: 0, to: 4 }, { from: 10, to: 14 }],
     current: 0,
   });
@@ -162,6 +163,7 @@ describe("SearchBar — result counter", () => {
   it("shows 'no results' when results array is empty", () => {
     vi.spyOn(SEARCH_KEY, "getState").mockReturnValue({
       term: "xyz",
+      options: {},
       results: [],
       current: 0,
     });
@@ -216,5 +218,39 @@ describe("SearchBar — replace", () => {
     expect(editor.commands.replaceCurrent).toHaveBeenCalledWith("dog");
     fireEvent.keyDown(input, { key: "Enter", ctrlKey: true });
     expect(editor.commands.replaceAll).toHaveBeenCalledWith("dog");
+  });
+});
+
+// ── Regex / match case toggles ────────────────────────────────────────────────
+
+describe("SearchBar — options", () => {
+  function renderBar() {
+    const { editor, onClose } = setup();
+    render(<SearchBar editor={editor} onClose={onClose} showReplace={false} onToggleReplace={vi.fn()} />);
+    return editor;
+  }
+
+  it("passes options to setSearchTerm while typing", () => {
+    const editor = renderBar();
+    fireEvent.change(screen.getByPlaceholderText("Find in scene…"), { target: { value: "a" } });
+    expect(editor.commands.setSearchTerm).toHaveBeenLastCalledWith("a", { regex: false, caseSensitive: false });
+  });
+
+  it("toggling regex and match case re-runs the search with the new options", () => {
+    const editor = renderBar();
+    fireEvent.change(screen.getByPlaceholderText("Find in scene…"), { target: { value: "a.c" } });
+    fireEvent.mouseDown(screen.getByTitle("Regular expression"));
+    expect(editor.commands.setSearchTerm).toHaveBeenLastCalledWith("a.c", { regex: true, caseSensitive: false });
+    fireEvent.mouseDown(screen.getByTitle("Match case"));
+    expect(editor.commands.setSearchTerm).toHaveBeenLastCalledWith("a.c", { regex: true, caseSensitive: true });
+    expect(screen.getByTitle("Match case").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("shows 'invalid regex' for a broken pattern in regex mode only", () => {
+    renderBar();
+    fireEvent.change(screen.getByPlaceholderText("Find in scene…"), { target: { value: "a(" } });
+    expect(screen.queryByText("invalid regex")).toBeNull();
+    fireEvent.mouseDown(screen.getByTitle("Regular expression"));
+    expect(screen.getByText("invalid regex")).toBeTruthy();
   });
 });

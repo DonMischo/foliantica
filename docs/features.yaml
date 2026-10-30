@@ -37,7 +37,7 @@ features:
       - Tables, task lists, embedded images
       - Native spellcheck with personal dictionary, language from book metadata
       - Typewriter mode, focus mode, paragraph numbers
-      - "Find (Ctrl/Cmd+F) and Replace one or all (Ctrl/Cmd+H)"
+      - "Find (Ctrl/Cmd+F) and Replace one or all (Ctrl/Cmd+H), with match case and Notepad++-style regex ($1 / \\1 capture groups)"
       - AI ghost-text autocomplete in your own style
       - Read view per chapter or act
       - Human-readable in-world scene time
