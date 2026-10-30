@@ -1,10 +1,30 @@
 import { describe, it, expect } from "vitest";
 import { PLOT_TEMPLATES } from "../plotTemplates";
 
+// Every template follows a published structure, so its beat count is canon
+// rather than an arbitrary number. Add a row here when a template is added —
+// the roster test then fails until it is registered, and vice versa.
+const CANONICAL_BEATS: Record<string, number> = {
+  "save-the-cat": 15,    // Snyder: Opening Image → Final Image
+  "heros-journey": 12,   // Vogler's adaptation of Campbell's monomyth
+  "seven-point": 7,      // Dan Wells: Hook → Resolution
+  "three-act": 3,        // Setup, Confrontation, Resolution
+  "eight-point-arc": 8,  // Nigel Watts: Stasis → Resolution
+  "snowflake": 10,       // Randy Ingermanson's ten design steps
+  "freytag": 5,          // Exposition → Dénouement
+};
+
 describe("PLOT_TEMPLATES", () => {
-  it("contains exactly 3 templates", () => {
-    expect(PLOT_TEMPLATES.length).toBe(3);
+  it("registers exactly the templates listed as canon", () => {
+    expect(PLOT_TEMPLATES.map((t) => t.id).sort()).toEqual(Object.keys(CANONICAL_BEATS).sort());
   });
+
+  it.each(Object.entries(CANONICAL_BEATS))(
+    "%s keeps its canonical beat count of %i",
+    (id, expected) => {
+      expect(PLOT_TEMPLATES.find((t) => t.id === id)?.beats.length).toBe(expected);
+    },
+  );
 
   it("all templates have unique IDs", () => {
     const ids = PLOT_TEMPLATES.map((t) => t.id);
@@ -43,26 +63,10 @@ describe("PLOT_TEMPLATES", () => {
     });
   }
 
-  it("'Save the Cat' implements Blake Snyder's 15-beat structure", () => {
-    const stc = PLOT_TEMPLATES.find((t) => t.id === "save-the-cat");
-    // Snyder's canon: Opening Image, Theme Stated, Set-Up, Catalyst, Debate,
-    // Break into Two, B Story, Fun & Games, Midpoint, Bad Guys Close In,
-    // All Is Lost, Dark Night of the Soul, Break into Three, Finale, Final Image
-    expect(stc?.beats.length).toBe(15);
-  });
-
-  it("'Hero's Journey' implements Vogler's 12-stage monomyth", () => {
-    const hj = PLOT_TEMPLATES.find((t) => t.id === "heros-journey");
-    // Vogler's adaptation of Campbell: Ordinary World, Call to Adventure, Refusal,
-    // Meeting the Mentor, Crossing the Threshold, Tests/Allies/Enemies,
-    // Approach, Ordeal, Reward, Road Back, Resurrection, Return with Elixir
-    expect(hj?.beats.length).toBe(12);
-  });
-
-  it("'Seven-Point Structure' implements Dan Wells's 7 plot points", () => {
-    const sp = PLOT_TEMPLATES.find((t) => t.id === "seven-point");
-    // Wells's structure: Hook, Plot Turn 1, Pinch 1, Midpoint,
-    // Pinch 2, Plot Turn 2, Resolution
-    expect(sp?.beats.length).toBe(7);
+  it("beat order matches beat position in every template", () => {
+    for (const template of PLOT_TEMPLATES) {
+      const positions = template.beats.map((b) => b.position);
+      expect(positions, `${template.name} lists beats out of order`).toEqual([...positions].sort((a, b) => a - b));
+    }
   });
 });
