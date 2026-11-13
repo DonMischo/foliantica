@@ -69,6 +69,8 @@ interface Props {
   getCommentPositionsRef?: React.MutableRefObject<(() => CommentHighlight[]) | null>;
   /** Called when user selects text and wants to add a comment — receives {from, to, text} */
   onCommentRequest?: (from: number, to: number, text: string) => void;
+  /** Called when the user clicks a comment highlight in the text */
+  onCommentClick?: (commentId: number) => void;
   /** Ref filled with a function that calls onCommentRequest with the current editor selection */
   triggerCommentRef?: React.MutableRefObject<(() => void) | null>;
   /** Ref filled with a function that returns whether there is a non-empty text selection */
@@ -188,7 +190,7 @@ function animateScrollBy(
   animRef.current = requestAnimationFrame(step);
 }
 
-export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onOpenLink, onWordSelect, onFlagsChange, sceneWordCount = 0, replaceWordRef, applyGrammarFixRef, jumpToGrammarMatchRef, jumpToValeMatchRef, jumpToTextRef, onPrefillEntry, aiDisabled = false, readOnly = false, commentHighlights, getCommentPositionsRef, onCommentRequest, triggerCommentRef, hasSelectionRef, showCodexHighlights = true, language }: Props) {
+export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClick, sceneId, onOpenChat, onOpenTimeline, onOpenLink, onWordSelect, onFlagsChange, sceneWordCount = 0, replaceWordRef, applyGrammarFixRef, jumpToGrammarMatchRef, jumpToValeMatchRef, jumpToTextRef, onPrefillEntry, aiDisabled = false, readOnly = false, commentHighlights, getCommentPositionsRef, onCommentRequest, onCommentClick, triggerCommentRef, hasSelectionRef, showCodexHighlights = true, language }: Props) {
   const showLineNumbers  = useUIStore((s) => s.showParagraphNumbers);
   const typewriterMode   = useUIStore((s) => s.typewriterMode);
   const typewriterOffset = useUIStore((s) => s.typewriterOffset);
@@ -205,6 +207,9 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
   const onCommentRequestRef   = useRef(onCommentRequest);
   commentHighlightsRef.current  = commentHighlights ?? [];
   onCommentRequestRef.current   = onCommentRequest;
+  // The plugin is created once — read the latest click handler through a ref
+  const onCommentClickRef       = useRef(onCommentClick);
+  onCommentClickRef.current     = onCommentClick;
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -281,9 +286,7 @@ export function TipTapEditor({ content, onChange, codexEntries, onCodexEntryClic
       return [
         createCommentHighlightPlugin(
           () => commentHighlightsRef.current,
-          (id) => {
-            // Scroll the comment panel to the clicked card (parent handles via onCommentRequest)
-          },
+          (id) => onCommentClickRef.current?.(id),
         ),
       ];
     },

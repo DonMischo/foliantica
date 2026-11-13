@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, MessageSquare, CheckCircle, Trash2, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { SceneComment } from "@/lib/api";
@@ -13,15 +13,25 @@ interface Props {
   isHost:    boolean;
   onClose:   () => void;
   onJumpTo:  (from: number) => void;
+  /** Comment clicked in the text — expanded and scrolled into view (new object = focus again) */
+  focus?:    { id: number } | null;
 }
 
-export function CommentsPanel({ sceneId, isHost, onClose, onJumpTo }: Props) {
+export function CommentsPanel({ sceneId, isHost, onClose, onJumpTo, focus }: Props) {
   const { data: comments = [], isLoading } = useComments(sceneId);
   const updateComment = useUpdateComment(sceneId);
   const deleteComment = useDeleteComment(sceneId);
   const identity = getCoworkIdentity();
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [filterCategory, setFilterCategory] = useState("");
+
+  useEffect(() => {
+    if (!focus) return;
+    setExpandedId(focus.id);
+    setFilterCategory(""); // the clicked comment may be hidden by a category filter
+    requestAnimationFrame(() =>
+      document.querySelector(`[data-comment-card="${focus.id}"]`)?.scrollIntoView({ block: "nearest" }));
+  }, [focus]);
 
   function isOwn(c: SceneComment): boolean {
     if (isHost) return true;
@@ -157,6 +167,7 @@ function CommentCard({ comment: c, expanded, isHost, canDelete, onToggle, onJump
         "rounded-md border border-border/60 bg-background/40 text-xs cursor-pointer hover:bg-secondary/30 transition-colors",
         c.resolved && "opacity-50",
       )}
+      data-comment-card={c.id}
       onClick={onToggle}
     >
       {/* Compact row */}

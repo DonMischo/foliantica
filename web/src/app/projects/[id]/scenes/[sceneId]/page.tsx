@@ -231,6 +231,8 @@ export default function ScenePage() {
   const [proseMetricsOpen, setProseMetricsOpen]   = useState(false);
   const proseCheck = useProseCheck();
   const [commentsPanelOpen, setCommentsPanelOpen] = useState(false);
+  // New object per click so clicking the same highlight again re-focuses its card
+  const [focusedComment, setFocusedComment] = useState<{ id: number } | null>(null);
   const [addCommentOpen, setAddCommentOpen]       = useState(false);
   const [pendingComment, setPendingComment]       = useState<{ from: number; to: number; text: string } | null>(null);
   const [commentBody, setCommentBody]             = useState("");
@@ -911,6 +913,7 @@ export default function ScenePage() {
             commentHighlights={commentHighlights}
             getCommentPositionsRef={getCommentPositionsRef}
             onCommentRequest={canComment ? handleCommentRequest : undefined}
+            onCommentClick={(id) => { setFocusedComment({ id }); setCommentsPanelOpen(true); }}
             triggerCommentRef={triggerCommentRef}
             hasSelectionRef={hasSelectionRef}
             showCodexHighlights={showCodexHighlights}
@@ -1017,6 +1020,7 @@ export default function ScenePage() {
             isHost={isHost}
             onClose={() => setCommentsPanelOpen(false)}
             onJumpTo={handleJumpToComment}
+            focus={focusedComment}
           />
         )}
 
