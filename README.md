@@ -268,6 +268,8 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 - **Snippets**, **Ideas**, and **Archive** tabs built in; add any number of custom tabs
 - Lightweight note cards with category labels and drag-to-reorder
 - Fragments and research clippings unified across all tabs
+- **Mind Map / Workflow** cards — Markdown notes next to a live [D2](https://d2lang.com) diagram (plot maps, character webs, revision routines); click to enlarge
+  - **Generate with AI** builds the diagram from your notes as a mind map, a flowchart, or whatever fits; or copy the prompt into any outside AI chat
 
 ### 📥 Import
 
@@ -298,7 +300,7 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 - **Auto-synopsis** — one-click scene synopsis generation from the scene toolbar
 - **Multiple providers** — OpenRouter, OpenAI, Anthropic, Groq, Mistral, Google Gemini, or a local **Ollama** model (fully offline)
 - Streaming output; API keys stored server-side, never sent to the browser
-- **Per-operation model overrides** — dedicate a model to synopsis, codex distillation, and scene chat independently of the global default
+- **Per-operation model overrides** — dedicate a model to synopsis, codex distillation, scene chat, and mind map / workflow diagrams independently of the global default
 - Project language propagates to all AI prompts automatically (e.g. writes in German when `language: "de"`)
 
 ### 📝 AI Prompts
@@ -401,7 +403,7 @@ Requires Node.js 20+, Python 3.11+, [uv](https://github.com/astral-sh/uv), and D
 ## Settings
 
 - **AI provider & API keys** — choose a provider; keys are stored server-side, never sent to the browser
-- **AI models** — global default; separate overrides for chat, synopsis, and codex distillation; per-model enable/disable for `/ki`
+- **AI models** — global default; separate overrides for chat, synopsis, codex distillation, and diagrams; per-model enable/disable for `/ki`
 - **Themes** — Dark, Light, and themed variants
 - **Interface language** — 13 languages
 - **Editor** — paragraph numbers, typewriter mode and offset, session timer, autosave interval
