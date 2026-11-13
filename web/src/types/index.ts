@@ -323,6 +323,9 @@ export interface ResearchItem {
   url_description: string | null;
   url_image: string | null;
   text_content: string | null;
+  /** "workflow" = mind map / workflow: Markdown notes (text_content) plus a D2 diagram */
+  kind: "clipping" | "workflow";
+  d2: string | null;
   media: ResearchMedia[];
   linked_scene_id: number | null;
   linked_codex_id: number | null;
@@ -550,6 +553,7 @@ export interface Settings {
   default_model: string;
   default_chat_model: string | null;
   default_dm_model: string | null;
+  default_diagram_model: string | null;
   wildcards_path: string | null;
   default_synopsis_model: string | null;
   default_codex_model: string | null;

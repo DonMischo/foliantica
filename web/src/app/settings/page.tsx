@@ -143,6 +143,7 @@ export default function SettingsPage() {
   const [wildcardsPath, setWildcardsPath]                 = useState<string>("");
   const [defaultSynopsisModel, setDefaultSynopsisModel]   = useState<string>("");
   const [defaultCodexModel, setDefaultCodexModel]         = useState<string>("");
+  const [defaultDiagramModel, setDefaultDiagramModel]     = useState<string>("");
   const [enabledModels, setEnabledModels]       = useState<string[]>([]);
   const [modelSearch, setModelSearch]           = useState("");
   const [customModelInput, setCustomModelInput] = useState("");
@@ -516,6 +517,7 @@ export default function SettingsPage() {
       setDefaultSynopsisModel(settings.default_synopsis_model ?? "");
       setDefaultCodexModel(settings.default_codex_model ?? "");
       setDefaultDmModel(settings.default_dm_model ?? "");
+      setDefaultDiagramModel(settings.default_diagram_model ?? "");
       setWildcardsPath(settings.wildcards_path ?? "");
       setEnabledModels(settings.enabled_models ?? []);
       setGrammarEnabled(settings.grammar_check_enabled ?? false);
@@ -645,6 +647,7 @@ export default function SettingsPage() {
       default_synopsis_model: defaultSynopsisModel || null,
       default_codex_model: defaultCodexModel || null,
       default_dm_model: defaultDmModel || null,
+      default_diagram_model: defaultDiagramModel || null,
       wildcards_path: wildcardsPath.trim() || null,
       enabled_models: enabledModels,
       grammar_check_url: grammarUrl,
@@ -1026,6 +1029,26 @@ export default function SettingsPage() {
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">Used by /ki when distilling codex entries.</p>
+          </div>
+
+          {/* Default diagram model */}
+          <div className="space-y-1.5">
+            <Label>Default Diagram Model</Label>
+            <Select
+              value={defaultDiagramModel || "__default__"}
+              onValueChange={(v) => setDefaultDiagramModel(v === "__default__" ? "" : v)}
+            >
+              <SelectTrigger className="w-full max-w-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__default__">Same as default model</SelectItem>
+                {defaultModelChoices.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">Used when a mind map / workflow builds its D2 diagram from the notes.</p>
           </div>
 
           {/* Default dungeon master model */}

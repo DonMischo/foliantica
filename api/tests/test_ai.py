@@ -414,3 +414,37 @@ class TestAIKiStreaming:
         # on free-tier rate limits — that is a network condition, not a code bug.
         assert r.status_code == 200
         assert "text/event-stream" in r.headers.get("content-type", "")
+
+
+# ── Diagram (mind map / workflow) ─────────────────────────────────────────────
+
+class TestDiagram:
+    def _settings(self, db, **kw):
+        db.add(UserSettings(id=1, default_model="main/model",
+                            openrouter_api_key=encrypt("sk-test"), **kw))
+        db.commit()
+
+    def _fake_provider(self, content):
+        from unittest.mock import AsyncMock
+        return AsyncMock(return_value={"choices": [{"message": {"content": content}}]})
+
+    def test_uses_the_diagram_model_and_strips_the_fence(self, client, db, monkeypatch):
+        self._settings(db, default_diagram_model="diagram/model")
+        fake = self._fake_provider("Here:\n```d2\na -> b\n```\nDone.")
+        monkeypatch.setattr("routers.ai.post_provider", fake)
+        r = client.post("/api/ai/diagram", json={"prompt": "make one"})
+        assert r.status_code == 200, r.text
+        assert r.json() == {"d2": "a -> b\n"}
+        assert fake.call_args.args[3] == "diagram/model"
+        assert fake.call_args.args[4][-1]["content"] == "make one"
+
+    def test_falls_back_to_the_default_model(self, client, db, monkeypatch):
+        self._settings(db)
+        fake = self._fake_provider("a -> b")
+        monkeypatch.setattr("routers.ai.post_provider", fake)
+        assert client.post("/api/ai/diagram", json={"prompt": "x"}).json() == {"d2": "a -> b\n"}
+        assert fake.call_args.args[3] == "main/model"
+
+    def test_ai_disabled_returns_400(self, client, db):
+        self._settings(db, ai_disabled=True)
+        assert client.post("/api/ai/diagram", json={"prompt": "x"}).status_code == 400

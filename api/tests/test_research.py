@@ -300,3 +300,25 @@ class TestUrlRefetch:
             # Indirect test: just verify it doesn't raise
             result = asyncio.run(r_mod._fetch_url_meta("https://bad.invalid"))
         assert result == {}
+
+
+# ── Mind map / workflow ───────────────────────────────────────────────────────
+
+class TestWorkflowClipping:
+    def test_workflow_carries_d2_and_markdown(self, client, project):
+        w = _create_item(client, project["id"], kind="workflow", title="Revision pass",
+                         text_content="1. Read aloud\n2. Cut", d2="a -> b")
+        assert (w["kind"], w["d2"], w["text_content"]) == ("workflow", "a -> b", "1. Read aloud\n2. Cut")
+        r = client.patch(f"/api/research/{w['id']}", json={"d2": None})
+        assert r.status_code == 200
+        assert r.json()["d2"] is None and r.json()["kind"] == "workflow"
+
+    def test_plain_clipping_drops_d2(self, client, project):
+        c = _create_item(client, project["id"], title="Link", d2="x -> y")
+        assert (c["kind"], c["d2"]) == ("clipping", None)
+        r = client.patch(f"/api/research/{c['id']}", json={"d2": "x -> y"})
+        assert r.json()["d2"] is None
+
+    def test_unknown_kind_is_rejected(self, client, project):
+        r = client.post(f"/api/projects/{project['id']}/research", json={"kind": "nonsense"})
+        assert r.status_code == 422

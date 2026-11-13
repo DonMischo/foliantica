@@ -10,7 +10,7 @@ from ai_providers import PROVIDER_MAP, stream_provider, post_provider, ProviderD
 from crypto import decrypt
 from database import get_db
 from models import Scene, Chapter, Act, Project, UserSettings, CodexEntry, AIPrompt
-from schemas import AIGenerateRequest, KiGenerateRequest, ChatRequest, TranslateRequest, StructureRequest
+from schemas import AIGenerateRequest, KiGenerateRequest, ChatRequest, TranslateRequest, StructureRequest, DiagramRequest
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
@@ -570,6 +570,31 @@ async def structure_text(body: StructureRequest, db: Session = Depends(get_db)):
         "suggested_groups": sugg_groups,
         "suggested_subtype": sugg_subtype,
     }
+
+
+@router.post("/diagram")
+async def generate_diagram(body: DiagramRequest, db: Session = Depends(get_db)):
+    """Turn a mind map / workflow description into D2 code. Returns {d2: str}."""
+    settings = db.query(UserSettings).first()
+    if not settings or settings.ai_disabled:
+        raise HTTPException(400, "No AI provider configured")
+    model = settings.default_diagram_model or settings.default_model
+    if not model:
+        raise HTTPException(400, "No AI model configured")
+    pdef, base_url, api_key = _resolve_provider(settings, model=model)
+
+    messages = [
+        {"role": "system", "content": "You write diagrams in the D2 language (https://d2lang.com). Reply with D2 code only."},
+        {"role": "user", "content": body.prompt},
+    ]
+    try:
+        result = await post_provider(pdef, base_url, api_key, model, messages, timeout=90)
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(502, f"Provider error: {exc.response.text}")
+
+    raw = result["choices"][0]["message"]["content"].strip()
+    fenced = re.search(r"```[^\n]*\n([\s\S]*?)```", raw)
+    return {"d2": (fenced.group(1) if fenced else raw).strip() + "\n"}
 
 
 @router.post("/scenes/{scene_id}/synopsis")

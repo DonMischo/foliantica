@@ -88,6 +88,8 @@ async def create_research(project_id: int, data: ResearchItemCreate, db: Session
         url_description=url_meta.get("url_description"),
         url_image=url_meta.get("url_image"),
         text_content=data.text_content,
+        kind=data.kind,
+        d2=data.d2 if data.kind == "workflow" else None,
         linked_scene_id=data.linked_scene_id,
         linked_codex_id=data.linked_codex_id,
         tags=json.dumps(data.tags),
@@ -120,6 +122,8 @@ async def update_research(item_id: int, data: ResearchItemUpdate, db: Session = 
         item.url_image       = url_meta.get("url_image")
     if "text_content" in fs:
         item.text_content = data.text_content
+    if "d2" in fs and item.kind == "workflow":
+        item.d2 = data.d2
     # linked_scene_id / linked_codex_id use model_fields_set so callers can
     # explicitly set null (unlink) — a plain None default would be ignored otherwise.
     if "linked_scene_id" in fs:

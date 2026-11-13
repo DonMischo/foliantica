@@ -349,6 +349,7 @@ class UserSettings(Base):
     default_synopsis_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     default_codex_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     default_dm_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # RPG dungeon-master narration
+    default_diagram_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # mind map / workflow D2
     wildcards_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)  # YAML file or folder of wildcards
     theme: Mapped[str] = mapped_column(String(20), default="dark")
     enabled_models: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of model IDs
@@ -464,6 +465,10 @@ class ResearchItem(Base):
     url_description:  Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     url_image:        Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     text_content:     Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # "clipping" | "workflow" — a workflow (mind map / workflow) shows text_content as
+    # Markdown next to a D2 diagram whose source lives in d2.
+    kind:             Mapped[str]           = mapped_column(String(20), default="clipping", server_default="clipping")
+    d2:               Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # Legacy single-file columns — kept for the migration; use ResearchMedia going forward.
     image_path:       Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     pdf_path:         Mapped[Optional[str]] = mapped_column(String(500), nullable=True)

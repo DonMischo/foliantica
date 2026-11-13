@@ -65,6 +65,7 @@ def _settings_out(s: UserSettings) -> SettingsOut:
         default_synopsis_model=s.default_synopsis_model or None,
         default_codex_model=s.default_codex_model or None,
         default_dm_model=getattr(s, "default_dm_model", None) or None,
+        default_diagram_model=getattr(s, "default_diagram_model", None) or None,
         wildcards_path=getattr(s, "wildcards_path", None) or None,
         theme=s.theme or "dark",
         enabled_models=enabled,
@@ -115,6 +116,8 @@ def update_settings(body: SettingsUpdate, db: Session = Depends(get_db)):
         s.default_codex_model = body.default_codex_model or None
     if body.default_dm_model is not None:
         s.default_dm_model = body.default_dm_model or None
+    if body.default_diagram_model is not None:
+        s.default_diagram_model = body.default_diagram_model or None
     if body.wildcards_path is not None:
         s.wildcards_path = body.wildcards_path.strip() or None
     if body.theme is not None:

@@ -436,6 +436,7 @@ class SettingsUpdate(BaseModel):
     default_synopsis_model: Optional[str] = None
     default_codex_model: Optional[str] = None
     default_dm_model: Optional[str] = None
+    default_diagram_model: Optional[str] = None
     wildcards_path: Optional[str] = None
     theme: Optional[str] = None
     enabled_models: Optional[list[str]] = None
@@ -471,6 +472,7 @@ class SettingsOut(BaseModel):
     default_synopsis_model: Optional[str] = None
     default_codex_model: Optional[str] = None
     default_dm_model: Optional[str] = None
+    default_diagram_model: Optional[str] = None
     wildcards_path: Optional[str] = None
     theme: str
     enabled_models: list[str]
@@ -557,6 +559,10 @@ class TranslateRequest(BaseModel):
     text: str
     target_language: str
     model: Optional[str] = None
+
+
+class DiagramRequest(BaseModel):
+    prompt: str = Field(min_length=1, max_length=60_000)  # built by the web client, which also offers it for copy/paste
 
 
 class StructureRequest(BaseModel):
@@ -871,6 +877,8 @@ class ProjectAnalytics(BaseModel):
 
 class ResearchItemCreate(BaseModel):
     tab: str = "research"
+    kind: Literal["clipping", "workflow"] = "clipping"
+    d2: Optional[str] = Field(default=None, max_length=50_000)
     title: Optional[str] = None
     url: Optional[str] = None
     text_content: Optional[str] = None
@@ -881,6 +889,7 @@ class ResearchItemCreate(BaseModel):
 
 class ResearchItemUpdate(BaseModel):
     tab: Optional[str] = None
+    d2: Optional[str] = Field(default=None, max_length=50_000)
     title: Optional[str] = None
     url: Optional[str] = None
     text_content: Optional[str] = None
@@ -908,6 +917,8 @@ class ResearchItemOut(BaseModel):
     url_description: Optional[str]
     url_image: Optional[str]
     text_content: Optional[str]
+    kind: str = "clipping"
+    d2: Optional[str] = None
     media: list[ResearchMediaOut] = []
     linked_scene_id: Optional[int]
     linked_codex_id: Optional[int]

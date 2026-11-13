@@ -263,11 +263,11 @@ export const analyticsApi = {
 export const researchApi = {
   list: (projectId: number) => req<ResearchItem[]>(`/projects/${projectId}/research`),
   create: (projectId: number, data: {
-    tab?: string; title?: string; url?: string; text_content?: string;
+    tab?: string; kind?: "clipping" | "workflow"; d2?: string | null; title?: string; url?: string; text_content?: string;
     linked_scene_id?: number | null; linked_codex_id?: number | null; tags?: string[];
   }) => req<ResearchItem>(`/projects/${projectId}/research`, { method: "POST", body: JSON.stringify(data) }),
   update: (id: number, data: Partial<{
-    tab: string; title: string; url: string; text_content: string;
+    tab: string; d2: string | null; title: string; url: string; text_content: string;
     linked_scene_id: number | null; linked_codex_id: number | null; tags: string[];
   }>) => req<ResearchItem>(`/research/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id: number) => req<void>(`/research/${id}`, { method: "DELETE" }),
@@ -521,6 +521,7 @@ export const settingsApi = {
     default_synopsis_model?: string | null;
     default_codex_model?: string | null;
     default_dm_model?: string | null;
+    default_diagram_model?: string | null;
     wildcards_path?: string | null;
     theme?: string;
     enabled_models?: string[];
@@ -657,6 +658,13 @@ export interface StructureResult {
 export const structureApi = {
   structure: (data: { text: string; entry_type?: string; target_language?: string; model?: string }) =>
     req<StructureResult>("/ai/structure", { method: "POST", body: JSON.stringify(data) }),
+};
+
+// ── Diagram (mind map / workflow) ─────────────────────────────────────────────
+
+export const diagramApi = {
+  generate: (prompt: string) =>
+    req<{ d2: string }>("/ai/diagram", { method: "POST", body: JSON.stringify({ prompt }) }),
 };
 
 // ── Mention stats ─────────────────────────────────────────────────────────────

@@ -7,7 +7,7 @@ import {
   Lightbulb, Archive, Scissors, MoreHorizontal,
   LayoutGrid, List, Microscope, Camera,
   Link as LinkIcon, ExternalLink, RefreshCw, Film, Tag, Loader2, FileText,
-  FileUp, Maximize2,
+  FileUp, Maximize2, Workflow,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,7 @@ import type { Fragment as FragmentItem, ResearchItem, ResearchMedia } from "@/ty
 import { BUILTIN_TABS } from "@/types";
 import { cn } from "@/lib/utils";
 import { FragmentImportButton } from "@/components/fragments/FragmentImportButton";
+import { WorkflowCard, WorkflowDialog, WORKFLOW_LABEL } from "@/components/fragments/Workflow";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -1446,6 +1447,10 @@ export default function FragmentsPage() {
 
   const openAddClipping = () => { setEditingClipping(null); setClippingOpen(true); };
   const openEditClipping = (item: ResearchItem) => { setEditingClipping(item); setClippingOpen(true); };
+  // Mind map / workflow dialog — same research list, own editor
+  const [workflowOpen, setWorkflowOpen]       = useState(false);
+  const [editingWorkflow, setEditingWorkflow] = useState<ResearchItem | null>(null);
+  const openAddWorkflow = () => { setEditingWorkflow(null); setWorkflowOpen(true); };
 
   const handleAddTab = () => {
     const name = newTabName.trim().toLowerCase();
@@ -1511,6 +1516,15 @@ export default function FragmentsPage() {
           >
             <Camera className="h-3.5 w-3.5" />
             Add Clipping
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={openAddWorkflow}
+            className="gap-1.5 text-xs"
+          >
+            <Workflow className="h-3.5 w-3.5" />
+            {WORKFLOW_LABEL}
           </Button>
 
           {/* New Fragment — available on every tab */}
@@ -1651,6 +1665,10 @@ export default function FragmentsPage() {
                   <Camera className="h-3.5 w-3.5 mr-1" />
                   Add Clipping
                 </Button>
+                <Button size="sm" onClick={openAddWorkflow}>
+                  <Workflow className="h-3.5 w-3.5 mr-1" />
+                  {WORKFLOW_LABEL}
+                </Button>
                 <Button size="sm" onClick={() => createFragment.mutate({ tab: activeTab })}>
                   <Plus className="h-3.5 w-3.5 mr-1" />
                   New fragment
@@ -1709,7 +1727,14 @@ export default function FragmentsPage() {
                   <p className="text-xs text-muted-foreground/60">No clippings match your filter.</p>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                    {filteredResearch.map(item => (
+                    {filteredResearch.map(item => item.kind === "workflow" ? (
+                      <WorkflowCard
+                        key={item.id}
+                        item={item}
+                        projectId={projectId}
+                        onEdit={(it) => { setEditingWorkflow(it); setWorkflowOpen(true); }}
+                      />
+                    ) : (
                       <ClippingCard
                         key={item.id}
                         item={item}
@@ -1824,6 +1849,13 @@ export default function FragmentsPage() {
         onClose={() => { setClippingOpen(false); setEditingClipping(null); }}
         projectId={projectId}
         initial={editingClipping}
+        defaultTab={activeTab}
+      />
+      <WorkflowDialog
+        open={workflowOpen}
+        onClose={() => { setWorkflowOpen(false); setEditingWorkflow(null); }}
+        projectId={projectId}
+        initial={editingWorkflow}
         defaultTab={activeTab}
       />
     </div>
